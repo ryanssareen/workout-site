@@ -1,65 +1,132 @@
-import Image from "next/image";
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dumbbell, Users, Calendar, TrendingUp, Zap } from 'lucide-react';
 
-export default function Home() {
+/**
+ * Landing page component
+ * 
+ * Marketing structure:
+ * - Hero section: Value proposition + CTA buttons
+ * - Feature grid: 4 core capabilities with icons
+ * - Responsive layout: Mobile-first design
+ * 
+ * Navigation:
+ * - Login button (existing users)
+ * - Sign up button (new users, primary CTA)
+ * 
+ * SEO considerations:
+ * - Descriptive headings for search indexing
+ * - Clear value proposition above fold
+ * - Feature descriptions for content relevance
+ */
+export default function LandingPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted">
+      {/* Navigation bar */}
+      <nav className="container mx-auto px-4 py-6 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Dumbbell className="h-8 w-8 text-primary" />
+          <span className="font-bold text-2xl">Workout Tracker</span>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className="flex gap-4">
+          <Button variant="outline" asChild>
+            <Link href="/login">Login</Link>
+          </Button>
+          <Button asChild>
+            <Link href="/register">Sign Up</Link>
+          </Button>
+        </div>
+      </nav>
+
+      <main className="container mx-auto px-4 py-16">
+        {/* Hero section */}
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <h1 className="text-5xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60">
+            Streamline Your Coaching Workflow
+          </h1>
+          <p className="text-xl text-muted-foreground mb-8">
+            Create, assign, and track workouts for your students. Built for coaches who want to focus on training, not paperwork.
+          </p>
+          <div className="flex gap-4 justify-center">
+            <Button size="lg" asChild>
+              <Link href="/register">Get Started Free</Link>
+            </Button>
+            <Button size="lg" variant="outline" asChild>
+              <Link href="/login">Sign In</Link>
+            </Button>
+          </div>
+        </div>
+
+        {/* Feature grid */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card className="border-primary/20 hover:border-primary/40 transition-colors">
+            <CardHeader>
+              <Users className="h-10 w-10 mb-2 text-primary" />
+              <CardTitle>Coach-Student Platform</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CardDescription>
+                Dedicated accounts for coaches and students with role-based access and permissions. Secure workout assignment system.
+              </CardDescription>
+            </CardContent>
+          </Card>
+
+          <Card className="border-primary/20 hover:border-primary/40 transition-colors">
+            <CardHeader>
+              <Calendar className="h-10 w-10 mb-2 text-primary" />
+              <CardTitle>Workout Scheduling</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CardDescription>
+                Create detailed workouts with dates, types, descriptions, and durations for comprehensive planning and organization.
+              </CardDescription>
+            </CardContent>
+          </Card>
+
+          <Card className="border-primary/20 hover:border-primary/40 transition-colors">
+            <CardHeader>
+              <TrendingUp className="h-10 w-10 mb-2 text-primary" />
+              <CardTitle>Progress Tracking</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CardDescription>
+                Monitor completion status and track student progress across swim, run, bike, and strength training disciplines.
+              </CardDescription>
+            </CardContent>
+          </Card>
+
+          <Card className="border-primary/20 hover:border-primary/40 transition-colors">
+            <CardHeader>
+              <Zap className="h-10 w-10 mb-2 text-primary" />
+              <CardTitle>AI Vision Integration</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CardDescription>
+                Upload whiteboard photos and let AI automatically extract workout details. Transform physical planning into digital workouts instantly.
+              </CardDescription>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Footer CTA */}
+        <div className="mt-16 text-center">
+          <h2 className="text-3xl font-bold mb-4">Ready to get started?</h2>
+          <p className="text-muted-foreground mb-6">
+            Join coaches and students already streamlining their training workflow
+          </p>
+          <Button size="lg" asChild>
+            <Link href="/register">Create Free Account</Link>
+          </Button>
         </div>
       </main>
+
+      {/* Footer */}
+      <footer className="border-t mt-16 py-8">
+        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
+          <p>© 2024 Workout Tracker. Built with Next.js and Firebase.</p>
+        </div>
+      </footer>
     </div>
   );
 }
