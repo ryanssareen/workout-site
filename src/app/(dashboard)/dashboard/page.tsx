@@ -1,172 +1,269 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { getUserWorkouts } from '@/lib/firebase/firestore';
 import { Workout } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus, Calendar, TrendingUp, Target, Zap, ArrowRight } from 'lucide-react';
+import { format } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 
-/**
- * Dashboard page component
- * 
- * Data aggregation:
- * - Total workouts count
- * - Completed workouts count
- * - Pending workouts count
- * - Recent workouts preview (5 most recent)
- * 
- * Role-based features:
- * - Coaches: "Create Workout" button visible
- * - Students: View only mode
- * 
- * Loading states:
- * - Initial auth check
- * - Workout data fetch
- * - Redirect for unauthenticated users
- */
 export default function DashboardPage() {
-  const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const loading = useAuthStore((state) => state.loading);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
-  const [dataLoading, setDataLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
-  // Authentication guard and data loading
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login');
-      return;
-    }
-
     async function loadWorkouts() {
       if (!user) return;
       
-      setDataLoading(true);
       const data = await getUserWorkouts(user.uid, user.role);
       setWorkouts(data);
-      setDataLoading(false);
+      setLoading(false);
     }
 
-    if (user) {
-      loadWorkouts();
-    }
-  }, [user, loading, router]);
+    loadWorkouts();
+  }, [user]);
 
-  // Loading screen during auth check
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex items-center justify-center h-96">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <div className="text-muted-foreground">Loading your dashboard...</div>
+        </div>
       </div>
     );
   }
 
-  // No user state (redirecting)
-  if (!user) {
-    return null;
-  }
-
-  // Calculate statistics
-  const totalWorkouts = workouts.length;
-  const completedWorkouts = workouts.filter(w => w.completed).length;
-  const pendingWorkouts = workouts.filter(w => !w.completed).length;
   const upcomingWorkouts = workouts.filter(w => !w.completed).slice(0, 5);
+  const completedCount = workouts.filter(w => w.completed).length;
+  const completionRate = workouts.length > 0 
+    ? Math.round((completedCount / workouts.length) * 100) 
+    : 0;
+
+  const statCards = [
+    {
+      title: 'Total Workouts',
+      value: workouts.length,
+      icon: Target,
+      gradient: 'from-blue-500 to-cyan-500',
+      description: 'All time',
+    },
+    {
+      title: 'Completed',
+      value: completedCount,
+      icon: Zap,
+      gradient: 'from-green-500 to-emerald-500',
+      description: `${completionRate}% completion rate`,
+    },
+    {
+      title: 'Pending',
+      value: workouts.length - completedCount,
+      icon: TrendingUp,
+      gradient: 'from-orange-500 to-red-500',
+      description: 'Ready to crush',
+    },
+  ];
 
   return (
-    <div className="space-y-6">
-      {/* Header with CTA */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Welcome back, {user.displayName}
-          </p>
+    <div className="space-y-8 pb-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-4xl font-bold tracking-tight">
+            Welcome back, <span className="text-primary">{user?.displayName}</span>!
+          </h1>
+          <p className="text-muted-foreground">Here's your training overview</p>
         </div>
-        {user.role === 'coach' && (
-          <Button asChild>
+        {user?.role === 'coach' && (
+          <Button asChild size="lg" className="shadow-lg shadow-primary/20">
             <Link href="/workouts/new">
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="mr-2 h-5 w-5" />
               Create Workout
             </Link>
           </Button>
         )}
       </div>
 
-      {/* Statistics cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
+      {/* Coach Code Card - Only for coaches with code */}
+      {user?.role === 'coach' && user?.coachCode && (
+        <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
           <CardHeader>
-            <CardDescription>Total Workouts</CardDescription>
-            <CardTitle className="text-4xl">{totalWorkouts}</CardTitle>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-lg">Your Coach Code</CardTitle>
+                <CardDescription>Share this code with your students</CardDescription>
+              </div>
+            </div>
           </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <div className="font-mono text-3xl font-bold tracking-wider text-primary">
+                  {user.coachCode}
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Students can enter this code during registration to be automatically assigned to you
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  navigator.clipboard.writeText(user.coachCode!);
+                  toast.success('Code copied to clipboard!');
+                }}
+              >
+                Copy Code
+              </Button>
+            </div>
+          </CardContent>
         </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardDescription>Completed</CardDescription>
-            <CardTitle className="text-4xl text-green-600">{completedWorkouts}</CardTitle>
-          </CardHeader>
-        </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardDescription>Pending</CardDescription>
-            <CardTitle className="text-4xl text-yellow-600">{pendingWorkouts}</CardTitle>
-          </CardHeader>
-        </Card>
+      )}
+
+      {/* Stats Cards */}
+      <div className="grid gap-6 md:grid-cols-3">
+        {statCards.map((stat, index) => {
+          const Icon = stat.icon;
+          return (
+            <Card key={index} className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
+              <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-5 transition-opacity`} />
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardDescription className="text-sm font-medium">{stat.title}</CardDescription>
+                  <div className={`p-2 rounded-lg bg-gradient-to-br ${stat.gradient} opacity-10`}>
+                    <Icon className="h-5 w-5" />
+                  </div>
+                </div>
+                <CardTitle className="text-5xl font-bold tracking-tight">{stat.value}</CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
+              </CardHeader>
+            </Card>
+          );
+        })}
       </div>
 
-      {/* Upcoming workouts section */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Upcoming Workouts</CardTitle>
-            <CardDescription>Your next scheduled training sessions</CardDescription>
+      {/* Upcoming Workouts */}
+      <Card className="shadow-sm">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <CardTitle className="text-2xl">Upcoming Workouts</CardTitle>
+              <CardDescription>Your next scheduled training sessions</CardDescription>
+            </div>
+            <Button variant="outline" asChild className="group">
+              <Link href="/workouts">
+                View All
+                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </Button>
           </div>
-          <Button variant="outline" asChild>
-            <Link href="/workouts">View All</Link>
-          </Button>
         </CardHeader>
         <CardContent>
-          {dataLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : upcomingWorkouts.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">No upcoming workouts</p>
-              {user.role === 'coach' && (
-                <Button variant="outline" className="mt-4" asChild>
-                  <Link href="/workouts/new">Create Your First Workout</Link>
+          {upcomingWorkouts.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-muted mb-4">
+                <Calendar className="h-10 w-10 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">No upcoming workouts</h3>
+              <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
+                {user?.role === 'coach' 
+                  ? "Create your first workout to get started with training planning"
+                  : "Your coach hasn't assigned any workouts yet"}
+              </p>
+              {user?.role === 'coach' && (
+                <Button asChild size="lg">
+                  <Link href="/workouts/new">
+                    <Plus className="mr-2 h-5 w-5" />
+                    Create Your First Workout
+                  </Link>
                 </Button>
               )}
             </div>
           ) : (
             <div className="space-y-3">
               {upcomingWorkouts.map((workout) => (
-                <div
+                <Link
                   key={workout.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                  href={`/workouts/${workout.id}`}
+                  className="flex items-center justify-between p-4 border-2 border-transparent rounded-xl hover:border-primary/20 hover:bg-muted/30 transition-all duration-200 group"
                 >
-                  <div>
-                    <h3 className="font-semibold">{workout.name}</h3>
-                    <p className="text-sm text-muted-foreground capitalize">
-                      {workout.type}
-                    </p>
+                  <div className="space-y-1 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-semibold text-lg group-hover:text-primary transition-colors">
+                        {workout.name}
+                      </h3>
+                      <Badge variant="secondary" className="capitalize">
+                        {workout.type}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground line-clamp-1">{workout.description}</p>
+                    {workout.duration && (
+                      <p className="text-xs text-muted-foreground">{workout.duration} minutes</p>
+                    )}
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    {workout.date.toDate().toLocaleDateString()}
+                  <div className="flex items-center gap-3 ml-4">
+                    <div className="text-right">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        {format(workout.date.toDate(), 'MMM d')}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {format(workout.date.toDate(), 'yyyy')}
+                      </div>
+                    </div>
+                    <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Quick Actions */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              View Calendar
+            </CardTitle>
+            <CardDescription>See all your workouts in a calendar view</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/calendar">
+                Open Calendar
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Target className="h-5 w-5 text-primary" />
+              All Workouts
+            </CardTitle>
+            <CardDescription>Browse and manage all your training sessions</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/workouts">
+                View All Workouts
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

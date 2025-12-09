@@ -11,6 +11,7 @@ export interface User {
   createdAt: Timestamp;
   updatedAt: Timestamp;
   coachId?: string;
+  coachCode?: string; // 6-letter code for coaches (except rsareen@gmail.com)
 }
 
 export interface Workout {

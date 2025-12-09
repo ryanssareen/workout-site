@@ -83,8 +83,21 @@ export async function toggleWorkoutCompletion(id: string, completed: boolean): P
 
 export async function getCoachStudents(coachId: string): Promise<any[]> {
   try {
+    // Get coach's user document to check email
+    const coachDoc = await getDoc(doc(db, 'users', coachId));
+    const coachEmail = coachDoc.exists() ? coachDoc.data()?.email : null;
+    
     const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('coachId', '==', coachId), where('role', '==', 'student'));
+    let q;
+    
+    // Special case: rsareen@gmail.com gets ALL students
+    if (coachEmail === 'rsareen@gmail.com') {
+      q = query(usersRef, where('role', '==', 'student'));
+    } else {
+      // Regular coaches only see students assigned to them
+      q = query(usersRef, where('coachId', '==', coachId), where('role', '==', 'student'));
+    }
+    
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
   } catch (error) {
