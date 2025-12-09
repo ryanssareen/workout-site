@@ -72,6 +72,49 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8 pb-8">
+      {/* COACH CODE CARD - SUPER PROMINENT AT THE TOP! */}
+      {user?.role === 'coach' && user?.coachCode && (
+        <Card className="bg-gradient-to-br from-primary/10 via-primary/5 to-background border-2 border-primary/30 shadow-xl">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <CardTitle className="text-2xl font-bold">🎯 Your Coach Code</CardTitle>
+                <CardDescription className="text-base">Share this code with your students to connect instantly!</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col md:flex-row items-center gap-6">
+              <div className="flex-1 text-center md:text-left">
+                <div className="inline-block bg-background/50 backdrop-blur-sm px-8 py-6 rounded-2xl border-2 border-primary/20 shadow-lg">
+                  <div className="font-mono text-6xl md:text-7xl font-black tracking-widest text-primary drop-shadow-lg">
+                    {user.coachCode}
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground mt-4 max-w-md">
+                  💡 Students enter this code during registration to automatically become your students
+                </p>
+              </div>
+              <div className="flex flex-col gap-3">
+                <Button
+                  size="lg"
+                  className="text-lg px-8 py-6 shadow-lg hover:shadow-xl transition-all"
+                  onClick={() => {
+                    navigator.clipboard.writeText(user.coachCode!);
+                    toast.success('✅ Code copied to clipboard!');
+                  }}
+                >
+                  📋 Copy Code
+                </Button>
+                <p className="text-xs text-center text-muted-foreground">
+                  Click to copy
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-1">
@@ -89,42 +132,6 @@ export default function DashboardPage() {
           </Button>
         )}
       </div>
-
-      {/* Coach Code Card - Only for coaches with code */}
-      {user?.role === 'coach' && user?.coachCode && (
-        <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-lg">Your Coach Code</CardTitle>
-                <CardDescription>Share this code with your students</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <div className="font-mono text-3xl font-bold tracking-wider text-primary">
-                  {user.coachCode}
-                </div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Students can enter this code during registration to be automatically assigned to you
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  navigator.clipboard.writeText(user.coachCode!);
-                  toast.success('Code copied to clipboard!');
-                }}
-              >
-                Copy Code
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Stats Cards */}
       <div className="grid gap-6 md:grid-cols-3">
