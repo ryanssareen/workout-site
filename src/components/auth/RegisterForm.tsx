@@ -35,11 +35,14 @@ export function RegisterForm() {
       
       // If student with coach code, validate and get coach ID
       if (formData.role === 'student' && formData.coachCode) {
+        console.log('🔍 Looking for coach with code:', formData.coachCode);
         const coach = await findCoachByCode(formData.coachCode);
+        console.log('🔍 Found coach:', coach);
         if (!coach) {
-          throw new Error('Invalid coach code. Please check and try again.');
+          throw new Error(`Invalid coach code: "${formData.coachCode}". Please check and try again.`);
         }
         coachId = coach.uid;
+        console.log('✅ Coach ID:', coachId);
       }
       
       const newUser = await createUser(

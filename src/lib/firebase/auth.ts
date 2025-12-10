@@ -112,22 +112,28 @@ export function onAuthChange(callback: (user: FirebaseUser | null) => void) {
 // Find coach by coach code
 export async function findCoachByCode(coachCode: string): Promise<User | null> {
   try {
+    console.log('🔍 findCoachByCode called with:', coachCode);
     const usersRef = collection(db, 'users');
     const q = query(
       usersRef, 
       where('role', '==', 'coach'),
       where('coachCode', '==', coachCode.toUpperCase())
     );
+    console.log('🔍 Executing query...');
     const querySnapshot = await getDocs(q);
+    console.log('🔍 Query results:', querySnapshot.size, 'documents found');
     
     if (querySnapshot.empty) {
+      console.log('❌ No coach found with code:', coachCode);
       return null;
     }
     
     const coachDoc = querySnapshot.docs[0];
-    return { uid: coachDoc.id, ...coachDoc.data() } as User;
+    const coachData = { uid: coachDoc.id, ...coachDoc.data() } as User;
+    console.log('✅ Coach found:', coachData.displayName, coachData.email);
+    return coachData;
   } catch (error) {
-    console.error('Error finding coach by code:', error);
+    console.error('❌ Error finding coach by code:', error);
     return null;
   }
 }
