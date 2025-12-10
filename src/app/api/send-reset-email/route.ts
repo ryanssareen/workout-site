@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
-import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { adminDb } from '@/lib/firebase/admin';
 import crypto from 'crypto';
 
 export async function POST(request: NextRequest) {
@@ -17,13 +16,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
-    // Check if user exists
+    // Check if user exists using Admin SDK
     console.log('🔍 Checking if user exists:', email);
-    const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('email', '==', email));
-    const querySnapshot = await getDocs(q);
+    const usersSnapshot = await adminDb.collection('users')
+      .where('email', '==', email)
+      .limit(1)
+      .get();
 
-    if (querySnapshot.empty) {
+    if (usersSnapshot.empty) {
       console.log('⚠️ User not found, but returning success for security');
       // Don't reveal if user exists or not for security
       return NextResponse.json({ success: true });
@@ -36,14 +36,14 @@ export async function POST(request: NextRequest) {
     const resetToken = crypto.randomBytes(32).toString('hex');
     const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour from now
 
-    // Store reset token in Firestore
+    // Store reset token in Firestore using Admin SDK
     console.log('💾 Storing reset token in Firestore...');
-    await addDoc(collection(db, 'passwordResets'), {
+    await adminDb.collection('passwordResets').add({
       email,
       token: resetToken,
       expiresAt: resetTokenExpiry,
       used: false,
-      createdAt: serverTimestamp(),
+      createdAt: new Date(),
     });
     console.log('✅ Token stored!');
 

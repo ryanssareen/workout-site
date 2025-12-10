@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
-import { adminAuth } from '@/lib/firebase/admin';
+import { adminAuth, adminDb } from '@/lib/firebase/admin';
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,23 +19,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find the reset token
-    const resetsRef = collection(db, 'passwordResets');
-    const q = query(
-      resetsRef,
-      where('token', '==', token),
-      where('used', '==', false)
-    );
-    const querySnapshot = await getDocs(q);
+    // Find the reset token using Admin SDK
+    const resetsSnapshot = await adminDb.collection('passwordResets')
+      .where('token', '==', token)
+      .where('used', '==', false)
+      .limit(1)
+      .get();
 
-    if (querySnapshot.empty) {
+    if (resetsSnapshot.empty) {
       return NextResponse.json(
         { error: 'Invalid or expired reset link' },
         { status: 400 }
       );
     }
 
-    const resetDoc = querySnapshot.docs[0];
+    const resetDoc = resetsSnapshot.docs[0];
     const resetData = resetDoc.data();
 
     // Check if token has expired
@@ -58,7 +54,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Mark token as used
-    await updateDoc(doc(db, 'passwordResets', resetDoc.id), {
+    await resetDoc.ref.update({
       used: true,
       usedAt: new Date(),
     });
