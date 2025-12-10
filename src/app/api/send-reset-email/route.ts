@@ -17,23 +17,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
-    // Check if user exists using Admin SDK
-    console.log('🔍 Checking if user exists:', email);
-    const usersSnapshot = await adminDb.collection('users')
-      .where('email', '==', email)
-      .limit(1)
-      .get();
-
-    if (usersSnapshot.empty) {
-      console.log('⚠️ User not found, but returning success for security');
-      // Don't reveal if user exists or not for security
-      return NextResponse.json({ success: true });
-    }
-
-    console.log('✅ User found!');
-
-    // Generate secure reset token
-    console.log('🔐 Generating reset token...');
+    // Skip user check - just generate token and send email
+    // (For security, we won't reveal if user exists or not)
+    console.log('🔐 Generating reset token for:', email);
     const resetToken = crypto.randomBytes(32).toString('hex');
     const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour from now
 
