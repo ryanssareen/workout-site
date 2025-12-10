@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
     const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
     
     console.log('✅ Email sent successfully via Brevo!');
-    console.log('📬 Message ID:', data.messageId);
+    console.log('📬 Response:', JSON.stringify(data));
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
