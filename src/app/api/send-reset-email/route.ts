@@ -10,6 +10,7 @@ export async function POST(request: NextRequest) {
     console.log('🔵 Reset email API called for:', email);
     console.log('🔵 GMAIL_USER:', process.env.GMAIL_USER ? 'Set ✅' : 'Missing ❌');
     console.log('🔵 GMAIL_APP_PASSWORD:', process.env.GMAIL_APP_PASSWORD ? 'Set ✅' : 'Missing ❌');
+    console.log('🔵 FIREBASE_SERVICE_ACCOUNT:', process.env.FIREBASE_SERVICE_ACCOUNT ? 'Set ✅' : 'Missing ❌');
 
     if (!email) {
       console.log('❌ No email provided');
