@@ -21,35 +21,15 @@ export default function ResetPasswordPage() {
     setLoading(true);
 
     try {
-      const isGmail = email.toLowerCase().endsWith('@gmail.com');
       console.log('🔵 Submitting password reset for:', email);
-      console.log('🔵 Is Gmail?', isGmail);
-
-      if (isGmail) {
-        // Use our custom Gmail SMTP for Gmail addresses
-        console.log('📧 Using Gmail SMTP...');
-        const response = await fetch('/api/send-reset-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email }),
-        });
-
-        console.log('📊 Response status:', response.status);
-        const data = await response.json();
-        console.log('📊 Response data:', data);
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to send reset email');
-        }
-      } else {
-        // Use Firebase for non-Gmail addresses
-        console.log('🔥 Using Firebase...');
-        await sendPasswordResetEmail(auth, email);
-        console.log('✅ Firebase email sent!');
-      }
+      
+      // Use Firebase for ALL emails
+      console.log('🔥 Using Firebase password reset...');
+      await sendPasswordResetEmail(auth, email);
+      console.log('✅ Firebase email sent!');
 
       setEmailSent(true);
-      toast.success('Password reset email sent! Check your inbox.');
+      toast.success('Password reset email sent! Check your inbox and spam folder.');
     } catch (error: any) {
       console.error('❌ Password reset error:', error);
       console.error('❌ Error message:', error.message);
