@@ -8,25 +8,36 @@ export async function POST(request: NextRequest) {
   try {
     const { email } = await request.json();
 
+    console.log('🔵 Reset email API called for:', email);
+    console.log('🔵 GMAIL_USER:', process.env.GMAIL_USER ? 'Set ✅' : 'Missing ❌');
+    console.log('🔵 GMAIL_APP_PASSWORD:', process.env.GMAIL_APP_PASSWORD ? 'Set ✅' : 'Missing ❌');
+
     if (!email) {
+      console.log('❌ No email provided');
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
     // Check if user exists
+    console.log('🔍 Checking if user exists:', email);
     const usersRef = collection(db, 'users');
     const q = query(usersRef, where('email', '==', email));
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {
+      console.log('⚠️ User not found, but returning success for security');
       // Don't reveal if user exists or not for security
       return NextResponse.json({ success: true });
     }
 
+    console.log('✅ User found!');
+
     // Generate secure reset token
+    console.log('🔐 Generating reset token...');
     const resetToken = crypto.randomBytes(32).toString('hex');
     const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour from now
 
     // Store reset token in Firestore
+    console.log('💾 Storing reset token in Firestore...');
     await addDoc(collection(db, 'passwordResets'), {
       email,
       token: resetToken,
@@ -34,8 +45,10 @@ export async function POST(request: NextRequest) {
       used: false,
       createdAt: serverTimestamp(),
     });
+    console.log('✅ Token stored!');
 
     // Create Gmail transporter
+    console.log('📧 Creating Gmail transporter...');
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -46,9 +59,11 @@ export async function POST(request: NextRequest) {
 
     // Create reset link
     const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password/confirm?token=${resetToken}`;
+    console.log('🔗 Reset link:', resetLink);
 
     // Send email
-    await transporter.sendMail({
+    console.log('📨 Sending email to:', email);
+    const info = await transporter.sendMail({
       from: `"Workout Tracker" <${process.env.GMAIL_USER}>`,
       to: email,
       subject: '🔐 Reset Your Password - Workout Tracker',
@@ -122,9 +137,15 @@ export async function POST(request: NextRequest) {
       `,
     });
 
+    console.log('✅ Email sent successfully!');
+    console.log('📬 Message ID:', info.messageId);
+    console.log('📊 Response:', info.response);
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('Error sending reset email:', error);
+    console.error('❌ Error sending reset email:', error);
+    console.error('❌ Error message:', error.message);
+    console.error('❌ Error stack:', error.stack);
     return NextResponse.json(
       { error: 'Failed to send reset email' },
       { status: 500 }
