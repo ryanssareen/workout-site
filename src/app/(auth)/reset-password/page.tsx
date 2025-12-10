@@ -23,13 +23,24 @@ export default function ResetPasswordPage() {
     try {
       console.log('🔵 Submitting password reset for:', email);
       
-      // Use Firebase for ALL emails
-      console.log('🔥 Using Firebase password reset...');
-      await sendPasswordResetEmail(auth, email);
-      console.log('✅ Firebase email sent!');
+      // Use our custom Brevo email API
+      console.log('📧 Using Brevo email API...');
+      const response = await fetch('/api/send-reset-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      console.log('📊 Response status:', response.status);
+      const data = await response.json();
+      console.log('📊 Response data:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send reset email');
+      }
 
       setEmailSent(true);
-      toast.success('Password reset email sent! Check your inbox and spam folder.');
+      toast.success('Password reset email sent! Check your inbox.');
     } catch (error: any) {
       console.error('❌ Password reset error:', error);
       console.error('❌ Error message:', error.message);
