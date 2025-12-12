@@ -2,39 +2,66 @@
 
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { getUserWorkouts } from '@/lib/firebase/firestore';
+import { getUserWorkouts, getCoachDashboardStats, CoachStats } from '@/lib/firebase/firestore';
 import { Workout } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Plus, Calendar, TrendingUp, Target, Zap, ArrowRight } from 'lucide-react';
+import {
+  Plus, Calendar, TrendingUp, Target, Zap, ArrowRight,
+  Users, Activity, CheckCircle2, Clock, Copy, Check
+} from 'lucide-react';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { StatCard } from '@/components/dashboard/stats/StatCard';
+import { ProgressRing } from '@/components/dashboard/stats/ProgressRing';
+import { StudentOverview } from '@/components/dashboard/StudentOverview';
+import { cn } from '@/lib/utils';
 
 export default function DashboardPage() {
   const user = useAuthStore((state) => state.user);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [coachStats, setCoachStats] = useState<CoachStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    async function loadWorkouts() {
+    async function loadData() {
       if (!user) return;
-      
-      const data = await getUserWorkouts(user.uid, user.role);
-      setWorkouts(data);
+
+      const workoutData = await getUserWorkouts(user.uid, user.role);
+      setWorkouts(workoutData);
+
+      if (user.role === 'coach') {
+        const stats = await getCoachDashboardStats(user.uid);
+        setCoachStats(stats);
+      }
+
       setLoading(false);
     }
 
-    loadWorkouts();
+    loadData();
   }, [user]);
+
+  const handleCopyCode = () => {
+    if (user?.coachCode) {
+      navigator.clipboard.writeText(user.coachCode);
+      setCopied(true);
+      toast.success('Code copied to clipboard!');
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <div className="text-muted-foreground">Loading your dashboard...</div>
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="h-12 w-12 rounded-full border-4 border-muted" />
+            <div className="absolute inset-0 h-12 w-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+          </div>
+          <p className="text-muted-foreground animate-pulse">Loading your dashboard...</p>
         </div>
       </div>
     );
@@ -42,126 +69,329 @@ export default function DashboardPage() {
 
   const upcomingWorkouts = workouts.filter(w => !w.completed).slice(0, 5);
   const completedCount = workouts.filter(w => w.completed).length;
-  const completionRate = workouts.length > 0 
-    ? Math.round((completedCount / workouts.length) * 100) 
+  const completionRate = workouts.length > 0
+    ? Math.round((completedCount / workouts.length) * 100)
     : 0;
 
-  const statCards = [
-    {
-      title: 'Total Workouts',
-      value: workouts.length,
-      icon: Target,
-      gradient: 'from-blue-500 to-cyan-500',
-      description: 'All time',
-    },
-    {
-      title: 'Completed',
-      value: completedCount,
-      icon: Zap,
-      gradient: 'from-green-500 to-emerald-500',
-      description: `${completionRate}% completion rate`,
-    },
-    {
-      title: 'Pending',
-      value: workouts.length - completedCount,
-      icon: TrendingUp,
-      gradient: 'from-orange-500 to-red-500',
-      description: 'Ready to crush',
-    },
-  ];
+  // Render Coach Dashboard
+  if (user?.role === 'coach') {
+    return (
+      <div className="space-y-8 pb-8">
+        {/* Header with Coach Code */}
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+          <div
+            className="space-y-2 animate-in fade-in slide-in-from-left-4 duration-500"
+          >
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
+              Welcome back, <span className="text-primary">{user?.displayName}</span>
+            </h1>
+            <p className="text-muted-foreground">Here's your coaching overview</p>
+          </div>
 
+          <div
+            className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 animate-in fade-in slide-in-from-right-4 duration-500"
+          >
+            {/* Coach Code */}
+            {user?.coachCode && (
+              <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20">
+                <div className="text-xs text-muted-foreground">Coach Code</div>
+                <div className="font-mono text-xl font-bold tracking-wider">{user.coachCode}</div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={handleCopyCode}
+                >
+                  {copied ? (
+                    <Check className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            )}
+
+            <Button asChild size="lg" className="shadow-lg shadow-primary/20">
+              <Link href="/workouts/new">
+                <Plus className="mr-2 h-5 w-5" />
+                Create Workout
+              </Link>
+            </Button>
+          </div>
+        </div>
+
+        {/* Student Metrics Row */}
+        <div>
+          <h2 className="text-sm font-medium text-muted-foreground mb-4 animate-in fade-in duration-500">
+            STUDENT OVERVIEW
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <StatCard
+              title="Total Students"
+              value={coachStats?.totalStudents ?? 0}
+              description="Athletes enrolled"
+              icon={Users}
+              gradient="from-blue-500/5 to-cyan-500/5"
+              iconGradient="from-blue-500 to-cyan-500"
+              delay={0}
+            />
+            <StatCard
+              title="Active This Week"
+              value={coachStats?.activeStudents ?? 0}
+              description="Completed a workout"
+              icon={Activity}
+              gradient="from-green-500/5 to-emerald-500/5"
+              iconGradient="from-green-500 to-emerald-500"
+              delay={100}
+            />
+            <StatCard
+              title="Avg Completion"
+              value={`${coachStats?.overallCompletionRate ?? 0}%`}
+              description="Overall rate"
+              icon={Target}
+              gradient="from-violet-500/5 to-purple-500/5"
+              iconGradient="from-violet-500 to-purple-500"
+              delay={200}
+            />
+          </div>
+        </div>
+
+        {/* Workout Metrics Row */}
+        <div>
+          <h2 className="text-sm font-medium text-muted-foreground mb-4 animate-in fade-in duration-500" style={{ animationDelay: '200ms' }}>
+            WORKOUT STATS
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <StatCard
+              title="Workouts Created"
+              value={coachStats?.totalWorkouts ?? 0}
+              description="All time"
+              icon={Target}
+              gradient="from-orange-500/5 to-amber-500/5"
+              iconGradient="from-orange-500 to-amber-500"
+              delay={300}
+            />
+            <StatCard
+              title="Completed"
+              value={coachStats?.completedWorkouts ?? 0}
+              description={`${coachStats?.overallCompletionRate ?? 0}% completion rate`}
+              icon={CheckCircle2}
+              gradient="from-green-500/5 to-emerald-500/5"
+              iconGradient="from-green-500 to-emerald-500"
+              delay={400}
+            />
+            <StatCard
+              title="Pending"
+              value={coachStats?.pendingWorkouts ?? 0}
+              description="Awaiting completion"
+              icon={Clock}
+              gradient="from-rose-500/5 to-pink-500/5"
+              iconGradient="from-rose-500 to-pink-500"
+              delay={500}
+            />
+          </div>
+        </div>
+
+        {/* Two Column Section: Students & Upcoming */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Student Overview */}
+          <StudentOverview
+            students={coachStats?.studentsWithStats ?? []}
+            delay={600}
+          />
+
+          {/* Upcoming Workouts */}
+          <Card
+            className="animate-in fade-in slide-in-from-bottom-4 duration-500"
+            style={{ animationDelay: '700ms', animationFillMode: 'backwards' }}
+          >
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-primary" />
+                    Upcoming Workouts
+                  </CardTitle>
+                  <CardDescription>Next scheduled sessions</CardDescription>
+                </div>
+                <Button variant="ghost" size="sm" asChild className="group">
+                  <Link href="/workouts">
+                    View All
+                    <ArrowRight className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {upcomingWorkouts.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-3">
+                    <Calendar className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">No upcoming workouts</p>
+                  <Button asChild size="sm">
+                    <Link href="/workouts/new">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Workout
+                    </Link>
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {upcomingWorkouts.map((workout, index) => (
+                    <Link
+                      key={workout.id}
+                      href={`/workouts/${workout.id}`}
+                      className={cn(
+                        'flex items-center justify-between p-3 rounded-lg border hover:border-primary/20 hover:bg-muted/30 transition-all duration-200 group',
+                        'animate-in fade-in slide-in-from-right-2 duration-300'
+                      )}
+                      style={{ animationDelay: `${800 + index * 50}ms`, animationFillMode: 'backwards' }}
+                    >
+                      <div className="space-y-1 flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium text-sm truncate group-hover:text-primary transition-colors">
+                            {workout.name}
+                          </h4>
+                          <Badge variant="secondary" className="capitalize text-xs">
+                            {workout.type}
+                          </Badge>
+                        </div>
+                        {workout.duration && (
+                          <p className="text-xs text-muted-foreground">{workout.duration} min</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 ml-2">
+                        <span className="text-xs text-muted-foreground">
+                          {format(workout.date.toDate(), 'MMM d')}
+                        </span>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quick Actions */}
+        <div
+          className="grid gap-4 sm:grid-cols-2 animate-in fade-in slide-in-from-bottom-4 duration-500"
+          style={{ animationDelay: '900ms', animationFillMode: 'backwards' }}
+        >
+          <Card className="hover:shadow-md hover:border-primary/20 transition-all duration-300 group">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-primary" />
+                Calendar View
+              </CardTitle>
+              <CardDescription className="text-sm">See all workouts on a calendar</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild variant="outline" className="w-full group-hover:border-primary/30">
+                <Link href="/calendar">
+                  Open Calendar
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-md hover:border-primary/20 transition-all duration-300 group">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Target className="h-5 w-5 text-primary" />
+                All Workouts
+              </CardTitle>
+              <CardDescription className="text-sm">Browse and manage workouts</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild variant="outline" className="w-full group-hover:border-primary/30">
+                <Link href="/workouts">
+                  View Workouts
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Render Student Dashboard
   return (
     <div className="space-y-8 pb-8">
-      {/* COACH CODE CARD - SUPER PROMINENT AT THE TOP! */}
-      {user?.role === 'coach' && user?.coachCode && (
-        <Card className="bg-gradient-to-br from-primary/10 via-primary/5 to-background border-2 border-primary/30 shadow-xl">
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <CardTitle className="text-2xl font-bold">🎯 Your Coach Code</CardTitle>
-                <CardDescription className="text-base">Share this code with your students to connect instantly!</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col md:flex-row items-center gap-6">
-              <div className="flex-1 text-center md:text-left">
-                <div className="inline-block bg-background/50 backdrop-blur-sm px-8 py-6 rounded-2xl border-2 border-primary/20 shadow-lg">
-                  <div className="font-mono text-6xl md:text-7xl font-black tracking-widest text-primary drop-shadow-lg">
-                    {user.coachCode}
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground mt-4 max-w-md">
-                  💡 Students enter this code during registration to automatically become your students
-                </p>
-              </div>
-              <div className="flex flex-col gap-3">
-                <Button
-                  size="lg"
-                  className="text-lg px-8 py-6 shadow-lg hover:shadow-xl transition-all"
-                  onClick={() => {
-                    navigator.clipboard.writeText(user.coachCode!);
-                    toast.success('✅ Code copied to clipboard!');
-                  }}
-                >
-                  📋 Copy Code
-                </Button>
-                <p className="text-xs text-center text-muted-foreground">
-                  Click to copy
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-4xl font-bold tracking-tight">
-            Welcome back, <span className="text-primary">{user?.displayName}</span>!
+      {/* Header with Progress Ring */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+        <div className="space-y-2 animate-in fade-in slide-in-from-left-4 duration-500">
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
+            Welcome back, <span className="text-primary">{user?.displayName}</span>
           </h1>
-          <p className="text-muted-foreground">Here's your training overview</p>
+          <p className="text-muted-foreground">Track your training progress</p>
         </div>
-        {user?.role === 'coach' && (
-          <Button asChild size="lg" className="shadow-lg shadow-primary/20">
-            <Link href="/workouts/new">
-              <Plus className="mr-2 h-5 w-5" />
-              Create Workout
-            </Link>
-          </Button>
-        )}
+
+        <div
+          className="flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-r from-green-500/5 to-emerald-500/10 border border-green-500/20 animate-in fade-in slide-in-from-right-4 duration-500"
+        >
+          <ProgressRing
+            progress={completionRate}
+            size="lg"
+            color="stroke-green-500"
+          />
+          <div>
+            <p className="text-sm text-muted-foreground">Overall Progress</p>
+            <p className="text-2xl font-bold">{completedCount}/{workouts.length}</p>
+            <p className="text-xs text-muted-foreground">workouts completed</p>
+          </div>
+        </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-6 md:grid-cols-3">
-        {statCards.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <Card key={index} className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
-              <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-5 transition-opacity`} />
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardDescription className="text-sm font-medium">{stat.title}</CardDescription>
-                  <div className={`p-2 rounded-lg bg-gradient-to-br ${stat.gradient} opacity-10`}>
-                    <Icon className="h-5 w-5" />
-                  </div>
-                </div>
-                <CardTitle className="text-5xl font-bold tracking-tight">{stat.value}</CardTitle>
-                <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
-              </CardHeader>
-            </Card>
-          );
-        })}
+      {/* Student Stats */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard
+          title="Assigned Workouts"
+          value={workouts.length}
+          description="Total from your coach"
+          icon={Target}
+          gradient="from-blue-500/5 to-cyan-500/5"
+          iconGradient="from-blue-500 to-cyan-500"
+          delay={0}
+        />
+        <StatCard
+          title="Completed"
+          value={completedCount}
+          description="Great progress!"
+          icon={CheckCircle2}
+          gradient="from-green-500/5 to-emerald-500/5"
+          iconGradient="from-green-500 to-emerald-500"
+          delay={100}
+        />
+        <StatCard
+          title="Pending"
+          value={workouts.length - completedCount}
+          description="Ready to crush"
+          icon={TrendingUp}
+          gradient="from-orange-500/5 to-amber-500/5"
+          iconGradient="from-orange-500 to-amber-500"
+          delay={200}
+        />
       </div>
 
       {/* Upcoming Workouts */}
-      <Card className="shadow-sm">
+      <Card
+        className="animate-in fade-in slide-in-from-bottom-4 duration-500"
+        style={{ animationDelay: '300ms', animationFillMode: 'backwards' }}
+      >
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <CardTitle className="text-2xl">Upcoming Workouts</CardTitle>
-              <CardDescription>Your next scheduled training sessions</CardDescription>
+              <CardTitle className="text-xl flex items-center gap-2">
+                <Zap className="h-5 w-5 text-primary" />
+                Your Upcoming Workouts
+              </CardTitle>
+              <CardDescription>Ready to tackle these sessions</CardDescription>
             </div>
             <Button variant="outline" asChild className="group">
               <Link href="/workouts">
@@ -174,31 +404,25 @@ export default function DashboardPage() {
         <CardContent>
           {upcomingWorkouts.length === 0 ? (
             <div className="text-center py-12">
-              <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-muted mb-4">
-                <Calendar className="h-10 w-10 text-muted-foreground" />
+              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-green-500/10 to-emerald-500/10 mb-4">
+                <CheckCircle2 className="h-8 w-8 text-green-500" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">No upcoming workouts</h3>
-              <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
-                {user?.role === 'coach' 
-                  ? "Create your first workout to get started with training planning"
-                  : "Your coach hasn't assigned any workouts yet"}
+              <h3 className="text-lg font-semibold mb-2">All caught up!</h3>
+              <p className="text-muted-foreground max-w-sm mx-auto">
+                You've completed all your assigned workouts. Check back later for new sessions from your coach.
               </p>
-              {user?.role === 'coach' && (
-                <Button asChild size="lg">
-                  <Link href="/workouts/new">
-                    <Plus className="mr-2 h-5 w-5" />
-                    Create Your First Workout
-                  </Link>
-                </Button>
-              )}
             </div>
           ) : (
             <div className="space-y-3">
-              {upcomingWorkouts.map((workout) => (
+              {upcomingWorkouts.map((workout, index) => (
                 <Link
                   key={workout.id}
                   href={`/workouts/${workout.id}`}
-                  className="flex items-center justify-between p-4 border-2 border-transparent rounded-xl hover:border-primary/20 hover:bg-muted/30 transition-all duration-200 group"
+                  className={cn(
+                    'flex items-center justify-between p-4 rounded-xl border-2 border-transparent hover:border-primary/20 hover:bg-muted/30 transition-all duration-200 group',
+                    'animate-in fade-in slide-in-from-right-4 duration-300'
+                  )}
+                  style={{ animationDelay: `${400 + index * 100}ms`, animationFillMode: 'backwards' }}
                 >
                   <div className="space-y-1 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -211,7 +435,10 @@ export default function DashboardPage() {
                     </div>
                     <p className="text-sm text-muted-foreground line-clamp-1">{workout.description}</p>
                     {workout.duration && (
-                      <p className="text-xs text-muted-foreground">{workout.duration} minutes</p>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {workout.duration} minutes
+                      </p>
                     )}
                   </div>
                   <div className="flex items-center gap-3 ml-4">
@@ -234,17 +461,20 @@ export default function DashboardPage() {
       </Card>
 
       {/* Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
+      <div
+        className="grid gap-4 sm:grid-cols-2 animate-in fade-in slide-in-from-bottom-4 duration-500"
+        style={{ animationDelay: '600ms', animationFillMode: 'backwards' }}
+      >
+        <Card className="hover:shadow-md hover:border-primary/20 transition-all duration-300 group">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
               <Calendar className="h-5 w-5 text-primary" />
-              View Calendar
+              Calendar View
             </CardTitle>
-            <CardDescription>See all your workouts in a calendar view</CardDescription>
+            <CardDescription className="text-sm">See your schedule at a glance</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button asChild variant="outline" className="w-full">
+            <Button asChild variant="outline" className="w-full group-hover:border-primary/30">
               <Link href="/calendar">
                 Open Calendar
                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -253,18 +483,18 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
+        <Card className="hover:shadow-md hover:border-primary/20 transition-all duration-300 group">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
               <Target className="h-5 w-5 text-primary" />
               All Workouts
             </CardTitle>
-            <CardDescription>Browse and manage all your training sessions</CardDescription>
+            <CardDescription className="text-sm">View your complete workout history</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button asChild variant="outline" className="w-full">
+            <Button asChild variant="outline" className="w-full group-hover:border-primary/30">
               <Link href="/workouts">
-                View All Workouts
+                View Workouts
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
