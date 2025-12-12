@@ -12,6 +12,12 @@ export interface User {
   updatedAt: Timestamp;
   coachId?: string;
   coachCode?: string; // 6-letter code for coaches (except rsareen@gmail.com)
+  // Strava integration fields
+  stravaId?: string;
+  stravaAccessToken?: string;
+  stravaRefreshToken?: string;
+  stravaTokenExpiresAt?: number;
+  stravaConnectedAt?: Timestamp;
 }
 
 export interface Workout {
@@ -26,6 +32,9 @@ export interface Workout {
   completed: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  // Strava sync fields
+  source?: 'manual' | 'strava';
+  stravaActivityId?: string;
 }
 
 export interface WorkoutFormData {

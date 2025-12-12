@@ -222,3 +222,87 @@ export async function getCoachDashboardStats(coachId: string): Promise<CoachStat
     };
   }
 }
+
+// Get coach info by ID
+export async function getCoachInfo(coachId: string): Promise<{ uid: string; displayName: string; email: string } | null> {
+  try {
+    const coachDoc = await getDoc(doc(db, 'users', coachId));
+    if (coachDoc.exists()) {
+      const data = coachDoc.data();
+      return {
+        uid: coachDoc.id,
+        displayName: data.displayName || 'Unknown',
+        email: data.email || '',
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching coach info:', error);
+    return null;
+  }
+}
+
+// Connect student to coach
+export async function connectToCoach(studentId: string, coachId: string): Promise<void> {
+  try {
+    const userRef = doc(db, 'users', studentId);
+    await updateDoc(userRef, {
+      coachId,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error: any) {
+    throw new Error(error.message || 'Failed to connect to coach');
+  }
+}
+
+// Disconnect student from coach
+export async function disconnectFromCoach(studentId: string): Promise<void> {
+  try {
+    const userRef = doc(db, 'users', studentId);
+    await updateDoc(userRef, {
+      coachId: null,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error: any) {
+    throw new Error(error.message || 'Failed to disconnect from coach');
+  }
+}
+
+// Update user's Strava connection
+export async function updateUserStravaConnection(
+  userId: string,
+  stravaData: {
+    stravaId: string;
+    stravaAccessToken: string;
+    stravaRefreshToken: string;
+    stravaTokenExpiresAt: number;
+  }
+): Promise<void> {
+  try {
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+      ...stravaData,
+      stravaConnectedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error: any) {
+    throw new Error(error.message || 'Failed to update Strava connection');
+  }
+}
+
+// Disconnect Strava
+export async function disconnectStrava(userId: string): Promise<void> {
+  try {
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+      stravaId: null,
+      stravaAccessToken: null,
+      stravaRefreshToken: null,
+      stravaTokenExpiresAt: null,
+      stravaConnectedAt: null,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error: any) {
+    throw new Error(error.message || 'Failed to disconnect Strava');
+  }
+}

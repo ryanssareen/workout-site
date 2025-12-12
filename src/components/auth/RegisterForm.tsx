@@ -53,11 +53,16 @@ export function RegisterForm() {
         coachId
       );
       
-      // Show coach code for new coaches (except rsareen@gmail.com)
+      // Show appropriate success message based on role and coach connection
       if (formData.role === 'coach' && newUser.coachCode) {
         toast.success(
           `Account created! Your coach code is: ${newUser.coachCode}`,
           { duration: 10000 }
+        );
+      } else if (formData.role === 'student' && !coachId) {
+        toast.success(
+          'Account created! You can connect to a coach anytime in Settings.',
+          { duration: 5000 }
         );
       } else {
         toast.success('Account created successfully');
@@ -133,18 +138,21 @@ export function RegisterForm() {
           
           {formData.role === 'student' && (
             <div className="space-y-2">
-              <Label htmlFor="coachCode">Coach Code</Label>
-              <Input 
-                id="coachCode" 
-                type="text" 
-                placeholder="Enter 6-letter code from your coach" 
-                value={formData.coachCode} 
-                onChange={(e) => setFormData({ ...formData, coachCode: e.target.value.toUpperCase() })} 
+              <div className="flex items-center justify-between">
+                <Label htmlFor="coachCode">Coach Code</Label>
+                <span className="text-xs text-muted-foreground">(Optional)</span>
+              </div>
+              <Input
+                id="coachCode"
+                type="text"
+                placeholder="Enter 6-letter code from your coach"
+                value={formData.coachCode}
+                onChange={(e) => setFormData({ ...formData, coachCode: e.target.value.toUpperCase() })}
                 maxLength={6}
                 className="uppercase"
               />
               <p className="text-xs text-muted-foreground">
-                Optional: Enter your coach's code to be automatically assigned
+                Don't have a code? No problem! You can connect to your coach later in Settings.
               </p>
             </div>
           )}
