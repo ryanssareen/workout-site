@@ -1,33 +1,54 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
-    }
-
     const clientId = process.env.STRAVA_CLIENT_ID;
-    const redirectUri = process.env.STRAVA_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/strava/callback`;
-
-    if (!clientId) {
-      return NextResponse.json({ error: 'Strava is not configured' }, { status: 500 });
+    const redirectUri = process.env.STRAVA_REDIRECT_URI;
+    
+    if (!clientId || !redirectUri) {
+      return NextResponse.json(
+        { error: 'Strava configuration missing' },
+        { status: 500 }
+      );
     }
+
+    // Get user ID from request (should be passed as query param from frontend)
+    const userId = request.nextUrl.searchParams.get('userId');
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'User ID required' },
+        { status: 400 }
+      );
+    }
+
+    // Store userId in cookie to retrieve after OAuth callback
+    const cookieStore = await cookies();
+    cookieStore.set('strava_oauth_userId', userId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 600, // 10 minutes
+      path: '/',
+    });
 
     // Build Strava OAuth URL
-    const scope = 'read,activity:read_all';
-    const stravaAuthUrl = new URL('https://www.strava.com/oauth/authorize');
-    stravaAuthUrl.searchParams.set('client_id', clientId);
-    stravaAuthUrl.searchParams.set('redirect_uri', redirectUri);
-    stravaAuthUrl.searchParams.set('response_type', 'code');
-    stravaAuthUrl.searchParams.set('scope', scope);
-    stravaAuthUrl.searchParams.set('state', userId); // Pass userId in state for callback
+    const authUrl = new URL('https://www.strava.com/oauth/authorize');
+    authUrl.searchParams.append('client_id', clientId);
+    authUrl.searchParams.append('redirect_uri', redirectUri);
+    authUrl.searchParams.append('response_type', 'code');
+    authUrl.searchParams.append('scope', 'read,activity:read_all');
+    authUrl.searchParams.append('approval_prompt', 'auto');
 
-    return NextResponse.redirect(stravaAuthUrl.toString());
+    console.log('🔐 Redirecting to Strava OAuth:', authUrl.toString());
+
+    // Redirect to Strava
+    return NextResponse.redirect(authUrl.toString());
   } catch (error: any) {
-    console.error('Strava authorize error:', error);
-    return NextResponse.json({ error: 'Failed to initiate Strava authorization' }, { status: 500 });
+    console.error('❌ Strava authorize error:', error);
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    );
   }
 }

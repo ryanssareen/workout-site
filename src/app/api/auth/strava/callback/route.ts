@@ -1,68 +1,87 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { adminDb } from '@/lib/firebase/admin';
-import admin from 'firebase-admin';
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get('code');
-    const state = searchParams.get('state'); // This is the userId
     const error = searchParams.get('error');
 
-    // Handle user denying access
-    if (error) {
-      console.error('Strava auth error:', error);
-      return NextResponse.redirect(new URL('/settings?strava=error', request.url));
+    // Check if user denied access
+    if (error || !code) {
+      console.log('❌ Strava authorization denied or failed');
+      return NextResponse.redirect(
+        new URL('/settings?strava=error', request.url)
+      );
     }
 
-    if (!code || !state) {
-      return NextResponse.redirect(new URL('/settings?strava=error', request.url));
+    // Get userId from cookie
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('strava_oauth_userId')?.value;
+    
+    if (!userId) {
+      console.error('❌ No userId found in cookie');
+      return NextResponse.redirect(
+        new URL('/settings?strava=error', request.url)
+      );
     }
 
-    const clientId = process.env.STRAVA_CLIENT_ID;
-    const clientSecret = process.env.STRAVA_CLIENT_SECRET;
+    console.log('🔐 Exchanging code for tokens...');
 
-    if (!clientId || !clientSecret) {
-      console.error('Strava credentials not configured');
-      return NextResponse.redirect(new URL('/settings?strava=error', request.url));
-    }
-
-    // Exchange code for tokens
+    // Exchange code for access token
     const tokenResponse = await fetch('https://www.strava.com/oauth/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        client_id: clientId,
-        client_secret: clientSecret,
-        code,
+        client_id: process.env.STRAVA_CLIENT_ID,
+        client_secret: process.env.STRAVA_CLIENT_SECRET,
+        code: code,
         grant_type: 'authorization_code',
       }),
     });
 
     if (!tokenResponse.ok) {
-      const errorData = await tokenResponse.json();
-      console.error('Strava token exchange error:', errorData);
-      return NextResponse.redirect(new URL('/settings?strava=error', request.url));
+      console.error('❌ Failed to exchange code for token');
+      return NextResponse.redirect(
+        new URL('/settings?strava=error', request.url)
+      );
     }
 
     const tokenData = await tokenResponse.json();
+    
+    console.log('✅ Received Strava tokens');
 
-    // Update user document with Strava credentials
-    const userRef = adminDb.collection('users').doc(state);
-    await userRef.update({
-      stravaId: String(tokenData.athlete.id),
+    // Store tokens in Firestore
+    await adminDb.collection('users').doc(userId).update({
+      stravaConnected: true,
       stravaAccessToken: tokenData.access_token,
       stravaRefreshToken: tokenData.refresh_token,
-      stravaTokenExpiresAt: tokenData.expires_at,
-      stravaConnectedAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      stravaTokenExpiresAt: new Date(tokenData.expires_at * 1000),
+      stravaAthleteId: tokenData.athlete.id,
+      stravaAthlete: {
+        id: tokenData.athlete.id,
+        username: tokenData.athlete.username,
+        firstname: tokenData.athlete.firstname,
+        lastname: tokenData.athlete.lastname,
+        profile: tokenData.athlete.profile,
+      },
+      stravaConnectedAt: new Date(),
     });
 
-    // Redirect to connect-strava page with success
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
-    return NextResponse.redirect(new URL('/connect-strava?strava=connected', baseUrl));
+    console.log('✅ Strava tokens saved for user:', userId);
+
+    // Clear the cookie
+    cookieStore.delete('strava_oauth_userId');
+
+    // Redirect back to settings with success
+    return NextResponse.redirect(
+      new URL('/settings?strava=success', request.url)
+    );
   } catch (error: any) {
-    console.error('Strava callback error:', error);
-    return NextResponse.redirect(new URL('/connect-strava?strava=error', request.url));
+    console.error('❌ Strava callback error:', error);
+    return NextResponse.redirect(
+      new URL('/settings?strava=error', request.url)
+    );
   }
 }
