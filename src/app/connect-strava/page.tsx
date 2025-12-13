@@ -110,9 +110,9 @@ function ConnectStravaContent() {
               <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7.008 13.828h4.172" />
             </svg>
           </div>
-          <CardTitle className="text-2xl">Connect Strava</CardTitle>
-          <CardDescription>
-            Link your Strava account to automatically track your workouts
+          <CardTitle className="text-2xl">Connect Your Strava Account</CardTitle>
+          <CardDescription className="text-base mt-2">
+            To track your workouts automatically, we need to connect to your Strava account.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -128,25 +128,34 @@ function ConnectStravaContent() {
             </div>
           )}
 
-          {/* Benefits */}
+          {/* How it works */}
+          <div className="p-4 rounded-lg bg-muted/50 border">
+            <h3 className="font-semibold mb-2">How does this work?</h3>
+            <p className="text-sm text-muted-foreground">
+              When you click the button below, you'll be taken to Strava to log in and authorize this app to read your activities.
+              Once connected, whenever you complete a run, ride, or workout on Strava, we'll automatically mark your assigned workout as done.
+            </p>
+          </div>
+
+          {/* What you get */}
           <div className="space-y-3">
-            <h3 className="font-medium text-sm text-muted-foreground">Why connect Strava?</h3>
+            <h3 className="font-semibold">What you'll get:</h3>
             <ul className="space-y-2 text-sm">
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
-                <span>Automatically mark workouts as complete</span>
+                <span><strong>Automatic completion</strong> — finish a workout on Strava, it's marked done here</span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
-                <span>Sync actual stats: distance, duration, heart rate</span>
+                <span><strong>Real stats</strong> — distance, time, pace, and heart rate from your actual activity</span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
-                <span>Works with Garmin, Apple Watch, and more</span>
+                <span><strong>Works with any device</strong> — Garmin, Apple Watch, Wahoo, or phone</span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
-                <span>Let your coach see your real performance</span>
+                <span><strong>Coach visibility</strong> — your coach sees your real performance data</span>
               </li>
             </ul>
           </div>
@@ -164,13 +173,18 @@ function ConnectStravaContent() {
                 <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7.008 13.828h4.172" />
               </svg>
             )}
-            Connect with Strava
+            Log in to Strava & Connect
           </Button>
+
+          <p className="text-xs text-center text-muted-foreground">
+            You'll be redirected to Strava to log in and grant permission
+          </p>
 
           {/* No Strava account */}
           <div className="pt-4 border-t">
+            <h3 className="font-semibold text-center mb-2">Don't have Strava yet?</h3>
             <p className="text-sm text-center text-muted-foreground mb-3">
-              Don't have a Strava account?
+              Strava is a free app that tracks your runs, rides, and workouts. Create a free account first, then come back here to connect.
             </p>
             <Button
               variant="outline"
@@ -189,14 +203,17 @@ function ConnectStravaContent() {
           </div>
 
           {/* Garmin users */}
-          <div className="text-center">
+          <div className="text-center p-3 rounded-lg bg-muted/30">
+            <p className="text-sm text-muted-foreground mb-1">
+              <strong>Using a Garmin watch?</strong>
+            </p>
             <a
               href="https://support.strava.com/hc/en-us/articles/216917697-Connect-Garmin-to-Strava"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+              className="text-sm text-primary hover:underline inline-flex items-center gap-1"
             >
-              Using Garmin? Connect it to Strava first
+              First connect Garmin to Strava, then connect here
               <ExternalLink className="h-3 w-3" />
             </a>
           </div>
