@@ -58,11 +58,11 @@ export async function GET(request: NextRequest) {
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    // Redirect back to settings with success
+    // Redirect to connect-strava page with success
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
-    return NextResponse.redirect(new URL('/settings?strava=connected', baseUrl));
+    return NextResponse.redirect(new URL('/connect-strava?strava=connected', baseUrl));
   } catch (error: any) {
     console.error('Strava callback error:', error);
-    return NextResponse.redirect(new URL('/settings?strava=error', request.url));
+    return NextResponse.redirect(new URL('/connect-strava?strava=error', request.url));
   }
 }
