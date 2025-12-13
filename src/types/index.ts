@@ -20,6 +20,17 @@ export interface User {
   stravaConnectedAt?: Timestamp;
 }
 
+export interface StravaActivityStats {
+  distance?: number; // in meters
+  duration?: number; // in seconds
+  calories?: number;
+  avgHeartRate?: number;
+  maxHeartRate?: number;
+  avgSpeed?: number; // in m/s
+  maxSpeed?: number; // in m/s
+  elevationGain?: number; // in meters
+}
+
 export interface Workout {
   id: string;
   name: string;
@@ -35,6 +46,10 @@ export interface Workout {
   // Strava sync fields
   source?: 'manual' | 'strava';
   stravaActivityId?: string;
+  // Auto-completion fields
+  completedAt?: Timestamp;
+  completionStatus?: 'pending' | 'completed' | 'skipped';
+  actualStats?: StravaActivityStats;
 }
 
 export interface WorkoutFormData {
