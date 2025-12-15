@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
     // Store tokens in Firestore
     await adminDb.collection('users').doc(userId).update({
       stravaConnected: true,
+      stravaId: String(tokenData.athlete.id), // Frontend checks for this field
       stravaAccessToken: tokenData.access_token,
       stravaRefreshToken: tokenData.refresh_token,
       stravaTokenExpiresAt: new Date(tokenData.expires_at * 1000),

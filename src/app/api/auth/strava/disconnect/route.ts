@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
     // Remove Strava tokens from Firestore
     await adminDb.collection('users').doc(userId).update({
       stravaConnected: false,
+      stravaId: null, // Frontend checks for this field
       stravaAccessToken: null,
       stravaRefreshToken: null,
       stravaTokenExpiresAt: null,
