@@ -7,12 +7,15 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get('code');
     const error = searchParams.get('error');
+    
+    // Get base URL from environment variable
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
 
     // Check if user denied access
     if (error || !code) {
       console.log('❌ Strava authorization denied or failed');
       return NextResponse.redirect(
-        new URL('/settings?strava=error', request.url)
+        new URL('/settings?strava=error', baseUrl)
       );
     }
 
@@ -23,7 +26,7 @@ export async function GET(request: NextRequest) {
     if (!userId) {
       console.error('❌ No userId found in cookie');
       return NextResponse.redirect(
-        new URL('/settings?strava=error', request.url)
+        new URL('/settings?strava=error', baseUrl)
       );
     }
 
@@ -44,7 +47,7 @@ export async function GET(request: NextRequest) {
     if (!tokenResponse.ok) {
       console.error('❌ Failed to exchange code for token');
       return NextResponse.redirect(
-        new URL('/settings?strava=error', request.url)
+        new URL('/settings?strava=error', baseUrl)
       );
     }
 
@@ -76,12 +79,13 @@ export async function GET(request: NextRequest) {
 
     // Redirect back to settings with success
     return NextResponse.redirect(
-      new URL('/settings?strava=success', request.url)
+      new URL('/settings?strava=success', baseUrl)
     );
   } catch (error: any) {
     console.error('❌ Strava callback error:', error);
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://workout-site-hac0.onrender.com';
     return NextResponse.redirect(
-      new URL('/settings?strava=error', request.url)
+      new URL('/settings?strava=error', baseUrl)
     );
   }
 }
