@@ -3,7 +3,7 @@ import {
   query, where, orderBy, serverTimestamp, Timestamp,
 } from 'firebase/firestore';
 import { db } from './config';
-import { Workout, WorkoutFormData } from '@/types';
+import { Workout, WorkoutFormData, WorkoutComment, WorkoutRating, PersonalRecord, PRCategory } from '@/types';
 
 export async function createWorkout(data: WorkoutFormData, createdBy: string): Promise<string> {
   try {
@@ -78,6 +78,89 @@ export async function toggleWorkoutCompletion(id: string, completed: boolean): P
     await updateDoc(docRef, { completed, updatedAt: serverTimestamp() });
   } catch (error: any) {
     throw new Error(error.message || 'Failed to update workout status');
+  }
+}
+
+// Enhanced completion with notes and rating
+export async function completeWorkout(
+  id: string,
+  completed: boolean,
+  notes?: string
+): Promise<void> {
+  try {
+    const docRef = doc(db, 'workouts', id);
+    const updateData: Record<string, any> = {
+      completed,
+      updatedAt: serverTimestamp(),
+    };
+
+    if (completed) {
+      updateData.completedAt = serverTimestamp();
+      updateData.completedBy = 'manual';
+      if (notes) {
+        updateData.completionNotes = notes;
+      }
+    } else {
+      // Clear completion fields when un-completing
+      updateData.completedAt = null;
+      updateData.completedBy = null;
+      updateData.completionNotes = null;
+    }
+
+    await updateDoc(docRef, updateData);
+  } catch (error: any) {
+    throw new Error(error.message || 'Failed to update workout status');
+  }
+}
+
+// Workout Comments Functions
+export async function addWorkoutComment(
+  workoutId: string,
+  userId: string,
+  userRole: 'coach' | 'student',
+  userName: string,
+  text: string,
+  rating?: WorkoutRating,
+  parentCommentId?: string
+): Promise<string> {
+  try {
+    const commentsRef = collection(db, 'workouts', workoutId, 'comments');
+    const commentData: Omit<WorkoutComment, 'id'> = {
+      workoutId,
+      userId,
+      userRole,
+      userName,
+      text,
+      createdAt: Timestamp.now(),
+      ...(rating && { rating }),
+      ...(parentCommentId && { parentCommentId, isCoachReply: userRole === 'coach' }),
+    };
+
+    const docRef = await addDoc(commentsRef, commentData);
+    return docRef.id;
+  } catch (error: any) {
+    throw new Error(error.message || 'Failed to add comment');
+  }
+}
+
+export async function getWorkoutComments(workoutId: string): Promise<WorkoutComment[]> {
+  try {
+    const commentsRef = collection(db, 'workouts', workoutId, 'comments');
+    const q = query(commentsRef, orderBy('createdAt', 'asc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as WorkoutComment[];
+  } catch (error) {
+    console.error('Error fetching comments:', error);
+    return [];
+  }
+}
+
+export async function deleteWorkoutComment(workoutId: string, commentId: string): Promise<void> {
+  try {
+    const commentRef = doc(db, 'workouts', workoutId, 'comments', commentId);
+    await deleteDoc(commentRef);
+  } catch (error: any) {
+    throw new Error(error.message || 'Failed to delete comment');
   }
 }
 
@@ -304,5 +387,96 @@ export async function disconnectStrava(userId: string): Promise<void> {
     });
   } catch (error: any) {
     throw new Error(error.message || 'Failed to disconnect Strava');
+  }
+}
+
+// Personal Records Functions
+export async function getPersonalRecords(userId: string): Promise<PersonalRecord[]> {
+  try {
+    const recordsRef = collection(db, 'personalRecords');
+    const q = query(recordsRef, where('userId', '==', userId), orderBy('date', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as PersonalRecord[];
+  } catch (error) {
+    console.error('Error fetching personal records:', error);
+    return [];
+  }
+}
+
+export async function addPersonalRecord(
+  userId: string,
+  data: {
+    category: PRCategory;
+    name: string;
+    value: number;
+    unit: string;
+    date: Date;
+    workoutId?: string;
+    stravaActivityId?: string;
+    notes?: string;
+  }
+): Promise<string> {
+  try {
+    // Check if there's an existing record of the same type
+    const recordsRef = collection(db, 'personalRecords');
+    const q = query(
+      recordsRef,
+      where('userId', '==', userId),
+      where('name', '==', data.name)
+    );
+    const existing = await getDocs(q);
+
+    let previousValue: number | undefined;
+    if (!existing.empty) {
+      const oldRecord = existing.docs[0].data();
+      previousValue = oldRecord.value;
+      // Delete old record (we only keep the best)
+      await deleteDoc(existing.docs[0].ref);
+    }
+
+    const recordData = {
+      userId,
+      ...data,
+      date: Timestamp.fromDate(data.date),
+      previousValue,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+
+    const docRef = await addDoc(recordsRef, recordData);
+    return docRef.id;
+  } catch (error: any) {
+    throw new Error(error.message || 'Failed to add personal record');
+  }
+}
+
+export async function updatePersonalRecord(
+  recordId: string,
+  data: Partial<{
+    value: number;
+    date: Date;
+    notes: string;
+  }>
+): Promise<void> {
+  try {
+    const recordRef = doc(db, 'personalRecords', recordId);
+    const updateData: Record<string, any> = {
+      ...data,
+      updatedAt: serverTimestamp(),
+    };
+    if (data.date) {
+      updateData.date = Timestamp.fromDate(data.date);
+    }
+    await updateDoc(recordRef, updateData);
+  } catch (error: any) {
+    throw new Error(error.message || 'Failed to update personal record');
+  }
+}
+
+export async function deletePersonalRecord(recordId: string): Promise<void> {
+  try {
+    await deleteDoc(doc(db, 'personalRecords', recordId));
+  } catch (error: any) {
+    throw new Error(error.message || 'Failed to delete personal record');
   }
 }

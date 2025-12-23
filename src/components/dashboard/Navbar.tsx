@@ -5,7 +5,7 @@ import { signOut } from '@/lib/firebase/auth';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
-import { Dumbbell, LogOut, LayoutDashboard, Calendar as CalendarIcon, ListChecks, Settings } from 'lucide-react';
+import { Dumbbell, LogOut, LayoutDashboard, Calendar as CalendarIcon, ListChecks, Settings, TrendingUp, Trophy } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
@@ -23,6 +23,8 @@ export function Navbar() {
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/workouts', label: 'Workouts', icon: ListChecks },
     { href: '/calendar', label: 'Calendar', icon: CalendarIcon },
+    { href: '/progress', label: 'Progress', icon: TrendingUp },
+    { href: '/records', label: 'Records', icon: Trophy },
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
 

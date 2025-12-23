@@ -7,11 +7,19 @@ interface WorkoutListProps {
   workouts: Workout[];
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
-  onToggleComplete?: (id: string, completed: boolean) => void;
+  onToggleComplete?: (id: string, completed: boolean, notes?: string) => void;
+  onViewDetails?: (id: string) => void;
   isCoach?: boolean;
 }
 
-export function WorkoutList({ workouts, onEdit, onDelete, onToggleComplete, isCoach }: WorkoutListProps) {
+export function WorkoutList({
+  workouts,
+  onEdit,
+  onDelete,
+  onToggleComplete,
+  onViewDetails,
+  isCoach
+}: WorkoutListProps) {
   if (workouts.length === 0) {
     return <div className="text-center py-12 text-muted-foreground">No workouts found</div>;
   }
@@ -19,12 +27,13 @@ export function WorkoutList({ workouts, onEdit, onDelete, onToggleComplete, isCo
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {workouts.map((workout) => (
-        <WorkoutCard 
-          key={workout.id} 
-          workout={workout} 
-          onEdit={onEdit} 
-          onDelete={onDelete} 
+        <WorkoutCard
+          key={workout.id}
+          workout={workout}
+          onEdit={onEdit}
+          onDelete={onDelete}
           onToggleComplete={onToggleComplete}
+          onViewDetails={onViewDetails}
         />
       ))}
     </div>

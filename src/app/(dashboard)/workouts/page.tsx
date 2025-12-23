@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { getUserWorkouts, deleteWorkout, toggleWorkoutCompletion } from '@/lib/firebase/firestore';
+import { getUserWorkouts, deleteWorkout, completeWorkout } from '@/lib/firebase/firestore';
 import { Workout } from '@/types';
 import { WorkoutList } from '@/components/workouts/WorkoutList';
 import { Button } from '@/components/ui/button';
@@ -34,7 +34,7 @@ export default function WorkoutsPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this workout?')) return;
-    
+
     try {
       await deleteWorkout(id);
       toast.success('Workout deleted successfully');
@@ -44,14 +44,18 @@ export default function WorkoutsPage() {
     }
   };
 
-  const handleToggleComplete = async (id: string, completed: boolean) => {
+  const handleToggleComplete = async (id: string, completed: boolean, notes?: string) => {
     try {
-      await toggleWorkoutCompletion(id, completed);
-      toast.success(completed ? 'Workout marked as complete' : 'Workout marked as incomplete');
+      await completeWorkout(id, completed, notes);
+      toast.success(completed ? 'Workout marked as complete!' : 'Workout marked as incomplete');
       await loadWorkouts(); // Refresh list
     } catch (error: any) {
       toast.error(error.message || 'Failed to update workout');
     }
+  };
+
+  const handleViewDetails = (id: string) => {
+    router.push(`/workouts/${id}`);
   };
 
   if (loading) {
@@ -85,11 +89,12 @@ export default function WorkoutsPage() {
         )}
       </div>
 
-      <WorkoutList 
+      <WorkoutList
         workouts={workouts}
         onEdit={user?.role === 'coach' ? handleEdit : undefined}
         onDelete={user?.role === 'coach' ? handleDelete : undefined}
         onToggleComplete={handleToggleComplete}
+        onViewDetails={handleViewDetails}
         isCoach={user?.role === 'coach'}
       />
     </div>
