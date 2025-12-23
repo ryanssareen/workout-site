@@ -38,6 +38,7 @@ interface TypeData {
   name: string;
   value: number;
   color: string;
+  [key: string]: string | number; // Index signature for Recharts compatibility
 }
 
 const TYPE_COLORS: Record<string, string> = {
