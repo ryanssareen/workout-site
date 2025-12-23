@@ -1,0 +1,26 @@
+services:
+  # Main web service
+  - type: web
+    name: workout-site
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+  # Cron job: Send 10-day summary emails
+  - type: cron
+    name: workout-summaries
+    runtime: node
+    schedule: "30 3 * * *"
+    buildCommand: npm install
+    startCommand: curl https://workout-site-hac0.onrender.com/api/cron/send-summaries
+
+  # Cron job: Send 24-hour workout reminders
+  - type: cron
+    name: workout-reminders
+    runtime: node
+    schedule: "0 4 * * *"
+    buildCommand: npm install
+    startCommand: curl https://workout-site-hac0.onrender.com/api/cron/send-reminders
