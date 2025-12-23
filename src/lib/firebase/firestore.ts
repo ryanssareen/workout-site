@@ -111,6 +111,13 @@ export async function completeWorkout(
       // Check if completing after due date
       const isLate = now > workoutDate;
       
+      console.log('🔍 Late completion check:', {
+        now: now.toISOString(),
+        workoutDate: workoutDate.toISOString(),
+        isLate,
+        workoutName: workoutSnap.data().name
+      });
+      
       updateData.completedAt = serverTimestamp();
       updateData.completedBy = 'manual';
       updateData.completedLate = isLate;

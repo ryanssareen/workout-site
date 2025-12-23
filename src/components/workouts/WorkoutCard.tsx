@@ -36,6 +36,17 @@ export function WorkoutCard({
   const isUpcoming = !isPastWorkout && !workout.completed;
   const isMissed = isPastWorkout && !workout.completed;
   const isCompletedLate = workout.completed && workout.completedLate;
+  
+  // Debug logging
+  if (workout.completed) {
+    console.log('🎨 WorkoutCard color check:', {
+      name: workout.name,
+      completed: workout.completed,
+      completedLate: workout.completedLate,
+      isCompletedLate,
+      isPastWorkout
+    });
+  }
 
   const handleCompletionClick = () => {
     if (workout.completed) {
