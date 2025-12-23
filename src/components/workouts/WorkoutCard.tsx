@@ -33,7 +33,9 @@ export function WorkoutCard({
 
   const hasActions = onEdit || onDelete || onToggleComplete;
   const isPastWorkout = workout.date.toDate() < new Date();
+  const isUpcoming = !isPastWorkout && !workout.completed;
   const isMissed = isPastWorkout && !workout.completed;
+  const isCompletedLate = workout.completed && workout.completedLate;
 
   const handleCompletionClick = () => {
     if (workout.completed) {
@@ -80,14 +82,19 @@ export function WorkoutCard({
       <Card
         className={cn(
           'relative transition-all duration-200',
-          workout.completed && 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900',
+          workout.completed && !isCompletedLate && 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900',
+          isCompletedLate && 'bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-900',
+          isUpcoming && 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900',
           isMissed && 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900'
         )}
       >
         {/* Completion indicator overlay */}
         {workout.completed && (
           <div className="absolute top-3 right-3">
-            <CheckCircle2 className="h-6 w-6 text-green-500" />
+            <CheckCircle2 className={cn(
+              'h-6 w-6',
+              isCompletedLate ? 'text-orange-500' : 'text-green-500'
+            )} />
           </div>
         )}
 
@@ -95,7 +102,8 @@ export function WorkoutCard({
           <div className="flex items-center justify-between pr-8">
             <CardTitle className={cn(
               'text-lg',
-              workout.completed && 'text-green-700 dark:text-green-400'
+              workout.completed && !isCompletedLate && 'text-green-700 dark:text-green-400',
+              isCompletedLate && 'text-orange-700 dark:text-orange-400'
             )}>
               {workout.name}
             </CardTitle>
@@ -130,10 +138,22 @@ export function WorkoutCard({
 
           {/* Status badges */}
           <div className="flex flex-wrap gap-2">
-            {workout.completed && (
+            {workout.completed && !isCompletedLate && (
               <Badge className="bg-green-500 hover:bg-green-600">
                 <CheckCircle2 className="h-3 w-3 mr-1" />
                 Completed
+              </Badge>
+            )}
+            {isCompletedLate && (
+              <Badge className="bg-orange-500 hover:bg-orange-600">
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                Completed Late
+              </Badge>
+            )}
+            {isUpcoming && (
+              <Badge variant="outline" className="border-blue-500 text-blue-600">
+                <Clock className="h-3 w-3 mr-1" />
+                Upcoming
               </Badge>
             )}
             {workout.completedBy === 'strava' && (
@@ -142,7 +162,7 @@ export function WorkoutCard({
                 via Strava
               </Badge>
             )}
-            {workout.completedBy === 'manual' && workout.completed && (
+            {workout.completedBy === 'manual' && workout.completed && !isCompletedLate && (
               <Badge variant="outline">Manual</Badge>
             )}
             {isMissed && (

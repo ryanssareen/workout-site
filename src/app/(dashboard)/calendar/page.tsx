@@ -259,6 +259,7 @@ export default function CalendarPage() {
                 // Determine day status
                 const hasWorkouts = dayWorkouts.length > 0;
                 const allCompleted = hasWorkouts && dayWorkouts.every(w => w.completed);
+                const hasLateCompletion = hasWorkouts && dayWorkouts.some(w => w.completed && w.completedLate);
                 const hasMissed = hasWorkouts && isPastDate && dayWorkouts.some(w => !w.completed);
                 const hasUpcoming = hasWorkouts && !isPastDate && dayWorkouts.some(w => !w.completed);
 
@@ -279,7 +280,8 @@ export default function CalendarPage() {
                       isSelected && 'border-primary bg-primary/10',
                       !isSelected && 'border-transparent hover:border-muted-foreground/20',
                       isTodayDate && 'ring-2 ring-primary ring-offset-2',
-                      allCompleted && isCurrentMonth && 'bg-green-50 dark:bg-green-950/30',
+                      allCompleted && !hasLateCompletion && isCurrentMonth && 'bg-green-50 dark:bg-green-950/30',
+                      hasLateCompletion && isCurrentMonth && 'bg-orange-50 dark:bg-orange-950/30',
                       hasMissed && isCurrentMonth && 'bg-red-50 dark:bg-red-950/30',
                     )}
                   >
@@ -297,16 +299,24 @@ export default function CalendarPage() {
                         {dayWorkouts.slice(0, 3).map((workout, idx) => {
                           let dotColor = 'bg-blue-500'; // upcoming
                           if (workout.completed) {
-                            dotColor = 'bg-green-500';
+                            if (workout.completedLate) {
+                              dotColor = 'bg-orange-500'; // completed late
+                            } else {
+                              dotColor = 'bg-green-500'; // completed on time
+                            }
                           } else if (isPastDate) {
                             dotColor = 'bg-red-500'; // missed
                           }
+
+                          const status = workout.completed 
+                            ? (workout.completedLate ? 'completed late' : 'completed on time')
+                            : (isPastDate ? 'missed' : 'upcoming');
 
                           return (
                             <div
                               key={idx}
                               className={cn('w-2 h-2 rounded-full', dotColor)}
-                              title={`${workout.name} (${workout.completed ? 'completed' : isPastDate ? 'missed' : 'upcoming'})`}
+                              title={`${workout.name} (${status})`}
                             />
                           );
                         })}
@@ -325,7 +335,8 @@ export default function CalendarPage() {
                           variant="secondary"
                           className={cn(
                             'text-[10px] px-1 py-0 h-4',
-                            allCompleted && 'bg-green-100 text-green-700',
+                            allCompleted && !hasLateCompletion && 'bg-green-100 text-green-700',
+                            hasLateCompletion && 'bg-orange-100 text-orange-700',
                             hasMissed && 'bg-red-100 text-red-700',
                             hasUpcoming && 'bg-blue-100 text-blue-700',
                           )}

@@ -57,6 +57,7 @@ export interface Workout {
   // Manual completion fields
   completionNotes?: string;
   completedBy?: 'manual' | 'strava';
+  completedLate?: boolean; // True if completed after due date
   // Reminder tracking
   reminderSent?: boolean;
 }

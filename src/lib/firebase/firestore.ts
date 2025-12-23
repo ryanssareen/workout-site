@@ -89,14 +89,32 @@ export async function completeWorkout(
 ): Promise<void> {
   try {
     const docRef = doc(db, 'workouts', id);
+    
+    // Get workout to check if completion is late
+    const workoutSnap = await getDoc(docRef);
+    if (!workoutSnap.exists()) {
+      throw new Error('Workout not found');
+    }
+    
     const updateData: Record<string, any> = {
       completed,
       updatedAt: serverTimestamp(),
     };
 
     if (completed) {
+      const now = new Date();
+      const workoutDate = workoutSnap.data().date.toDate();
+      
+      // Set workout date to end of day for fair comparison
+      workoutDate.setHours(23, 59, 59, 999);
+      
+      // Check if completing after due date
+      const isLate = now > workoutDate;
+      
       updateData.completedAt = serverTimestamp();
       updateData.completedBy = 'manual';
+      updateData.completedLate = isLate;
+      
       if (notes) {
         updateData.completionNotes = notes;
       }
@@ -105,6 +123,7 @@ export async function completeWorkout(
       updateData.completedAt = null;
       updateData.completedBy = null;
       updateData.completionNotes = null;
+      updateData.completedLate = null;
     }
 
     await updateDoc(docRef, updateData);
