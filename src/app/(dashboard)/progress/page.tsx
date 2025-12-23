@@ -358,7 +358,7 @@ export default function ProgressPage() {
                     className="text-muted-foreground"
                   />
                   <Tooltip
-                    formatter={(value: number) => [`${value}%`, 'Completion Rate']}
+                    formatter={(value) => [`${value ?? 0}%`, 'Completion Rate']}
                     labelFormatter={(label) => `Week of ${label}`}
                     contentStyle={{
                       backgroundColor: 'hsl(var(--card))',
