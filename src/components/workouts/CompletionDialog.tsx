@@ -1,0 +1,116 @@
+'use client';
+
+import { useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { CheckCircle2 } from 'lucide-react';
+
+interface CompletionDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  workoutName: string;
+  onConfirm: (notes?: string) => void;
+  isLoading?: boolean;
+}
+
+export function CompletionDialog({
+  open,
+  onOpenChange,
+  workoutName,
+  onConfirm,
+  isLoading = false,
+}: CompletionDialogProps) {
+  const [notes, setNotes] = useState('');
+
+  const handleConfirm = () => {
+    onConfirm(notes.trim() || undefined);
+    setNotes('');
+  };
+
+  const handleCancel = () => {
+    setNotes('');
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-green-500" />
+            Complete Workout
+          </DialogTitle>
+          <DialogDescription>
+            Mark &quot;{workoutName}&quot; as completed
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="notes">How did it feel? (optional)</Label>
+            <Textarea
+              id="notes"
+              placeholder="Share any notes about this workout..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={handleCancel} disabled={isLoading}>
+            Cancel
+          </Button>
+          <Button onClick={handleConfirm} disabled={isLoading}>
+            {isLoading ? 'Completing...' : 'Complete Workout'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface UncompletionDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  workoutName: string;
+  onConfirm: () => void;
+  isLoading?: boolean;
+}
+
+export function UncompletionDialog({
+  open,
+  onOpenChange,
+  workoutName,
+  onConfirm,
+  isLoading = false,
+}: UncompletionDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Mark as Incomplete?</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to mark &quot;{workoutName}&quot; as incomplete? This will remove the completion status and any notes.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={onConfirm} disabled={isLoading}>
+            {isLoading ? 'Updating...' : 'Mark Incomplete'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

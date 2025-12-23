@@ -18,6 +18,8 @@ export interface User {
   stravaRefreshToken?: string;
   stravaTokenExpiresAt?: number;
   stravaConnectedAt?: Timestamp;
+  // Email summary tracking
+  lastSummaryDate?: Timestamp;
 }
 
 export interface StravaActivityStats {
@@ -30,6 +32,8 @@ export interface StravaActivityStats {
   maxSpeed?: number; // in m/s
   elevationGain?: number; // in meters
 }
+
+export type WorkoutRating = 'too_easy' | 'just_right' | 'too_hard';
 
 export interface Workout {
   id: string;
@@ -50,6 +54,24 @@ export interface Workout {
   completedAt?: Timestamp;
   completionStatus?: 'pending' | 'completed' | 'skipped';
   actualStats?: StravaActivityStats;
+  // Manual completion fields
+  completionNotes?: string;
+  completedBy?: 'manual' | 'strava';
+  // Reminder tracking
+  reminderSent?: boolean;
+}
+
+export interface WorkoutComment {
+  id: string;
+  workoutId: string;
+  userId: string;
+  userRole: 'coach' | 'student';
+  userName: string;
+  text: string;
+  rating?: WorkoutRating;
+  createdAt: Timestamp;
+  parentCommentId?: string;
+  isCoachReply?: boolean;
 }
 
 export interface WorkoutFormData {
@@ -59,6 +81,25 @@ export interface WorkoutFormData {
   date: Date;
   duration?: number;
   assignedTo: string;
+}
+
+// Personal Records
+export type PRCategory = 'distance' | 'speed' | 'strength' | 'endurance';
+
+export interface PersonalRecord {
+  id: string;
+  userId: string;
+  category: PRCategory;
+  name: string; // e.g., "Fastest 5K", "Longest Run", "Heaviest Squat"
+  value: number;
+  unit: string; // e.g., "km", "min", "kg", "lbs"
+  date: Timestamp;
+  workoutId?: string;
+  stravaActivityId?: string;
+  notes?: string;
+  previousValue?: number;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
 export interface AuthContextType {
