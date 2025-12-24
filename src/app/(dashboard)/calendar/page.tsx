@@ -167,9 +167,11 @@ export default function CalendarPage() {
   const handleToggleComplete = async (workout: Workout) => {
     try {
       await completeWorkout(workout.id, !workout.completed);
-      setWorkouts(workouts.map(w =>
-        w.id === workout.id ? { ...w, completed: !w.completed } : w
-      ));
+      
+      // Reload workouts to get updated completedLate field
+      const data = await getUserWorkouts(user!.uid, user!.role);
+      setWorkouts(data);
+      
       toast.success(workout.completed ? 'Marked as incomplete' : 'Marked as complete!');
     } catch (error: any) {
       toast.error(error.message || 'Failed to update workout');
@@ -487,6 +489,10 @@ export default function CalendarPage() {
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-green-500" />
               <span>Completed</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-orange-500" />
+              <span>Completed Late</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-red-500" />
