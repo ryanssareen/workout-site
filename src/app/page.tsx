@@ -239,33 +239,6 @@ export default function Home() {
             </div>
           </div>
         </section>
-
-        {/* Final CTA - Bold & Simple */}
-        <section className="py-20">
-          <div className="container mx-auto px-4">
-            <div className="max-w-3xl mx-auto text-center">
-              <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-primary via-purple-600 to-pink-600 p-12 md:p-16">
-                <div className="absolute inset-0 bg-grid-white/10" />
-                <div className="relative space-y-6 text-white">
-                  <h2 className="text-4xl md:text-5xl font-bold">
-                    Ready to Start Training Smarter?
-                  </h2>
-                  <p className="text-xl text-white/90 max-w-xl mx-auto">
-                    Join coaches and athletes using the platform built for serious training.
-                  </p>
-                  <Button asChild size="lg" variant="secondary" className="h-12 px-8 text-base shadow-xl">
-                    <Link href="/register">
-                      Start Free Today <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <p className="text-sm text-white/70 pt-2">
-                    Free forever. No credit card required.
-                  </p>
-                </div>
-              </Card>
-            </div>
-          </div>
-        </section>
       </main>
 
       {/* Footer - Minimal */}
@@ -281,10 +254,6 @@ export default function Home() {
             <p className="text-sm text-muted-foreground">
               © {new Date().getFullYear()} Built for coaches and athletes
             </p>
-            <div className="flex gap-6 text-sm text-muted-foreground">
-              <Link href="/login" className="hover:text-primary transition-colors">Sign In</Link>
-              <Link href="/register" className="hover:text-primary transition-colors">Sign Up</Link>
-            </div>
           </div>
         </div>
       </footer>
