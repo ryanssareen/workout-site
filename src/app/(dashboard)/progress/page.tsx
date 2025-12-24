@@ -81,8 +81,9 @@ export default function ProgressPage() {
         }
 
         // Load workouts based on role
+        // FIXED: When coach views student progress, load as 'student' role (assigned workouts)
         const userId = isCoach ? selectedStudent : user.uid;
-        const role = isCoach ? 'coach' : 'student';
+        const role = 'student'; // Always load student workouts (assigned to them)
         
         if (!userId) {
           setWorkouts([]);
