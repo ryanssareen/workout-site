@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
-
 // Secret unlock passphrase to allow off-topic conversations
 const UNLOCK_PASSPHRASE = 'WSDFGJM,GHMJNGTIODTGIHMNDIOTHMNXDIOTHMIODTXHJIO;DTHJIO;JHI;OTJHIYX;ETJXIJ;;RH;HJIX;HJ;IXHJ;RJ';
 
@@ -35,6 +31,15 @@ interface Message {
 
 export async function POST(req: NextRequest) {
   try {
+    // Check if API key exists
+    if (!process.env.GROQ_API_KEY) {
+      console.error('GROQ_API_KEY is not set');
+      return NextResponse.json(
+        { error: 'AI service not configured. Please add GROQ_API_KEY to environment variables.' },
+        { status: 500 }
+      );
+    }
+
     const { messages, workoutData } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
@@ -77,7 +82,13 @@ Use this data to provide personalized advice.`;
       });
     }
 
+    // Initialize Groq client here (after API key check)
+    const groq = new Groq({
+      apiKey: process.env.GROQ_API_KEY,
+    });
+
     // Call Groq API
+    console.log('Calling Groq API...');
     const completion = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages: [
@@ -90,6 +101,7 @@ Use this data to provide personalized advice.`;
     });
 
     const response = completion.choices[0]?.message?.content || 'No response generated';
+    console.log('Groq API success');
 
     return NextResponse.json({
       message: response,
@@ -97,8 +109,17 @@ Use this data to provide personalized advice.`;
     });
   } catch (error: any) {
     console.error('Groq API error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      status: error.status,
+      type: error.type,
+    });
+    
     return NextResponse.json(
-      { error: error.message || 'Failed to get AI response' },
+      { 
+        error: error.message || 'Failed to get AI response',
+        details: `${error.status || 'unknown'}: ${error.type || 'unknown error'}`
+      },
       { status: 500 }
     );
   }
