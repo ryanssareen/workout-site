@@ -70,26 +70,42 @@ export default function ProgressPage() {
 
       setLoading(true);
 
-      if (isCoach) {
-        const studentList = await getCoachStudents(user.uid);
-        setStudents(studentList);
-        if (studentList.length > 0 && !selectedStudent) {
-          setSelectedStudent(studentList[0].uid);
+      try {
+        if (isCoach) {
+          const studentList = await getCoachStudents(user.uid);
+          setStudents(studentList);
+          if (studentList.length > 0 && !selectedStudent) {
+            setSelectedStudent(studentList[0].uid);
+            return; // Will trigger another useEffect run
+          }
         }
+
+        // Load workouts based on role
+        const userId = isCoach ? selectedStudent : user.uid;
+        const role = isCoach ? 'coach' : 'student';
+        
+        if (!userId) {
+          setWorkouts([]);
+          setLoading(false);
+          return;
+        }
+
+        console.log('📊 Loading workouts for:', { userId, role, isCoach, selectedStudent });
+        const data = await getUserWorkouts(userId, role);
+        console.log('📊 Raw workouts loaded:', data.length);
+
+        // Filter to only assigned workouts for the selected user
+        const filtered = isCoach && selectedStudent
+          ? data.filter(w => w.assignedTo === selectedStudent)
+          : data;
+
+        console.log('📊 Filtered workouts:', filtered.length, 'for student:', selectedStudent);
+        setWorkouts(filtered);
+      } catch (error) {
+        console.error('Error loading progress data:', error);
+      } finally {
+        setLoading(false);
       }
-
-      // Load workouts based on role
-      const userId = isCoach ? (selectedStudent || user.uid) : user.uid;
-      const role = isCoach ? 'coach' : 'student';
-      const data = await getUserWorkouts(userId, role);
-
-      // Filter to only assigned workouts for the selected user
-      const filtered = isCoach && selectedStudent
-        ? data.filter(w => w.assignedTo === selectedStudent)
-        : data;
-
-      setWorkouts(filtered);
-      setLoading(false);
     };
 
     loadData();
@@ -97,12 +113,27 @@ export default function ProgressPage() {
 
   // Filter workouts by date range
   const filteredWorkouts = useMemo(() => {
-    if (dateRange === 'all') return workouts;
+    console.log('🔍 Total workouts:', workouts.length);
+    console.log('🔍 Date range:', dateRange);
+    
+    if (dateRange === 'all') {
+      console.log('✅ Showing all workouts:', workouts.length);
+      return workouts;
+    }
 
     const days = parseInt(dateRange);
     const cutoff = subDays(new Date(), days);
+    const filtered = workouts.filter(w => w.date.toDate() >= cutoff);
+    
+    console.log('🔍 Cutoff date:', cutoff);
+    console.log('✅ Filtered workouts:', filtered.length);
+    console.log('🔍 Sample workout dates:', workouts.slice(0, 3).map(w => ({
+      name: w.name,
+      date: w.date.toDate(),
+      completed: w.completed
+    })));
 
-    return workouts.filter(w => w.date.toDate() >= cutoff);
+    return filtered;
   }, [workouts, dateRange]);
 
   // Calculate weekly completion rates
@@ -166,6 +197,13 @@ export default function ProgressPage() {
     const completed = filteredWorkouts.filter(w => w.completed);
     const total = filteredWorkouts.length;
     const completionRate = total > 0 ? Math.round((completed.length / total) * 100) : 0;
+    
+    console.log('📊 Stats calculation:', {
+      total,
+      completed: completed.length,
+      completionRate,
+      filteredWorkouts: filteredWorkouts.length
+    });
 
     // Calculate streak
     let streak = 0;
@@ -250,13 +288,16 @@ export default function ProgressPage() {
           {/* Coach: Student selector */}
           {isCoach && students.length > 0 && (
             <Select value={selectedStudent} onValueChange={setSelectedStudent}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-[250px]">
                 <SelectValue placeholder="Select student" />
               </SelectTrigger>
               <SelectContent>
                 {students.map(student => (
                   <SelectItem key={student.uid} value={student.uid}>
-                    {student.displayName || student.email}
+                    <div className="flex flex-col">
+                      <span className="font-medium">{student.displayName || 'No Name'}</span>
+                      <span className="text-xs text-muted-foreground">{student.email}</span>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>

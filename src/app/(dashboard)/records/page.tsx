@@ -187,13 +187,16 @@ export default function RecordsPage() {
           {/* Coach: Student selector */}
           {isCoach && students.length > 0 && (
             <Select value={selectedStudent} onValueChange={setSelectedStudent}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-[250px]">
                 <SelectValue placeholder="Select student" />
               </SelectTrigger>
               <SelectContent>
                 {students.map(student => (
                   <SelectItem key={student.uid} value={student.uid}>
-                    {student.displayName || student.email}
+                    <div className="flex flex-col">
+                      <span className="font-medium">{student.displayName || 'No Name'}</span>
+                      <span className="text-xs text-muted-foreground">{student.email}</span>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
