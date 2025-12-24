@@ -32,7 +32,7 @@ export default function EditWorkoutPage() {
   const user = useAuthStore((state) => state.user);
   const loading = useAuthStore((state) => state.loading);
   const [workout, setWorkout] = useState<Workout | null>(null);
-  const [students, setStudents] = useState<Array<{ uid: string; displayName: string }>>([]);
+  const [students, setStudents] = useState<Array<{ uid: string; displayName: string; email: string }>>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
