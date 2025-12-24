@@ -460,14 +460,18 @@ export async function addPersonalRecord(
       await deleteDoc(existing.docs[0].ref);
     }
 
-    const recordData = {
+    const recordData: any = {
       userId,
       ...data,
       date: Timestamp.fromDate(data.date),
-      previousValue,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
+    
+    // Only add previousValue if it exists (Firestore doesn't allow undefined)
+    if (previousValue !== undefined) {
+      recordData.previousValue = previousValue;
+    }
 
     const docRef = await addDoc(recordsRef, recordData);
     return docRef.id;
