@@ -84,7 +84,7 @@ Use this data to provide personalized advice.`;
 
     // Initialize Groq client here (after API key check)
     const groq = new Groq({
-      apiKey: process.env.GROQ_API_KEY,
+      apiKey: process.env.GROQ_API_KEY?.trim(),
     });
 
     // Call Groq API
