@@ -2,60 +2,43 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Users collection
+    // Users collection - users can only read/write their own data
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      
-      allow read: if resource.data.role == 'coach' && resource.data.coachCode != null;
-      
-      allow read: if request.auth != null 
-                  && resource.data.role == 'student' 
-                  && resource.data.coachId == request.auth.uid;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
     
     // Workouts collection
     match /workouts/{workoutId} {
       allow read: if request.auth != null;
-      
       allow create: if request.auth != null && request.auth.uid == request.resource.data.createdBy;
-      allow update, delete: if request.auth != null && request.auth.uid == resource.data.createdBy;
+      allow update: if request.auth != null && (
+        request.auth.uid == resource.data.createdBy ||
+        request.auth.uid == resource.data.assignedTo
+      );
+      allow delete: if request.auth != null && request.auth.uid == resource.data.createdBy;
       
-      allow update: if request.auth != null 
-                    && request.auth.uid == resource.data.assignedTo
-                    && onlyUpdatingCompletionFields();
-      
+      // Workout comments subcollection
       match /comments/{commentId} {
         allow read: if request.auth != null;
-        
-        allow create: if request.auth != null 
-                      && request.auth.uid == get(/databases/$(database)/documents/workouts/$(workoutId)).data.assignedTo;
-        
+        allow create: if request.auth != null;
         allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
       }
     }
     
     // Personal Records collection
     match /personalRecords/{recordId} {
-      // Users can read their own records
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      
-      // Users can create their own records
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-      
-      // Coaches can read their students' records
-      allow read: if request.auth != null 
-                  && exists(/databases/$(database)/documents/users/$(resource.data.userId))
-                  && get(/databases/$(database)/documents/users/$(resource.data.userId)).data.coachId == request.auth.uid;
-      
-      // Coaches can create records for their students
-      allow create: if request.auth != null
-                    && exists(/databases/$(database)/documents/users/$(request.resource.data.userId))
-                    && get(/databases/$(database)/documents/users/$(request.resource.data.userId)).data.coachId == request.auth.uid;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
     }
     
-    function onlyUpdatingCompletionFields() {
-      let affectedKeys = request.resource.data.diff(resource.data).affectedKeys();
-      return affectedKeys.hasOnly(['completed', 'completedAt', 'completionNotes', 'completedBy', 'completedLate', 'updatedAt', 'reminderSent']);
+    // Chat Threads collection - NEW!
+    match /chatThreads/{threadId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow update: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
     }
   }
 }
