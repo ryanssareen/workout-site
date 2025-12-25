@@ -149,7 +149,9 @@ export default function SettingsPage() {
       const data = await response.json();
       
       if (data.newWorkouts > 0) {
-        toast.success(`Synced ${data.newWorkouts} new workout${data.newWorkouts > 1 ? 's' : ''} from Strava!`);
+        const message = `Synced ${data.newWorkouts} new workout${data.newWorkouts > 1 ? 's' : ''} from Strava!`;
+        const extra = data.deletedWorkouts > 0 ? ` Deleted ${data.deletedWorkouts} old workout${data.deletedWorkouts > 1 ? 's' : ''}.` : '';
+        toast.success(message + extra);
       } else {
         toast.success('All caught up! No new Strava activities found.');
       }
