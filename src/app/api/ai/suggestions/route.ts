@@ -61,25 +61,38 @@ export async function POST(req: NextRequest) {
       const student = studentDoc.data();
       const studentId = studentDoc.id;
 
-      // Get student's workouts
+      // Get student's workouts with proper typing
       const studentWorkouts = workoutsSnap.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter((w: any) => w.assignedTo === studentId);
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
+        .filter((w: any) => w.assignedTo === studentId) as any[];
 
       const recentWorkouts = studentWorkouts.filter((w: any) => {
-        const workoutDate = w.date.toDate();
+        const workoutDate = w.date?.toDate ? w.date.toDate() : new Date(w.date);
         return workoutDate >= thirtyDaysAgo;
       });
 
       const completed = recentWorkouts.filter((w: any) => w.completed);
       const late = completed.filter((w: any) => w.completedLate);
       const missed = recentWorkouts.filter((w: any) => {
-        const workoutDate = w.date.toDate();
+        const workoutDate = w.date?.toDate ? w.date.toDate() : new Date(w.date);
         return !w.completed && workoutDate < new Date();
       });
 
       const lastWorkout = studentWorkouts
-        .sort((a: any, b: any) => b.date.toDate().getTime() - a.date.toDate().getTime())[0];
+        .sort((a: any, b: any) => {
+          const dateA = a.date?.toDate ? a.date.toDate() : new Date(a.date);
+          const dateB = b.date?.toDate ? b.date.toDate() : new Date(b.date);
+          return dateB.getTime() - dateA.getTime();
+        })[0];
+
+      const lastWorkoutDate = lastWorkout?.date?.toDate 
+        ? lastWorkout.date.toDate() 
+        : lastWorkout?.date 
+        ? new Date(lastWorkout.date)
+        : undefined;
 
       studentStats.push({
         name: student.displayName || 'Unnamed Student',
@@ -94,7 +107,7 @@ export async function POST(req: NextRequest) {
         recentActivity: recentWorkouts.slice(0, 5).map((w: any) => 
           `${w.name} - ${w.completed ? '✅' : '❌'}`
         ),
-        lastWorkoutDate: lastWorkout?.date.toDate(),
+        lastWorkoutDate: lastWorkoutDate,
       });
     }
 
