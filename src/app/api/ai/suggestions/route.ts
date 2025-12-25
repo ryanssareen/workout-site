@@ -1,27 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
-import { getUserWorkouts, getCoachStudents } from '@/lib/firebase/firestore';
+import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase/config';
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY?.trim(),
-});
-
-const SYSTEM_PROMPT = `You are an expert fitness business consultant and coach advisor. Analyze coaching data and provide actionable, specific suggestions to improve their coaching business.
-
-Your suggestions should be:
-- Data-driven and specific (use the numbers provided)
-- Actionable (clear next steps)
-- Encouraging but honest
-- Focused on improving student outcomes and business growth
-- Professional and expert-level
-
-Format your response with clear sections:
-1. **Key Insights** - What the data shows
-2. **Strengths** - What they're doing well
-3. **Opportunities** - Where they can improve
-4. **Action Items** - Specific steps to take this week
-
-Use emojis sparingly and professionally. Be concise but thorough.`;
+interface StudentStats {
+  name: string;
+  email: string;
+  totalWorkouts: number;
+  completedWorkouts: number;
+  completionRate: number;
+  lateCompletions: number;
+  missedWorkouts: number;
+  recentActivity: string[];
+  lastWorkoutDate?: Date;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,167 +24,180 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { userId, role } = await req.json();
+    const { coachId } = await req.json();
 
-    if (role !== 'coach') {
+    if (!coachId) {
       return NextResponse.json(
-        { error: 'Only available for coaches' },
-        { status: 403 }
+        { error: 'Coach ID is required' },
+        { status: 400 }
       );
     }
 
-    // Get coach's data
-    const [students, workouts] = await Promise.all([
-      getCoachStudents(userId),
-      getUserWorkouts(userId, 'coach'),
-    ]);
+    console.log('📊 Generating suggestions for coach:', coachId);
 
-    // Analyze the data
-    const totalWorkouts = workouts.length;
-    const completedWorkouts = workouts.filter(w => w.completed).length;
-    const lateCompletions = workouts.filter(w => w.completedLate).length;
-    const missedWorkouts = workouts.filter(w => {
-      const isPast = w.date.toDate() < new Date();
-      return isPast && !w.completed;
-    }).length;
+    // Get all students for this coach
+    const usersRef = collection(db, 'users');
+    const studentsQuery = query(usersRef, where('coachId', '==', coachId));
+    const studentsSnap = await getDocs(studentsQuery);
 
-    const completionRate = totalWorkouts > 0 
-      ? Math.round((completedWorkouts / totalWorkouts) * 100) 
-      : 0;
+    if (studentsSnap.empty) {
+      return NextResponse.json({
+        suggestions: [],
+        summary: 'No students found. Start by inviting students to join!',
+      });
+    }
 
-    // Workout type distribution
-    const typeDistribution: Record<string, number> = {};
-    workouts.forEach(w => {
-      typeDistribution[w.type] = (typeDistribution[w.type] || 0) + 1;
-    });
+    // Get all workouts for this coach
+    const workoutsRef = collection(db, 'workouts');
+    const workoutsQuery = query(workoutsRef, where('createdBy', '==', coachId));
+    const workoutsSnap = await getDocs(workoutsQuery);
 
-    // Recent 30 days activity
+    // Analyze each student
+    const studentStats: StudentStats[] = [];
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const recentWorkouts = workouts.filter(w => w.date.toDate() >= thirtyDaysAgo);
 
-    // Student-specific stats
-    const studentStats: Record<string, { assigned: number; completed: number }> = {};
-    workouts.forEach(w => {
-      if (!studentStats[w.assignedTo]) {
-        studentStats[w.assignedTo] = { assigned: 0, completed: 0 };
-      }
-      studentStats[w.assignedTo].assigned++;
-      if (w.completed) {
-        studentStats[w.assignedTo].completed++;
-      }
+    for (const studentDoc of studentsSnap.docs) {
+      const student = studentDoc.data();
+      const studentId = studentDoc.id;
+
+      // Get student's workouts
+      const studentWorkouts = workoutsSnap.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter((w: any) => w.assignedTo === studentId);
+
+      const recentWorkouts = studentWorkouts.filter((w: any) => {
+        const workoutDate = w.date.toDate();
+        return workoutDate >= thirtyDaysAgo;
+      });
+
+      const completed = recentWorkouts.filter((w: any) => w.completed);
+      const late = completed.filter((w: any) => w.completedLate);
+      const missed = recentWorkouts.filter((w: any) => {
+        const workoutDate = w.date.toDate();
+        return !w.completed && workoutDate < new Date();
+      });
+
+      const lastWorkout = studentWorkouts
+        .sort((a: any, b: any) => b.date.toDate().getTime() - a.date.toDate().getTime())[0];
+
+      studentStats.push({
+        name: student.displayName || 'Unnamed Student',
+        email: student.email,
+        totalWorkouts: recentWorkouts.length,
+        completedWorkouts: completed.length,
+        completionRate: recentWorkouts.length > 0 
+          ? Math.round((completed.length / recentWorkouts.length) * 100)
+          : 0,
+        lateCompletions: late.length,
+        missedWorkouts: missed.length,
+        recentActivity: recentWorkouts.slice(0, 5).map((w: any) => 
+          `${w.name} - ${w.completed ? '✅' : '❌'}`
+        ),
+        lastWorkoutDate: lastWorkout?.date.toDate(),
+      });
+    }
+
+    // Build analysis context for AI
+    const analysisContext = `
+COACHING DASHBOARD ANALYSIS - Last 30 Days
+
+Total Students: ${studentStats.length}
+Total Workouts Assigned: ${studentStats.reduce((sum, s) => sum + s.totalWorkouts, 0)}
+Overall Completion Rate: ${Math.round(
+  studentStats.reduce((sum, s) => sum + s.completedWorkouts, 0) / 
+  Math.max(studentStats.reduce((sum, s) => sum + s.totalWorkouts, 0), 1) * 100
+)}%
+
+STUDENT BREAKDOWN:
+${studentStats.map(s => `
+- ${s.name} (${s.email}):
+  * Completion Rate: ${s.completionRate}%
+  * Completed: ${s.completedWorkouts}/${s.totalWorkouts} workouts
+  * Late Completions: ${s.lateCompletions}
+  * Missed: ${s.missedWorkouts}
+  * Last Workout: ${s.lastWorkoutDate ? s.lastWorkoutDate.toLocaleDateString() : 'Never'}
+  * Recent: ${s.recentActivity.join(', ')}
+`).join('\n')}
+
+IDENTIFY:
+1. Students who need attention (low completion, many missed workouts)
+2. Students doing well (consistent, high completion)
+3. Patterns (everyone missing Mondays? Too much volume?)
+4. Actionable recommendations for the coach
+
+Provide 5-7 specific, actionable suggestions in JSON format:
+{
+  "suggestions": [
+    {
+      "type": "warning" | "success" | "info",
+      "title": "Short title",
+      "description": "Detailed recommendation",
+      "priority": "high" | "medium" | "low",
+      "students": ["student names if relevant"]
+    }
+  ]
+}
+`;
+
+    const groq = new Groq({
+      apiKey: process.env.GROQ_API_KEY.trim(),
     });
 
-    const avgStudentCompletion = Object.values(studentStats).reduce((sum, stats) => {
-      const rate = stats.assigned > 0 ? stats.completed / stats.assigned : 0;
-      return sum + rate;
-    }, 0) / Math.max(Object.keys(studentStats).length, 1);
-
-    // Workouts with notes vs without
-    const workoutsWithNotes = workouts.filter(w => w.description && w.description.length > 50);
-    const completionRateWithNotes = workoutsWithNotes.length > 0
-      ? Math.round((workoutsWithNotes.filter(w => w.completed).length / workoutsWithNotes.length) * 100)
-      : 0;
-    const completionRateWithoutNotes = (totalWorkouts - workoutsWithNotes.length) > 0
-      ? Math.round(((completedWorkouts - workoutsWithNotes.filter(w => w.completed).length) / (totalWorkouts - workoutsWithNotes.length)) * 100)
-      : 0;
-
-    // Build context for AI
-    const dataContext = `
-COACH BUSINESS DATA ANALYSIS:
-
-Student Base:
-- Total Active Students: ${students.length}
-- Students with Workouts: ${Object.keys(studentStats).length}
-
-Workout Programming:
-- Total Workouts Created: ${totalWorkouts}
-- Last 30 Days: ${recentWorkouts.length} workouts assigned
-- Workout Types: ${Object.entries(typeDistribution)
-      .map(([type, count]) => `${type}: ${count} (${Math.round((count / totalWorkouts) * 100)}%)`)
-      .join(', ')}
-
-Student Engagement:
-- Overall Completion Rate: ${completionRate}%
-- Average Student Completion: ${Math.round(avgStudentCompletion * 100)}%
-- Completed Workouts: ${completedWorkouts}
-- Late Completions: ${lateCompletions} (${totalWorkouts > 0 ? Math.round((lateCompletions / totalWorkouts) * 100) : 0}%)
-- Missed Workouts: ${missedWorkouts}
-
-Programming Quality:
-- Detailed Workouts (good descriptions): ${workoutsWithNotes.length}
-- Basic Workouts (minimal description): ${totalWorkouts - workoutsWithNotes.length}
-- Completion Rate (Detailed): ${completionRateWithNotes}%
-- Completion Rate (Basic): ${completionRateWithoutNotes}%
-
-Top Performing Students:
-${Object.entries(studentStats)
-  .sort((a, b) => {
-    const rateA = a[1].completed / a[1].assigned;
-    const rateB = b[1].completed / b[1].assigned;
-    return rateB - rateA;
-  })
-  .slice(0, 3)
-  .map((s, i) => {
-    const student = students.find(st => st.uid === s[0]);
-    const rate = Math.round((s[1].completed / s[1].assigned) * 100);
-    return `${i + 1}. ${student?.displayName || 'Student'}: ${rate}% (${s[1].completed}/${s[1].assigned})`;
-  })
-  .join('\n')}
-
-Students Needing Attention:
-${Object.entries(studentStats)
-  .filter(([_, stats]) => stats.assigned >= 5) // Only students with at least 5 workouts
-  .sort((a, b) => {
-    const rateA = a[1].completed / a[1].assigned;
-    const rateB = b[1].completed / b[1].assigned;
-    return rateA - rateB;
-  })
-  .slice(0, 3)
-  .map((s, i) => {
-    const student = students.find(st => st.uid === s[0]);
-    const rate = Math.round((s[1].completed / s[1].assigned) * 100);
-    return `${i + 1}. ${student?.displayName || 'Student'}: ${rate}% (${s[1].completed}/${s[1].assigned})`;
-  })
-  .join('\n')}
-
-Based on this data, provide specific, actionable suggestions to improve this coaching business.`;
-
-    console.log('🤖 Generating AI suggestions for coach:', userId);
-
-    // Call Groq API
+    console.log('🤖 Calling Groq for analysis...');
     const completion = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: dataContext },
+        {
+          role: 'system',
+          content: 'You are an expert fitness coach advisor. Analyze student workout data and provide actionable coaching suggestions. Return ONLY valid JSON, no markdown or explanations.',
+        },
+        {
+          role: 'user',
+          content: analysisContext,
+        },
       ],
       temperature: 0.7,
       max_tokens: 2048,
-      top_p: 0.9,
+      response_format: { type: 'json_object' },
     });
 
-    const suggestions = completion.choices[0]?.message?.content || 'Unable to generate suggestions';
+    const response = completion.choices[0]?.message?.content || '{}';
+    console.log('✅ AI analysis complete');
 
-    console.log('✅ AI suggestions generated successfully');
+    let aiSuggestions;
+    try {
+      aiSuggestions = JSON.parse(response);
+    } catch (e) {
+      console.error('Failed to parse AI response:', response);
+      aiSuggestions = {
+        suggestions: [
+          {
+            type: 'info',
+            title: 'Analysis Complete',
+            description: 'Your students are making progress! Keep monitoring their activity.',
+            priority: 'low',
+            students: [],
+          },
+        ],
+      };
+    }
 
     return NextResponse.json({
-      suggestions,
-      dataSnapshot: {
-        students: students.length,
-        totalWorkouts,
-        completionRate,
-        recentActivity: recentWorkouts.length,
+      ...aiSuggestions,
+      stats: {
+        totalStudents: studentStats.length,
+        totalWorkouts: studentStats.reduce((sum, s) => sum + s.totalWorkouts, 0),
+        overallCompletionRate: Math.round(
+          studentStats.reduce((sum, s) => sum + s.completedWorkouts, 0) / 
+          Math.max(studentStats.reduce((sum, s) => sum + s.totalWorkouts, 0), 1) * 100
+        ),
       },
     });
-
   } catch (error: any) {
-    console.error('AI suggestions error:', error);
+    console.error('Suggestions API error:', error);
     return NextResponse.json(
-      { 
-        error: error.message || 'Failed to generate suggestions',
-        details: error.toString(),
-      },
+      { error: error.message || 'Failed to generate suggestions' },
       { status: 500 }
     );
   }

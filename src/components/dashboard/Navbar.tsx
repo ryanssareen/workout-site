@@ -26,7 +26,7 @@ export function Navbar() {
     { href: '/progress', label: 'Progress', icon: TrendingUp },
     { href: '/records', label: 'Records', icon: Trophy },
     { href: '/ai-coach', label: 'AI Coach', icon: Brain },
-    ...(user?.role === 'coach' ? [{ href: '/suggestions', label: 'Suggestions', icon: Lightbulb }] : []),
+    ...(user?.role === 'coach' ? [{ href: '/coach-suggestions', label: 'AI Suggestions', icon: Lightbulb }] : []),
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
 
