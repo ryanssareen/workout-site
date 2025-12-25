@@ -52,7 +52,10 @@ export default function CoachSuggestionsPage() {
       const response = await fetch('/api/ai/suggestions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ coachId: user.uid }),
+        body: JSON.stringify({ 
+          coachId: user.uid,
+          userEmail: user.email,
+        }),
       });
 
       const result = await response.json();

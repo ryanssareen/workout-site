@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { getUserWorkouts } from '@/lib/firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,8 +16,9 @@ import {
 } from '@/components/ui/dialog';
 import { Brain, Send, Loader2, Sparkles, Plus, MessageSquare, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { format, subDays } from 'date-fns';
-import { collection, addDoc, getDocs, query, where, orderBy as firestoreOrderBy, updateDoc, doc, deleteDoc, Timestamp } from 'firebase/firestore';
+import { format } from 'date-fns';
+import { adminDb } from '@/lib/firebase/admin';
+import { collection, addDoc, getDocs, query, where, orderBy, updateDoc, doc, deleteDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 
 interface Message {
@@ -46,46 +46,7 @@ export default function AICoachPage() {
   const [loadingThreads, setLoadingThreads] = useState(true);
   const [showNewThreadDialog, setShowNewThreadDialog] = useState(false);
   const [newThreadTitle, setNewThreadTitle] = useState('');
-  const [workoutData, setWorkoutData] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Load user's workout data
-  useEffect(() => {
-    const loadWorkoutData = async () => {
-      if (!user) return;
-
-      try {
-        const workouts = await getUserWorkouts(user.uid, 'student');
-        const thirtyDaysAgo = subDays(new Date(), 30);
-        const recentWorkouts = workouts
-          .filter(w => w.date.toDate() >= thirtyDaysAgo)
-          .slice(0, 10)
-          .map(w => ({
-            date: format(w.date.toDate(), 'MMM d'),
-            name: w.name,
-            type: w.type,
-            completed: w.completed,
-            completedLate: w.completedLate,
-          }));
-
-        const completedCount = workouts.filter(w => w.completed).length;
-        const completionRate = workouts.length > 0 
-          ? Math.round((completedCount / workouts.length) * 100) 
-          : 0;
-
-        setWorkoutData({
-          totalWorkouts: workouts.length,
-          completedWorkouts: completedCount,
-          completionRate,
-          recentWorkouts,
-        });
-      } catch (error) {
-        console.error('Failed to load workout data:', error);
-      }
-    };
-
-    loadWorkoutData();
-  }, [user]);
 
   // Load threads
   useEffect(() => {
@@ -97,17 +58,14 @@ export default function AICoachPage() {
         const q = query(
           threadsRef,
           where('userId', '==', user.uid),
-          firestoreOrderBy('updatedAt', 'desc')
+          orderBy('updatedAt', 'desc')
         );
         const snapshot = await getDocs(q);
 
         const loadedThreads = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
-          messages: (doc.data().messages || []).map((m: any) => ({
-            ...m,
-            timestamp: m.timestamp?.toDate ? m.timestamp.toDate() : new Date(m.timestamp),
-          })),
+          messages: doc.data().messages || [],
           createdAt: doc.data().createdAt?.toDate() || new Date(),
           updatedAt: doc.data().updatedAt?.toDate() || new Date(),
         })) as ChatThread[];
@@ -146,7 +104,7 @@ export default function AICoachPage() {
           {
             role: 'assistant',
             content: "Hi! I'm your AI workout coach. How can I help you today?",
-            timestamp: Timestamp.now(),
+            timestamp: new Date(),
           },
         ],
         createdAt: Timestamp.now(),
@@ -157,13 +115,7 @@ export default function AICoachPage() {
 
       const created: ChatThread = {
         id: docRef.id,
-        userId: user.uid,
-        title: newThreadTitle.trim(),
-        messages: [{
-          role: 'assistant',
-          content: "Hi! I'm your AI workout coach. How can I help you today?",
-          timestamp: new Date(),
-        }],
+        ...newThread,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -228,7 +180,6 @@ export default function AICoachPage() {
             role: m.role,
             content: m.content,
           })),
-          workoutData,
         }),
       });
 
@@ -250,10 +201,7 @@ export default function AICoachPage() {
       // Save to Firestore
       const threadRef = doc(db, 'chatThreads', activeThreadId);
       await updateDoc(threadRef, {
-        messages: updatedMessages.map(m => ({
-          ...m,
-          timestamp: Timestamp.fromDate(m.timestamp),
-        })),
+        messages: updatedMessages,
         updatedAt: Timestamp.now(),
       });
 
@@ -263,10 +211,6 @@ export default function AICoachPage() {
           ? { ...t, messages: updatedMessages, updatedAt: new Date() }
           : t
       ));
-
-      if (data.unlocked) {
-        toast.success('🔓 Dev mode activated!');
-      }
     } catch (error: any) {
       toast.error(error.message || 'Failed to get AI response');
       console.error('AI chat error:', error);
@@ -320,7 +264,7 @@ export default function AICoachPage() {
 
       <div className="grid lg:grid-cols-[280px_1fr] gap-6">
         {/* Sidebar - Chat Threads */}
-        <Card className="h-fit max-h-[700px] overflow-y-auto">
+        <Card className="h-fit">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />

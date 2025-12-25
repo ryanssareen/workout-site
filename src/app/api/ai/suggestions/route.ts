@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { coachId } = await req.json();
+    const { coachId, userEmail } = await req.json();
 
     if (!coachId) {
       console.error('❌ No coachId provided');
@@ -36,12 +36,26 @@ export async function POST(req: NextRequest) {
 
     console.log('📊 Generating suggestions for coach:', coachId);
 
-    // Get all students for this coach
+    // Admin override: rsareen@gmail.com sees ALL students
+    const isAdmin = userEmail === 'rsareen@gmail.com';
+    console.log('👑 Admin mode:', isAdmin);
+
+    // Get students
     console.log('1️⃣ Fetching students...');
-    const studentsSnapshot = await adminDb
-      .collection('users')
-      .where('coachId', '==', coachId)
-      .get();
+    let studentsSnapshot;
+    if (isAdmin) {
+      // Admin sees ALL students (role = student)
+      studentsSnapshot = await adminDb
+        .collection('users')
+        .where('role', '==', 'student')
+        .get();
+    } else {
+      // Regular coach sees only their students
+      studentsSnapshot = await adminDb
+        .collection('users')
+        .where('coachId', '==', coachId)
+        .get();
+    }
     console.log('   Found students:', studentsSnapshot.size);
 
     if (studentsSnapshot.empty) {
@@ -57,12 +71,21 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Get all workouts for this coach
+    // Get workouts
     console.log('2️⃣ Fetching workouts...');
-    const workoutsSnapshot = await adminDb
-      .collection('workouts')
-      .where('createdBy', '==', coachId)
-      .get();
+    let workoutsSnapshot;
+    if (isAdmin) {
+      // Admin sees ALL workouts
+      workoutsSnapshot = await adminDb
+        .collection('workouts')
+        .get();
+    } else {
+      // Regular coach sees only their workouts
+      workoutsSnapshot = await adminDb
+        .collection('workouts')
+        .where('createdBy', '==', coachId)
+        .get();
+    }
     console.log('   Found workouts:', workoutsSnapshot.size);
 
     // Analyze each student
