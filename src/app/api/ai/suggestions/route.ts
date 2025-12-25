@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
-import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { adminDb } from '@/lib/firebase/admin';
 
 interface StudentStats {
   name: string;
@@ -39,12 +38,13 @@ export async function POST(req: NextRequest) {
 
     // Get all students for this coach
     console.log('1️⃣ Fetching students...');
-    const usersRef = collection(db, 'users');
-    const studentsQuery = query(usersRef, where('coachId', '==', coachId));
-    const studentsSnap = await getDocs(studentsQuery);
-    console.log('   Found students:', studentsSnap.size);
+    const studentsSnapshot = await adminDb
+      .collection('users')
+      .where('coachId', '==', coachId)
+      .get();
+    console.log('   Found students:', studentsSnapshot.size);
 
-    if (studentsSnap.empty) {
+    if (studentsSnapshot.empty) {
       console.log('⚠️ No students found');
       return NextResponse.json({
         suggestions: [],
@@ -59,10 +59,11 @@ export async function POST(req: NextRequest) {
 
     // Get all workouts for this coach
     console.log('2️⃣ Fetching workouts...');
-    const workoutsRef = collection(db, 'workouts');
-    const workoutsQuery = query(workoutsRef, where('createdBy', '==', coachId));
-    const workoutsSnap = await getDocs(workoutsQuery);
-    console.log('   Found workouts:', workoutsSnap.size);
+    const workoutsSnapshot = await adminDb
+      .collection('workouts')
+      .where('createdBy', '==', coachId)
+      .get();
+    console.log('   Found workouts:', workoutsSnapshot.size);
 
     // Analyze each student
     console.log('3️⃣ Analyzing student data...');
@@ -70,13 +71,13 @@ export async function POST(req: NextRequest) {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    for (const studentDoc of studentsSnap.docs) {
+    for (const studentDoc of studentsSnapshot.docs) {
       const student = studentDoc.data();
       const studentId = studentDoc.id;
       console.log(`   Processing student: ${student.displayName || 'Unnamed'} (${studentId})`);
 
       // Get student's workouts with proper typing
-      const studentWorkouts = workoutsSnap.docs
+      const studentWorkouts = workoutsSnapshot.docs
         .map(doc => ({
           id: doc.id,
           ...doc.data(),
