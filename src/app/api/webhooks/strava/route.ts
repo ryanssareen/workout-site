@@ -275,7 +275,7 @@ async function processActivity(
     
     console.log(`📅 Activity: ${activity.name} (${activity.type} → ${workoutType}) on ${activityDate.toISOString()}`);
 
-    // Check if we already imported this activity
+    // Check if we already imported this activity (STRICT CHECK)
     const existingWorkout = await adminDb
       .collection('workouts')
       .where('stravaActivityId', '==', stravaActivityId)
@@ -283,8 +283,20 @@ async function processActivity(
       .get();
 
     if (!existingWorkout.empty) {
-      console.log(`✅ Activity ${stravaActivityId} already imported as workout ${existingWorkout.docs[0].id}`);
-      return { success: true, message: 'Activity already imported' };
+      console.log(`✅ Activity ${stravaActivityId} already imported as workout ${existingWorkout.docs[0].id} - SKIPPING`);
+      return { success: true, message: 'Activity already imported (duplicate prevented)' };
+    }
+
+    // DOUBLE CHECK: Also check by activity ID string conversion
+    const existingWorkout2 = await adminDb
+      .collection('workouts')
+      .where('stravaActivityId', '==', String(stravaActivityId))
+      .limit(1)
+      .get();
+
+    if (!existingWorkout2.empty) {
+      console.log(`✅ Activity ${stravaActivityId} already imported (string check) - SKIPPING`);
+      return { success: true, message: 'Activity already imported (duplicate prevented)' };
     }
 
     // Prepare stats
