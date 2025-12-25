@@ -196,21 +196,27 @@ export async function getCoachStudents(coachId: string): Promise<any[]> {
     const coachDoc = await getDoc(doc(db, 'users', coachId));
     const coachEmail = coachDoc.exists() ? coachDoc.data()?.email : null;
 
+    console.log('👑 getCoachStudents - Admin check:', { coachId, coachEmail });
+
     const usersRef = collection(db, 'users');
     let q;
 
     // Special case: rsareen@gmail.com gets ALL students
     if (coachEmail === 'rsareen@gmail.com') {
+      console.log('👑 ADMIN MODE: Fetching ALL students');
       q = query(usersRef, where('role', '==', 'student'));
     } else {
       // Regular coaches only see students assigned to them
+      console.log('👤 Regular mode: Fetching assigned students only');
       q = query(usersRef, where('coachId', '==', coachId), where('role', '==', 'student'));
     }
 
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+    const students = querySnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+    console.log('📊 Found students:', students.length);
+    return students;
   } catch (error) {
-    console.error('Error fetching students:', error);
+    console.error('❌ Error fetching students:', error);
     return [];
   }
 }
