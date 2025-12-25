@@ -102,9 +102,11 @@ export async function getUserWorkouts(userId: string, role: 'coach' | 'student')
       
       // Sort by date descending
       uniqueWorkouts.sort((a, b) => {
-        const dateA = a.date?.toDate?.() || new Date(a.date);
-        const dateB = b.date?.toDate?.() || new Date(b.date);
-        return dateB.getTime() - dateA.getTime();
+        const dateA = a.date?.toDate ? a.date.toDate() : (a.date as any);
+        const dateB = b.date?.toDate ? b.date.toDate() : (b.date as any);
+        const timeA = dateA instanceof Date ? dateA.getTime() : new Date(dateA).getTime();
+        const timeB = dateB instanceof Date ? dateB.getTime() : new Date(dateB).getTime();
+        return timeB - timeA;
       });
       
       return uniqueWorkouts;
