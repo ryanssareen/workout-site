@@ -55,11 +55,13 @@ export default function CoachSuggestionsPage() {
         body: JSON.stringify({ coachId: user.uid }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to load suggestions');
-      }
-
       const result = await response.json();
+      
+      if (!response.ok) {
+        console.error('API Error Response:', result);
+        throw new Error(result.error || result.details || 'Failed to load suggestions');
+      }
+      
       setData(result);
       setLastUpdated(new Date());
       toast.success('AI analysis complete!');

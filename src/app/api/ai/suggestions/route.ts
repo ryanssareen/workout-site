@@ -18,6 +18,7 @@ interface StudentStats {
 export async function POST(req: NextRequest) {
   try {
     if (!process.env.GROQ_API_KEY) {
+      console.error('❌ GROQ_API_KEY is not set');
       return NextResponse.json(
         { error: 'AI service not configured' },
         { status: 500 }
@@ -27,6 +28,7 @@ export async function POST(req: NextRequest) {
     const { coachId } = await req.json();
 
     if (!coachId) {
+      console.error('❌ No coachId provided');
       return NextResponse.json(
         { error: 'Coach ID is required' },
         { status: 400 }
@@ -36,23 +38,34 @@ export async function POST(req: NextRequest) {
     console.log('📊 Generating suggestions for coach:', coachId);
 
     // Get all students for this coach
+    console.log('1️⃣ Fetching students...');
     const usersRef = collection(db, 'users');
     const studentsQuery = query(usersRef, where('coachId', '==', coachId));
     const studentsSnap = await getDocs(studentsQuery);
+    console.log('   Found students:', studentsSnap.size);
 
     if (studentsSnap.empty) {
+      console.log('⚠️ No students found');
       return NextResponse.json({
         suggestions: [],
         summary: 'No students found. Start by inviting students to join!',
+        stats: {
+          totalStudents: 0,
+          totalWorkouts: 0,
+          overallCompletionRate: 0,
+        },
       });
     }
 
     // Get all workouts for this coach
+    console.log('2️⃣ Fetching workouts...');
     const workoutsRef = collection(db, 'workouts');
     const workoutsQuery = query(workoutsRef, where('createdBy', '==', coachId));
     const workoutsSnap = await getDocs(workoutsQuery);
+    console.log('   Found workouts:', workoutsSnap.size);
 
     // Analyze each student
+    console.log('3️⃣ Analyzing student data...');
     const studentStats: StudentStats[] = [];
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -60,6 +73,7 @@ export async function POST(req: NextRequest) {
     for (const studentDoc of studentsSnap.docs) {
       const student = studentDoc.data();
       const studentId = studentDoc.id;
+      console.log(`   Processing student: ${student.displayName || 'Unnamed'} (${studentId})`);
 
       // Get student's workouts with proper typing
       const studentWorkouts = workoutsSnap.docs
@@ -68,6 +82,7 @@ export async function POST(req: NextRequest) {
           ...doc.data(),
         }))
         .filter((w: any) => w.assignedTo === studentId) as any[];
+      console.log(`     -> ${studentWorkouts.length} workouts assigned`);
 
       const recentWorkouts = studentWorkouts.filter((w: any) => {
         const workoutDate = w.date?.toDate ? w.date.toDate() : new Date(w.date);
@@ -157,7 +172,7 @@ Provide 5-7 specific, actionable suggestions in JSON format:
       apiKey: process.env.GROQ_API_KEY.trim(),
     });
 
-    console.log('🤖 Calling Groq for analysis...');
+    console.log('4️⃣ Calling Groq AI...');
     const completion = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages: [
@@ -176,7 +191,7 @@ Provide 5-7 specific, actionable suggestions in JSON format:
     });
 
     const response = completion.choices[0]?.message?.content || '{}';
-    console.log('✅ AI analysis complete');
+    console.log('✅ AI analysis complete, response length:', response.length);
 
     let aiSuggestions;
     try {
@@ -208,9 +223,17 @@ Provide 5-7 specific, actionable suggestions in JSON format:
       },
     });
   } catch (error: any) {
-    console.error('Suggestions API error:', error);
+    console.error('❌ Suggestions API error:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    
     return NextResponse.json(
-      { error: error.message || 'Failed to generate suggestions' },
+      { 
+        error: error.message || 'Failed to generate suggestions',
+        errorType: error.name || 'Unknown',
+        details: error.toString(),
+      },
       { status: 500 }
     );
   }
