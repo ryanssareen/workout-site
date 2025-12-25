@@ -5,7 +5,7 @@ import { signOut } from '@/lib/firebase/auth';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
-import { Dumbbell, LogOut, LayoutDashboard, Calendar as CalendarIcon, ListChecks, Settings, TrendingUp, Trophy, Brain } from 'lucide-react';
+import { Dumbbell, LogOut, LayoutDashboard, Calendar as CalendarIcon, ListChecks, Settings, TrendingUp, Trophy, Brain, Lightbulb } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
@@ -26,6 +26,7 @@ export function Navbar() {
     { href: '/progress', label: 'Progress', icon: TrendingUp },
     { href: '/records', label: 'Records', icon: Trophy },
     { href: '/ai-coach', label: 'AI Coach', icon: Brain },
+    ...(user?.role === 'coach' ? [{ href: '/suggestions', label: 'Suggestions', icon: Lightbulb }] : []),
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
 
