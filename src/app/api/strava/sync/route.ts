@@ -200,54 +200,10 @@ export async function GET(request: NextRequest) {
       console.log(`✅ Created ${newWorkoutsCount} new workouts from Strava`);
     }
 
-    // DELETE old incomplete workouts that might match these new ones
-    // (within ±2 days of each new activity)
-    let deletedCount = 0;
-    for (const activity of activitiesToProcess) {
-      const activityDate = new Date(activity.start_date_local);
-      const workoutType = mapStravaType(activity.type);
-      
-      const twoDaysBefore = new Date(activityDate);
-      twoDaysBefore.setDate(twoDaysBefore.getDate() - 2);
-      const twoDaysAfter = new Date(activityDate);
-      twoDaysAfter.setDate(twoDaysAfter.getDate() + 2);
-
-      const oldWorkoutsSnapshot = await adminDb
-        .collection('workouts')
-        .where('assignedTo', '==', userId)
-        .where('type', '==', workoutType)
-        .where('completed', '==', false)
-        .where('date', '>=', admin.firestore.Timestamp.fromDate(twoDaysBefore))
-        .where('date', '<=', admin.firestore.Timestamp.fromDate(twoDaysAfter))
-        .get();
-
-      if (!oldWorkoutsSnapshot.empty) {
-        const deleteBatch = adminDb.batch();
-        let batchHasDeletes = false;
-        
-        oldWorkoutsSnapshot.docs.forEach(doc => {
-          // Filter out Strava imports in code (avoid complex Firestore query)
-          if (doc.data().source === 'strava') {
-            console.log(`⏭️ Skipping Strava workout: ${doc.data().name}`);
-            return;
-          }
-          
-          console.log(`🗑️ Deleting old workout: ${doc.data().name} (${doc.id})`);
-          deleteBatch.delete(doc.ref);
-          deletedCount++;
-          batchHasDeletes = true;
-        });
-        
-        // Only commit if we actually have deletions
-        if (batchHasDeletes) {
-          await deleteBatch.commit();
-        }
-      }
-    }
-
-    if (deletedCount > 0) {
-      console.log(`✅ Deleted ${deletedCount} old incomplete workouts`);
-    }
+    // TEMPORARILY DISABLED: Delete old incomplete workouts
+    // Requires Firestore composite index - will add later
+    // Index needed: assignedTo (ASC) + type (ASC) + completed (ASC) + date (ASC)
+    const deletedCount = 0;
 
     // Redirect back to settings or return JSON based on request type
     const acceptHeader = request.headers.get('accept');
