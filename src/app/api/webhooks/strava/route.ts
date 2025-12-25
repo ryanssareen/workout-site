@@ -337,16 +337,29 @@ async function processActivity(
       .get();
 
     if (!oldWorkoutsSnapshot.empty) {
-      console.log(`🗑️ Found ${oldWorkoutsSnapshot.size} old incomplete ${workoutType} workouts to delete`);
+      console.log(`🗑️ Found ${oldWorkoutsSnapshot.size} workouts to check for deletion`);
       
       const batch = adminDb.batch();
+      let deleteCount = 0;
+      
       oldWorkoutsSnapshot.docs.forEach(doc => {
+        // Filter out Strava imports in code (avoid complex Firestore query)
+        if (doc.data().source === 'strava') {
+          console.log(`  ⏭️ Skipping Strava workout: ${doc.data().name}`);
+          return;
+        }
+        
         console.log(`  ❌ Deleting old workout: ${doc.data().name} (${doc.id})`);
         batch.delete(doc.ref);
+        deleteCount++;
       });
-      await batch.commit();
       
-      console.log(`✅ Deleted ${oldWorkoutsSnapshot.size} old workouts`);
+      if (deleteCount > 0) {
+        await batch.commit();
+        console.log(`✅ Deleted ${deleteCount} old workouts`);
+      } else {
+        console.log(`ℹ️ No workouts to delete (all were Strava imports)`);
+      }
     }
 
     return {

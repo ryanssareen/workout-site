@@ -198,17 +198,25 @@ export async function GET(request: NextRequest) {
         .where('completed', '==', false)
         .where('date', '>=', admin.firestore.Timestamp.fromDate(twoDaysBefore))
         .where('date', '<=', admin.firestore.Timestamp.fromDate(twoDaysAfter))
-        .where('source', '!=', 'strava') // Don't delete Strava imports
         .get();
 
       if (!oldWorkoutsSnapshot.empty) {
         const deleteBatch = adminDb.batch();
         oldWorkoutsSnapshot.docs.forEach(doc => {
+          // Filter out Strava imports in code (avoid complex Firestore query)
+          if (doc.data().source === 'strava') {
+            console.log(`⏭️ Skipping Strava workout: ${doc.data().name}`);
+            return;
+          }
+          
           console.log(`🗑️ Deleting old workout: ${doc.data().name} (${doc.id})`);
           deleteBatch.delete(doc.ref);
           deletedCount++;
         });
-        await deleteBatch.commit();
+        
+        if (deletedCount > 0) {
+          await deleteBatch.commit();
+        }
       }
     }
 
