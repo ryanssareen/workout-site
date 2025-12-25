@@ -123,12 +123,16 @@ async function findMatchingWorkout(
   activityType: 'swim' | 'run' | 'bike' | 'strength',
   stravaActivityId: string
 ): Promise<{ workoutId: string; workoutData: any } | null> {
-  // Get start and end of the activity date
-  const startOfDay = new Date(activityDate);
-  startOfDay.setHours(0, 0, 0, 0);
+  // FLEXIBLE MATCHING: Check ±1 day from activity date  
+  const dayBefore = new Date(activityDate);
+  dayBefore.setDate(dayBefore.getDate() - 1);
+  dayBefore.setHours(0, 0, 0, 0);
 
-  const endOfDay = new Date(activityDate);
-  endOfDay.setHours(23, 59, 59, 999);
+  const dayAfter = new Date(activityDate);
+  dayAfter.setDate(dayAfter.getDate() + 1);
+  dayAfter.setHours(23, 59, 59, 999);
+
+  console.log(`🔍 Looking for workouts between ${dayBefore.toISOString()} and ${dayAfter.toISOString()}`);
 
   // Check if this activity has already been linked to a workout
   const existingLinkSnapshot = await adminDb
@@ -138,21 +142,23 @@ async function findMatchingWorkout(
     .get();
 
   if (!existingLinkSnapshot.empty) {
-    console.log(`Activity ${stravaActivityId} already linked to a workout`);
+    console.log(`✅ Activity ${stravaActivityId} already linked to workout ${existingLinkSnapshot.docs[0].id}`);
     return null;
   }
 
-  // Find workouts for this user on this date that are not yet completed
+  // Find workouts for this user within date range that are not yet completed
   const workoutsSnapshot = await adminDb
     .collection('workouts')
     .where('assignedTo', '==', userId)
-    .where('date', '>=', admin.firestore.Timestamp.fromDate(startOfDay))
-    .where('date', '<=', admin.firestore.Timestamp.fromDate(endOfDay))
+    .where('date', '>=', admin.firestore.Timestamp.fromDate(dayBefore))
+    .where('date', '<=', admin.firestore.Timestamp.fromDate(dayAfter))
     .where('completed', '==', false)
     .get();
 
+  console.log(`📊 Found ${workoutsSnapshot.size} uncompleted workouts in date range`);
+
   if (workoutsSnapshot.empty) {
-    console.log(`No uncompleted workouts found for user ${userId} on ${activityDate.toDateString()}`);
+    console.log(`⚠️ No uncompleted workouts found for user ${userId}`);
     return null;
   }
 
@@ -165,18 +171,30 @@ async function findMatchingWorkout(
 
     // Skip workouts that already have a Strava activity linked
     if (workoutData.stravaActivityId) {
+      console.log(`⏭️ Skipping workout ${doc.id} - already linked to Strava`);
       continue;
     }
 
+    console.log(`🔎 Checking workout ${doc.id}: ${workoutData.name} (${workoutData.type})`);
+
     if (workoutData.type === activityType) {
       exactMatch = { workoutId: doc.id, workoutData };
+      console.log(`✅ EXACT MATCH: Workout ${doc.id} matches activity type ${activityType}`);
       break; // Exact match found, use it
     } else if (!fallbackMatch) {
       fallbackMatch = { workoutId: doc.id, workoutData };
+      console.log(`🔄 FALLBACK: Workout ${doc.id} is type ${workoutData.type} (activity is ${activityType})`);
     }
   }
 
-  return exactMatch || fallbackMatch;
+  const result = exactMatch || fallbackMatch;
+  if (result) {
+    console.log(`🎯 SELECTED: Workout ${result.workoutId} (${exactMatch ? 'exact match' : 'fallback match'})`);
+  } else {
+    console.log(`❌ No suitable workout found`);
+  }
+
+  return result;
 }
 
 // Mark workout as completed with Strava data
@@ -206,13 +224,13 @@ async function markWorkoutCompleted(
   await adminDb.collection('workouts').doc(workoutId).update({
     completed: true,
     completedAt: admin.firestore.FieldValue.serverTimestamp(),
-    completionStatus: 'completed',
+    completedBy: 'strava', // This makes it show "via Strava" in UI
     stravaActivityId,
     actualStats,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  console.log(`Workout ${workoutId} marked as completed with Strava activity ${stravaActivityId}`);
+  console.log(`✅ Workout ${workoutId} marked as completed with Strava activity ${stravaActivityId}`);
 }
 
 // Process a new Strava activity

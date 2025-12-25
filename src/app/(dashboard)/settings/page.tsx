@@ -30,6 +30,7 @@ export default function SettingsPage() {
   const [isDisconnectingCoach, setIsDisconnectingCoach] = useState(false);
   const [isConnectingStrava, setIsConnectingStrava] = useState(false);
   const [isDisconnectingStrava, setIsDisconnectingStrava] = useState(false);
+  const [isSyncingStrava, setIsSyncingStrava] = useState(false);
   const [loadingCoachInfo, setLoadingCoachInfo] = useState(false);
 
   // Check for Strava connection status from URL params
@@ -130,6 +131,32 @@ export default function SettingsPage() {
       toast.error(error.message || 'Failed to disconnect Strava');
     }
     setIsDisconnectingStrava(false);
+  };
+
+  const handleSyncStrava = async () => {
+    if (!user) return;
+
+    setIsSyncingStrava(true);
+    try {
+      const response = await fetch(`/api/strava/sync?userId=${user.uid}`, {
+        headers: { 'Accept': 'application/json' },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to sync Strava');
+      }
+
+      const data = await response.json();
+      
+      if (data.newWorkouts > 0) {
+        toast.success(`Synced ${data.newWorkouts} new workout${data.newWorkouts > 1 ? 's' : ''} from Strava!`);
+      } else {
+        toast.success('All caught up! No new Strava activities found.');
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to sync Strava');
+    }
+    setIsSyncingStrava(false);
   };
 
   const handleLogout = async () => {
@@ -293,9 +320,17 @@ export default function SettingsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => window.location.href = '/api/strava/sync?userId=' + user.uid}
+                    onClick={handleSyncStrava}
+                    disabled={isSyncingStrava}
                   >
-                    Sync Now
+                    {isSyncingStrava ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Syncing...
+                      </>
+                    ) : (
+                      'Sync Now'
+                    )}
                   </Button>
                   <Button
                     variant="outline"
