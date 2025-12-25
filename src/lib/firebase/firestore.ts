@@ -462,15 +462,27 @@ export async function addPersonalRecord(
 
     const recordData: any = {
       userId,
-      ...data,
+      category: data.category,
+      name: data.name,
+      value: data.value,
+      unit: data.unit,
       date: Timestamp.fromDate(data.date),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
     
-    // Only add previousValue if it exists (Firestore doesn't allow undefined)
+    // Only add optional fields if they exist (Firestore doesn't allow undefined)
     if (previousValue !== undefined) {
       recordData.previousValue = previousValue;
+    }
+    if (data.workoutId !== undefined) {
+      recordData.workoutId = data.workoutId;
+    }
+    if (data.stravaActivityId !== undefined) {
+      recordData.stravaActivityId = data.stravaActivityId;
+    }
+    if (data.notes !== undefined && data.notes !== '') {
+      recordData.notes = data.notes;
     }
 
     const docRef = await addDoc(recordsRef, recordData);
@@ -491,12 +503,20 @@ export async function updatePersonalRecord(
   try {
     const recordRef = doc(db, 'personalRecords', recordId);
     const updateData: Record<string, any> = {
-      ...data,
       updatedAt: serverTimestamp(),
     };
-    if (data.date) {
+    
+    // Only add fields that are defined
+    if (data.value !== undefined) {
+      updateData.value = data.value;
+    }
+    if (data.date !== undefined) {
       updateData.date = Timestamp.fromDate(data.date);
     }
+    if (data.notes !== undefined && data.notes !== '') {
+      updateData.notes = data.notes;
+    }
+    
     await updateDoc(recordRef, updateData);
   } catch (error: any) {
     throw new Error(error.message || 'Failed to update personal record');
