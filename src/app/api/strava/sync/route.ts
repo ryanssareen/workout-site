@@ -60,34 +60,54 @@ async function refreshStravaToken(userId: string, refreshToken: string): Promise
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔄 Strava sync requested');
+    
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
 
     if (!userId) {
+      console.error('❌ No userId provided');
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
+    console.log(`👤 Syncing for user: ${userId}`);
+
     // Get user's Strava credentials
     const userDoc = await adminDb.collection('users').doc(userId).get();
+    
+    if (!userDoc.exists) {
+      console.error('❌ User not found');
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+    
     const userData = userDoc.data();
 
     if (!userData?.stravaAccessToken) {
+      console.error('❌ Strava not connected');
       return NextResponse.json({ error: 'Strava not connected' }, { status: 400 });
     }
+
+    console.log('✅ User has Strava connected');
+
+    console.log('✅ User has Strava connected');
 
     // Check if token is expired and refresh if needed
     let accessToken = userData.stravaAccessToken;
     const currentTime = Math.floor(Date.now() / 1000);
 
     if (userData.stravaTokenExpiresAt && userData.stravaTokenExpiresAt < currentTime) {
+      console.log('🔄 Token expired, refreshing...');
       const newToken = await refreshStravaToken(userId, userData.stravaRefreshToken);
       if (!newToken) {
+        console.error('❌ Failed to refresh token');
         return NextResponse.json({ error: 'Failed to refresh Strava token' }, { status: 401 });
       }
       accessToken = newToken;
+      console.log('✅ Token refreshed');
     }
 
     // Fetch recent activities from Strava (last 30 days)
+    console.log('📡 Fetching activities from Strava...');
     const thirtyDaysAgo = Math.floor(Date.now() / 1000) - (30 * 24 * 60 * 60);
     const activitiesResponse = await fetch(
       `https://www.strava.com/api/v3/athlete/activities?after=${thirtyDaysAgo}&per_page=50`,
@@ -97,12 +117,13 @@ export async function GET(request: NextRequest) {
     );
 
     if (!activitiesResponse.ok) {
-      const errorData = await activitiesResponse.json();
-      console.error('Strava API error:', errorData);
-      return NextResponse.json({ error: 'Failed to fetch Strava activities' }, { status: 500 });
+      const errorData = await activitiesResponse.json().catch(() => ({ message: 'Unknown error' }));
+      console.error('❌ Strava API error:', errorData);
+      return NextResponse.json({ error: 'Failed to fetch Strava activities: ' + (errorData.message || 'Unknown error') }, { status: 500 });
     }
 
     const activities = await activitiesResponse.json();
+    console.log(`✅ Fetched ${activities.length} activities from Strava`);
 
     // Get existing Strava workout IDs to avoid duplicates
     const existingWorkoutsSnapshot = await adminDb
@@ -202,6 +223,8 @@ export async function GET(request: NextRequest) {
 
       if (!oldWorkoutsSnapshot.empty) {
         const deleteBatch = adminDb.batch();
+        let batchHasDeletes = false;
+        
         oldWorkoutsSnapshot.docs.forEach(doc => {
           // Filter out Strava imports in code (avoid complex Firestore query)
           if (doc.data().source === 'strava') {
@@ -212,9 +235,11 @@ export async function GET(request: NextRequest) {
           console.log(`🗑️ Deleting old workout: ${doc.data().name} (${doc.id})`);
           deleteBatch.delete(doc.ref);
           deletedCount++;
+          batchHasDeletes = true;
         });
         
-        if (deletedCount > 0) {
+        // Only commit if we actually have deletions
+        if (batchHasDeletes) {
           await deleteBatch.commit();
         }
       }
