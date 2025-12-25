@@ -275,6 +275,38 @@ async function processActivity(
     
     console.log(`📅 Activity: ${activity.name} (${activity.type} → ${workoutType}) on ${activityDate.toISOString()}`);
 
+    // Prepare stats BEFORE transaction
+    const actualStats: any = {};
+    if (activity.distance) actualStats.distance = activity.distance;
+    if (activity.moving_time) actualStats.duration = activity.moving_time;
+    if (activity.calories) actualStats.calories = activity.calories;
+    if (activity.average_heartrate) actualStats.avgHeartRate = activity.average_heartrate;
+    if (activity.max_heartrate) actualStats.maxHeartRate = activity.max_heartrate;
+    if (activity.average_speed) actualStats.avgSpeed = activity.average_speed;
+    if (activity.max_speed) actualStats.maxSpeed = activity.max_speed;
+    if (activity.total_elevation_gain) actualStats.elevationGain = activity.total_elevation_gain;
+
+    // TRIPLE CHECK: Use a transaction to prevent race conditions
+    let workoutId: string | null = null;
+    
+    try {
+      await adminDb.runTransaction(async (transaction) => {
+        // Check one more time inside transaction
+        const existingCheck = await adminDb
+          .collection('workouts')
+          .where('stravaActivityId', '==', stravaActivityId)
+          .limit(1)
+          .get();
+
+        if (!existingCheck.empty) {
+          console.log(`⚠️ Race condition detected! Activity ${stravaActivityId} already being processed - ABORTING`);
+          throw new Error('Already processing');
+        }
+
+        // Create the workout inside transaction
+        const newWorkoutRef = adminDb.collection('workouts').doc();
+        workoutId = newWorkoutRef.id;
+
     // Check if we already imported this activity (STRICT CHECK)
     const existingWorkout = await adminDb
       .collection('workouts')
@@ -299,39 +331,70 @@ async function processActivity(
       return { success: true, message: 'Activity already imported (duplicate prevented)' };
     }
 
-    // Prepare stats
-    const actualStats: any = {};
-    if (activity.distance) actualStats.distance = activity.distance;
-    if (activity.moving_time) actualStats.duration = activity.moving_time;
-    if (activity.calories) actualStats.calories = activity.calories;
-    if (activity.average_heartrate) actualStats.avgHeartRate = activity.average_heartrate;
-    if (activity.max_heartrate) actualStats.maxHeartRate = activity.max_heartrate;
-    if (activity.average_speed) actualStats.avgSpeed = activity.average_speed;
-    if (activity.max_speed) actualStats.maxSpeed = activity.max_speed;
-    if (activity.total_elevation_gain) actualStats.elevationGain = activity.total_elevation_gain;
+    // TRIPLE CHECK: Check if ANY workout for this user was created in last 60 seconds
+    // This catches rapid duplicate webhooks
+    const sixtySecondsAgo = new Date(Date.now() - 60000);
+    const recentWorkouts = await adminDb
+      .collection('workouts')
+      .where('assignedTo', '==', userId)
+      .where('source', '==', 'strava')
+      .where('createdAt', '>', admin.firestore.Timestamp.fromDate(sixtySecondsAgo))
+      .get();
 
-    // CREATE NEW WORKOUT from Strava activity
-    const newWorkoutRef = adminDb.collection('workouts').doc();
-    const newWorkoutData = {
-      name: activity.name,
-      type: workoutType,
-      description: `Imported from Strava\nDistance: ${(activity.distance / 1000).toFixed(2)} km\nMoving time: ${Math.round(activity.moving_time / 60)} min`,
-      date: admin.firestore.Timestamp.fromDate(activityDate),
-      duration: Math.round(activity.moving_time / 60),
-      createdBy: userId, // Self-assigned
-      assignedTo: userId,
-      completed: true,
-      completedAt: admin.firestore.Timestamp.fromDate(activityDate),
-      completedBy: 'strava',
-      stravaActivityId: stravaActivityId,
-      actualStats,
-      source: 'strava',
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    };
+    if (!recentWorkouts.empty) {
+      console.log(`⚠️ Found ${recentWorkouts.size} Strava workouts created in last 60 seconds - checking for exact match`);
+      for (const doc of recentWorkouts.docs) {
+        const data = doc.data();
+        // Check if it's the exact same activity (same name and date)
+        const existingDate = data.date?.toDate?.();
+        if (data.name === activity.name && existingDate && 
+            Math.abs(existingDate.getTime() - activityDate.getTime()) < 60000) {
+          console.log(`🛑 DUPLICATE DETECTED: Same workout created ${Math.round((Date.now() - data.createdAt.toMillis()) / 1000)}s ago - SKIPPING`);
+          return { success: true, message: 'Duplicate prevented (recent webhook)' };
+        }
+      }
+    }
 
-    await newWorkoutRef.set(newWorkoutData);
-    console.log(`✅ Created new workout ${newWorkoutRef.id} from Strava activity`);
+        // Create the workout inside transaction
+        const newWorkoutRef = adminDb.collection('workouts').doc();
+        workoutId = newWorkoutRef.id;
+
+        // Prepare workout data
+        const newWorkoutData = {
+          name: activity.name,
+          type: workoutType,
+          description: `Imported from Strava\nDistance: ${(activity.distance / 1000).toFixed(2)} km\nMoving time: ${Math.round(activity.moving_time / 60)} min`,
+          date: admin.firestore.Timestamp.fromDate(activityDate),
+          duration: Math.round(activity.moving_time / 60),
+          createdBy: userId,
+          assignedTo: userId,
+          completed: true,
+          completedAt: admin.firestore.Timestamp.fromDate(activityDate),
+          completedBy: 'strava',
+          stravaActivityId: stravaActivityId,
+          actualStats,
+          source: 'strava',
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+
+        transaction.set(newWorkoutRef, newWorkoutData);
+      });
+
+      console.log(`✅ Transaction successful - created workout ${workoutId}`);
+    } catch (error: any) {
+      if (error.message === 'Already processing') {
+        return { success: true, message: 'Duplicate prevented by transaction' };
+      }
+      throw error;
+    }
+
+    if (!workoutId) {
+      return { success: false, message: 'Failed to create workout' };
+    }
+
+    console.log(`✅ Created new workout ${workoutId} from Strava activity`);
+
 
     // DELETE old incomplete workouts of same type within ±2 days (optional cleanup)
     const twoDaysBefore = new Date(activityDate);

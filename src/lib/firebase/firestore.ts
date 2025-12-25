@@ -43,10 +43,72 @@ export async function getWorkout(id: string): Promise<Workout | null> {
 export async function getUserWorkouts(userId: string, role: 'coach' | 'student'): Promise<Workout[]> {
   try {
     const workoutsRef = collection(db, 'workouts');
-    const field = role === 'coach' ? 'createdBy' : 'assignedTo';
-    const q = query(workoutsRef, where(field, '==', userId), orderBy('date', 'desc'));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Workout[];
+    
+    if (role === 'student') {
+      // Students see workouts assigned to them
+      const q = query(workoutsRef, where('assignedTo', '==', userId), orderBy('date', 'desc'));
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Workout[];
+    } else {
+      // Coaches see:
+      // 1. Workouts they created (createdBy = coachId)
+      // 2. Workouts assigned to their students (including Strava imports)
+      
+      // Get coach's students
+      const students = await getCoachStudents(userId);
+      const studentIds = students.map(s => s.uid);
+      
+      // Query 1: Workouts created by coach
+      const coachWorkoutsQuery = query(
+        workoutsRef, 
+        where('createdBy', '==', userId), 
+        orderBy('date', 'desc')
+      );
+      const coachWorkouts = await getDocs(coachWorkoutsQuery);
+      
+      // Query 2: Workouts assigned to students (Strava imports)
+      // We need to fetch these separately since Firestore doesn't support OR queries well
+      const studentWorkouts: Workout[] = [];
+      
+      if (studentIds.length > 0) {
+        // Firestore 'in' supports max 10 items, so batch if needed
+        const batches = [];
+        for (let i = 0; i < studentIds.length; i += 10) {
+          const batch = studentIds.slice(i, i + 10);
+          batches.push(batch);
+        }
+        
+        for (const batch of batches) {
+          const studentQuery = query(
+            workoutsRef,
+            where('assignedTo', 'in', batch),
+            where('source', '==', 'strava')
+          );
+          const studentDocs = await getDocs(studentQuery);
+          studentWorkouts.push(...studentDocs.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Workout));
+        }
+      }
+      
+      // Combine and deduplicate
+      const allWorkouts = [
+        ...coachWorkouts.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Workout),
+        ...studentWorkouts
+      ];
+      
+      // Remove duplicates by ID
+      const uniqueWorkouts = Array.from(
+        new Map(allWorkouts.map(w => [w.id, w])).values()
+      );
+      
+      // Sort by date descending
+      uniqueWorkouts.sort((a, b) => {
+        const dateA = a.date?.toDate?.() || new Date(a.date);
+        const dateB = b.date?.toDate?.() || new Date(b.date);
+        return dateB.getTime() - dateA.getTime();
+      });
+      
+      return uniqueWorkouts;
+    }
   } catch (error) {
     console.error('Error fetching workouts:', error);
     return [];
