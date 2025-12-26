@@ -163,7 +163,7 @@ export default function NewWorkoutPage() {
             onSubmit={handleSubmit}
             students={students}
             loading={loading || loadingTemplate}
-            initialData={templateData ? {
+            defaultValues={templateData ? {
               name: templateData.name,
               type: templateData.type,
               description: templateData.description || '',
