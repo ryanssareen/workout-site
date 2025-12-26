@@ -1,15 +1,18 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 
 // GET: Get single template
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const templateDoc = await adminDb
       .collection('workoutTemplates')
-      .doc(params.id)
+      .doc(id)
       .get();
 
     if (!templateDoc.exists) {
@@ -26,10 +29,11 @@ export async function GET(
 // DELETE: Delete a template
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await adminDb.collection('workoutTemplates').doc(params.id).delete();
+    const { id } = await params;
+    await adminDb.collection('workoutTemplates').doc(id).delete();
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Error deleting template:', error);
