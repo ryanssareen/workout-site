@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import * as brevo from '@getbrevo/brevo';
 import { adminDb } from '@/lib/firebase/admin';
