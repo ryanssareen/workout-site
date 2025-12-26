@@ -1,22 +1,27 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { createWorkout, getCoachStudents } from '@/lib/firebase/firestore';
 import { WorkoutForm } from '@/components/workouts/WorkoutForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { WorkoutSchema } from '@/lib/schemas/workout';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, BookmarkCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
 export default function NewWorkoutPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const user = useAuthStore((state) => state.user);
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [templateData, setTemplateData] = useState<any>(null);
+  const [loadingTemplate, setLoadingTemplate] = useState(false);
+
+  const templateId = searchParams.get('templateId');
 
   useEffect(() => {
     async function loadStudents() {
@@ -28,6 +33,29 @@ export default function NewWorkoutPage() {
 
     loadStudents();
   }, [user]);
+
+  // Load template if templateId is provided
+  useEffect(() => {
+    async function loadTemplate() {
+      if (!templateId) return;
+
+      setLoadingTemplate(true);
+      try {
+        const response = await fetch(`/api/templates/${templateId}`);
+        if (response.ok) {
+          const template = await response.json();
+          setTemplateData(template);
+          toast.success(`Loaded template: ${template.name}`);
+        }
+      } catch (error) {
+        toast.error('Failed to load template');
+      } finally {
+        setLoadingTemplate(false);
+      }
+    }
+
+    loadTemplate();
+  }, [templateId]);
 
   // Redirect if not a coach
   useEffect(() => {
@@ -114,14 +142,35 @@ export default function NewWorkoutPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Workout Details</CardTitle>
-          <CardDescription>Fill in the details for the new workout</CardDescription>
+          <CardTitle>
+            {templateData ? (
+              <div className="flex items-center gap-2">
+                <BookmarkCheck className="h-5 w-5 text-orange-500" />
+                Creating from Template: {templateData.name}
+              </div>
+            ) : (
+              'Workout Details'
+            )}
+          </CardTitle>
+          <CardDescription>
+            {templateData 
+              ? 'Pre-filled from template. Modify as needed and assign to a student.'
+              : 'Fill in the details for the new workout'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <WorkoutForm
             onSubmit={handleSubmit}
             students={students}
-            loading={loading}
+            loading={loading || loadingTemplate}
+            initialData={templateData ? {
+              name: templateData.name,
+              type: templateData.type,
+              description: templateData.description || '',
+              date: new Date(),
+              duration: templateData.duration || undefined,
+              assignedTo: students[0]?.uid || '', // Default to first student
+            } : undefined}
           />
         </CardContent>
       </Card>

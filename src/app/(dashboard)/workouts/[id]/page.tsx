@@ -8,7 +8,7 @@ import { Workout } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Edit, ArrowLeft, Calendar, Clock, CheckCircle2, Circle, Activity } from 'lucide-react';
+import { Loader2, Edit, ArrowLeft, Calendar, Clock, CheckCircle2, Circle, Activity, BookmarkPlus } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -27,6 +27,7 @@ export default function WorkoutDetailPage() {
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
   const [showUncompletionDialog, setShowUncompletionDialog] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -97,6 +98,36 @@ export default function WorkoutDetailPage() {
     }
   };
 
+  const handleSaveAsTemplate = async () => {
+    if (!workout || !user) return;
+
+    setIsSavingTemplate(true);
+    try {
+      const response = await fetch('/api/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: workout.name,
+          type: workout.type,
+          description: workout.description || '',
+          duration: workout.duration,
+          createdBy: user.uid,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save template');
+      }
+
+      toast.success('Saved as template!');
+      router.push('/templates');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to save template');
+    } finally {
+      setIsSavingTemplate(false);
+    }
+  };
+
   if (loading || dataLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -122,12 +153,26 @@ export default function WorkoutDetailPage() {
         </Button>
 
         {canEdit && (
-          <Button asChild>
-            <Link href={`/workouts/${workout.id}/edit`}>
-              <Edit className="mr-2 h-4 w-4" />
-              Edit
-            </Link>
-          </Button>
+          <>
+            <Button asChild>
+              <Link href={`/workouts/${workout.id}/edit`}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit
+              </Link>
+            </Button>
+            <Button 
+              onClick={handleSaveAsTemplate} 
+              variant="outline"
+              disabled={isSavingTemplate}
+            >
+              {isSavingTemplate ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <BookmarkPlus className="mr-2 h-4 w-4" />
+              )}
+              Save as Template
+            </Button>
+          </>
         )}
       </div>
 
