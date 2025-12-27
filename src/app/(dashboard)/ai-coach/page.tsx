@@ -19,7 +19,7 @@ import { Brain, Send, Loader2, Sparkles, Plus, MessageSquare, Trash2 } from 'luc
 import { toast } from 'sonner';
 import { format, subDays } from 'date-fns';
 import { collection, addDoc, getDocs, query, where, orderBy as firestoreOrderBy, updateDoc, doc, deleteDoc, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { getDbInstance } from '@/lib/firebase/config';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -93,7 +93,7 @@ export default function AICoachPage() {
       if (!user) return;
 
       try {
-        const threadsRef = collection(db, 'chatThreads');
+        const threadsRef = collection(getDbInstance(), 'chatThreads');
         const q = query(
           threadsRef,
           where('userId', '==', user.uid),
@@ -138,7 +138,7 @@ export default function AICoachPage() {
     if (!user || !newThreadTitle.trim()) return;
 
     try {
-      const threadsRef = collection(db, 'chatThreads');
+      const threadsRef = collection(getDbInstance(), 'chatThreads');
       const newThread = {
         userId: user.uid,
         title: newThreadTitle.trim(),
@@ -184,7 +184,7 @@ export default function AICoachPage() {
     if (!confirm('Delete this chat? This cannot be undone.')) return;
 
     try {
-      await deleteDoc(doc(db, 'chatThreads', threadId));
+      await deleteDoc(doc(getDbInstance(), 'chatThreads', threadId));
       const newThreads = threads.filter(t => t.id !== threadId);
       setThreads(newThreads);
 
@@ -248,7 +248,7 @@ export default function AICoachPage() {
       setMessages(updatedMessages);
 
       // Save to Firestore
-      const threadRef = doc(db, 'chatThreads', activeThreadId);
+      const threadRef = doc(getDbInstance(), 'chatThreads', activeThreadId);
       await updateDoc(threadRef, {
         messages: updatedMessages.map(m => ({
           ...m,

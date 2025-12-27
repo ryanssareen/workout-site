@@ -1,13 +1,11 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
-import { auth, db } from '@/lib/firebase/config';
+import { getAuthInstance, getDbInstance } from '@/lib/firebase/config';
 import { createUserWithEmailAndPassword, deleteUser } from 'firebase/auth';
 import { collection, addDoc, getDocs, query, limit, deleteDoc, doc } from 'firebase/firestore';
 
@@ -68,7 +66,7 @@ export default function FirebaseTestPage() {
       const testEmail = `test-${Date.now()}@firebase-test.com`;
       const testPassword = 'TestPass123!@#';
       
-      const userCredential = await createUserWithEmailAndPassword(auth, testEmail, testPassword);
+      const userCredential = await createUserWithEmailAndPassword(getAuthInstance(), testEmail, testPassword);
       testUser = userCredential.user;
       
       updateTest('auth', 'success', `User created: ${testEmail}`);
@@ -89,11 +87,11 @@ export default function FirebaseTestPage() {
         createdBy: testUser.uid,
       };
       
-      const docRef = await addDoc(collection(db, 'test_connection'), testData);
+      const docRef = await addDoc(collection(getDbInstance(), 'test_connection'), testData);
       testDocId = docRef.id;
       
       // Try to read it back
-      const q = query(collection(db, 'test_connection'), limit(1));
+      const q = query(collection(getDbInstance(), 'test_connection'), limit(1));
       const snapshot = await getDocs(q);
       
       if (snapshot.empty) {
@@ -114,7 +112,7 @@ export default function FirebaseTestPage() {
     try {
       // Delete test document
       if (testDocId) {
-        await deleteDoc(doc(db, 'test_connection', testDocId));
+        await deleteDoc(doc(getDbInstance(), 'test_connection', testDocId));
       }
       
       // Delete test user
