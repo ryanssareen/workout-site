@@ -42,7 +42,11 @@ export default function FirebaseTestPage() {
     await new Promise(resolve => setTimeout(resolve, 500));
     
     try {
-      if (!auth || !db) {
+      // Try to get Firebase instances to check if initialized
+      const authInstance = getAuthInstance();
+      const dbInstance = getDbInstance();
+      
+      if (!authInstance || !dbInstance) {
         throw new Error('Firebase not initialized. Check .env.local file.');
       }
       
