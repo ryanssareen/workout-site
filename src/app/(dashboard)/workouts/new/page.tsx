@@ -74,44 +74,7 @@ export default function NewWorkoutPage() {
       // Find the student's email
       const student = students.find(s => s.uid === data.assignedTo);
       
-      if (student && student.email) {
-        // Show success with email option
-        toast.success('Workout created! Send email notification?', {
-          duration: 10000,
-          action: {
-            label: '📧 Send Email',
-            onClick: async () => {
-              try {
-                const response = await fetch('/api/send-workout-email', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    studentEmail: student.email,
-                    studentName: student.displayName,
-                    workout: {
-                      name: data.name,
-                      type: data.type,
-                      description: data.description,
-                      date: { seconds: Math.floor(data.date.getTime() / 1000) },
-                      duration: data.duration,
-                    }
-                  })
-                });
-                
-                if (response.ok) {
-                  toast.success('📧 Email sent to ' + student.displayName + '!');
-                } else {
-                  toast.error('Failed to send email');
-                }
-              } catch (error) {
-                toast.error('Failed to send email');
-              }
-            }
-          }
-        });
-      } else {
-        toast.success('Workout created successfully!');
-      }
+      toast.success('Workout created successfully!');
       
       // Wait a bit then redirect
       setTimeout(() => router.push('/workouts'), 1000);
