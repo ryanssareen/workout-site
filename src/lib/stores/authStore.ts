@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { User } from '@/types';
-import { onAuthChange, getUserProfile } from '@/lib/firebase/auth';
 
 interface AuthState {
   user: User | null;
@@ -15,7 +14,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   loading: true,
   setUser: (user) => set({ user }),
   setLoading: (loading) => set({ loading }),
-  initialize: () => {
+  initialize: async () => {
+    // Dynamic import to prevent Firebase loading during SSR/build
+    const { onAuthChange, getUserProfile } = await import('@/lib/firebase/auth');
+    
     onAuthChange(async (firebaseUser) => {
       if (firebaseUser) {
         const userProfile = await getUserProfile(firebaseUser.uid);
