@@ -44,3 +44,4 @@ next-env.d.ts
 # Firebase Admin Service Account (NEVER COMMIT THIS!)
 firebase-service-account.json
 *-firebase-adminsdk-*.json
+# Trigger Vercel redeploy with updated env vars
