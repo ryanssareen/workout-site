@@ -1,7 +1,12 @@
 import * as admin from 'firebase-admin';
 
-// Initialize Firebase Admin SDK
-if (!admin.apps.length) {
+let initialized = false;
+
+function initializeFirebaseAdmin() {
+  if (initialized || admin.apps.length > 0) {
+    return;
+  }
+
   try {
     console.log('🔵 Initializing Firebase Admin SDK...');
     console.log('🔵 FIREBASE_SERVICE_ACCOUNT exists?', !!process.env.FIREBASE_SERVICE_ACCOUNT);
@@ -22,6 +27,7 @@ if (!admin.apps.length) {
       });
       
       console.log('✅ Firebase Admin initialized successfully!');
+      initialized = true;
     } else {
       console.log('⚠️ No FIREBASE_SERVICE_ACCOUNT found, trying file...');
       // Development: Try to use service account file if it exists
@@ -31,6 +37,7 @@ if (!admin.apps.length) {
           credential: admin.credential.cert(serviceAccount),
         });
         console.log('✅ Firebase Admin initialized with file!');
+        initialized = true;
       } catch (fileError) {
         console.error('❌ Firebase service account file not found');
         console.error('❌ Firebase Admin SDK will NOT work!');
@@ -40,9 +47,28 @@ if (!admin.apps.length) {
     console.error('❌ Firebase Admin initialization error:', error);
     console.error('❌ Error message:', error instanceof Error ? error.message : 'Unknown error');
   }
-} else {
-  console.log('ℹ️ Firebase Admin already initialized');
 }
 
-export const adminAuth = admin.auth();
-export const adminDb = admin.firestore();
+// Lazy getters that initialize on first access
+export const getAdminAuth = () => {
+  initializeFirebaseAdmin();
+  return admin.auth();
+};
+
+export const getAdminDb = () => {
+  initializeFirebaseAdmin();
+  return admin.firestore();
+};
+
+// For backward compatibility - these now use getters
+export const adminAuth = new Proxy({} as admin.auth.Auth, {
+  get(target, prop) {
+    return (getAdminAuth() as any)[prop];
+  }
+});
+
+export const adminDb = new Proxy({} as admin.firestore.Firestore, {
+  get(target, prop) {
+    return (getAdminDb() as any)[prop];
+  }
+});
