@@ -51,9 +51,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if user sent the unlock passphrase
+    // Check if user sent the unlock passphrase (anywhere in conversation history)
+    const isUnlocked = messages.some((msg: Message) => msg.content === UNLOCK_PASSPHRASE);
     const lastMessage = messages[messages.length - 1];
-    const isUnlocked = lastMessage?.content === UNLOCK_PASSPHRASE;
+    const justUnlocked = lastMessage?.content === UNLOCK_PASSPHRASE;
 
     // Build context with workout data
     let contextMessage = '';
@@ -76,8 +77,8 @@ Use this data to provide personalized advice.`;
     // Choose system prompt based on unlock status
     const systemPrompt = isUnlocked ? UNLOCKED_PROMPT : SYSTEM_PROMPT + contextMessage;
 
-    // If unlocked, send friendly confirmation
-    if (isUnlocked) {
+    // If just unlocked (first time seeing passphrase), send friendly confirmation
+    if (justUnlocked) {
       return NextResponse.json({
         message: "🔓 Dev mode unlocked! I can now discuss anything you'd like. What's on your mind?",
         unlocked: true,
@@ -107,7 +108,7 @@ Use this data to provide personalized advice.`;
 
     return NextResponse.json({
       message: response,
-      unlocked: false,
+      unlocked: isUnlocked,
     });
   } catch (error: any) {
     console.error('Groq API error:', error);
