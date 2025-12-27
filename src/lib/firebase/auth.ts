@@ -6,7 +6,7 @@ import {
   User as FirebaseUser,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
-import { auth, db } from './config';
+import { getAuthInstance, getDbInstance } from './config';
 import { User, UserRole } from '@/types';
 
 // Generate a unique 6-letter coach code
@@ -21,7 +21,7 @@ function generateCoachCode(): string {
 
 // Check if coach code already exists
 async function isCoachCodeUnique(code: string): Promise<boolean> {
-  const usersRef = collection(db, 'users');
+  const usersRef = collection(getDbInstance(), 'users');
   const q = query(usersRef, where('coachCode', '==', code));
   const querySnapshot = await getDocs(q);
   return querySnapshot.empty;
@@ -46,7 +46,7 @@ export async function createUser(
   coachId?: string
 ): Promise<User> {
   try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const userCredential = await createUserWithEmailAndPassword(getAuthInstance(), email, password);
     const { uid } = userCredential.user;
     
     // Generate coach code for coaches (except rsareen@gmail.com)
@@ -66,7 +66,7 @@ export async function createUser(
       ...(coachCode ? { coachCode } : {}),
     };
     
-    await setDoc(doc(db, 'users', uid), userProfile);
+    await setDoc(doc(getDbInstance(), 'users', uid), userProfile);
     return userProfile as User;
   } catch (error: any) {
     throw new Error(error.message || 'Failed to create user');
@@ -75,7 +75,7 @@ export async function createUser(
 
 export async function signIn(email: string, password: string): Promise<FirebaseUser> {
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const userCredential = await signInWithEmailAndPassword(getAuthInstance(), email, password);
     return userCredential.user;
   } catch (error: any) {
     throw new Error(error.message || 'Failed to sign in');
@@ -84,7 +84,7 @@ export async function signIn(email: string, password: string): Promise<FirebaseU
 
 export async function signOut(): Promise<void> {
   try {
-    await firebaseSignOut(auth);
+    await firebaseSignOut(getAuthInstance());
   } catch (error: any) {
     throw new Error(error.message || 'Failed to sign out');
   }
@@ -92,7 +92,7 @@ export async function signOut(): Promise<void> {
 
 export async function getUserProfile(uid: string): Promise<User | null> {
   try {
-    const docRef = doc(db, 'users', uid);
+    const docRef = doc(getDbInstance(), 'users', uid);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       return docSnap.data() as User;
@@ -105,7 +105,7 @@ export async function getUserProfile(uid: string): Promise<User | null> {
 }
 
 export function onAuthChange(callback: (user: FirebaseUser | null) => void) {
-  return onAuthStateChanged(auth, callback);
+  return onAuthStateChanged(getAuthInstance(), callback);
 }
 
 
@@ -113,7 +113,7 @@ export function onAuthChange(callback: (user: FirebaseUser | null) => void) {
 export async function findCoachByCode(coachCode: string): Promise<User | null> {
   try {
     console.log('🔍 findCoachByCode called with:', coachCode);
-    const usersRef = collection(db, 'users');
+    const usersRef = collection(getDbInstance(), 'users');
     const q = query(
       usersRef, 
       where('role', '==', 'coach'),

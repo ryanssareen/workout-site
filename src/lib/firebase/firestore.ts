@@ -2,7 +2,7 @@ import {
   collection, addDoc, updateDoc, deleteDoc, doc, getDoc, getDocs,
   query, where, orderBy, serverTimestamp, Timestamp,
 } from 'firebase/firestore';
-import { db } from './config';
+import { getDbInstance } from './config';
 import { Workout, WorkoutFormData, WorkoutComment, WorkoutRating, PersonalRecord, PRCategory } from '@/types';
 
 export async function createWorkout(data: WorkoutFormData, createdBy: string): Promise<string> {
@@ -19,7 +19,7 @@ export async function createWorkout(data: WorkoutFormData, createdBy: string): P
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
-    const docRef = await addDoc(collection(db, 'workouts'), workoutData);
+    const docRef = await addDoc(collection(getDbInstance(), 'workouts'), workoutData);
     return docRef.id;
   } catch (error: any) {
     throw new Error(error.message || 'Failed to create workout');
@@ -28,7 +28,7 @@ export async function createWorkout(data: WorkoutFormData, createdBy: string): P
 
 export async function getWorkout(id: string): Promise<Workout | null> {
   try {
-    const docRef = doc(db, 'workouts', id);
+    const docRef = doc(getDbInstance(), 'workouts', id);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       return { id: docSnap.id, ...docSnap.data() } as Workout;
@@ -42,7 +42,7 @@ export async function getWorkout(id: string): Promise<Workout | null> {
 
 export async function getUserWorkouts(userId: string, role: 'coach' | 'student'): Promise<Workout[]> {
   try {
-    const workoutsRef = collection(db, 'workouts');
+    const workoutsRef = collection(getDbInstance(), 'workouts');
     
     if (role === 'student') {
       // Students see workouts assigned to them
@@ -119,7 +119,7 @@ export async function getUserWorkouts(userId: string, role: 'coach' | 'student')
 
 export async function updateWorkout(id: string, data: Partial<WorkoutFormData>): Promise<void> {
   try {
-    const docRef = doc(db, 'workouts', id);
+    const docRef = doc(getDbInstance(), 'workouts', id);
     const updateData: any = { ...data, updatedAt: serverTimestamp() };
     if (data.date) { updateData.date = Timestamp.fromDate(data.date); }
     await updateDoc(docRef, updateData);
@@ -130,7 +130,7 @@ export async function updateWorkout(id: string, data: Partial<WorkoutFormData>):
 
 export async function deleteWorkout(id: string): Promise<void> {
   try {
-    await deleteDoc(doc(db, 'workouts', id));
+    await deleteDoc(doc(getDbInstance(), 'workouts', id));
   } catch (error: any) {
     throw new Error(error.message || 'Failed to delete workout');
   }
@@ -138,7 +138,7 @@ export async function deleteWorkout(id: string): Promise<void> {
 
 export async function toggleWorkoutCompletion(id: string, completed: boolean): Promise<void> {
   try {
-    const docRef = doc(db, 'workouts', id);
+    const docRef = doc(getDbInstance(), 'workouts', id);
     await updateDoc(docRef, { completed, updatedAt: serverTimestamp() });
   } catch (error: any) {
     throw new Error(error.message || 'Failed to update workout status');
@@ -152,7 +152,7 @@ export async function completeWorkout(
   notes?: string
 ): Promise<void> {
   try {
-    const docRef = doc(db, 'workouts', id);
+    const docRef = doc(getDbInstance(), 'workouts', id);
     
     // Get workout to check if completion is late
     const workoutSnap = await getDoc(docRef);
@@ -214,7 +214,7 @@ export async function addWorkoutComment(
   parentCommentId?: string
 ): Promise<string> {
   try {
-    const commentsRef = collection(db, 'workouts', workoutId, 'comments');
+    const commentsRef = collection(getDbInstance(), 'workouts', workoutId, 'comments');
     const commentData: Omit<WorkoutComment, 'id'> = {
       workoutId,
       userId,
@@ -235,7 +235,7 @@ export async function addWorkoutComment(
 
 export async function getWorkoutComments(workoutId: string): Promise<WorkoutComment[]> {
   try {
-    const commentsRef = collection(db, 'workouts', workoutId, 'comments');
+    const commentsRef = collection(getDbInstance(), 'workouts', workoutId, 'comments');
     const q = query(commentsRef, orderBy('createdAt', 'asc'));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as WorkoutComment[];
@@ -247,7 +247,7 @@ export async function getWorkoutComments(workoutId: string): Promise<WorkoutComm
 
 export async function deleteWorkoutComment(workoutId: string, commentId: string): Promise<void> {
   try {
-    const commentRef = doc(db, 'workouts', workoutId, 'comments', commentId);
+    const commentRef = doc(getDbInstance(), 'workouts', workoutId, 'comments', commentId);
     await deleteDoc(commentRef);
   } catch (error: any) {
     throw new Error(error.message || 'Failed to delete comment');
@@ -257,12 +257,12 @@ export async function deleteWorkoutComment(workoutId: string, commentId: string)
 export async function getCoachStudents(coachId: string): Promise<any[]> {
   try {
     // Get coach's user document to check email
-    const coachDoc = await getDoc(doc(db, 'users', coachId));
+    const coachDoc = await getDoc(doc(getDbInstance(), 'users', coachId));
     const coachEmail = coachDoc.exists() ? coachDoc.data()?.email : null;
 
     console.log('👑 getCoachStudents - Admin check:', { coachId, coachEmail });
 
-    const usersRef = collection(db, 'users');
+    const usersRef = collection(getDbInstance(), 'users');
     let q;
 
     // Special case: rsareen@gmail.com gets ALL students
@@ -405,7 +405,7 @@ export async function getCoachDashboardStats(coachId: string): Promise<CoachStat
 // Get coach info by ID
 export async function getCoachInfo(coachId: string): Promise<{ uid: string; displayName: string; email: string } | null> {
   try {
-    const coachDoc = await getDoc(doc(db, 'users', coachId));
+    const coachDoc = await getDoc(doc(getDbInstance(), 'users', coachId));
     if (coachDoc.exists()) {
       const data = coachDoc.data();
       return {
@@ -424,7 +424,7 @@ export async function getCoachInfo(coachId: string): Promise<{ uid: string; disp
 // Connect student to coach
 export async function connectToCoach(studentId: string, coachId: string): Promise<void> {
   try {
-    const userRef = doc(db, 'users', studentId);
+    const userRef = doc(getDbInstance(), 'users', studentId);
     await updateDoc(userRef, {
       coachId,
       updatedAt: serverTimestamp(),
@@ -437,7 +437,7 @@ export async function connectToCoach(studentId: string, coachId: string): Promis
 // Disconnect student from coach
 export async function disconnectFromCoach(studentId: string): Promise<void> {
   try {
-    const userRef = doc(db, 'users', studentId);
+    const userRef = doc(getDbInstance(), 'users', studentId);
     await updateDoc(userRef, {
       coachId: null,
       updatedAt: serverTimestamp(),
@@ -458,7 +458,7 @@ export async function updateUserStravaConnection(
   }
 ): Promise<void> {
   try {
-    const userRef = doc(db, 'users', userId);
+    const userRef = doc(getDbInstance(), 'users', userId);
     await updateDoc(userRef, {
       ...stravaData,
       stravaConnectedAt: serverTimestamp(),
@@ -472,7 +472,7 @@ export async function updateUserStravaConnection(
 // Disconnect Strava
 export async function disconnectStrava(userId: string): Promise<void> {
   try {
-    const userRef = doc(db, 'users', userId);
+    const userRef = doc(getDbInstance(), 'users', userId);
     await updateDoc(userRef, {
       stravaId: null,
       stravaAccessToken: null,
@@ -489,7 +489,7 @@ export async function disconnectStrava(userId: string): Promise<void> {
 // Personal Records Functions
 export async function getPersonalRecords(userId: string): Promise<PersonalRecord[]> {
   try {
-    const recordsRef = collection(db, 'personalRecords');
+    const recordsRef = collection(getDbInstance(), 'personalRecords');
     const q = query(recordsRef, where('userId', '==', userId), orderBy('date', 'desc'));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as PersonalRecord[];
@@ -514,7 +514,7 @@ export async function addPersonalRecord(
 ): Promise<string> {
   try {
     // Check if there's an existing record of the same type
-    const recordsRef = collection(db, 'personalRecords');
+    const recordsRef = collection(getDbInstance(), 'personalRecords');
     const q = query(
       recordsRef,
       where('userId', '==', userId),
@@ -571,7 +571,7 @@ export async function updatePersonalRecord(
   }>
 ): Promise<void> {
   try {
-    const recordRef = doc(db, 'personalRecords', recordId);
+    const recordRef = doc(getDbInstance(), 'personalRecords', recordId);
     const updateData: Record<string, any> = {
       updatedAt: serverTimestamp(),
     };
@@ -595,7 +595,7 @@ export async function updatePersonalRecord(
 
 export async function deletePersonalRecord(recordId: string): Promise<void> {
   try {
-    await deleteDoc(doc(db, 'personalRecords', recordId));
+    await deleteDoc(doc(getDbInstance(), 'personalRecords', recordId));
   } catch (error: any) {
     throw new Error(error.message || 'Failed to delete personal record');
   }
