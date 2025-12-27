@@ -52,9 +52,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if user sent the unlock passphrase (anywhere in conversation history)
-    const isUnlocked = messages.some((msg: Message) => msg.content === UNLOCK_PASSPHRASE);
+    // Count how many times passphrase appears - odd = unlocked, even = locked (toggle behavior)
+    const passphraseCount = messages.filter((msg: Message) => msg.content === UNLOCK_PASSPHRASE).length;
+    const isUnlocked = passphraseCount % 2 === 1; // Odd number = unlocked
     const lastMessage = messages[messages.length - 1];
-    const justUnlocked = lastMessage?.content === UNLOCK_PASSPHRASE;
+    const justToggled = lastMessage?.content === UNLOCK_PASSPHRASE;
 
     // Build context with workout data
     let contextMessage = '';
@@ -77,12 +79,19 @@ Use this data to provide personalized advice.`;
     // Choose system prompt based on unlock status
     const systemPrompt = isUnlocked ? UNLOCKED_PROMPT : SYSTEM_PROMPT + contextMessage;
 
-    // If just unlocked (first time seeing passphrase), send friendly confirmation
-    if (justUnlocked) {
-      return NextResponse.json({
-        message: "🔓 Dev mode unlocked! I can now discuss anything you'd like. What's on your mind?",
-        unlocked: true,
-      });
+    // If just toggled, send confirmation message
+    if (justToggled) {
+      if (isUnlocked) {
+        return NextResponse.json({
+          message: "🔓 Dev mode unlocked! I can now discuss anything you'd like. What's on your mind?",
+          unlocked: true,
+        });
+      } else {
+        return NextResponse.json({
+          message: "🔒 Dev mode locked! I'm back to being your fitness coach. How can I help with your training today?",
+          unlocked: false,
+        });
+      }
     }
 
     // Initialize Groq client here (after API key check)
