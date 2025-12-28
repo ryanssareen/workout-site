@@ -7,18 +7,28 @@ import { Workout, WorkoutFormData, WorkoutComment, WorkoutRating, PersonalRecord
 
 export async function createWorkout(data: WorkoutFormData, createdBy: string): Promise<string> {
   try {
-    const workoutData = {
+    const workoutData: any = {
       name: data.name,
       type: data.type,
-      description: data.description,
       date: Timestamp.fromDate(data.date),
-      duration: data.duration || null,
       createdBy,
       assignedTo: data.assignedTo,
       completed: false,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
+
+    // Add legacy fields for backward compatibility
+    if (data.description) workoutData.description = data.description;
+    if (data.duration) workoutData.duration = data.duration;
+
+    // Add type-specific data
+    if (data.swim) workoutData.swim = data.swim;
+    if (data.bike) workoutData.bike = data.bike;
+    if (data.run) workoutData.run = data.run;
+    if (data.strength) workoutData.strength = data.strength;
+    if (data.other) workoutData.other = data.other;
+
     const docRef = await addDoc(collection(getDbInstance(), 'workouts'), workoutData);
     return docRef.id;
   } catch (error: any) {

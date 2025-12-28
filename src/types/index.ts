@@ -1,7 +1,7 @@
 import { Timestamp } from 'firebase/firestore';
 
 export type UserRole = 'coach' | 'student';
-export type WorkoutType = 'swim' | 'run' | 'bike' | 'strength';
+export type WorkoutType = 'swim' | 'run' | 'bike' | 'strength' | 'other';
 
 export interface User {
   uid: string;
@@ -75,13 +75,33 @@ export interface WorkoutComment {
   isCoachReply?: boolean;
 }
 
+// Import enhanced workout types
+import type {
+  SwimData,
+  BikeData,
+  RunData,
+  StrengthData,
+  OtherData,
+  StrengthExercise,
+} from './workout';
+
+// Re-export for convenience
+export type { SwimData, BikeData, RunData, StrengthData, OtherData, StrengthExercise };
+
 export interface WorkoutFormData {
   name: string;
   type: WorkoutType;
-  description: string;
   date: Date;
-  duration?: number;
   assignedTo: string;
+  // Legacy fields
+  description?: string;
+  duration?: number;
+  // Type-specific data
+  swim?: SwimData;
+  bike?: BikeData;
+  run?: RunData;
+  strength?: StrengthData;
+  other?: OtherData;
 }
 
 // Personal Records

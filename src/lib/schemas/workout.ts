@@ -1,16 +1,90 @@
 import { z } from 'zod';
 
+// Type-specific schemas
+const swimDataSchema = z.object({
+  distance: z.number().min(0.1, 'Distance must be greater than 0'),
+  distanceUnit: z.enum(['meters', 'yards']),
+  time: z.number().min(0.1, 'Time must be greater than 0'),
+  strokes: z.number().optional(),
+  strokeType: z.enum(['freestyle', 'backstroke', 'breaststroke', 'butterfly', 'mixed']).optional(),
+  poolLength: z.union([z.literal(25), z.literal(50)]).optional(),
+});
+
+const bikeDataSchema = z.object({
+  distance: z.number().min(0.1, 'Distance must be greater than 0'),
+  distanceUnit: z.enum(['km', 'miles']),
+  time: z.number().min(0.1, 'Time must be greater than 0'),
+  avgPower: z.number().optional(),
+  avgCadence: z.number().optional(),
+  elevationGain: z.number().optional(),
+});
+
+const runDataSchema = z.object({
+  distance: z.number().min(0.1, 'Distance must be greater than 0'),
+  distanceUnit: z.enum(['km', 'miles']),
+  time: z.number().min(0.1, 'Time must be greater than 0'),
+  pace: z.string().optional(),
+  elevationGain: z.number().optional(),
+  terrain: z.enum(['road', 'trail', 'track', 'treadmill']).optional(),
+});
+
+const strengthExerciseSchema = z.object({
+  name: z.string().min(1, 'Exercise name is required'),
+  sets: z.number().min(1, 'At least 1 set required'),
+  reps: z.number().min(1, 'At least 1 rep required'),
+  weight: z.number().optional(),
+  weightUnit: z.enum(['kg', 'lbs']),
+  restSeconds: z.number().optional(),
+  notes: z.string().optional(),
+});
+
+const strengthDataSchema = z.object({
+  exercises: z.array(strengthExerciseSchema).min(1, 'At least one exercise is required'),
+  totalTime: z.number().optional(),
+  rpe: z.number().min(1).max(10).optional(),
+});
+
+const otherDataSchema = z.object({
+  description: z.string().min(1, 'Description is required'),
+  duration: z.number().optional(),
+  notes: z.string().optional(),
+});
+
+// Main workout schema with type-specific data
 export const workoutSchema = z.object({
   name: z.string().min(1, 'Workout name is required').max(100),
-  type: z.enum(['swim', 'run', 'bike', 'strength'], {
+  type: z.enum(['swim', 'run', 'bike', 'strength', 'other'], {
     message: 'Please select a workout type',
   }),
-  description: z.string().min(1, 'Description is required').max(1000),
   date: z.date({
     message: 'Please select a date',
   }),
-  duration: z.number().min(1).max(1440).optional(),
   assignedTo: z.string().min(1, 'Please select a student'),
-});
+  
+  // Legacy fields (for backward compatibility)
+  description: z.string().optional(),
+  duration: z.number().min(1).max(1440).optional(),
+  
+  // Type-specific data
+  swim: swimDataSchema.optional(),
+  bike: bikeDataSchema.optional(),
+  run: runDataSchema.optional(),
+  strength: strengthDataSchema.optional(),
+  other: otherDataSchema.optional(),
+}).refine(
+  (data) => {
+    // Ensure type-specific data is provided based on type
+    if (data.type === 'swim') return !!data.swim;
+    if (data.type === 'bike') return !!data.bike;
+    if (data.type === 'run') return !!data.run;
+    if (data.type === 'strength') return !!data.strength;
+    if (data.type === 'other') return !!data.other;
+    return true;
+  },
+  {
+    message: 'Please fill in the workout details',
+    path: ['type'],
+  }
+);
 
 export type WorkoutSchema = z.infer<typeof workoutSchema>;
