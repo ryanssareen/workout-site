@@ -111,7 +111,7 @@ export function StrengthForm({ data, onChange }: StrengthFormProps) {
                 <Label htmlFor={`weightUnit-${index}`}>Unit</Label>
                 <Select
                   value={exercise.weightUnit}
-                  onValueChange={(value: 'kg' | 'lbs') => updateExercise(index, { weightUnit: value })}
+                  onValueChange={(value) => updateExercise(index, { weightUnit: value as 'kg' | 'lbs' })}
                 >
                   <SelectTrigger>
                     <SelectValue />

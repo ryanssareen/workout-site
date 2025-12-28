@@ -30,7 +30,7 @@ export function BikeForm({ data, onChange }: BikeFormProps) {
           <Label htmlFor="distanceUnit">Unit *</Label>
           <Select
             value={data.distanceUnit || 'km'}
-            onValueChange={(value: 'km' | 'miles') => onChange({ ...data, distanceUnit: value })}
+            onValueChange={(value) => onChange({ ...data, distanceUnit: value as 'km' | 'miles' })}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select unit" />

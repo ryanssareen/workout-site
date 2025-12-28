@@ -29,7 +29,7 @@ export function SwimForm({ data, onChange }: SwimFormProps) {
           <Label htmlFor="distanceUnit">Unit *</Label>
           <Select
             value={data.distanceUnit || 'meters'}
-            onValueChange={(value: 'meters' | 'yards') => onChange({ ...data, distanceUnit: value })}
+            onValueChange={(value) => onChange({ ...data, distanceUnit: value as 'meters' | 'yards' })}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select unit" />
@@ -83,7 +83,7 @@ export function SwimForm({ data, onChange }: SwimFormProps) {
         <Label htmlFor="strokeType">Stroke Type</Label>
         <Select
           value={data.strokeType || 'freestyle'}
-          onValueChange={(value: SwimData['strokeType']) => onChange({ ...data, strokeType: value })}
+          onValueChange={(value) => onChange({ ...data, strokeType: value as SwimData['strokeType'] })}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select stroke" />

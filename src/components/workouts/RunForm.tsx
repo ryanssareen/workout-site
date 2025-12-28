@@ -46,7 +46,7 @@ export function RunForm({ data, onChange }: RunFormProps) {
           <Label htmlFor="distanceUnit">Unit *</Label>
           <Select
             value={data.distanceUnit || 'km'}
-            onValueChange={(value: 'km' | 'miles') => handleDistanceOrTimeChange({ distanceUnit: value })}
+            onValueChange={(value) => handleDistanceOrTimeChange({ distanceUnit: value as 'km' | 'miles' })}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select unit" />
@@ -85,7 +85,7 @@ export function RunForm({ data, onChange }: RunFormProps) {
         <Label htmlFor="terrain">Terrain</Label>
         <Select
           value={data.terrain || 'road'}
-          onValueChange={(value: RunData['terrain']) => onChange({ ...data, terrain: value })}
+          onValueChange={(value) => onChange({ ...data, terrain: value as RunData['terrain'] })}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select terrain" />
