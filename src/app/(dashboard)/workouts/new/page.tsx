@@ -8,7 +8,7 @@ import { WorkoutForm } from '@/components/workouts/WorkoutForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { WorkoutSchema } from '@/lib/schemas/workout';
-import { ArrowLeft, BookmarkCheck } from 'lucide-react';
+import { ArrowLeft, BookmarkCheck, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
@@ -22,6 +22,7 @@ export default function NewWorkoutPage() {
   const [loadingTemplate, setLoadingTemplate] = useState(false);
 
   const templateId = searchParams.get('templateId');
+  const aiGenerated = searchParams.get('aiGenerated') === 'true';
 
   useEffect(() => {
     async function loadStudents() {
@@ -57,6 +58,22 @@ export default function NewWorkoutPage() {
     loadTemplate();
   }, [templateId]);
 
+  // Load AI-generated workout data from URL params
+  useEffect(() => {
+    if (aiGenerated) {
+      const aiData = {
+        name: searchParams.get('name') || '',
+        type: searchParams.get('type') || 'other',
+        description: searchParams.get('description') || '',
+        duration: parseInt(searchParams.get('duration') || '60'),
+        notes: searchParams.get('notes') || '',
+      };
+      
+      setTemplateData(aiData);
+      toast.success('AI-generated workout loaded! Modify and assign as needed.');
+    }
+  }, [aiGenerated, searchParams]);
+
   // Redirect if not a coach
   useEffect(() => {
     if (user && user.role !== 'coach') {
@@ -89,6 +106,36 @@ export default function NewWorkoutPage() {
     return null;
   }
 
+  const getHeaderTitle = () => {
+    if (aiGenerated) {
+      return (
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-purple-600" />
+          AI-Generated Workout Template
+        </div>
+      );
+    }
+    if (templateData) {
+      return (
+        <div className="flex items-center gap-2">
+          <BookmarkCheck className="h-5 w-5 text-orange-500" />
+          Creating from Template: {templateData.name}
+        </div>
+      );
+    }
+    return 'Workout Details';
+  };
+
+  const getHeaderDescription = () => {
+    if (aiGenerated) {
+      return 'AI-generated workout ready to customize. Modify as needed and assign to a student.';
+    }
+    if (templateData) {
+      return 'Pre-filled from template. Modify as needed and assign to a student.';
+    }
+    return 'Fill in the details for the new workout';
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -103,23 +150,10 @@ export default function NewWorkoutPage() {
         </div>
       </div>
 
-      <Card>
+      <Card className={aiGenerated ? 'border-purple-200 dark:border-purple-900' : ''}>
         <CardHeader>
-          <CardTitle>
-            {templateData ? (
-              <div className="flex items-center gap-2">
-                <BookmarkCheck className="h-5 w-5 text-orange-500" />
-                Creating from Template: {templateData.name}
-              </div>
-            ) : (
-              'Workout Details'
-            )}
-          </CardTitle>
-          <CardDescription>
-            {templateData 
-              ? 'Pre-filled from template. Modify as needed and assign to a student.'
-              : 'Fill in the details for the new workout'}
-          </CardDescription>
+          <CardTitle>{getHeaderTitle()}</CardTitle>
+          <CardDescription>{getHeaderDescription()}</CardDescription>
         </CardHeader>
         <CardContent>
           <WorkoutForm

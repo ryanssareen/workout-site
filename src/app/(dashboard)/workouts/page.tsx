@@ -6,8 +6,7 @@ import { useAuthStore } from '@/lib/stores/authStore';
 import { getUserWorkouts, deleteWorkout, completeWorkout } from '@/lib/firebase/firestore';
 import { Workout } from '@/types';
 import { WorkoutList } from '@/components/workouts/WorkoutList';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Sparkles, Loader2, Lightbulb } from 'lucide-react';
+import { AIWorkoutSuggestions } from '@/components/workouts/AIWorkoutSuggestions';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
@@ -18,8 +17,6 @@ export default function WorkoutsPage() {
   const user = useAuthStore((state) => state.user);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
-  const [aiRecommendations, setAiRecommendations] = useState<string[]>([]);
-  const [loadingAI, setLoadingAI] = useState(false);
 
   const loadWorkouts = async () => {
     if (!user) return;
@@ -62,30 +59,6 @@ export default function WorkoutsPage() {
     router.push(`/workouts/${id}`);
   };
 
-  const loadAIRecommendations = async () => {
-    if (!user) return;
-    setLoadingAI(true);
-    try {
-      const response = await fetch('/api/ai/general-tips', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          workoutCount: workouts.length,
-          role: user.role,
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setAiRecommendations(data.tips || []);
-      }
-    } catch (error) {
-      console.error('AI tips error:', error);
-    } finally {
-      setLoadingAI(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -117,56 +90,6 @@ export default function WorkoutsPage() {
         )}
       </div>
 
-      {/* AI Recommendations Card */}
-      {user?.role === 'student' && workouts.length > 0 && (
-        <Card className="border-primary/20">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <CardTitle className="text-lg">AI Training Tips</CardTitle>
-              </div>
-              {aiRecommendations.length === 0 && (
-                <Button
-                  onClick={loadAIRecommendations}
-                  disabled={loadingAI}
-                  size="sm"
-                  variant="outline"
-                >
-                  {loadingAI ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Loading...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      Get Tips
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
-            <CardDescription>
-              Personalized tips based on your training
-            </CardDescription>
-          </CardHeader>
-          {aiRecommendations.length > 0 && (
-            <CardContent className="space-y-3">
-              {aiRecommendations.map((tip, index) => (
-                <div
-                  key={index}
-                  className="flex items-start gap-3 p-3 bg-muted rounded-lg"
-                >
-                  <Lightbulb className="h-4 w-4 text-yellow-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm">{tip}</p>
-                </div>
-              ))}
-            </CardContent>
-          )}
-        </Card>
-      )}
-
       <WorkoutList
         workouts={workouts}
         onEdit={user?.role === 'coach' ? handleEdit : undefined}
@@ -175,6 +98,14 @@ export default function WorkoutsPage() {
         onViewDetails={handleViewDetails}
         isCoach={user?.role === 'coach'}
       />
+
+      {/* AI Workout Suggestions - shown for both coaches and students */}
+      {user && (
+        <AIWorkoutSuggestions 
+          userId={user.uid} 
+          recentWorkouts={workouts}
+        />
+      )}
     </div>
   );
 }
