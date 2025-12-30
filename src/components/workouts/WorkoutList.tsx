@@ -34,6 +34,7 @@ export function WorkoutList({
           onDelete={onDelete}
           onToggleComplete={onToggleComplete}
           onViewDetails={onViewDetails}
+          isCoach={isCoach}
         />
       ))}
     </div>

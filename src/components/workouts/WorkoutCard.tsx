@@ -17,6 +17,7 @@ interface WorkoutCardProps {
   onToggleComplete?: (id: string, completed: boolean, notes?: string) => void;
   onViewDetails?: (id: string) => void;
   commentCount?: number;
+  isCoach?: boolean;
 }
 
 export function WorkoutCard({
@@ -26,6 +27,7 @@ export function WorkoutCard({
   onToggleComplete,
   onViewDetails,
   commentCount = 0,
+  isCoach = false,
 }: WorkoutCardProps) {
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
   const [showUncompletionDialog, setShowUncompletionDialog] = useState(false);
@@ -49,6 +51,23 @@ export function WorkoutCard({
   }
 
   const handleCompletionClick = () => {
+    // Prevent coaches from completing workouts
+    if (isCoach) {
+      alert('Workout is to be completed by the Student');
+      return;
+    }
+
+    // Prevent completing workouts before their due date
+    const workoutDate = workout.date.toDate();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of today
+    workoutDate.setHours(0, 0, 0, 0); // Set to start of workout date
+
+    if (!workout.completed && workoutDate > today) {
+      alert(`This workout is scheduled for ${format(workout.date.toDate(), 'MMM d, yyyy')}. You can only complete it on or after that date.`);
+      return;
+    }
+
     if (workout.completed) {
       setShowUncompletionDialog(true);
     } else {

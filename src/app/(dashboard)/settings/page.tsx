@@ -291,21 +291,22 @@ export default function SettingsPage() {
         </Card>
       )}
 
-      {/* Strava Integration */}
-      <Card
-        className="animate-in fade-in slide-in-from-bottom-4 duration-500"
-        style={{ animationDelay: '200ms' }}
-      >
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <svg className="h-5 w-5 text-[#FC4C02]" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7.008 13.828h4.172" />
-            </svg>
-            Strava Integration
-          </CardTitle>
-          <CardDescription>Connect Strava to sync workouts from Garmin and other devices</CardDescription>
-        </CardHeader>
-        <CardContent>
+      {/* Strava Integration (Students Only) */}
+      {user?.role === 'student' && (
+        <Card
+          className="animate-in fade-in slide-in-from-bottom-4 duration-500"
+          style={{ animationDelay: '200ms' }}
+        >
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <svg className="h-5 w-5 text-[#FC4C02]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7.008 13.828h4.172" />
+              </svg>
+              Strava Integration
+            </CardTitle>
+            <CardDescription>Connect Strava to sync workouts from Garmin and other devices</CardDescription>
+          </CardHeader>
+          <CardContent>
           {user?.stravaId ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between p-4 rounded-lg bg-[#FC4C02]/10 border border-[#FC4C02]/20">
@@ -388,6 +389,7 @@ export default function SettingsPage() {
           )}
         </CardContent>
       </Card>
+      )}
 
       {/* Account Section */}
       <Card
