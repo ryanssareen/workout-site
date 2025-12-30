@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import Groq from 'groq-sdk';
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
 });
 
 export async function POST(request: NextRequest) {
@@ -52,33 +52,32 @@ Respond ONLY with valid JSON in this exact format (no markdown, no preamble):
   }
 ]`;
 
-    const message = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 2000,
+    const completion = await groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
       messages: [
+        {
+          role: 'system',
+          content: 'You are a professional fitness coach who provides workout suggestions in JSON format.'
+        },
         {
           role: 'user',
           content: prompt,
         },
       ],
+      temperature: 0.7,
+      response_format: { type: 'json_object' },
     });
 
-    const content = message.content[0];
-    if (content.type !== 'text') {
-      throw new Error('Unexpected response type');
-    }
+    const responseText = completion.choices[0]?.message?.content || '{}';
 
     // Parse the JSON response
     let suggestions;
     try {
-      // Remove any markdown code blocks if present
-      let cleanText = content.text.trim();
-      if (cleanText.startsWith('```')) {
-        cleanText = cleanText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-      }
-      suggestions = JSON.parse(cleanText);
+      const parsed = JSON.parse(responseText);
+      // Handle both array format and object with array property
+      suggestions = Array.isArray(parsed) ? parsed : (parsed.suggestions || parsed.workouts || []);
     } catch (parseError) {
-      console.error('Failed to parse AI response:', content.text);
+      console.error('Failed to parse Groq response:', responseText);
       throw new Error('Failed to parse AI suggestions');
     }
 
