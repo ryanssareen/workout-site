@@ -25,39 +25,82 @@ Requirements:
 1. Suggest 3 different workout types (swim, bike, run, strength, or other)
 2. Make them varied and progressive
 3. Each workout should be realistic and achievable
-4. Include specific details (distances, durations, sets/reps)
+4. Include STRUCTURED data for each type with proper fields
 
-Respond ONLY with valid JSON in this exact format (no markdown, no preamble):
-[
-  {
-    "name": "Morning Speed Session",
-    "type": "run",
-    "description": "Interval training focused on building speed endurance",
-    "duration": 60,
-    "notes": "Warm up for 10 minutes, then 6x800m at 5K pace with 2 min recovery, cool down"
-  },
-  {
-    "name": "Endurance Swim",
-    "type": "swim",
-    "description": "Build aerobic capacity with steady-state swimming",
-    "duration": 45,
-    "notes": "10x100m freestyle at moderate pace, 15 sec rest between sets"
-  },
-  {
-    "name": "Core Strength Circuit",
-    "type": "strength",
-    "description": "Functional strength training for athletic performance",
-    "duration": 40,
-    "notes": "3 rounds: planks 60s, deadlifts 10 reps, russian twists 20 reps, rest 90s"
+Respond ONLY with valid JSON in this EXACT format (no markdown, no preamble):
+
+For RUN workouts:
+{
+  "name": "Morning Speed Session",
+  "type": "run",
+  "run": {
+    "distance": 10,
+    "distanceUnit": "km",
+    "time": 55,
+    "terrain": "road",
+    "elevationGain": 150
   }
-]`;
+}
+
+For SWIM workouts:
+{
+  "name": "Endurance Swim",
+  "type": "swim",
+  "swim": {
+    "distance": 2000,
+    "distanceUnit": "meters",
+    "laps": 40,
+    "stroke": "freestyle",
+    "pool": "25m"
+  }
+}
+
+For BIKE workouts:
+{
+  "name": "Hill Intervals",
+  "type": "bike",
+  "bike": {
+    "distance": 30,
+    "distanceUnit": "km",
+    "time": 75,
+    "terrain": "hills",
+    "power": 220,
+    "cadence": 85
+  }
+}
+
+For STRENGTH workouts:
+{
+  "name": "Core Strength Circuit",
+  "type": "strength",
+  "strength": {
+    "exercises": ["Planks", "Deadlifts", "Russian Twists", "Pull-ups"],
+    "sets": 3,
+    "reps": 10,
+    "weight": 60,
+    "restTime": 90
+  }
+}
+
+For OTHER workouts:
+{
+  "name": "Mobility Work",
+  "type": "other",
+  "other": {
+    "description": "Full body mobility and flexibility routine",
+    "duration": 45,
+    "notes": "Focus on hip flexors, shoulders, and ankle mobility"
+  }
+}
+
+Return an array of exactly 3 workouts with different types.`;
 
     const completion = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages: [
         {
           role: 'system',
-          content: 'You are a professional fitness coach who provides workout suggestions in JSON format.'
+          content: 'You are a professional fitness coach who provides workout suggestions with structured data in JSON format.'
         },
         {
           role: 'user',

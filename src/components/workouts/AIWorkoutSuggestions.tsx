@@ -9,10 +9,12 @@ import { useRouter } from 'next/navigation';
 
 interface WorkoutSuggestion {
   name: string;
-  type: string;
-  description: string;
-  duration?: number;
-  notes?: string;
+  type: 'run' | 'swim' | 'bike' | 'strength' | 'other';
+  run?: any;
+  swim?: any;
+  bike?: any;
+  strength?: any;
+  other?: any;
 }
 
 interface AIWorkoutSuggestionsProps {
@@ -62,16 +64,11 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [] }: AIWorkoutS
   };
 
   const handleViewSuggestion = (suggestion: WorkoutSuggestion) => {
-    // Encode the suggestion data and navigate to workout creation page with prefilled data
-    const params = new URLSearchParams({
-      name: suggestion.name,
-      type: suggestion.type,
-      description: suggestion.description,
-      duration: suggestion.duration?.toString() || '60',
-      notes: suggestion.notes || '',
-      aiGenerated: 'true',
-    });
-    router.push(`/workouts/new?${params.toString()}`);
+    // Store the full structured workout in sessionStorage
+    sessionStorage.setItem('aiWorkoutData', JSON.stringify(suggestion));
+    
+    // Navigate to workout creation page
+    router.push('/workouts/new?aiGenerated=true');
   };
 
   const getTypeBadgeVariant = (type: string) => {
@@ -81,6 +78,28 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [] }: AIWorkoutS
       case 'bike': return 'outline';
       case 'strength': return 'destructive';
       default: return 'default';
+    }
+  };
+
+  const getSummary = (suggestion: WorkoutSuggestion) => {
+    const type = suggestion.type;
+    const data = suggestion[type];
+    
+    if (!data) return '';
+    
+    switch (type) {
+      case 'run':
+        return `${data.distance} ${data.distanceUnit} • ${data.time} min • ${data.terrain}`;
+      case 'swim':
+        return `${data.distance} ${data.distanceUnit} • ${data.laps} laps • ${data.stroke}`;
+      case 'bike':
+        return `${data.distance} ${data.distanceUnit} • ${data.time} min`;
+      case 'strength':
+        return `${data.sets} sets × ${data.reps} reps • ${data.exercises?.length || 0} exercises`;
+      case 'other':
+        return `${data.duration} min`;
+      default:
+        return '';
     }
   };
 
@@ -147,19 +166,8 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [] }: AIWorkoutS
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {suggestion.description}
+                      {getSummary(suggestion)}
                     </p>
-                    {suggestion.duration && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        {suggestion.duration} min
-                      </div>
-                    )}
-                    {suggestion.notes && (
-                      <p className="text-xs text-muted-foreground italic">
-                        {suggestion.notes}
-                      </p>
-                    )}
                   </div>
                   <Button
                     variant="ghost"

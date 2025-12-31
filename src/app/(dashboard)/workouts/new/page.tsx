@@ -58,21 +58,30 @@ export default function NewWorkoutPage() {
     loadTemplate();
   }, [templateId]);
 
-  // Load AI-generated workout data from URL params
+  // Load AI-generated workout data from sessionStorage
   useEffect(() => {
     if (aiGenerated) {
-      const aiData = {
-        name: searchParams.get('name') || '',
-        type: searchParams.get('type') || 'other',
-        description: searchParams.get('description') || '',
-        duration: parseInt(searchParams.get('duration') || '60'),
-        notes: searchParams.get('notes') || '',
-      };
-      
-      setTemplateData(aiData);
-      toast.success('AI-generated workout loaded! Modify and assign as needed.');
+      try {
+        const storedData = sessionStorage.getItem('aiWorkoutData');
+        if (storedData) {
+          const aiWorkout = JSON.parse(storedData);
+          
+          // Map AI-generated structured data to form's expected format
+          // The AI returns: { name, type, [type]: { ...fields } }
+          // We need to preserve this structure for defaultValues
+          setTemplateData(aiWorkout);
+          
+          // Clear from sessionStorage after loading
+          sessionStorage.removeItem('aiWorkoutData');
+          
+          toast.success('AI-generated workout loaded! Modify and assign as needed.');
+        }
+      } catch (error) {
+        console.error('Failed to load AI workout data:', error);
+        toast.error('Failed to load AI workout data');
+      }
     }
-  }, [aiGenerated, searchParams]);
+  }, [aiGenerated]);
 
   // Redirect if not a coach
   useEffect(() => {
@@ -163,10 +172,16 @@ export default function NewWorkoutPage() {
             defaultValues={templateData ? {
               name: templateData.name,
               type: templateData.type,
-              description: templateData.description || '',
               date: new Date(),
-              duration: templateData.duration || undefined,
-              assignedTo: students[0]?.uid || '', // Default to first student
+              assignedTo: students[0]?.uid || '',
+              // Pass the type-specific nested data
+              // AI generates: { name, type: "run", run: { distance, time, ... } }
+              // WorkoutForm expects exactly this structure
+              ...(templateData.run && { run: templateData.run }),
+              ...(templateData.swim && { swim: templateData.swim }),
+              ...(templateData.bike && { bike: templateData.bike }),
+              ...(templateData.strength && { strength: templateData.strength }),
+              ...(templateData.other && { other: templateData.other }),
             } : undefined}
           />
         </CardContent>

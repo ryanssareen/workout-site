@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { workoutSchema, WorkoutSchema } from '@/lib/schemas/workout';
@@ -26,13 +27,20 @@ interface WorkoutFormProps {
 }
 
 export function WorkoutForm({ onSubmit, defaultValues, students, loading }: WorkoutFormProps) {
-  const { register, handleSubmit, formState: { errors }, setValue, watch, control } = useForm<WorkoutSchema>({
+  const { register, handleSubmit, formState: { errors }, setValue, watch, control, reset } = useForm<WorkoutSchema>({
     resolver: zodResolver(workoutSchema),
     defaultValues: defaultValues || {
       type: 'strength',
       date: new Date(),
     },
   });
+
+  // Reset form when defaultValues change (e.g., when AI data loads)
+  useEffect(() => {
+    if (defaultValues) {
+      reset(defaultValues);
+    }
+  }, [defaultValues, reset]);
 
   const selectedDate = watch('date');
   const selectedType = watch('type');
