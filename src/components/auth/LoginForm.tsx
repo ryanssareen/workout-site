@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from '@/lib/firebase/auth';
+import { useAuthStore } from '@/lib/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +15,16 @@ export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [waitingForAuth, setWaitingForAuth] = useState(false);
   const router = useRouter();
+  const user = useAuthStore((state) => state.user);
+
+  // Navigate once auth state is updated
+  useEffect(() => {
+    if (waitingForAuth && user) {
+      router.replace('/dashboard');
+    }
+  }, [waitingForAuth, user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,10 +32,10 @@ export function LoginForm() {
     try {
       await signIn(email, password);
       toast.success('Login successful');
-      router.push('/dashboard');
+      // Don't navigate immediately - wait for auth state to propagate
+      setWaitingForAuth(true);
     } catch (error: any) {
       toast.error(error.message);
-    } finally {
       setLoading(false);
     }
   };
@@ -54,7 +64,9 @@ export function LoginForm() {
             </div>
             <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>{loading ? 'Logging in...' : 'Login'}</Button>
+          <Button type="submit" className="w-full" disabled={loading || waitingForAuth}>
+            {waitingForAuth ? 'Redirecting...' : loading ? 'Logging in...' : 'Login'}
+          </Button>
         </form>
       </CardContent>
     </Card>
