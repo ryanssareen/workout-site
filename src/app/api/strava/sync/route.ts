@@ -143,6 +143,7 @@ export async function GET(request: NextRequest) {
     // Create workouts for new activities and delete old incomplete ones
     const batch = adminDb.batch();
     let newWorkoutsCount = 0;
+    let updatedWorkoutsCount = 0;
     const activitiesToProcess: any[] = [];
 
     for (const activity of activities) {
@@ -172,34 +173,71 @@ export async function GET(request: NextRequest) {
       if (activity.max_speed) actualStats.maxSpeed = activity.max_speed;
       if (activity.total_elevation_gain) actualStats.elevationGain = activity.total_elevation_gain;
 
-      // CREATE NEW WORKOUT
-      const workoutRef = adminDb.collection('workouts').doc();
-      const workoutData = {
-        name: activity.name,
-        type: workoutType,
-        description: `Imported from Strava\nDistance: ${(activity.distance / 1000).toFixed(2)} km\nMoving time: ${Math.round(activity.moving_time / 60)} min`,
-        date: admin.firestore.Timestamp.fromDate(activityDate),
-        duration: Math.round(activity.moving_time / 60),
-        createdBy: userId,
-        assignedTo: userId,
-        completed: true,
-        completedAt: admin.firestore.Timestamp.fromDate(activityDate),
-        completedBy: 'strava',
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        source: 'strava',
-        stravaActivityId: String(activity.id),
-        actualStats,
-      };
+      // Check for existing coach-assigned workout to update
+      // Match by: same user, same type, same calendar day, not from strava, not completed
+      const startOfDay = new Date(activityDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(activityDate);
+      endOfDay.setHours(23, 59, 59, 999);
 
-      batch.set(workoutRef, workoutData);
-      newWorkoutsCount++;
-      console.log(`✅ Queued workout: ${activity.name} (${workoutType}) on ${activityDate.toDateString()}`);
+      const matchingWorkoutsSnapshot = await adminDb
+        .collection('workouts')
+        .where('assignedTo', '==', userId)
+        .where('type', '==', workoutType)
+        .where('completed', '==', false)
+        .where('date', '>=', admin.firestore.Timestamp.fromDate(startOfDay))
+        .where('date', '<=', admin.firestore.Timestamp.fromDate(endOfDay))
+        .get();
+
+      // Filter out strava-sourced workouts (can't do inequality on source in same query as date range)
+      const matchingWorkout = matchingWorkoutsSnapshot.docs.find(
+        doc => doc.data().source !== 'strava'
+      );
+
+      if (matchingWorkout) {
+        // UPDATE existing coach-assigned workout
+        console.log(`🔄 Found matching workout "${matchingWorkout.data().name}" for activity "${activity.name}"`);
+
+        batch.update(matchingWorkout.ref, {
+          completed: true,
+          completedAt: admin.firestore.Timestamp.fromDate(activityDate),
+          completedBy: 'strava',
+          stravaActivityId: String(activity.id),
+          actualStats,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        updatedWorkoutsCount++;
+        console.log(`✅ Updated existing workout: ${matchingWorkout.data().name} with Strava data`);
+      } else {
+        // CREATE NEW WORKOUT
+        const workoutRef = adminDb.collection('workouts').doc();
+        const workoutData = {
+          name: activity.name,
+          type: workoutType,
+          description: `Imported from Strava\nDistance: ${(activity.distance / 1000).toFixed(2)} km\nMoving time: ${Math.round(activity.moving_time / 60)} min`,
+          date: admin.firestore.Timestamp.fromDate(activityDate),
+          duration: Math.round(activity.moving_time / 60),
+          createdBy: userId,
+          assignedTo: userId,
+          completed: true,
+          completedAt: admin.firestore.Timestamp.fromDate(activityDate),
+          completedBy: 'strava',
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          source: 'strava',
+          stravaActivityId: String(activity.id),
+          actualStats,
+        };
+
+        batch.set(workoutRef, workoutData);
+        newWorkoutsCount++;
+        console.log(`✅ Queued new workout: ${activity.name} (${workoutType}) on ${activityDate.toDateString()}`);
+      }
     }
 
-    if (newWorkoutsCount > 0) {
+    if (newWorkoutsCount > 0 || updatedWorkoutsCount > 0) {
       await batch.commit();
-      console.log(`✅ Created ${newWorkoutsCount} new workouts from Strava`);
+      console.log(`✅ Created ${newWorkoutsCount} new workouts, updated ${updatedWorkoutsCount} existing workouts from Strava`);
     }
 
     // TEMPORARILY DISABLED: Delete old incomplete workouts
@@ -211,17 +249,19 @@ export async function GET(request: NextRequest) {
     const acceptHeader = request.headers.get('accept');
     if (acceptHeader?.includes('text/html')) {
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+      const totalSynced = newWorkoutsCount + updatedWorkoutsCount;
       return NextResponse.redirect(
-        new URL(`/settings?synced=${newWorkoutsCount}`, baseUrl)
+        new URL(`/settings?synced=${totalSynced}&updated=${updatedWorkoutsCount}`, baseUrl)
       );
     }
 
     return NextResponse.json({
       success: true,
       newWorkouts: newWorkoutsCount,
+      updatedWorkouts: updatedWorkoutsCount,
       deletedWorkouts: deletedCount,
       totalActivities: activities.length,
-      message: `Created ${newWorkoutsCount} new workouts${deletedCount > 0 ? ` and deleted ${deletedCount} old incomplete workouts` : ''}`,
+      message: `Created ${newWorkoutsCount} new workouts, updated ${updatedWorkoutsCount} existing workouts`,
     });
   } catch (error: any) {
     console.error('Strava sync error:', error);
