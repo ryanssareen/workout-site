@@ -24,6 +24,15 @@ function mapStravaType(stravaType: string): 'swim' | 'run' | 'bike' | 'strength'
   return typeMap[stravaType] || 'strength';
 }
 
+// Helper to get start and end of a day for date matching
+function getDayBounds(date: Date): { start: Date; end: Date } {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(date);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
 // Refresh Strava access token if expired
 async function refreshStravaToken(userId: string, refreshToken: string): Promise<string | null> {
   try {
@@ -60,6 +69,41 @@ async function refreshStravaToken(userId: string, refreshToken: string): Promise
   }
 }
 
+// Find a matching coach-assigned workout for the given activity
+async function findMatchingWorkout(
+  userId: string,
+  workoutType: string,
+  activityDate: Date
+): Promise<{ id: string; data: any } | null> {
+  const { start, end } = getDayBounds(activityDate);
+
+  // Query for workouts assigned to this user, same type, same day
+  // that are NOT from Strava and NOT completed
+  const workoutsSnapshot = await adminDb
+    .collection('workouts')
+    .where('assignedTo', '==', userId)
+    .where('type', '==', workoutType)
+    .where('completed', '==', false)
+    .get();
+
+  // Filter by date (same calendar day) and source (not strava)
+  for (const doc of workoutsSnapshot.docs) {
+    const data = doc.data();
+    
+    // Skip if it's a Strava import
+    if (data.source === 'strava') continue;
+    
+    // Check if workout date is on the same day as the activity
+    const workoutDate = data.date?.toDate ? data.date.toDate() : new Date(data.date);
+    if (workoutDate >= start && workoutDate <= end) {
+      console.log(`🔗 Found matching workout: ${data.name} (${doc.id})`);
+      return { id: doc.id, data };
+    }
+  }
+
+  return null;
+}
+
 export async function GET(request: NextRequest) {
   try {
     console.log('🔄 Strava sync requested');
@@ -88,8 +132,6 @@ export async function GET(request: NextRequest) {
       console.error('❌ Strava not connected');
       return NextResponse.json({ error: 'Strava not connected' }, { status: 400 });
     }
-
-    console.log('✅ User has Strava connected');
 
     console.log('✅ User has Strava connected');
 
@@ -140,9 +182,10 @@ export async function GET(request: NextRequest) {
 
     console.log(`📊 Found ${existingStravaIds.size} existing Strava workouts`);
 
-    // Create workouts for new activities and delete old incomplete ones
+    // Process activities
     const batch = adminDb.batch();
     let newWorkoutsCount = 0;
+    let mergedWorkoutsCount = 0;
     const activitiesToProcess: any[] = [];
 
     for (const activity of activities) {
@@ -161,7 +204,7 @@ export async function GET(request: NextRequest) {
       const activityDate = new Date(activity.start_date_local);
       const workoutType = mapStravaType(activity.type);
 
-      // Prepare stats
+      // Prepare stats from Strava
       const actualStats: any = {};
       if (activity.distance) actualStats.distance = activity.distance;
       if (activity.moving_time) actualStats.duration = activity.moving_time;
@@ -172,56 +215,85 @@ export async function GET(request: NextRequest) {
       if (activity.max_speed) actualStats.maxSpeed = activity.max_speed;
       if (activity.total_elevation_gain) actualStats.elevationGain = activity.total_elevation_gain;
 
-      // CREATE NEW WORKOUT
-      const workoutRef = adminDb.collection('workouts').doc();
-      const workoutData = {
-        name: activity.name,
-        type: workoutType,
-        description: `Imported from Strava\nDistance: ${(activity.distance / 1000).toFixed(2)} km\nMoving time: ${Math.round(activity.moving_time / 60)} min`,
-        date: admin.firestore.Timestamp.fromDate(activityDate),
-        duration: Math.round(activity.moving_time / 60),
-        createdBy: userId,
-        assignedTo: userId,
-        completed: true,
-        completedAt: admin.firestore.Timestamp.fromDate(activityDate),
-        completedBy: 'strava',
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        source: 'strava',
-        stravaActivityId: String(activity.id),
-        actualStats,
-      };
+      // Try to find a matching coach-assigned workout
+      const matchingWorkout = await findMatchingWorkout(userId, workoutType, activityDate);
 
-      batch.set(workoutRef, workoutData);
-      newWorkoutsCount++;
-      console.log(`✅ Queued workout: ${activity.name} (${workoutType}) on ${activityDate.toDateString()}`);
+      if (matchingWorkout) {
+        // MERGE: Update existing workout with Strava data
+        console.log(`🔗 Merging Strava activity "${activity.name}" with existing workout "${matchingWorkout.data.name}"`);
+        
+        const workoutRef = adminDb.collection('workouts').doc(matchingWorkout.id);
+        batch.update(workoutRef, {
+          completed: true,
+          completedAt: admin.firestore.Timestamp.fromDate(activityDate),
+          completedBy: 'strava',
+          stravaActivityId: String(activity.id),
+          actualStats,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          // Keep original name, description, createdBy from coach
+        });
+        mergedWorkoutsCount++;
+      } else {
+        // CREATE: New workout from Strava
+        console.log(`➕ Creating new workout from Strava: ${activity.name}`);
+        
+        const workoutRef = adminDb.collection('workouts').doc();
+        const workoutData = {
+          name: activity.name,
+          type: workoutType,
+          description: `Imported from Strava\nDistance: ${(activity.distance / 1000).toFixed(2)} km\nMoving time: ${Math.round(activity.moving_time / 60)} min`,
+          date: admin.firestore.Timestamp.fromDate(activityDate),
+          duration: Math.round(activity.moving_time / 60),
+          createdBy: userId,
+          assignedTo: userId,
+          completed: true,
+          completedAt: admin.firestore.Timestamp.fromDate(activityDate),
+          completedBy: 'strava',
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          source: 'strava',
+          stravaActivityId: String(activity.id),
+          actualStats,
+        };
+
+        batch.set(workoutRef, workoutData);
+        newWorkoutsCount++;
+      }
     }
 
-    if (newWorkoutsCount > 0) {
+    // Commit all changes
+    if (newWorkoutsCount > 0 || mergedWorkoutsCount > 0) {
       await batch.commit();
-      console.log(`✅ Created ${newWorkoutsCount} new workouts from Strava`);
+      console.log(`✅ Created ${newWorkoutsCount} new workouts, merged ${mergedWorkoutsCount} existing workouts`);
     }
 
-    // TEMPORARILY DISABLED: Delete old incomplete workouts
-    // Requires Firestore composite index - will add later
-    // Index needed: assignedTo (ASC) + type (ASC) + completed (ASC) + date (ASC)
-    const deletedCount = 0;
+    // Build response message
+    let message = '';
+    if (mergedWorkoutsCount > 0 && newWorkoutsCount > 0) {
+      message = `Merged ${mergedWorkoutsCount} workout${mergedWorkoutsCount > 1 ? 's' : ''} and created ${newWorkoutsCount} new`;
+    } else if (mergedWorkoutsCount > 0) {
+      message = `Merged ${mergedWorkoutsCount} workout${mergedWorkoutsCount > 1 ? 's' : ''} with Strava data`;
+    } else if (newWorkoutsCount > 0) {
+      message = `Created ${newWorkoutsCount} new workout${newWorkoutsCount > 1 ? 's' : ''} from Strava`;
+    } else {
+      message = 'No new activities to sync';
+    }
 
     // Redirect back to settings or return JSON based on request type
     const acceptHeader = request.headers.get('accept');
     if (acceptHeader?.includes('text/html')) {
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
       return NextResponse.redirect(
-        new URL(`/settings?synced=${newWorkoutsCount}`, baseUrl)
+        new URL(`/settings?synced=${newWorkoutsCount}&merged=${mergedWorkoutsCount}`, baseUrl)
       );
     }
 
     return NextResponse.json({
       success: true,
       newWorkouts: newWorkoutsCount,
-      deletedWorkouts: deletedCount,
+      mergedWorkouts: mergedWorkoutsCount,
       totalActivities: activities.length,
-      message: `Created ${newWorkoutsCount} new workouts${deletedCount > 0 ? ` and deleted ${deletedCount} old incomplete workouts` : ''}`,
+      message,
     });
   } catch (error: any) {
     console.error('Strava sync error:', error);
