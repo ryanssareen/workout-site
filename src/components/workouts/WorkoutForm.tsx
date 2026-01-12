@@ -7,17 +7,35 @@ import { workoutSchema, WorkoutSchema } from '@/lib/schemas/workout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SwimForm } from './SwimForm';
 import { BikeForm } from './BikeForm';
 import { RunForm } from './RunForm';
 import { StrengthForm } from './StrengthForm';
 import { OtherForm } from './OtherForm';
+import { WORKOUT_TAGS, WorkoutTag } from '@/types/workout';
+
+// Tag colors for visual distinction
+const TAG_COLORS: Record<WorkoutTag, string> = {
+  easy: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  moderate: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+  hard: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  recovery: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  speed: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+  endurance: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+  intervals: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
+  tempo: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
+  long: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200',
+  strength: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
+  technique: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200',
+  race: 'bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200',
+};
 
 interface WorkoutFormProps {
   onSubmit: (data: WorkoutSchema) => Promise<void>;
@@ -32,6 +50,7 @@ export function WorkoutForm({ onSubmit, defaultValues, students, loading }: Work
     defaultValues: defaultValues || {
       type: 'strength',
       date: new Date(),
+      tags: [],
     },
   });
 
@@ -45,6 +64,7 @@ export function WorkoutForm({ onSubmit, defaultValues, students, loading }: Work
   const selectedDate = watch('date');
   const selectedType = watch('type');
   const selectedStudent = watch('assignedTo');
+  const selectedTags = watch('tags') || [];
 
   // Watch type-specific data
   const swimData = useWatch({ control, name: 'swim' });
@@ -52,6 +72,15 @@ export function WorkoutForm({ onSubmit, defaultValues, students, loading }: Work
   const runData = useWatch({ control, name: 'run' });
   const strengthData = useWatch({ control, name: 'strength' });
   const otherData = useWatch({ control, name: 'other' });
+
+  const handleTagToggle = (tag: WorkoutTag) => {
+    const currentTags = selectedTags || [];
+    if (currentTags.includes(tag)) {
+      setValue('tags', currentTags.filter((t) => t !== tag));
+    } else {
+      setValue('tags', [...currentTags, tag]);
+    }
+  };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -89,6 +118,37 @@ export function WorkoutForm({ onSubmit, defaultValues, students, loading }: Work
           </SelectContent>
         </Select>
         {errors.type && <p className="text-sm text-red-500">{errors.type.message}</p>}
+      </div>
+
+      {/* Workout Tags */}
+      <div className="space-y-3">
+        <Label>Tags (optional)</Label>
+        <div className="flex flex-wrap gap-2">
+          {WORKOUT_TAGS.map((tag) => {
+            const isSelected = selectedTags.includes(tag);
+            return (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => handleTagToggle(tag)}
+                className={cn(
+                  'px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 capitalize',
+                  isSelected
+                    ? `${TAG_COLORS[tag]} ring-2 ring-offset-2 ring-primary`
+                    : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                )}
+              >
+                {tag}
+                {isSelected && <X className="inline-block ml-1 h-3 w-3" />}
+              </button>
+            );
+          })}
+        </div>
+        {selectedTags.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {selectedTags.length} tag{selectedTags.length > 1 ? 's' : ''} selected
+          </p>
+        )}
       </div>
 
       {/* Type-Specific Forms */}
@@ -187,3 +247,6 @@ export function WorkoutForm({ onSubmit, defaultValues, students, loading }: Work
     </form>
   );
 }
+
+// Export TAG_COLORS for use in other components
+export { TAG_COLORS };

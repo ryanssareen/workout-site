@@ -2,6 +2,24 @@
 
 export type WorkoutType = 'swim' | 'bike' | 'run' | 'strength' | 'other';
 
+// Predefined workout tags
+export const WORKOUT_TAGS = [
+  'easy',
+  'moderate',
+  'hard',
+  'recovery',
+  'speed',
+  'endurance',
+  'intervals',
+  'tempo',
+  'long',
+  'strength',
+  'technique',
+  'race',
+] as const;
+
+export type WorkoutTag = typeof WORKOUT_TAGS[number];
+
 export interface SwimData {
   distance: number;
   distanceUnit: 'meters' | 'yards';
@@ -65,6 +83,7 @@ export interface Workout {
   completedLate?: boolean;
   description?: string;
   duration?: number;
+  tags?: WorkoutTag[]; // NEW: Workout tags
   swim?: SwimData;
   bike?: BikeData;
   run?: RunData;
@@ -96,6 +115,7 @@ export interface WorkoutFormData {
   type: WorkoutType;
   date: Date;
   studentId: string;
+  tags?: WorkoutTag[]; // NEW: Tags in form data
   swim?: Partial<SwimData>;
   bike?: Partial<BikeData>;
   run?: Partial<RunData>;

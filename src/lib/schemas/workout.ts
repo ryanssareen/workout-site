@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { WORKOUT_TAGS } from '@/types/workout';
 
 // Type-specific schemas
 const swimDataSchema = z.object({
@@ -50,6 +51,9 @@ const otherDataSchema = z.object({
   notes: z.string().optional(),
 });
 
+// Tags schema using the predefined tags
+const workoutTagSchema = z.enum(WORKOUT_TAGS);
+
 // Main workout schema with type-specific data
 export const workoutSchema = z.object({
   name: z.string().min(1, 'Workout name is required').max(100),
@@ -60,6 +64,9 @@ export const workoutSchema = z.object({
     message: 'Please select a date',
   }),
   assignedTo: z.string().min(1, 'Please select a student'),
+  
+  // Tags (optional, 0-5 tags)
+  tags: z.array(workoutTagSchema).max(5, 'Maximum 5 tags allowed').optional(),
   
   // Legacy fields (for backward compatibility)
   description: z.string().optional(),

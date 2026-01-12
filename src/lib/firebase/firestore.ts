@@ -22,6 +22,9 @@ export async function createWorkout(data: WorkoutFormData, createdBy: string): P
     if (data.description) workoutData.description = data.description;
     if (data.duration) workoutData.duration = data.duration;
 
+    // Add tags if provided
+    if (data.tags && data.tags.length > 0) workoutData.tags = data.tags;
+
     // Add type-specific data
     if (data.swim) workoutData.swim = data.swim;
     if (data.bike) workoutData.bike = data.bike;

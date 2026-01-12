@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Workout } from '@/types';
+import { WorkoutTag } from '@/types/workout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,22 @@ import { format } from 'date-fns';
 import { Calendar, Clock, Edit, Trash2, CheckCircle2, Circle, Activity, MessageSquare } from 'lucide-react';
 import { CompletionDialog, UncompletionDialog } from './CompletionDialog';
 import { cn } from '@/lib/utils';
+
+// Tag colors for visual distinction
+const TAG_COLORS: Record<WorkoutTag, string> = {
+  easy: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-green-300',
+  moderate: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 border-yellow-300',
+  hard: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-300',
+  recovery: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border-blue-300',
+  speed: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 border-orange-300',
+  endurance: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border-purple-300',
+  intervals: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200 border-pink-300',
+  tempo: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 border-indigo-300',
+  long: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200 border-cyan-300',
+  strength: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-amber-300',
+  technique: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200 border-teal-300',
+  race: 'bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200 border-rose-300',
+};
 
 interface WorkoutCardProps {
   workout: Workout;
@@ -39,16 +56,8 @@ export function WorkoutCard({
   const isMissed = isPastWorkout && !workout.completed;
   const isCompletedLate = workout.completed && workout.completedLate;
   
-  // Debug logging
-  if (workout.completed) {
-    console.log('🎨 WorkoutCard color check:', {
-      name: workout.name,
-      completed: workout.completed,
-      completedLate: workout.completedLate,
-      isCompletedLate,
-      isPastWorkout
-    });
-  }
+  // Get tags from workout (type assertion since older workouts may not have tags)
+  const tags = (workout as any).tags as WorkoutTag[] | undefined;
 
   const handleCompletionClick = () => {
     // Prevent coaches from completing workouts
@@ -159,6 +168,23 @@ export function WorkoutCard({
         </CardHeader>
 
         <CardContent className="space-y-4">
+          {/* Workout Tags */}
+          {tags && tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className={cn(
+                    'px-2 py-0.5 rounded-full text-xs font-medium capitalize border',
+                    TAG_COLORS[tag]
+                  )}
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+
           <p className={cn(
             'text-sm text-muted-foreground line-clamp-3',
             workout.completed && 'line-through opacity-70'

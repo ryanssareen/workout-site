@@ -3,6 +3,16 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import admin from 'firebase-admin';
+import Groq from 'groq-sdk';
+
+// Predefined workout tags (must match frontend)
+const WORKOUT_TAGS = [
+  'easy', 'moderate', 'hard', 'recovery', 'speed', 
+  'endurance', 'intervals', 'tempo', 'long', 'strength', 
+  'technique', 'race'
+] as const;
+
+type WorkoutTag = typeof WORKOUT_TAGS[number];
 
 // Map Strava activity types to our workout types
 function mapStravaType(stravaType: string): 'swim' | 'run' | 'bike' | 'strength' {
@@ -31,6 +41,75 @@ function getDayBounds(date: Date): { start: Date; end: Date } {
   const end = new Date(date);
   end.setHours(23, 59, 59, 999);
   return { start, end };
+}
+
+// AI-powered workout tagging using Groq
+async function generateWorkoutTags(activity: any): Promise<WorkoutTag[]> {
+  if (!process.env.GROQ_API_KEY) {
+    console.log('⚠️ GROQ_API_KEY not set, skipping AI tagging');
+    return [];
+  }
+
+  try {
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY.trim() });
+
+    // Calculate pace for runs (min/km)
+    let paceInfo = '';
+    if (activity.type === 'Run' && activity.distance && activity.moving_time) {
+      const paceSecondsPerKm = (activity.moving_time / (activity.distance / 1000));
+      const paceMin = Math.floor(paceSecondsPerKm / 60);
+      const paceSec = Math.round(paceSecondsPerKm % 60);
+      paceInfo = `Pace: ${paceMin}:${paceSec.toString().padStart(2, '0')}/km`;
+    }
+
+    const prompt = `Analyze this workout and select 1-3 appropriate tags.
+
+Activity: ${activity.name}
+Type: ${activity.type}
+Distance: ${activity.distance ? (activity.distance / 1000).toFixed(2) + ' km' : 'N/A'}
+Duration: ${activity.moving_time ? Math.round(activity.moving_time / 60) + ' min' : 'N/A'}
+${paceInfo}
+Avg Heart Rate: ${activity.average_heartrate ? activity.average_heartrate + ' bpm' : 'N/A'}
+Max Heart Rate: ${activity.max_heartrate ? activity.max_heartrate + ' bpm' : 'N/A'}
+Elevation Gain: ${activity.total_elevation_gain ? activity.total_elevation_gain + ' m' : 'N/A'}
+
+Available tags: ${WORKOUT_TAGS.join(', ')}
+
+Rules:
+- Select 1-3 tags that best describe this workout
+- Use "easy" for recovery/warm-up pace, "moderate" for steady state, "hard" for intense efforts
+- Use "long" for duration >60min or distance >15km
+- Use "speed" for short fast efforts, "intervals" for repeated efforts, "tempo" for sustained moderate-hard pace
+- Use "recovery" for very easy efforts or active recovery
+- Use "race" only if the name suggests a race/competition
+
+Return ONLY a JSON object: {"tags": ["tag1", "tag2"]}`;
+
+    const completion = await groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      messages: [
+        { role: 'system', content: 'You are a fitness coach analyzing workout data. Return only valid JSON.' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.3,
+      max_tokens: 100,
+      response_format: { type: 'json_object' },
+    });
+
+    const response = completion.choices[0]?.message?.content || '{}';
+    const parsed = JSON.parse(response);
+    
+    // Validate tags
+    const validTags = (parsed.tags || [])
+      .filter((tag: string) => WORKOUT_TAGS.includes(tag as WorkoutTag))
+      .slice(0, 3) as WorkoutTag[];
+
+    console.log(`🏷️ AI generated tags for "${activity.name}": ${validTags.join(', ')}`);
+    return validTags;
+  } catch (error) {
+    console.error('❌ AI tagging error:', error);
+    return [];
+  }
 }
 
 // Refresh Strava access token if expired
@@ -215,6 +294,9 @@ export async function GET(request: NextRequest) {
       if (activity.max_speed) actualStats.maxSpeed = activity.max_speed;
       if (activity.total_elevation_gain) actualStats.elevationGain = activity.total_elevation_gain;
 
+      // Generate AI tags for new workouts
+      const aiTags = await generateWorkoutTags(activity);
+
       // Try to find a matching coach-assigned workout
       const matchingWorkout = await findMatchingWorkout(userId, workoutType, activityDate);
 
@@ -223,22 +305,27 @@ export async function GET(request: NextRequest) {
         console.log(`🔗 Merging Strava activity "${activity.name}" with existing workout "${matchingWorkout.data.name}"`);
         
         const workoutRef = adminDb.collection('workouts').doc(matchingWorkout.id);
+        
+        // Merge AI tags with existing tags (if any)
+        const existingTags = matchingWorkout.data.tags || [];
+        const mergedTags = [...new Set([...existingTags, ...aiTags])].slice(0, 5);
+        
         batch.update(workoutRef, {
           completed: true,
           completedAt: admin.firestore.Timestamp.fromDate(activityDate),
           completedBy: 'strava',
           stravaActivityId: String(activity.id),
           actualStats,
+          tags: mergedTags.length > 0 ? mergedTags : admin.firestore.FieldValue.delete(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          // Keep original name, description, createdBy from coach
         });
         mergedWorkoutsCount++;
       } else {
-        // CREATE: New workout from Strava
+        // CREATE: New workout from Strava with AI tags
         console.log(`➕ Creating new workout from Strava: ${activity.name}`);
         
         const workoutRef = adminDb.collection('workouts').doc();
-        const workoutData = {
+        const workoutData: any = {
           name: activity.name,
           type: workoutType,
           description: `Imported from Strava\nDistance: ${(activity.distance / 1000).toFixed(2)} km\nMoving time: ${Math.round(activity.moving_time / 60)} min`,
@@ -255,6 +342,11 @@ export async function GET(request: NextRequest) {
           stravaActivityId: String(activity.id),
           actualStats,
         };
+
+        // Add AI-generated tags if available
+        if (aiTags.length > 0) {
+          workoutData.tags = aiTags;
+        }
 
         batch.set(workoutRef, workoutData);
         newWorkoutsCount++;

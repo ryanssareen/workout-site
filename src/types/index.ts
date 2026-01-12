@@ -3,6 +3,11 @@ import { Timestamp } from 'firebase/firestore';
 export type UserRole = 'coach' | 'student';
 export type WorkoutType = 'swim' | 'run' | 'bike' | 'strength' | 'other';
 
+// Import and re-export workout tags
+import { WORKOUT_TAGS, WorkoutTag } from './workout';
+export { WORKOUT_TAGS };
+export type { WorkoutTag };
+
 export interface User {
   uid: string;
   email: string;
@@ -42,6 +47,7 @@ export interface Workout {
   description: string;
   date: Timestamp;
   duration?: number;
+  tags?: WorkoutTag[]; // NEW: Workout tags
   createdBy: string;
   assignedTo: string;
   completed: boolean;
@@ -93,6 +99,7 @@ export interface WorkoutFormData {
   type: WorkoutType;
   date: Date;
   assignedTo: string;
+  tags?: WorkoutTag[]; // NEW: Tags in form data
   // Legacy fields
   description?: string;
   duration?: number;
