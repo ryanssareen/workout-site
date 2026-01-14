@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/send-summaries",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/send-reminders",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/process-recurring-workouts",
+      "schedule": "0 6 * * *"
+    }
+  ]
+}

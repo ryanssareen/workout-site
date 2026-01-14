@@ -8,7 +8,7 @@ import { WorkoutForm } from '@/components/workouts/WorkoutForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { WorkoutSchema } from '@/lib/schemas/workout';
-import { ArrowLeft, BookmarkCheck, Sparkles } from 'lucide-react';
+import { ArrowLeft, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
@@ -19,9 +19,7 @@ export default function NewWorkoutPage() {
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [templateData, setTemplateData] = useState<any>(null);
-  const [loadingTemplate, setLoadingTemplate] = useState(false);
 
-  const templateId = searchParams.get('templateId');
   const aiGenerated = searchParams.get('aiGenerated') === 'true';
 
   useEffect(() => {
@@ -34,29 +32,6 @@ export default function NewWorkoutPage() {
 
     loadStudents();
   }, [user]);
-
-  // Load template if templateId is provided
-  useEffect(() => {
-    async function loadTemplate() {
-      if (!templateId) return;
-
-      setLoadingTemplate(true);
-      try {
-        const response = await fetch(`/api/templates/${templateId}`);
-        if (response.ok) {
-          const template = await response.json();
-          setTemplateData(template);
-          toast.success(`Loaded template: ${template.name}`);
-        }
-      } catch (error) {
-        toast.error('Failed to load template');
-      } finally {
-        setLoadingTemplate(false);
-      }
-    }
-
-    loadTemplate();
-  }, [templateId]);
 
   // Load AI-generated workout data from sessionStorage
   useEffect(() => {
@@ -90,20 +65,60 @@ export default function NewWorkoutPage() {
     }
   }, [user, router]);
 
-  const handleSubmit = async (data: WorkoutSchema) => {
+  const handleSubmit = async (data: WorkoutSchema, recurringConfig?: any) => {
     if (!user) return;
-    
+
     setLoading(true);
     try {
-      const workoutId = await createWorkout(data, user.uid);
-      
-      // Find the student's email
-      const student = students.find(s => s.uid === data.assignedTo);
-      
-      toast.success('Workout created successfully!');
-      
-      // Wait a bit then redirect
-      setTimeout(() => router.push('/workouts'), 1000);
+      if (recurringConfig) {
+        // Create recurring schedule
+        const token = await user.getIdToken();
+        const response = await fetch('/api/recurring-schedules', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            studentId: data.assignedTo,
+            intervalDays: recurringConfig.intervalDays,
+            workoutTemplate: {
+              name: data.name,
+              type: data.type,
+              tags: data.tags,
+              ...(data.swim && { swim: data.swim }),
+              ...(data.bike && { bike: data.bike }),
+              ...(data.run && { run: data.run }),
+              ...(data.strength && { strength: data.strength }),
+              ...(data.other && { other: data.other }),
+            },
+            endCondition: {
+              type: recurringConfig.endConditionType,
+              endDate: recurringConfig.endDate,
+              totalCount: recurringConfig.repeatCount,
+            },
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to create recurring schedule');
+        }
+
+        toast.success('Recurring workout schedule created!');
+        setTimeout(() => router.push('/recurring-schedules'), 1000);
+      } else {
+        // Create single workout
+        const workoutId = await createWorkout(data, user.uid);
+
+        // Find the student's email
+        const student = students.find(s => s.uid === data.assignedTo);
+
+        toast.success('Workout created successfully!');
+
+        // Wait a bit then redirect
+        setTimeout(() => router.push('/workouts'), 1000);
+      }
     } catch (error: any) {
       toast.error(error.message || 'Failed to create workout');
     } finally {
@@ -124,23 +139,12 @@ export default function NewWorkoutPage() {
         </div>
       );
     }
-    if (templateData) {
-      return (
-        <div className="flex items-center gap-2">
-          <BookmarkCheck className="h-5 w-5 text-orange-500" />
-          Creating from Template: {templateData.name}
-        </div>
-      );
-    }
     return 'Workout Details';
   };
 
   const getHeaderDescription = () => {
     if (aiGenerated) {
       return 'AI-generated workout ready to customize. Modify as needed and assign to a student.';
-    }
-    if (templateData) {
-      return 'Pre-filled from template. Modify as needed and assign to a student.';
     }
     return 'Fill in the details for the new workout';
   };
