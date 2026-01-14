@@ -39,6 +39,7 @@ export default function RecurringSchedulesPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('active');
 
+  // Fetch schedules when user is available
   useEffect(() => {
     if (!user) {
       router.push('/login');
