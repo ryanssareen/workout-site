@@ -1,16 +1,39 @@
 import {
   collection, addDoc, updateDoc, deleteDoc, doc, getDoc, getDocs,
-  query, where, orderBy, serverTimestamp, Timestamp,
+  query, where, orderBy, serverTimestamp, Timestamp, writeBatch,
 } from 'firebase/firestore';
 import { getDbInstance } from './config';
 import { Workout, WorkoutFormData, WorkoutComment, WorkoutRating, PersonalRecord, PRCategory } from '@/types';
+import { addDays, addWeeks, addMonths } from 'date-fns';
 
-export async function createWorkout(data: WorkoutFormData, createdBy: string): Promise<string> {
+// Extended form data to include recurring fields
+export interface ExtendedWorkoutFormData extends WorkoutFormData {
+  isRecurring?: boolean;
+  recurringFrequency?: 'daily' | 'weekly' | 'biweekly' | 'monthly';
+  recurringEndDate?: Date;
+}
+
+// Helper to calculate next date based on frequency
+function getNextDate(currentDate: Date, frequency: string): Date {
+  switch (frequency) {
+    case 'daily':
+      return addDays(currentDate, 1);
+    case 'weekly':
+      return addWeeks(currentDate, 1);
+    case 'biweekly':
+      return addWeeks(currentDate, 2);
+    case 'monthly':
+      return addMonths(currentDate, 1);
+    default:
+      return addWeeks(currentDate, 1);
+  }
+}
+
+export async function createWorkout(data: ExtendedWorkoutFormData, createdBy: string): Promise<string> {
   try {
-    const workoutData: any = {
+    const baseWorkoutData: any = {
       name: data.name,
       type: data.type,
-      date: Timestamp.fromDate(data.date),
       createdBy,
       assignedTo: data.assignedTo,
       completed: false,
@@ -19,21 +42,66 @@ export async function createWorkout(data: WorkoutFormData, createdBy: string): P
     };
 
     // Add legacy fields for backward compatibility
-    if (data.description) workoutData.description = data.description;
-    if (data.duration) workoutData.duration = data.duration;
+    if (data.description) baseWorkoutData.description = data.description;
+    if (data.duration) baseWorkoutData.duration = data.duration;
 
     // Add tags if provided
-    if (data.tags && data.tags.length > 0) workoutData.tags = data.tags;
+    if (data.tags && data.tags.length > 0) baseWorkoutData.tags = data.tags;
 
     // Add type-specific data
-    if (data.swim) workoutData.swim = data.swim;
-    if (data.bike) workoutData.bike = data.bike;
-    if (data.run) workoutData.run = data.run;
-    if (data.strength) workoutData.strength = data.strength;
-    if (data.other) workoutData.other = data.other;
+    if (data.swim) baseWorkoutData.swim = data.swim;
+    if (data.bike) baseWorkoutData.bike = data.bike;
+    if (data.run) baseWorkoutData.run = data.run;
+    if (data.strength) baseWorkoutData.strength = data.strength;
+    if (data.other) baseWorkoutData.other = data.other;
 
-    const docRef = await addDoc(collection(getDbInstance(), 'workouts'), workoutData);
-    return docRef.id;
+    // Handle recurring workouts
+    if (data.isRecurring && data.recurringFrequency && data.recurringEndDate) {
+      const db = getDbInstance();
+      const batch = writeBatch(db);
+      const workoutIds: string[] = [];
+      
+      let currentDate = new Date(data.date);
+      const endDate = new Date(data.recurringEndDate);
+      let isFirstWorkout = true;
+      let firstWorkoutId = '';
+      
+      // Create workouts from start date until end date
+      while (currentDate <= endDate) {
+        const workoutRef = doc(collection(db, 'workouts'));
+        const workoutData = {
+          ...baseWorkoutData,
+          date: Timestamp.fromDate(currentDate),
+          isRecurring: true,
+          recurringFrequency: data.recurringFrequency,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        };
+        
+        batch.set(workoutRef, workoutData);
+        workoutIds.push(workoutRef.id);
+        
+        if (isFirstWorkout) {
+          firstWorkoutId = workoutRef.id;
+          isFirstWorkout = false;
+        }
+        
+        // Move to next date based on frequency
+        currentDate = getNextDate(currentDate, data.recurringFrequency);
+      }
+      
+      await batch.commit();
+      console.log(`✅ Created ${workoutIds.length} recurring workouts`);
+      return firstWorkoutId;
+    } else {
+      // Single workout creation
+      const workoutData = {
+        ...baseWorkoutData,
+        date: Timestamp.fromDate(data.date),
+      };
+      const docRef = await addDoc(collection(getDbInstance(), 'workouts'), workoutData);
+      return docRef.id;
+    }
   } catch (error: any) {
     throw new Error(error.message || 'Failed to create workout');
   }

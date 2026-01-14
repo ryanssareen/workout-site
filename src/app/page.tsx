@@ -76,7 +76,10 @@ export default function Home() {
             </div>
             <span className="font-bold text-lg">Workout Tracker</span>
           </Link>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <Button variant="ghost" asChild>
+              <Link href="/features">Features</Link>
+            </Button>
             <Button variant="ghost" asChild>
               <Link href="/login">Sign In</Link>
             </Button>
@@ -251,9 +254,14 @@ export default function Home() {
               </div>
               <span className="font-bold">Workout Tracker</span>
             </div>
-            <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} Built for coaches and athletes
-            </p>
+            <div className="flex items-center gap-6">
+              <Link href="/features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Features
+              </Link>
+              <p className="text-sm text-muted-foreground">
+                © {new Date().getFullYear()} Built for coaches and athletes
+              </p>
+            </div>
           </div>
         </div>
       </footer>

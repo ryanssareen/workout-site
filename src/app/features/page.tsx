@@ -121,14 +121,9 @@ export default function FeaturesPage() {
             <Dumbbell className="h-6 w-6 text-primary" />
             <span className="font-bold text-xl">CoachTrack</span>
           </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/login">
-              <Button variant="ghost">Login</Button>
-            </Link>
-            <Link href="/register">
-              <Button>Get Started</Button>
-            </Link>
-          </div>
+          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            ← Back to Home
+          </Link>
         </div>
       </header>
 
@@ -147,14 +142,9 @@ export default function FeaturesPage() {
           Powered by AI, integrated with Strava, built for results.
         </p>
         <div className="flex items-center justify-center gap-4">
-          <Link href="/register">
-            <Button size="lg" className="gap-2">
-              Start Free <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
           <Link href="#features">
-            <Button size="lg" variant="outline">
-              View Features
+            <Button size="lg" className="gap-2">
+              View All Features <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
         </div>
@@ -264,9 +254,9 @@ export default function FeaturesPage() {
         <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
           Join coaches and athletes who are using CoachTrack to train smarter and achieve more.
         </p>
-        <Link href="/register">
-          <Button size="lg" className="gap-2">
-            Get Started Free <ArrowRight className="h-4 w-4" />
+        <Link href="/">
+          <Button size="lg" variant="outline" className="gap-2">
+            <ArrowRight className="h-4 w-4 rotate-180" /> Back to Home
           </Button>
         </Link>
       </section>

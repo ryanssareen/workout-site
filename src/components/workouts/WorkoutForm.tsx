@@ -3,16 +3,16 @@
 import { useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { workoutSchema, WorkoutSchema } from '@/lib/schemas/workout';
+import { workoutSchema, WorkoutSchema, RECURRING_FREQUENCIES } from '@/lib/schemas/workout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { format } from 'date-fns';
-import { CalendarIcon, X } from 'lucide-react';
+import { format, addMonths } from 'date-fns';
+import { CalendarIcon, X, Repeat } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SwimForm } from './SwimForm';
 import { BikeForm } from './BikeForm';
@@ -37,6 +37,14 @@ const TAG_COLORS: Record<WorkoutTag, string> = {
   race: 'bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200',
 };
 
+// Frequency labels for display
+const FREQUENCY_LABELS: Record<string, string> = {
+  daily: 'Every Day',
+  weekly: 'Every Week',
+  biweekly: 'Every 2 Weeks',
+  monthly: 'Every Month',
+};
+
 interface WorkoutFormProps {
   onSubmit: (data: WorkoutSchema) => Promise<void>;
   defaultValues?: Partial<WorkoutSchema>;
@@ -51,6 +59,7 @@ export function WorkoutForm({ onSubmit, defaultValues, students, loading }: Work
       type: 'strength',
       date: new Date(),
       tags: [],
+      isRecurring: false,
     },
   });
 
@@ -65,6 +74,9 @@ export function WorkoutForm({ onSubmit, defaultValues, students, loading }: Work
   const selectedType = watch('type');
   const selectedStudent = watch('assignedTo');
   const selectedTags = watch('tags') || [];
+  const isRecurring = watch('isRecurring');
+  const recurringFrequency = watch('recurringFrequency');
+  const recurringEndDate = watch('recurringEndDate');
 
   // Watch type-specific data
   const swimData = useWatch({ control, name: 'swim' });
@@ -79,6 +91,18 @@ export function WorkoutForm({ onSubmit, defaultValues, students, loading }: Work
       setValue('tags', currentTags.filter((t) => t !== tag));
     } else {
       setValue('tags', [...currentTags, tag]);
+    }
+  };
+
+  const handleRecurringToggle = (checked: boolean) => {
+    setValue('isRecurring', checked);
+    if (checked) {
+      // Set default end date to 1 month from start date
+      setValue('recurringEndDate', addMonths(selectedDate || new Date(), 1));
+      setValue('recurringFrequency', 'weekly');
+    } else {
+      setValue('recurringEndDate', undefined);
+      setValue('recurringFrequency', undefined);
     }
   };
 
@@ -193,7 +217,7 @@ export function WorkoutForm({ onSubmit, defaultValues, students, loading }: Work
 
       {/* Date */}
       <div className="space-y-2">
-        <Label>Date *</Label>
+        <Label>Start Date *</Label>
         <Popover>
           <PopoverTrigger asChild>
             <Button
@@ -240,9 +264,94 @@ export function WorkoutForm({ onSubmit, defaultValues, students, loading }: Work
         {errors.assignedTo && <p className="text-sm text-red-500">{errors.assignedTo.message}</p>}
       </div>
 
+      {/* Recurring Workout Toggle */}
+      <div className="border rounded-lg p-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Repeat className={cn(
+              "h-5 w-5 transition-colors",
+              isRecurring ? "text-primary" : "text-muted-foreground"
+            )} />
+            <div>
+              <Label htmlFor="recurring-toggle" className="text-base font-medium cursor-pointer">
+                Make this recurring
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Automatically create this workout on a schedule
+              </p>
+            </div>
+          </div>
+          <Switch
+            id="recurring-toggle"
+            checked={isRecurring || false}
+            onCheckedChange={handleRecurringToggle}
+          />
+        </div>
+
+        {/* Recurring Options - shown when toggle is on */}
+        {isRecurring && (
+          <div className="pt-4 border-t space-y-4">
+            {/* Frequency */}
+            <div className="space-y-2">
+              <Label>Repeat Frequency</Label>
+              <Select 
+                value={recurringFrequency} 
+                onValueChange={(value: any) => setValue('recurringFrequency', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select frequency" />
+                </SelectTrigger>
+                <SelectContent>
+                  {RECURRING_FREQUENCIES.map((freq) => (
+                    <SelectItem key={freq} value={freq}>
+                      {FREQUENCY_LABELS[freq]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* End Date */}
+            <div className="space-y-2">
+              <Label>End Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      'w-full justify-start text-left font-normal',
+                      !recurringEndDate && 'text-muted-foreground'
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {recurringEndDate ? format(recurringEndDate, 'PPP') : 'Pick end date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={recurringEndDate}
+                    onSelect={(date) => setValue('recurringEndDate', date as Date)}
+                    disabled={(date) => date <= (selectedDate || new Date())}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              <p className="text-xs text-muted-foreground">
+                Workouts will be created from {selectedDate ? format(selectedDate, 'MMM d') : 'start date'} until this date
+              </p>
+            </div>
+
+            {errors.isRecurring && (
+              <p className="text-sm text-red-500">{errors.isRecurring.message}</p>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Submit Button */}
       <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? 'Saving...' : 'Create Workout'}
+        {loading ? 'Saving...' : isRecurring ? 'Create Recurring Workout' : 'Create Workout'}
       </Button>
     </form>
   );

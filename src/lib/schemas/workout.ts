@@ -54,6 +54,10 @@ const otherDataSchema = z.object({
 // Tags schema using the predefined tags
 const workoutTagSchema = z.enum(WORKOUT_TAGS);
 
+// Recurring frequency options
+export const RECURRING_FREQUENCIES = ['daily', 'weekly', 'biweekly', 'monthly'] as const;
+export type RecurringFrequency = typeof RECURRING_FREQUENCIES[number];
+
 // Main workout schema with type-specific data
 export const workoutSchema = z.object({
   name: z.string().min(1, 'Workout name is required').max(100),
@@ -67,6 +71,11 @@ export const workoutSchema = z.object({
   
   // Tags (optional, 0-5 tags)
   tags: z.array(workoutTagSchema).max(5, 'Maximum 5 tags allowed').optional(),
+  
+  // Recurring workout settings
+  isRecurring: z.boolean().optional(),
+  recurringFrequency: z.enum(RECURRING_FREQUENCIES).optional(),
+  recurringEndDate: z.date().optional(),
   
   // Legacy fields (for backward compatibility)
   description: z.string().optional(),
@@ -91,6 +100,18 @@ export const workoutSchema = z.object({
   {
     message: 'Please fill in the workout details',
     path: ['type'],
+  }
+).refine(
+  (data) => {
+    // If recurring is enabled, frequency and end date must be set
+    if (data.isRecurring) {
+      return !!data.recurringFrequency && !!data.recurringEndDate;
+    }
+    return true;
+  },
+  {
+    message: 'Please select frequency and end date for recurring workout',
+    path: ['isRecurring'],
   }
 );
 
