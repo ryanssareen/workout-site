@@ -3,7 +3,7 @@ import { adminAuth, adminDb } from '@/lib/firebase/admin';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -14,7 +14,8 @@ export async function GET(
     const token = authHeader.substring(7);
     const decodedToken = await adminAuth.verifyIdToken(token);
 
-    const doc = await adminDb.collection('recurringSchedules').doc(params.id).get();
+    const { id } = await params;
+    const doc = await adminDb.collection('recurringSchedules').doc(id).get();
 
     if (!doc.exists) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -36,7 +37,7 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -47,7 +48,8 @@ export async function PATCH(
     const token = authHeader.substring(7);
     const decodedToken = await adminAuth.verifyIdToken(token);
 
-    const doc = await adminDb.collection('recurringSchedules').doc(params.id).get();
+    const { id } = await params;
+    const doc = await adminDb.collection('recurringSchedules').doc(id).get();
 
     if (!doc.exists) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -59,7 +61,7 @@ export async function PATCH(
     }
 
     const updates = await request.json();
-    await adminDb.collection('recurringSchedules').doc(params.id).update({
+    await adminDb.collection('recurringSchedules').doc(id).update({
       ...updates,
       updatedAt: new Date(),
     });
@@ -75,7 +77,7 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -86,7 +88,8 @@ export async function DELETE(
     const token = authHeader.substring(7);
     const decodedToken = await adminAuth.verifyIdToken(token);
 
-    const doc = await adminDb.collection('recurringSchedules').doc(params.id).get();
+    const { id } = await params;
+    const doc = await adminDb.collection('recurringSchedules').doc(id).get();
 
     if (!doc.exists) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -97,7 +100,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    await adminDb.collection('recurringSchedules').doc(params.id).update({
+    await adminDb.collection('recurringSchedules').doc(id).update({
       status: 'cancelled',
       updatedAt: new Date(),
     });
