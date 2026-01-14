@@ -51,7 +51,9 @@ export default function RecurringSchedulesPage() {
 
   const fetchSchedules = async () => {
     try {
-      const token = await user?.getIdToken();
+      if (!user) return;
+
+      const token = await user.getIdToken();
       const response = await fetch('/api/recurring-schedules', {
         headers: { 'Authorization': `Bearer ${token}` },
       });
