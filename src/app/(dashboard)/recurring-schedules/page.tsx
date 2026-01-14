@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/lib/stores/authStore';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -32,7 +32,7 @@ interface RecurringSchedule {
 }
 
 export default function RecurringSchedulesPage() {
-  const { user } = useAuth();
+  const user = useAuthStore((state) => state.user);
   const router = useRouter();
   const [schedules, setSchedules] = useState<RecurringSchedule[]>([]);
   const [students, setStudents] = useState<Record<string, any>>({});
