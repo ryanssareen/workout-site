@@ -4,6 +4,7 @@ import {
 } from 'firebase/firestore';
 import { getDbInstance } from './config';
 import { Workout, WorkoutFormData, WorkoutComment, WorkoutRating, PersonalRecord, PRCategory } from '@/types';
+import { RecurringSchedule, CreateRecurringScheduleInput } from '@/types/recurring';
 
 export async function createWorkout(data: WorkoutFormData, createdBy: string): Promise<string> {
   try {
@@ -611,5 +612,107 @@ export async function deletePersonalRecord(recordId: string): Promise<void> {
     await deleteDoc(doc(getDbInstance(), 'personalRecords', recordId));
   } catch (error: any) {
     throw new Error(error.message || 'Failed to delete personal record');
+  }
+}
+
+// Recurring Schedules
+
+export async function createRecurringSchedule(
+  input: CreateRecurringScheduleInput
+): Promise<string> {
+  try {
+    const now = new Date();
+    const nextSendDate = new Date(now.getTime() + input.intervalDays * 24 * 60 * 60 * 1000);
+
+    const scheduleData: any = {
+      coachId: input.coachId,
+      studentId: input.studentId,
+      intervalDays: input.intervalDays,
+      workoutTemplate: input.workoutTemplate,
+      endCondition: {
+        type: input.endCondition.type,
+        ...(input.endCondition.type === 'date' && {
+          endDate: Timestamp.fromDate(input.endCondition.endDate!)
+        }),
+        ...(input.endCondition.type === 'count' && {
+          remainingCount: input.endCondition.totalCount!,
+          totalCount: input.endCondition.totalCount!
+        })
+      },
+      nextSendDate: Timestamp.fromDate(nextSendDate),
+      status: 'active',
+      sentWorkoutIds: [],
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+
+    const docRef = await addDoc(
+      collection(getDbInstance(), 'recurringSchedules'),
+      scheduleData
+    );
+    return docRef.id;
+  } catch (error: any) {
+    throw new Error(error.message || 'Failed to create recurring schedule');
+  }
+}
+
+export async function getCoachRecurringSchedules(
+  coachId: string
+): Promise<RecurringSchedule[]> {
+  try {
+    const q = query(
+      collection(getDbInstance(), 'recurringSchedules'),
+      where('coachId', '==', coachId),
+      orderBy('nextSendDate', 'asc')
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as RecurringSchedule[];
+  } catch (error) {
+    console.error('Error fetching recurring schedules:', error);
+    return [];
+  }
+}
+
+export async function getRecurringSchedule(id: string): Promise<RecurringSchedule | null> {
+  try {
+    const docRef = doc(getDbInstance(), 'recurringSchedules', id);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() } as RecurringSchedule;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching recurring schedule:', error);
+    return null;
+  }
+}
+
+export async function updateRecurringSchedule(
+  id: string,
+  updates: Partial<RecurringSchedule>
+): Promise<void> {
+  try {
+    const docRef = doc(getDbInstance(), 'recurringSchedules', id);
+    await updateDoc(docRef, {
+      ...updates,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error: any) {
+    throw new Error(error.message || 'Failed to update recurring schedule');
+  }
+}
+
+export async function deleteRecurringSchedule(id: string): Promise<void> {
+  try {
+    const docRef = doc(getDbInstance(), 'recurringSchedules', id);
+    await updateDoc(docRef, {
+      status: 'cancelled',
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error: any) {
+    throw new Error(error.message || 'Failed to cancel recurring schedule');
   }
 }

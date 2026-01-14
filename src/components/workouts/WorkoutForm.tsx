@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { workoutSchema, WorkoutSchema } from '@/lib/schemas/workout';
@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Switch } from '@/components/ui/switch';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { format } from 'date-fns';
 import { CalendarIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -37,8 +39,15 @@ const TAG_COLORS: Record<WorkoutTag, string> = {
   race: 'bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200',
 };
 
+export interface RecurringConfig {
+  intervalDays: number;
+  endConditionType: 'date' | 'count' | 'none';
+  endDate?: Date;
+  repeatCount?: number;
+}
+
 interface WorkoutFormProps {
-  onSubmit: (data: WorkoutSchema) => Promise<void>;
+  onSubmit: (data: WorkoutSchema, recurringConfig?: RecurringConfig) => Promise<void>;
   defaultValues?: Partial<WorkoutSchema>;
   students: Array<{ uid: string; displayName: string; email: string }>;
   loading?: boolean;
@@ -52,6 +61,15 @@ export function WorkoutForm({ onSubmit, defaultValues, students, loading }: Work
       date: new Date(),
       tags: [],
     },
+  });
+
+  // Recurring workout state
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringConfig, setRecurringConfig] = useState<RecurringConfig>({
+    intervalDays: 7,
+    endConditionType: 'none',
+    endDate: undefined,
+    repeatCount: undefined,
   });
 
   // Reset form when defaultValues change (e.g., when AI data loads)
@@ -82,8 +100,16 @@ export function WorkoutForm({ onSubmit, defaultValues, students, loading }: Work
     }
   };
 
+  const handleFormSubmit = async (data: WorkoutSchema) => {
+    if (isRecurring) {
+      await onSubmit(data, recurringConfig);
+    } else {
+      await onSubmit(data);
+    }
+  };
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
       {/* Workout Name */}
       <div className="space-y-2">
         <Label htmlFor="name">Workout Name *</Label>
@@ -240,9 +266,132 @@ export function WorkoutForm({ onSubmit, defaultValues, students, loading }: Work
         {errors.assignedTo && <p className="text-sm text-red-500">{errors.assignedTo.message}</p>}
       </div>
 
+      {/* Recurring Workout Section */}
+      <div className="border-t pt-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <Label htmlFor="recurring-toggle" className="text-base font-semibold cursor-pointer">
+              Make this recurring?
+            </Label>
+            <p className="text-sm text-muted-foreground mt-1">
+              Automatically send this workout at regular intervals
+            </p>
+          </div>
+          <Switch
+            id="recurring-toggle"
+            checked={isRecurring}
+            onCheckedChange={setIsRecurring}
+          />
+        </div>
+
+        {isRecurring && (
+          <div className="pl-4 border-l-2 border-primary space-y-4 animate-in fade-in duration-200">
+            {/* Interval selector */}
+            <div className="space-y-2">
+              <Label>Send every</Label>
+              <Select
+                value={recurringConfig.intervalDays.toString()}
+                onValueChange={(v) => setRecurringConfig({
+                  ...recurringConfig,
+                  intervalDays: parseInt(v)
+                })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">7 days (weekly)</SelectItem>
+                  <SelectItem value="14">14 days (bi-weekly)</SelectItem>
+                  <SelectItem value="21">21 days (every 3 weeks)</SelectItem>
+                  <SelectItem value="28">28 days (monthly)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* End condition selector */}
+            <div className="space-y-3">
+              <Label>End condition</Label>
+              <RadioGroup
+                value={recurringConfig.endConditionType}
+                onValueChange={(v: any) => setRecurringConfig({
+                  ...recurringConfig,
+                  endConditionType: v,
+                  endDate: undefined,
+                  repeatCount: undefined,
+                })}
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="none" id="end-none" />
+                  <Label htmlFor="end-none" className="font-normal cursor-pointer">
+                    Never (continue indefinitely)
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="date" id="end-date" />
+                  <Label htmlFor="end-date" className="font-normal cursor-pointer">
+                    Until a specific date
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="count" id="end-count" />
+                  <Label htmlFor="end-count" className="font-normal cursor-pointer">
+                    After N repetitions
+                  </Label>
+                </div>
+              </RadioGroup>
+
+              {recurringConfig.endConditionType === 'date' && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !recurringConfig.endDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {recurringConfig.endDate
+                        ? format(recurringConfig.endDate, 'PPP')
+                        : 'Pick end date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={recurringConfig.endDate}
+                      onSelect={(date) => setRecurringConfig({
+                        ...recurringConfig,
+                        endDate: date as Date
+                      })}
+                      initialFocus
+                      disabled={(date) => date < new Date()}
+                    />
+                  </PopoverContent>
+                </Popover>
+              )}
+
+              {recurringConfig.endConditionType === 'count' && (
+                <Input
+                  type="number"
+                  min="1"
+                  placeholder="Number of times to repeat"
+                  value={recurringConfig.repeatCount || ''}
+                  onChange={(e) => setRecurringConfig({
+                    ...recurringConfig,
+                    repeatCount: parseInt(e.target.value) || undefined
+                  })}
+                />
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Submit Button */}
       <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? 'Saving...' : 'Create Workout'}
+        {loading ? 'Saving...' : isRecurring ? 'Create Recurring Schedule' : 'Create Workout'}
       </Button>
     </form>
   );
