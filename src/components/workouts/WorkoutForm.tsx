@@ -56,10 +56,15 @@ export function WorkoutForm({ onSubmit, defaultValues, students, loading }: Work
   const { register, handleSubmit, formState: { errors, isSubmitting }, setValue, watch, control, reset } = useForm<WorkoutSchema>({
     resolver: zodResolver(workoutSchema),
     defaultValues: defaultValues || {
-      type: 'strength',
+      type: 'run',
       date: new Date(),
       tags: [],
       isRecurring: false,
+      run: {
+        distance: 5,
+        distanceUnit: 'km',
+        time: 30,
+      },
     },
   });
 
