@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format, addMonths } from 'date-fns';
-import { CalendarIcon, X, Repeat } from 'lucide-react';
+import { CalendarIcon, X, Repeat, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SwimForm } from './SwimForm';
 import { BikeForm } from './BikeForm';
@@ -53,7 +53,7 @@ interface WorkoutFormProps {
 }
 
 export function WorkoutForm({ onSubmit, defaultValues, students, loading }: WorkoutFormProps) {
-  const { register, handleSubmit, formState: { errors }, setValue, watch, control, reset } = useForm<WorkoutSchema>({
+  const { register, handleSubmit, formState: { errors, isSubmitting }, setValue, watch, control, reset } = useForm<WorkoutSchema>({
     resolver: zodResolver(workoutSchema),
     defaultValues: defaultValues || {
       type: 'strength',
@@ -106,8 +106,37 @@ export function WorkoutForm({ onSubmit, defaultValues, students, loading }: Work
     }
   };
 
+  // Handle form submission with error logging
+  const onFormSubmit = handleSubmit(
+    (data) => {
+      console.log('✅ Form valid, submitting:', data);
+      return onSubmit(data);
+    },
+    (formErrors) => {
+      console.error('❌ Form validation errors:', formErrors);
+    }
+  );
+
+  // Get all error messages for display
+  const allErrors = Object.entries(errors).filter(([key, value]) => value?.message);
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={onFormSubmit} className="space-y-6">
+      {/* Show all validation errors at top */}
+      {allErrors.length > 0 && (
+        <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-lg p-4">
+          <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-medium mb-2">
+            <AlertCircle className="h-4 w-4" />
+            Please fix the following errors:
+          </div>
+          <ul className="list-disc list-inside text-sm text-red-600 dark:text-red-400 space-y-1">
+            {allErrors.map(([key, error]) => (
+              <li key={key}>{error?.message}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Workout Name */}
       <div className="space-y-2">
         <Label htmlFor="name">Workout Name *</Label>
@@ -350,8 +379,8 @@ export function WorkoutForm({ onSubmit, defaultValues, students, loading }: Work
       </div>
 
       {/* Submit Button */}
-      <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? 'Saving...' : isRecurring ? 'Create Recurring Workout' : 'Create Workout'}
+      <Button type="submit" className="w-full" disabled={loading || isSubmitting}>
+        {loading || isSubmitting ? 'Saving...' : isRecurring ? 'Create Recurring Workout' : 'Create Workout'}
       </Button>
     </form>
   );
