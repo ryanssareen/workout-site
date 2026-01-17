@@ -45,3 +45,7 @@ next-env.d.ts
 firebase-service-account.json
 *-firebase-adminsdk-*.json
 # Trigger Vercel redeploy with updated env vars
+
+# SSH keys
+ryan
+ryan.pub
