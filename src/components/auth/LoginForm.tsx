@@ -71,10 +71,7 @@ export function LoginForm() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="password" className="text-sm font-medium">Password</Label>
-              <Link 
-                href="/reset-password" 
-                className="text-xs text-muted-foreground hover:text-primary transition-colors"
-              >
+              <Link href="/reset-password" className="text-xs text-muted-foreground hover:text-primary transition-colors">
                 Forgot password?
               </Link>
             </div>
@@ -92,36 +89,23 @@ export function LoginForm() {
             </div>
           </div>
 
-          <Button 
-            type="submit" 
-            className="w-full h-11 font-medium shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all" 
-            disabled={loading || waitingForAuth}
-          >
-            {waitingForAuth ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Redirecting...</>
-            ) : loading ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Signing in...</>
-            ) : (
-              <>Sign In<ArrowRight className="w-4 h-4 ml-2" /></>
-            )}
+          <Button type="submit" className="w-full h-11 font-medium shadow-lg shadow-primary/25 hover:shadow-xl transition-all" disabled={loading || waitingForAuth}>
+            {waitingForAuth ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Redirecting...</> 
+              : loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Signing in...</> 
+              : <>Sign In<ArrowRight className="w-4 h-4 ml-2" /></>}
           </Button>
         </form>
 
         <div className="mt-6 text-center">
           <p className="text-sm text-muted-foreground">
             Don&apos;t have an account?{' '}
-            <Link href="/register" className="text-primary hover:underline font-medium">
-              Sign up free
-            </Link>
+            <Link href="/register" className="text-primary hover:underline font-medium">Sign up free</Link>
           </p>
         </div>
       </div>
 
-      {/* Back to home */}
       <div className="mt-6 text-center">
-        <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-          ← Back to home
-        </Link>
+        <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">← Back to home</Link>
       </div>
     </div>
   );
