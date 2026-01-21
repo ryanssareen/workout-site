@@ -66,6 +66,8 @@ export interface Workout {
   completedLate?: boolean; // True if completed after due date
   // Reminder tracking
   reminderSent?: boolean;
+  // Template tracking
+  templateId?: string; // ID of template created from this workout
 }
 
 export interface WorkoutComment {

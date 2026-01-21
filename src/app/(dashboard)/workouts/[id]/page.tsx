@@ -8,7 +8,7 @@ import { Workout } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Edit, ArrowLeft, Calendar, Clock, CheckCircle2, Circle, Activity, BookmarkPlus } from 'lucide-react';
+import { Loader2, Edit, ArrowLeft, Calendar, Clock, CheckCircle2, Circle, Activity, BookmarkPlus, BookmarkX } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -46,6 +46,7 @@ export default function WorkoutDetailPage() {
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
   const [templateName, setTemplateName] = useState('');
+  const [timeframe, setTimeframe] = useState('');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -129,7 +130,9 @@ export default function WorkoutDetailPage() {
           type: workout.type,
           description: workout.description || '',
           duration: workout.duration,
+          timeframe: timeframe || null,
           createdBy: user.uid,
+          workoutId: workout.id, // Track which workout created this template
         }),
       });
 
@@ -137,11 +140,50 @@ export default function WorkoutDetailPage() {
         throw new Error('Failed to save template');
       }
 
+      const data = await response.json();
+      
+      // Update local workout state with templateId
+      setWorkout({
+        ...workout,
+        templateId: data.id,
+      });
+
       toast.success('Saved as template!');
       setShowTemplateDialog(false);
       setTemplateName('');
+      setTimeframe('');
     } catch (error: any) {
       toast.error(error.message || 'Failed to save template');
+    } finally {
+      setIsSavingTemplate(false);
+    }
+  };
+
+  const handleUnsaveTemplate = async () => {
+    if (!workout || !user || !workout.templateId) return;
+
+    setIsSavingTemplate(true);
+    try {
+      const response = await fetch(
+        `/api/templates?templateId=${workout.templateId}&userId=${user.uid}`,
+        {
+          method: 'DELETE',
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to unsave template');
+      }
+
+      // Update local workout state to remove templateId
+      setWorkout({
+        ...workout,
+        templateId: undefined,
+      });
+
+      toast.success('Template removed!');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to unsave template');
     } finally {
       setIsSavingTemplate(false);
     }
@@ -150,6 +192,7 @@ export default function WorkoutDetailPage() {
   const openTemplateDialog = () => {
     if (workout) {
       setTemplateName(workout.name);
+      setTimeframe('');
       setShowTemplateDialog(true);
     }
   };
@@ -168,6 +211,7 @@ export default function WorkoutDetailPage() {
   const isPastWorkout = workout.date.toDate() < new Date();
   const isMissed = isPastWorkout && !workout.completed;
   const isStudent = user.role === 'student';
+  const hasTemplate = !!(workout as any).templateId;
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -180,21 +224,36 @@ export default function WorkoutDetailPage() {
         </Button>
 
         {canEdit && (
-          <>
+          <div className="flex gap-2">
             <Button asChild>
               <Link href={`/workouts/${workout.id}/edit`}>
                 <Edit className="mr-2 h-4 w-4" />
                 Edit
               </Link>
             </Button>
-            <Button 
-              onClick={openTemplateDialog} 
-              variant="outline"
-            >
-              <BookmarkPlus className="mr-2 h-4 w-4" />
-              Save as Template
-            </Button>
-          </>
+            {hasTemplate ? (
+              <Button 
+                onClick={handleUnsaveTemplate} 
+                variant="outline"
+                disabled={isSavingTemplate}
+              >
+                {isSavingTemplate ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <BookmarkX className="mr-2 h-4 w-4" />
+                )}
+                Unsave Template
+              </Button>
+            ) : (
+              <Button 
+                onClick={openTemplateDialog} 
+                variant="outline"
+              >
+                <BookmarkPlus className="mr-2 h-4 w-4" />
+                Save as Template
+              </Button>
+            )}
+          </div>
         )}
       </div>
 
@@ -226,6 +285,12 @@ export default function WorkoutDetailPage() {
                   <Badge variant="outline" className="border-orange-500 text-orange-600">
                     <Activity className="h-3 w-3 mr-1" />
                     via Strava
+                  </Badge>
+                )}
+                {hasTemplate && (
+                  <Badge variant="outline" className="border-blue-500 text-blue-600">
+                    <BookmarkPlus className="h-3 w-3 mr-1" />
+                    Saved as Template
                   </Badge>
                 )}
               </div>
@@ -400,18 +465,30 @@ export default function WorkoutDetailPage() {
           <DialogHeader>
             <DialogTitle>Save as Template</DialogTitle>
             <DialogDescription>
-              Create a reusable template from this workout.
+              Create a reusable template from this workout. This workout can only be saved as a template once.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="template-name">Template Name</Label>
+              <Label htmlFor="template-name">Template Name *</Label>
               <Input
                 id="template-name"
                 value={templateName}
                 onChange={(e) => setTemplateName(e.target.value)}
                 placeholder="Enter template name"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="timeframe">Timeframe</Label>
+              <Input
+                id="timeframe"
+                value={timeframe}
+                onChange={(e) => setTimeframe(e.target.value)}
+                placeholder="e.g., 4 weeks, 8 weeks, 12 weeks"
+              />
+              <p className="text-xs text-muted-foreground">
+                Optional: Specify how long this template is designed for
+              </p>
             </div>
           </div>
           <DialogFooter>
