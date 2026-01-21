@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Workout } from '@/types';
 import { WorkoutTag } from '@/types/workout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
@@ -11,20 +11,19 @@ import { Calendar, Clock, Edit, Trash2, CheckCircle2, Circle, Activity, MessageS
 import { CompletionDialog, UncompletionDialog } from './CompletionDialog';
 import { cn } from '@/lib/utils';
 
-// Tag colors for visual distinction
 const TAG_COLORS: Record<WorkoutTag, string> = {
-  easy: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-green-300',
-  moderate: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 border-yellow-300',
-  hard: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-300',
-  recovery: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border-blue-300',
-  speed: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 border-orange-300',
-  endurance: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border-purple-300',
-  intervals: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200 border-pink-300',
-  tempo: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 border-indigo-300',
-  long: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200 border-cyan-300',
-  strength: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-amber-300',
-  technique: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200 border-teal-300',
-  race: 'bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200 border-rose-300',
+  easy: 'bg-green-500/10 text-green-600 border-green-500/20',
+  moderate: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
+  hard: 'bg-red-500/10 text-red-600 border-red-500/20',
+  recovery: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+  speed: 'bg-orange-500/10 text-orange-600 border-orange-500/20',
+  endurance: 'bg-purple-500/10 text-purple-600 border-purple-500/20',
+  intervals: 'bg-pink-500/10 text-pink-600 border-pink-500/20',
+  tempo: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20',
+  long: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20',
+  strength: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+  technique: 'bg-teal-500/10 text-teal-600 border-teal-500/20',
+  race: 'bg-rose-500/10 text-rose-600 border-rose-500/20',
 };
 
 interface WorkoutCardProps {
@@ -37,15 +36,7 @@ interface WorkoutCardProps {
   isCoach?: boolean;
 }
 
-export function WorkoutCard({
-  workout,
-  onEdit,
-  onDelete,
-  onToggleComplete,
-  onViewDetails,
-  commentCount = 0,
-  isCoach = false,
-}: WorkoutCardProps) {
+export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onViewDetails, commentCount = 0, isCoach = false }: WorkoutCardProps) {
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
   const [showUncompletionDialog, setShowUncompletionDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -55,282 +46,120 @@ export function WorkoutCard({
   const isUpcoming = !isPastWorkout && !workout.completed;
   const isMissed = isPastWorkout && !workout.completed;
   const isCompletedLate = workout.completed && workout.completedLate;
-  
-  // Get tags from workout (type assertion since older workouts may not have tags)
   const tags = (workout as any).tags as WorkoutTag[] | undefined;
 
   const handleCompletionClick = () => {
-    // Prevent coaches from completing workouts
-    if (isCoach) {
-      alert('Workout is to be completed by the Student');
-      return;
-    }
-
-    // Prevent completing workouts before their due date
+    if (isCoach) { alert('Workout is to be completed by the Student'); return; }
     const workoutDate = workout.date.toDate();
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set to start of today
-    workoutDate.setHours(0, 0, 0, 0); // Set to start of workout date
-
+    today.setHours(0, 0, 0, 0);
+    workoutDate.setHours(0, 0, 0, 0);
     if (!workout.completed && workoutDate > today) {
       alert(`This workout is scheduled for ${format(workout.date.toDate(), 'MMM d, yyyy')}. You can only complete it on or after that date.`);
       return;
     }
-
-    if (workout.completed) {
-      setShowUncompletionDialog(true);
-    } else {
-      setShowCompletionDialog(true);
-    }
+    workout.completed ? setShowUncompletionDialog(true) : setShowCompletionDialog(true);
   };
 
   const handleComplete = async (notes?: string) => {
     if (!onToggleComplete) return;
     setIsLoading(true);
-    try {
-      await onToggleComplete(workout.id, true, notes);
-      setShowCompletionDialog(false);
-    } finally {
-      setIsLoading(false);
-    }
+    try { await onToggleComplete(workout.id, true, notes); setShowCompletionDialog(false); } 
+    finally { setIsLoading(false); }
   };
 
   const handleUncomplete = async () => {
     if (!onToggleComplete) return;
     setIsLoading(true);
-    try {
-      await onToggleComplete(workout.id, false);
-      setShowUncompletionDialog(false);
-    } finally {
-      setIsLoading(false);
-    }
+    try { await onToggleComplete(workout.id, false); setShowUncompletionDialog(false); } 
+    finally { setIsLoading(false); }
   };
 
-  const getTypeBadgeVariant = (type: string) => {
-    switch (type) {
-      case 'swim': return 'default';
-      case 'run': return 'secondary';
-      case 'bike': return 'outline';
-      case 'strength': return 'destructive';
-      default: return 'default';
-    }
+  const getCardStyle = () => {
+    if (workout.completed && !isCompletedLate) return 'border-l-4 border-l-green-500 bg-green-500/5';
+    if (isCompletedLate) return 'border-l-4 border-l-orange-500 bg-orange-500/5';
+    if (isUpcoming) return 'border-l-4 border-l-blue-500 bg-blue-500/5';
+    if (isMissed) return 'border-l-4 border-l-red-500 bg-red-500/5';
+    return '';
+  };
+
+  const getTypeBadge = (type: string) => {
+    const styles: Record<string, string> = {
+      swim: 'bg-blue-500/10 text-blue-600',
+      run: 'bg-green-500/10 text-green-600',
+      bike: 'bg-orange-500/10 text-orange-600',
+      strength: 'bg-purple-500/10 text-purple-600',
+    };
+    return styles[type] || 'bg-muted text-muted-foreground';
   };
 
   return (
     <>
-      <Card
-        className={cn(
-          'relative transition-all duration-200',
-          workout.completed && !isCompletedLate && 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900',
-          isCompletedLate && 'bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-900',
-          isUpcoming && 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900',
-          isMissed && 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900'
-        )}
-      >
-        {/* Completion indicator overlay */}
+      <Card className={cn('relative transition-all hover:shadow-md', getCardStyle())}>
         {workout.completed && (
-          <div className="absolute top-3 right-3">
-            <CheckCircle2 className={cn(
-              'h-6 w-6',
-              isCompletedLate ? 'text-orange-500' : 'text-green-500'
-            )} />
+          <div className="absolute top-4 right-4">
+            <CheckCircle2 className={cn('h-5 w-5', isCompletedLate ? 'text-orange-500' : 'text-green-500')} />
           </div>
         )}
 
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between pr-8">
-            <CardTitle className={cn(
-              'text-lg',
-              workout.completed && !isCompletedLate && 'text-green-700 dark:text-green-400',
-              isCompletedLate && 'text-orange-700 dark:text-orange-400'
-            )}>
-              {workout.name}
-            </CardTitle>
-            <Badge
-              variant={getTypeBadgeVariant(workout.type)}
-              className="capitalize"
-            >
-              {workout.type}
-            </Badge>
+        <CardContent className="p-5">
+          <div className="flex items-start justify-between gap-3 mb-3 pr-6">
+            <div className="space-y-1">
+              <h3 className={cn('font-semibold', workout.completed && 'text-muted-foreground')}>{workout.name}</h3>
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{format(workout.date.toDate(), 'MMM d')}</span>
+                {workout.duration && <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{workout.duration}min</span>}
+              </div>
+            </div>
+            <Badge variant="secondary" className={cn('capitalize text-xs', getTypeBadge(workout.type))}>{workout.type}</Badge>
           </div>
-          <CardDescription className="flex items-center gap-4 mt-2">
-            <span className="flex items-center gap-1">
-              <Calendar className="h-4 w-4" />
-              {format(workout.date.toDate(), 'MMM d, yyyy')}
-            </span>
-            {workout.duration && (
-              <span className="flex items-center gap-1">
-                <Clock className="h-4 w-4" />
-                {workout.duration} min
-              </span>
-            )}
-          </CardDescription>
-        </CardHeader>
 
-        <CardContent className="space-y-4">
-          {/* Workout Tags */}
           {tags && tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {tags.map((tag) => (
-                <span
-                  key={tag}
-                  className={cn(
-                    'px-2 py-0.5 rounded-full text-xs font-medium capitalize border',
-                    TAG_COLORS[tag]
-                  )}
-                >
-                  {tag}
-                </span>
-              ))}
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {tags.map((tag) => <span key={tag} className={cn('px-2 py-0.5 rounded-full text-xs font-medium capitalize border', TAG_COLORS[tag])}>{tag}</span>)}
             </div>
           )}
 
-          <p className={cn(
-            'text-sm text-muted-foreground line-clamp-3',
-            workout.completed && 'line-through opacity-70'
-          )}>
-            {workout.description}
-          </p>
+          <p className={cn('text-sm text-muted-foreground line-clamp-2 mb-3', workout.completed && 'line-through opacity-60')}>{workout.description}</p>
 
-          {/* Status badges */}
-          <div className="flex flex-wrap gap-2">
-            {workout.completed && !isCompletedLate && (
-              <Badge className="bg-green-500 hover:bg-green-600">
-                <CheckCircle2 className="h-3 w-3 mr-1" />
-                Completed
-              </Badge>
-            )}
-            {isCompletedLate && (
-              <Badge className="bg-orange-500 hover:bg-orange-600">
-                <CheckCircle2 className="h-3 w-3 mr-1" />
-                Completed Late
-              </Badge>
-            )}
-            {isUpcoming && (
-              <Badge variant="outline" className="border-blue-500 text-blue-600">
-                <Clock className="h-3 w-3 mr-1" />
-                Upcoming
-              </Badge>
-            )}
-            {workout.completedBy === 'strava' && (
-              <Badge variant="outline" className="border-orange-500 text-orange-600">
-                <Activity className="h-3 w-3 mr-1" />
-                via Strava
-              </Badge>
-            )}
-            {workout.completedBy === 'manual' && workout.completed && !isCompletedLate && (
-              <Badge variant="outline">Manual</Badge>
-            )}
-            {isMissed && (
-              <Badge variant="destructive">
-                Missed
-              </Badge>
-            )}
-            {commentCount > 0 && (
-              <Badge variant="secondary">
-                <MessageSquare className="h-3 w-3 mr-1" />
-                {commentCount}
-              </Badge>
-            )}
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {workout.completed && !isCompletedLate && <Badge className="bg-green-500 hover:bg-green-600 text-xs"><CheckCircle2 className="h-3 w-3 mr-1" />Done</Badge>}
+            {isCompletedLate && <Badge className="bg-orange-500 hover:bg-orange-600 text-xs"><CheckCircle2 className="h-3 w-3 mr-1" />Late</Badge>}
+            {isUpcoming && <Badge variant="outline" className="border-blue-500/50 text-blue-600 text-xs"><Clock className="h-3 w-3 mr-1" />Upcoming</Badge>}
+            {isMissed && <Badge variant="destructive" className="text-xs">Missed</Badge>}
+            {workout.completedBy === 'strava' && <Badge variant="outline" className="border-orange-500/50 text-orange-600 text-xs"><Activity className="h-3 w-3 mr-1" />Strava</Badge>}
+            {commentCount > 0 && <Badge variant="secondary" className="text-xs"><MessageSquare className="h-3 w-3 mr-1" />{commentCount}</Badge>}
           </div>
 
-          {/* Strava stats if available */}
           {workout.actualStats && (
-            <div className="text-xs text-muted-foreground bg-muted/50 rounded-md p-2 space-y-1">
-              <div className="flex gap-4 flex-wrap">
-                {workout.actualStats.distance && (
-                  <span>Distance: {(workout.actualStats.distance / 1000).toFixed(2)} km</span>
-                )}
-                {workout.actualStats.duration && (
-                  <span>Time: {Math.round(workout.actualStats.duration / 60)} min</span>
-                )}
-                {workout.actualStats.calories && (
-                  <span>Calories: {workout.actualStats.calories}</span>
-                )}
+            <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-2.5 mb-3">
+              <div className="flex gap-3 flex-wrap">
+                {workout.actualStats.distance && <span>📏 {(workout.actualStats.distance / 1000).toFixed(2)} km</span>}
+                {workout.actualStats.duration && <span>⏱️ {Math.round(workout.actualStats.duration / 60)} min</span>}
+                {workout.actualStats.calories && <span>🔥 {workout.actualStats.calories} cal</span>}
               </div>
             </div>
           )}
 
-          {/* Completion notes */}
-          {workout.completionNotes && (
-            <div className="text-sm bg-muted/50 rounded-md p-2 italic">
-              &quot;{workout.completionNotes}&quot;
-            </div>
-          )}
+          {workout.completionNotes && <div className="text-sm bg-muted/50 rounded-lg p-2.5 italic text-muted-foreground mb-3">&quot;{workout.completionNotes}&quot;</div>}
 
-          {/* Actions */}
           {hasActions && (
-            <div className="flex items-center gap-2 pt-2">
+            <div className="flex items-center gap-2 pt-2 border-t border-border/50">
               {onToggleComplete && (
-                <Button
-                  variant={workout.completed ? 'outline' : 'default'}
-                  size="sm"
-                  onClick={handleCompletionClick}
-                  className={cn(
-                    'flex-1',
-                    !workout.completed && 'bg-green-600 hover:bg-green-700'
-                  )}
-                >
-                  {workout.completed ? (
-                    <>
-                      <Circle className="h-4 w-4 mr-1" />
-                      Mark Incomplete
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-4 w-4 mr-1" />
-                      Mark Complete
-                    </>
-                  )}
+                <Button variant={workout.completed ? 'outline' : 'default'} size="sm" onClick={handleCompletionClick} className={cn('flex-1 h-9', !workout.completed && 'bg-green-600 hover:bg-green-700')}>
+                  {workout.completed ? <><Circle className="h-4 w-4 mr-1.5" />Undo</> : <><CheckCircle2 className="h-4 w-4 mr-1.5" />Complete</>}
                 </Button>
               )}
-              {onViewDetails && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onViewDetails(workout.id)}
-                >
-                  <MessageSquare className="h-4 w-4" />
-                </Button>
-              )}
-              {onEdit && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onEdit(workout.id)}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-              )}
-              {onDelete && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => onDelete(workout.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              )}
+              {onViewDetails && <Button variant="outline" size="sm" onClick={() => onViewDetails(workout.id)} className="h-9 w-9 p-0"><MessageSquare className="h-4 w-4" /></Button>}
+              {onEdit && <Button variant="outline" size="sm" onClick={() => onEdit(workout.id)} className="h-9 w-9 p-0"><Edit className="h-4 w-4" /></Button>}
+              {onDelete && <Button variant="outline" size="sm" onClick={() => onDelete(workout.id)} className="h-9 w-9 p-0 text-red-500 hover:text-red-600 hover:bg-red-500/10"><Trash2 className="h-4 w-4" /></Button>}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Completion dialogs */}
-      <CompletionDialog
-        open={showCompletionDialog}
-        onOpenChange={setShowCompletionDialog}
-        workoutName={workout.name}
-        onConfirm={handleComplete}
-        isLoading={isLoading}
-      />
-      <UncompletionDialog
-        open={showUncompletionDialog}
-        onOpenChange={setShowUncompletionDialog}
-        workoutName={workout.name}
-        onConfirm={handleUncomplete}
-        isLoading={isLoading}
-      />
+      <CompletionDialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog} workoutName={workout.name} onConfirm={handleComplete} isLoading={isLoading} />
+      <UncompletionDialog open={showUncompletionDialog} onOpenChange={setShowUncompletionDialog} workoutName={workout.name} onConfirm={handleUncomplete} isLoading={isLoading} />
     </>
   );
 }
