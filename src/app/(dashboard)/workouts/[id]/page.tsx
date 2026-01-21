@@ -16,6 +16,22 @@ import { CommentSection } from '@/components/workouts/comments';
 import { CompletionDialog, UncompletionDialog } from '@/components/workouts/CompletionDialog';
 import { WorkoutRecommendations } from '@/components/ai/WorkoutRecommendations';
 import { cn } from '@/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 export default function WorkoutDetailPage() {
   const router = useRouter();
@@ -28,6 +44,8 @@ export default function WorkoutDetailPage() {
   const [showUncompletionDialog, setShowUncompletionDialog] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+  const [showTemplateDialog, setShowTemplateDialog] = useState(false);
+  const [templateName, setTemplateName] = useState('');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -107,7 +125,7 @@ export default function WorkoutDetailPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: workout.name,
+          name: templateName,
           type: workout.type,
           description: workout.description || '',
           duration: workout.duration,
@@ -120,11 +138,19 @@ export default function WorkoutDetailPage() {
       }
 
       toast.success('Saved as template!');
-      router.push('/templates');
+      setShowTemplateDialog(false);
+      setTemplateName('');
     } catch (error: any) {
       toast.error(error.message || 'Failed to save template');
     } finally {
       setIsSavingTemplate(false);
+    }
+  };
+
+  const openTemplateDialog = () => {
+    if (workout) {
+      setTemplateName(workout.name);
+      setShowTemplateDialog(true);
     }
   };
 
@@ -141,6 +167,7 @@ export default function WorkoutDetailPage() {
   const canEdit = user.role === 'coach' && workout.createdBy === user.uid;
   const isPastWorkout = workout.date.toDate() < new Date();
   const isMissed = isPastWorkout && !workout.completed;
+  const isStudent = user.role === 'student';
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -161,15 +188,10 @@ export default function WorkoutDetailPage() {
               </Link>
             </Button>
             <Button 
-              onClick={handleSaveAsTemplate} 
+              onClick={openTemplateDialog} 
               variant="outline"
-              disabled={isSavingTemplate}
             >
-              {isSavingTemplate ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <BookmarkPlus className="mr-2 h-4 w-4" />
-              )}
+              <BookmarkPlus className="mr-2 h-4 w-4" />
               Save as Template
             </Button>
           </>
@@ -293,31 +315,53 @@ export default function WorkoutDetailPage() {
             </div>
           )}
 
-          {/* Completion button */}
-          <Button
-            onClick={() =>
-              workout.completed
-                ? setShowUncompletionDialog(true)
-                : setShowCompletionDialog(true)
-            }
-            className={cn(
-              'w-full',
-              !workout.completed && 'bg-green-600 hover:bg-green-700'
-            )}
-            variant={workout.completed ? 'outline' : 'default'}
-          >
-            {workout.completed ? (
-              <>
-                <Circle className="h-4 w-4 mr-2" />
-                Mark as Incomplete
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                Mark as Complete
-              </>
-            )}
-          </Button>
+          {/* Completion button - only show for students */}
+          {isStudent ? (
+            <Button
+              onClick={() =>
+                workout.completed
+                  ? setShowUncompletionDialog(true)
+                  : setShowCompletionDialog(true)
+              }
+              className={cn(
+                'w-full',
+                !workout.completed && 'bg-green-600 hover:bg-green-700'
+              )}
+              variant={workout.completed ? 'outline' : 'default'}
+            >
+              {workout.completed ? (
+                <>
+                  <Circle className="h-4 w-4 mr-2" />
+                  Mark as Incomplete
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Mark as Complete
+                </>
+              )}
+            </Button>
+          ) : (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="w-full">
+                    <Button
+                      className="w-full"
+                      variant="outline"
+                      disabled
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      {workout.completed ? 'Completed' : 'Complete Workout'}
+                    </Button>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Only students can complete workouts</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </CardContent>
       </Card>
 
@@ -349,6 +393,51 @@ export default function WorkoutDetailPage() {
         onConfirm={handleUncomplete}
         isLoading={isUpdating}
       />
+
+      {/* Save as Template dialog */}
+      <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save as Template</DialogTitle>
+            <DialogDescription>
+              Create a reusable template from this workout.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="template-name">Template Name</Label>
+              <Input
+                id="template-name"
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                placeholder="Enter template name"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowTemplateDialog(false)}
+              disabled={isSavingTemplate}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveAsTemplate}
+              disabled={isSavingTemplate || !templateName.trim()}
+            >
+              {isSavingTemplate ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Template'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
