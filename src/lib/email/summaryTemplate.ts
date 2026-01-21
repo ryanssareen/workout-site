@@ -140,7 +140,7 @@ export function generateSummaryEmail(data: SummaryData): string {
           <!-- Footer -->
           <div style="background: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #eee;">
             <p style="margin: 0; color: #666; font-size: 12px;">
-              This summary was sent from Workout Tracker.
+              This summary was sent from CoachTrack.
             </p>
             <p style="margin: 5px 0 0 0; color: #999; font-size: 11px;">
               You're receiving this because you have workouts assigned in the app.

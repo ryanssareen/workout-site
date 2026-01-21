@@ -6,7 +6,7 @@ import { ClientProviders } from '@/components/providers/ClientProviders';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Workout Tracker - Coach & Student Platform',
+  title: 'CoachTrack - Coach & Student Platform',
   description: 'Manage and track workouts for coaches and students',
 };
 

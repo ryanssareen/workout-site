@@ -125,7 +125,7 @@ export default function CalendarPage() {
     const icsLines = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//Workout Tracker//EN',
+      'PRODID:-//CoachTrack//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
     ];

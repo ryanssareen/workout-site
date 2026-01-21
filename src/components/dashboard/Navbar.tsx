@@ -41,7 +41,7 @@ export function Navbar() {
             <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/20">
               <Dumbbell className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-bold text-lg hidden sm:inline">Workout Tracker</span>
+            <span className="font-bold text-lg hidden sm:inline">CoachTrack</span>
           </Link>
 
           {/* Desktop Navigation */}

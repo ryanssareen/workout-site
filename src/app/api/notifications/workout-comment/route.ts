@@ -88,7 +88,7 @@ function generateNotificationEmail(
           <!-- Footer -->
           <div style="background: #f8f9fa; padding: 15px 30px; text-align: center; border-top: 1px solid #eee;">
             <p style="margin: 0; color: #666; font-size: 12px;">
-              This notification was sent from Workout Tracker.
+              This notification was sent from CoachTrack.
             </p>
           </div>
         </div>
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
     const workoutUrl = `${appUrl}/workouts/${workoutId}`;
 
     const sendSmtpEmail = new brevo.SendSmtpEmail();
-    sendSmtpEmail.sender = { name: 'Workout Tracker', email: 'ryansareen6@gmail.com' };
+    sendSmtpEmail.sender = { name: 'CoachTrack', email: 'ryansareen6@gmail.com' };
     sendSmtpEmail.to = [{ email: coachEmail, name: coachName }];
     sendSmtpEmail.subject = `💬 ${studentName} commented on "${workoutName}"`;
     sendSmtpEmail.htmlContent = generateNotificationEmail(
