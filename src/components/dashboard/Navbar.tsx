@@ -5,14 +5,16 @@ import { signOut } from '@/lib/firebase/auth';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
-import { Dumbbell, LogOut, LayoutDashboard, Calendar as CalendarIcon, ListChecks, Settings, TrendingUp, Trophy, Brain, Lightbulb } from 'lucide-react';
+import { Dumbbell, LogOut, LayoutDashboard, Calendar as CalendarIcon, ListChecks, Settings, TrendingUp, Trophy, Brain, Lightbulb, Menu, X } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { useState } from 'react';
 
 export function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = async () => {
     await signOut();
@@ -26,59 +28,110 @@ export function Navbar() {
     { href: '/progress', label: 'Progress', icon: TrendingUp },
     { href: '/records', label: 'Records', icon: Trophy },
     { href: '/ai-coach', label: 'AI Coach', icon: Brain },
-    ...(user?.role === 'coach' ? [{ href: '/coach-suggestions', label: 'AI Suggestions', icon: Lightbulb }] : []),
+    ...(user?.role === 'coach' ? [{ href: '/coach-suggestions', label: 'Suggestions', icon: Lightbulb }] : []),
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
 
   return (
-    <nav className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto px-4 py-3">
-        <div className="flex items-center justify-between">
+    <nav className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-xl">
+      <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center">
-              <Dumbbell className="h-5 w-5 text-primary-foreground" />
+          <Link href="/dashboard" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/20">
+              <Dumbbell className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-bold text-xl hidden sm:inline">Workout Tracker</span>
+            <span className="font-bold text-lg hidden sm:inline">Workout Tracker</span>
           </Link>
 
-          {/* Navigation Links */}
-          <div className="flex items-center gap-1">
+          {/* Desktop Navigation */}
+          <div className="hidden lg:flex items-center gap-1 bg-muted/50 rounded-xl p-1">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
-              
               return (
                 <Link key={item.href} href={item.href}>
                   <Button
-                    variant={isActive ? 'default' : 'ghost'}
+                    variant="ghost"
                     size="sm"
                     className={cn(
-                      "gap-2",
-                      isActive && "shadow-sm"
+                      'gap-2 h-9 rounded-lg transition-all',
+                      isActive && 'bg-background shadow-sm text-primary'
                     )}
                   >
                     <Icon className="h-4 w-4" />
-                    <span className="hidden md:inline">{item.label}</span>
+                    <span className="text-sm">{item.label}</span>
                   </Button>
                 </Link>
               );
             })}
           </div>
 
-          {/* User Actions */}
+          {/* Right Side */}
           <div className="flex items-center gap-3">
-            <div className="hidden lg:flex flex-col items-end">
-              <span className="text-sm font-medium">{user?.displayName}</span>
-              <span className="text-xs text-muted-foreground capitalize">{user?.role}</span>
+            {/* User Info - Desktop */}
+            <div className="hidden md:flex items-center gap-3 px-3 py-1.5 rounded-xl bg-muted/50">
+              <div className="text-right">
+                <p className="text-sm font-medium leading-none">{user?.displayName}</p>
+                <p className="text-xs text-muted-foreground capitalize">{user?.role}</p>
+              </div>
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-primary-foreground text-sm font-bold">
+                {user?.displayName?.charAt(0).toUpperCase()}
+              </div>
             </div>
+
             <ThemeToggle />
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 lg:mr-2" />
-              <span className="hidden lg:inline">Logout</span>
+            
+            {/* Logout - Desktop */}
+            <Button variant="outline" size="sm" onClick={handleLogout} className="hidden md:flex h-9">
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
+
+            {/* Mobile Menu Toggle */}
+            <Button variant="ghost" size="sm" className="lg:hidden h-9 w-9 p-0" onClick={() => setMobileOpen(!mobileOpen)}>
+              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
           </div>
         </div>
+
+        {/* Mobile Navigation */}
+        {mobileOpen && (
+          <div className="lg:hidden pb-4 border-t mt-2 pt-4 animate-in slide-in-from-top-2 duration-200">
+            <div className="grid grid-cols-4 gap-2 mb-4">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
+                return (
+                  <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)}>
+                    <div className={cn(
+                      'flex flex-col items-center gap-1 p-3 rounded-xl transition-all',
+                      isActive ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
+                    )}>
+                      <Icon className="h-5 w-5" />
+                      <span className="text-xs font-medium">{item.label}</span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+            <div className="flex items-center justify-between pt-3 border-t">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-primary-foreground text-sm font-bold">
+                  {user?.displayName?.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{user?.displayName}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{user?.role}</p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   );
