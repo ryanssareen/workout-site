@@ -34,7 +34,7 @@ export default function Home() {
             <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/20">
               <Dumbbell className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-bold text-lg">CoachTrack</span>
+            <span className="font-bold text-lg">Workout Tracker</span>
           </Link>
           <div className="flex gap-2 items-center">
             <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex"><Link href="/features">Features</Link></Button>
@@ -57,7 +57,7 @@ export default function Home() {
                 <Zap className="h-3.5 w-3.5" />Simple & Powerful
               </div>
               <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-tight">
-                The CoachTrack<span className="block bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent">Coaches Love</span>
+                The Workout Tracker<span className="block bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent">Coaches Love</span>
               </h1>
               <p className="text-lg md:text-xl text-muted-foreground max-w-xl mx-auto">Plan workouts, track completion, sync with Strava, and send automated reminders. All in one place.</p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
@@ -118,7 +118,7 @@ export default function Home() {
         <section className="py-16 md:py-20">
           <div className="container mx-auto px-4 max-w-2xl text-center space-y-6">
             <h2 className="text-2xl md:text-3xl font-bold">Ready to get started?</h2>
-            <p className="text-muted-foreground">Join coaches and athletes using CoachTrack.</p>
+            <p className="text-muted-foreground">Join coaches and athletes using Workout Tracker.</p>
             <Button asChild size="lg" className="h-11 px-8 shadow-xl shadow-primary/25"><Link href="/register">Start Free Today <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
           </div>
         </section>
@@ -128,7 +128,7 @@ export default function Home() {
         <div className="container mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center"><Dumbbell className="h-4 w-4 text-primary-foreground" /></div>
-            <span className="font-semibold">CoachTrack</span>
+            <span className="font-semibold">Workout Tracker</span>
           </div>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <Link href="/features" className="hover:text-foreground transition-colors">Features</Link>
