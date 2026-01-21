@@ -27,6 +27,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -47,6 +54,7 @@ export default function WorkoutDetailPage() {
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [timeframe, setTimeframe] = useState('');
+  const [frequency, setFrequency] = useState('');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -131,6 +139,7 @@ export default function WorkoutDetailPage() {
           description: workout.description || '',
           duration: workout.duration,
           timeframe: timeframe || null,
+          frequency: frequency || null,
           createdBy: user.uid,
           workoutId: workout.id, // Track which workout created this template
         }),
@@ -152,6 +161,7 @@ export default function WorkoutDetailPage() {
       setShowTemplateDialog(false);
       setTemplateName('');
       setTimeframe('');
+      setFrequency('');
     } catch (error: any) {
       toast.error(error.message || 'Failed to save template');
     } finally {
@@ -193,6 +203,7 @@ export default function WorkoutDetailPage() {
     if (workout) {
       setTemplateName(workout.name);
       setTimeframe('');
+      setFrequency('');
       setShowTemplateDialog(true);
     }
   };
@@ -478,17 +489,46 @@ export default function WorkoutDetailPage() {
                 placeholder="Enter template name"
               />
             </div>
+            
             <div className="space-y-2">
-              <Label htmlFor="timeframe">Timeframe</Label>
-              <Input
-                id="timeframe"
-                value={timeframe}
-                onChange={(e) => setTimeframe(e.target.value)}
-                placeholder="e.g., 4 weeks, 8 weeks, 12 weeks"
-              />
-              <p className="text-xs text-muted-foreground">
-                Optional: Specify how long this template is designed for
-              </p>
+              <Label htmlFor="timeframe">Timeframe *</Label>
+              <Select value={timeframe} onValueChange={setTimeframe}>
+                <SelectTrigger id="timeframe" className="w-full">
+                  <SelectValue placeholder="Select timeframe" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1-week">1 Week</SelectItem>
+                  <SelectItem value="2-weeks">2 Weeks</SelectItem>
+                  <SelectItem value="3-weeks">3 Weeks</SelectItem>
+                  <SelectItem value="4-weeks">4 Weeks</SelectItem>
+                  <SelectItem value="6-weeks">6 Weeks</SelectItem>
+                  <SelectItem value="8-weeks">8 Weeks</SelectItem>
+                  <SelectItem value="10-weeks">10 Weeks</SelectItem>
+                  <SelectItem value="12-weeks">12 Weeks</SelectItem>
+                  <SelectItem value="16-weeks">16 Weeks</SelectItem>
+                  <SelectItem value="20-weeks">20 Weeks</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="frequency">Frequency *</Label>
+              <Select value={frequency} onValueChange={setFrequency}>
+                <SelectTrigger id="frequency" className="w-full">
+                  <SelectValue placeholder="Select frequency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="2x-week">2x per week</SelectItem>
+                  <SelectItem value="3x-week">3x per week</SelectItem>
+                  <SelectItem value="4x-week">4x per week</SelectItem>
+                  <SelectItem value="5x-week">5x per week</SelectItem>
+                  <SelectItem value="6x-week">6x per week</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="bi-weekly">Bi-weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
@@ -501,7 +541,7 @@ export default function WorkoutDetailPage() {
             </Button>
             <Button
               onClick={handleSaveAsTemplate}
-              disabled={isSavingTemplate || !templateName.trim()}
+              disabled={isSavingTemplate || !templateName.trim() || !timeframe || !frequency}
             >
               {isSavingTemplate ? (
                 <>

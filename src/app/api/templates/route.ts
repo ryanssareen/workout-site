@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, type, description, duration, createdBy, timeframe, workoutId } = body;
+    const { name, type, description, duration, createdBy, timeframe, frequency, workoutId } = body;
 
     if (!name || !type || !createdBy) {
       return NextResponse.json(
@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
       description: description || '',
       duration: duration || null,
       timeframe: timeframe || null,
+      frequency: frequency || null,
       createdBy,
       workoutId: workoutId || null, // Track which workout created this template
       createdAt: new Date(),
