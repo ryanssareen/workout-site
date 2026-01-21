@@ -120,7 +120,7 @@ function generateReminderEmail(userName: string, workout: WorkoutData, appUrl: s
           <!-- Footer -->
           <div style="background: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #eee;">
             <p style="margin: 0; color: #666; font-size: 12px;">
-              This reminder was sent from Workout Tracker.
+              This reminder was sent from CoachTrack.
             </p>
           </div>
         </div>
@@ -143,7 +143,7 @@ async function sendReminderEmail(
     );
 
     const sendSmtpEmail = new brevo.SendSmtpEmail();
-    sendSmtpEmail.sender = { name: 'Workout Tracker', email: 'ryansareen6@gmail.com' };
+    sendSmtpEmail.sender = { name: 'CoachTrack', email: 'ryansareen6@gmail.com' };
     sendSmtpEmail.to = [{ email: userEmail, name: userName }];
     sendSmtpEmail.subject = `⏰ Reminder: ${workout.name} tomorrow`;
     sendSmtpEmail.htmlContent = generateReminderEmail(userName, workout, appUrl);

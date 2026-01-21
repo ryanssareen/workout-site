@@ -66,7 +66,7 @@ async function sendSummaryEmail(
     );
 
     const sendSmtpEmail = new brevo.SendSmtpEmail();
-    sendSmtpEmail.sender = { name: 'Workout Tracker', email: 'ryansareen6@gmail.com' };
+    sendSmtpEmail.sender = { name: 'CoachTrack', email: 'ryansareen6@gmail.com' };
     sendSmtpEmail.to = [{ email: userEmail, name: userName }];
 
     // CC coach if they exist

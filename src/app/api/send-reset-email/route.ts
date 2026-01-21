@@ -49,9 +49,9 @@ export async function POST(request: NextRequest) {
     );
 
     const sendSmtpEmail = new brevo.SendSmtpEmail();
-    sendSmtpEmail.sender = { name: 'Workout Tracker', email: 'ryansareen6@gmail.com' };
+    sendSmtpEmail.sender = { name: 'CoachTrack', email: 'ryansareen6@gmail.com' };
     sendSmtpEmail.to = [{ email: email }];
-    sendSmtpEmail.subject = '🔐 Reset Your Password - Workout Tracker';
+    sendSmtpEmail.subject = '🔐 Reset Your Password - CoachTrack';
     sendSmtpEmail.htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
             </div>
             <div class="content">
               <p>Hi there! 👋</p>
-              <p>We received a request to reset your password for Workout Tracker.</p>
+              <p>We received a request to reset your password for CoachTrack.</p>
               <p>Click the button below to reset your password:</p>
               <div style="text-align: center;">
                 <a href="${resetLink}" class="button">Reset Password</a>

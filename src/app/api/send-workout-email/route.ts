@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
     // Send the email
     console.log('📧 Attempting to send email to:', studentEmail);
     const info = await transporter.sendMail({
-      from: `"Workout Tracker" <${process.env.GMAIL_USER}>`,
+      from: `"CoachTrack" <${process.env.GMAIL_USER}>`,
       to: studentEmail,
       subject: `🏃 New Workout: ${workout.name}`,
       html: emailHtml,

@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     );
 
     const sendSmtpEmail = new brevo.SendSmtpEmail();
-    sendSmtpEmail.sender = { name: 'Workout Tracker Test', email: 'ryansareen6@gmail.com' };
+    sendSmtpEmail.sender = { name: 'CoachTrack Test', email: 'ryansareen6@gmail.com' };
     sendSmtpEmail.to = [{ email: 'ryansareen6@gmail.com' }];
     sendSmtpEmail.subject = '🧪 Test Email - Brevo API';
     sendSmtpEmail.htmlContent = '<h1>Test email from Brevo!</h1><p>If you see this, Brevo is working!</p>';
