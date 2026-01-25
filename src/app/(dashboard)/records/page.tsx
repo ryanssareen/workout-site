@@ -198,10 +198,7 @@ export default function RecordsPage() {
               <SelectContent>
                 {students.map(student => (
                   <SelectItem key={student.uid} value={student.uid}>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{student.displayName || 'No Name'}</span>
-                      <span className="text-xs text-muted-foreground">{student.email}</span>
-                    </div>
+                    <span>{student.displayName || 'No Name'}</span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -268,7 +265,7 @@ export default function RecordsPage() {
                       <SelectContent>
                         {Object.entries(CATEGORY_CONFIG).map(([key, config]) => (
                           <SelectItem key={key} value={key}>
-                            {config.icon} {config.label}
+                            <span>{config.icon} {config.label}</span>
                           </SelectItem>
                         ))}
                       </SelectContent>
