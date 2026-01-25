@@ -110,7 +110,7 @@ export default function RecordsPage() {
     setIsSubmitting(true);
     try {
       const userId = isCoach ? selectedStudent : user.uid;
-      await addPersonalRecord(userId, {
+      const result = await addPersonalRecord(userId, {
         name: formData.name,
         category: formData.category,
         value: parseFloat(formData.value),
@@ -119,20 +119,25 @@ export default function RecordsPage() {
         notes: formData.notes || undefined,
       });
 
-      toast.success('Personal record added!');
-      setDialogOpen(false);
-      setFormData({
-        name: '',
-        category: 'distance',
-        value: '',
-        unit: 'km',
-        date: format(new Date(), 'yyyy-MM-dd'),
-        notes: '',
-      });
+      if (result.isNewRecord) {
+        toast.success(result.message);
+        setDialogOpen(false);
+        setFormData({
+          name: '',
+          category: 'distance',
+          value: '',
+          unit: 'km',
+          date: format(new Date(), 'yyyy-MM-dd'),
+          notes: '',
+        });
 
-      // Reload records
-      const data = await getPersonalRecords(userId);
-      setRecords(data);
+        // Reload records
+        const data = await getPersonalRecords(userId);
+        setRecords(data);
+      } else {
+        // Record didn't beat existing - show error
+        toast.error(result.message);
+      }
     } catch (error: any) {
       toast.error(error.message || 'Failed to add record');
     } finally {

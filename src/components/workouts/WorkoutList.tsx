@@ -10,6 +10,7 @@ interface WorkoutListProps {
   onToggleComplete?: (id: string, completed: boolean, notes?: string) => void;
   onViewDetails?: (id: string) => void;
   isCoach?: boolean;
+  emptyMessage?: string;
 }
 
 export function WorkoutList({
@@ -18,10 +19,11 @@ export function WorkoutList({
   onDelete,
   onToggleComplete,
   onViewDetails,
-  isCoach
+  isCoach,
+  emptyMessage = 'No workouts found'
 }: WorkoutListProps) {
   if (workouts.length === 0) {
-    return <div className="text-center py-12 text-muted-foreground">No workouts found</div>;
+    return <div className="text-center py-12 text-muted-foreground">{emptyMessage}</div>;
   }
 
   return (

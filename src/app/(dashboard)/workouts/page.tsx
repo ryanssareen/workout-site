@@ -4,19 +4,30 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { getUserWorkouts, deleteWorkout, completeWorkout } from '@/lib/firebase/firestore';
-import { Workout } from '@/types';
+import { Workout, WorkoutType } from '@/types';
 import { WorkoutList } from '@/components/workouts/WorkoutList';
 import { AIWorkoutSuggestions } from '@/components/workouts/AIWorkoutSuggestions';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Plus, ListChecks, Loader2 } from 'lucide-react';
+import { Plus, ListChecks, Loader2, Waves, Footprints, Bike, Dumbbell, MoreHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+
+const WORKOUT_CATEGORIES: { type: WorkoutType | 'all'; label: string; icon: React.ReactNode; color: string }[] = [
+  { type: 'all', label: 'All', icon: <ListChecks className="h-4 w-4" />, color: 'bg-gray-500' },
+  { type: 'swim', label: 'Swim', icon: <Waves className="h-4 w-4" />, color: 'bg-blue-500' },
+  { type: 'run', label: 'Run', icon: <Footprints className="h-4 w-4" />, color: 'bg-green-500' },
+  { type: 'bike', label: 'Bike', icon: <Bike className="h-4 w-4" />, color: 'bg-orange-500' },
+  { type: 'strength', label: 'Strength', icon: <Dumbbell className="h-4 w-4" />, color: 'bg-purple-500' },
+  { type: 'other', label: 'Other', icon: <MoreHorizontal className="h-4 w-4" />, color: 'bg-gray-500' },
+];
 
 export default function WorkoutsPage() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState<WorkoutType | 'all'>('all');
 
   const loadWorkouts = async () => {
     if (!user) return;
@@ -26,6 +37,19 @@ export default function WorkoutsPage() {
   };
 
   useEffect(() => { loadWorkouts(); }, [user]);
+
+  // Filter workouts by selected category
+  const filteredWorkouts = selectedCategory === 'all'
+    ? workouts
+    : workouts.filter(w => w.type === selectedCategory);
+
+  // Get workout counts per category
+  const workoutCounts = WORKOUT_CATEGORIES.reduce((acc, cat) => {
+    acc[cat.type] = cat.type === 'all'
+      ? workouts.length
+      : workouts.filter(w => w.type === cat.type).length;
+    return acc;
+  }, {} as Record<string, number>);
 
   const handleEdit = (id: string) => router.push(`/workouts/${id}/edit`);
 
@@ -90,14 +114,45 @@ export default function WorkoutsPage() {
         )}
       </div>
 
+      {/* Category Filter Tabs */}
+      <div className="flex flex-wrap gap-2">
+        {WORKOUT_CATEGORIES.map((cat) => (
+          <button
+            key={cat.type}
+            onClick={() => setSelectedCategory(cat.type)}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all',
+              selectedCategory === cat.type
+                ? `${cat.color} text-white shadow-lg`
+                : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+            )}
+          >
+            {cat.icon}
+            <span>{cat.label}</span>
+            <span className={cn(
+              'ml-1 px-1.5 py-0.5 rounded-full text-xs',
+              selectedCategory === cat.type
+                ? 'bg-white/20 text-white'
+                : 'bg-background text-muted-foreground'
+            )}>
+              {workoutCounts[cat.type]}
+            </span>
+          </button>
+        ))}
+      </div>
+
       {/* Workout List */}
       <WorkoutList
-        workouts={workouts}
+        workouts={filteredWorkouts}
         onEdit={user?.role === 'coach' ? handleEdit : undefined}
         onDelete={user?.role === 'coach' ? handleDelete : undefined}
         onToggleComplete={handleToggleComplete}
         onViewDetails={handleViewDetails}
         isCoach={user?.role === 'coach'}
+        emptyMessage={selectedCategory === 'all'
+          ? 'No workouts found'
+          : `No ${selectedCategory} workouts found`
+        }
       />
 
       {/* AI Suggestions */}

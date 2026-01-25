@@ -580,6 +580,23 @@ export async function getPersonalRecords(userId: string): Promise<PersonalRecord
   }
 }
 
+// Helper to determine if a new record beats the existing one
+// For speed category: lower is better (faster time)
+// For all other categories (distance, strength, endurance): higher is better
+function isNewRecordBetter(category: PRCategory, newValue: number, existingValue: number): boolean {
+  if (category === 'speed') {
+    return newValue < existingValue; // Lower time = faster = better
+  }
+  return newValue > existingValue; // Higher distance/weight/reps = better
+}
+
+export interface AddRecordResult {
+  id: string;
+  isNewRecord: boolean;
+  previousValue?: number;
+  message: string;
+}
+
 export async function addPersonalRecord(
   userId: string,
   data: {
@@ -592,7 +609,7 @@ export async function addPersonalRecord(
     stravaActivityId?: string;
     notes?: string;
   }
-): Promise<string> {
+): Promise<AddRecordResult> {
   try {
     // Check if there's an existing record of the same type
     const recordsRef = collection(getDbInstance(), 'personalRecords');
@@ -604,10 +621,25 @@ export async function addPersonalRecord(
     const existing = await getDocs(q);
 
     let previousValue: number | undefined;
+
     if (!existing.empty) {
       const oldRecord = existing.docs[0].data();
-      previousValue = oldRecord.value;
-      // Delete old record (we only keep the best)
+      const existingValue = oldRecord.value as number;
+      previousValue = existingValue;
+
+      // Check if the new record beats the existing one
+      if (!isNewRecordBetter(data.category, data.value, existingValue)) {
+        // New record doesn't beat existing - reject it
+        const comparisonWord = data.category === 'speed' ? 'faster than' : 'better than';
+        return {
+          id: '',
+          isNewRecord: false,
+          previousValue: existingValue,
+          message: `Didn't beat your current record of ${existingValue} ${oldRecord.unit}. Your new value needs to be ${comparisonWord} that.`
+        };
+      }
+
+      // New record beats existing - delete old record
       await deleteDoc(existing.docs[0].ref);
     }
 
@@ -621,7 +653,7 @@ export async function addPersonalRecord(
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
-    
+
     // Only add optional fields if they exist (Firestore doesn't allow undefined)
     if (previousValue !== undefined) {
       recordData.previousValue = previousValue;
@@ -637,7 +669,17 @@ export async function addPersonalRecord(
     }
 
     const docRef = await addDoc(recordsRef, recordData);
-    return docRef.id;
+
+    const improvementText = previousValue !== undefined
+      ? ` You improved from ${previousValue} ${data.unit}!`
+      : '';
+
+    return {
+      id: docRef.id,
+      isNewRecord: true,
+      previousValue,
+      message: `New record!${improvementText}`
+    };
   } catch (error: any) {
     throw new Error(error.message || 'Failed to add personal record');
   }

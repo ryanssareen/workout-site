@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { User, Users, Link2, Unlink, Settings, LogOut, Key, CheckCircle2, XCircle, Loader2, ExternalLink, Copy, Check } from 'lucide-react';
 import { signOut } from '@/lib/firebase/auth';
 import Link from 'next/link';
+import { StravaDuplicateDialog } from '@/components/strava/DuplicateDialog';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -29,6 +30,8 @@ export default function SettingsPage() {
   const [isSyncingStrava, setIsSyncingStrava] = useState(false);
   const [loadingCoachInfo, setLoadingCoachInfo] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [stravaDuplicates, setStravaDuplicates] = useState<any[]>([]);
 
   useEffect(() => {
     const stravaStatus = searchParams.get('strava');
@@ -98,16 +101,55 @@ export default function SettingsPage() {
     setIsDisconnectingStrava(false);
   };
 
-  const handleSyncStrava = async () => {
+  const handleSyncStrava = async (decisions?: Record<string, { action: 'merge' | 'new'; workoutId?: string }>) => {
     if (!user) return;
     setIsSyncingStrava(true);
     try {
-      const response = await fetch(`/api/strava/sync?userId=${user.uid}`, { headers: { 'Accept': 'application/json' } });
+      // First, check for duplicates (unless we already have decisions)
+      if (!decisions) {
+        const checkResponse = await fetch(
+          `/api/strava/sync?userId=${user.uid}&checkDuplicates=true`,
+          { headers: { 'Accept': 'application/json' } }
+        );
+        if (!checkResponse.ok) throw new Error('Failed to check for duplicates');
+        const checkData = await checkResponse.json();
+
+        if (checkData.hasDuplicates && checkData.duplicates?.length > 0) {
+          // Show duplicate dialog
+          setStravaDuplicates(checkData.duplicates);
+          setShowDuplicateDialog(true);
+          setIsSyncingStrava(false);
+          return;
+        }
+      }
+
+      // Perform the actual sync with decisions
+      const decisionsParam = decisions ? `&decisions=${encodeURIComponent(JSON.stringify(decisions))}` : '';
+      const response = await fetch(
+        `/api/strava/sync?userId=${user.uid}${decisionsParam}`,
+        { headers: { 'Accept': 'application/json' } }
+      );
       if (!response.ok) throw new Error('Failed to sync');
       const data = await response.json();
-      toast.success(data.newWorkouts > 0 ? `Synced ${data.newWorkouts} workout${data.newWorkouts > 1 ? 's' : ''}!` : 'All caught up!');
+
+      let message = '';
+      if (data.mergedWorkouts > 0 && data.newWorkouts > 0) {
+        message = `Merged ${data.mergedWorkouts} and created ${data.newWorkouts} workout${data.newWorkouts > 1 ? 's' : ''}!`;
+      } else if (data.mergedWorkouts > 0) {
+        message = `Merged ${data.mergedWorkouts} workout${data.mergedWorkouts > 1 ? 's' : ''}!`;
+      } else if (data.newWorkouts > 0) {
+        message = `Synced ${data.newWorkouts} workout${data.newWorkouts > 1 ? 's' : ''}!`;
+      } else {
+        message = 'All caught up!';
+      }
+      toast.success(message);
     } catch (error: any) { toast.error(error.message || 'Failed to sync'); }
     setIsSyncingStrava(false);
+  };
+
+  const handleDuplicateDecisions = (decisions: Record<string, { action: 'merge' | 'new'; workoutId?: string }>) => {
+    setShowDuplicateDialog(false);
+    handleSyncStrava(decisions);
   };
 
   const handleLogout = async () => { await signOut(); router.push('/login'); };
@@ -213,7 +255,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={handleSyncStrava} disabled={isSyncingStrava}>
+                  <Button variant="outline" size="sm" onClick={() => handleSyncStrava()} disabled={isSyncingStrava}>
                     {isSyncingStrava ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Syncing...</> : 'Sync'}
                   </Button>
                   <Button variant="outline" size="sm" onClick={handleDisconnectStrava} disabled={isDisconnectingStrava} className="text-red-500 hover:text-red-600 hover:bg-red-500/10">
@@ -248,6 +290,15 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Strava Duplicate Dialog */}
+      <StravaDuplicateDialog
+        open={showDuplicateDialog}
+        onOpenChange={setShowDuplicateDialog}
+        duplicates={stravaDuplicates}
+        onConfirm={handleDuplicateDecisions}
+        isLoading={isSyncingStrava}
+      />
     </div>
   );
 }
