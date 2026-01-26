@@ -264,15 +264,16 @@ export async function GET(request: NextRequest) {
       console.log('✅ Token refreshed');
     }
 
-    // Fetch ALL activities from Strava with pagination
-    console.log('📡 Fetching all activities from Strava...');
+    // Fetch activities from the last year with pagination
+    console.log('📡 Fetching activities from the last year...');
+    const oneYearAgo = Math.floor(Date.now() / 1000) - (365 * 24 * 60 * 60);
     const activities: any[] = [];
     let page = 1;
     const perPage = 200; // Strava max is 200 per page
 
     while (true) {
       const activitiesResponse = await fetch(
-        `https://www.strava.com/api/v3/athlete/activities?per_page=${perPage}&page=${page}`,
+        `https://www.strava.com/api/v3/athlete/activities?after=${oneYearAgo}&per_page=${perPage}&page=${page}`,
         {
           headers: { Authorization: `Bearer ${accessToken}` },
         }
@@ -299,9 +300,9 @@ export async function GET(request: NextRequest) {
 
       page++;
 
-      // Safety limit to prevent infinite loops (max 10,000 activities)
-      if (page > 50) {
-        console.log('⚠️ Reached page limit (50 pages, ~10,000 activities)');
+      // Safety limit to prevent infinite loops
+      if (page > 20) {
+        console.log('⚠️ Reached page limit (20 pages)');
         break;
       }
     }
