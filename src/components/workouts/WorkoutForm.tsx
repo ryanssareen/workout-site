@@ -48,11 +48,12 @@ const FREQUENCY_LABELS: Record<string, string> = {
 interface WorkoutFormProps {
   onSubmit: (data: WorkoutSchema) => Promise<void>;
   defaultValues?: Partial<WorkoutSchema>;
-  students: Array<{ uid: string; displayName: string; email: string }>;
+  athletes: Array<{ uid: string; displayName: string; email: string }>;
   loading?: boolean;
+  hideAthleteSelector?: boolean;
 }
 
-export function WorkoutForm({ onSubmit, defaultValues, students, loading }: WorkoutFormProps) {
+export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAthleteSelector }: WorkoutFormProps) {
   const { register, handleSubmit, formState: { errors, isSubmitting }, setValue, watch, control, reset } = useForm<WorkoutSchema>({
     resolver: zodResolver(workoutSchema),
     defaultValues: defaultValues || {
@@ -277,26 +278,28 @@ export function WorkoutForm({ onSubmit, defaultValues, students, loading }: Work
         {errors.date && <p className="text-sm text-red-500">{errors.date.message}</p>}
       </div>
 
-      {/* Assign to Student */}
-      <div className="space-y-2">
-        <Label htmlFor="assignedTo">Assign to Student *</Label>
-        <Select value={selectedStudent} onValueChange={(value) => setValue('assignedTo', value)}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select student" />
-          </SelectTrigger>
-          <SelectContent>
-            {students.map((student) => (
-              <SelectItem key={student.uid} value={student.uid}>
-                <div className="flex flex-col">
-                  <span className="font-medium">{student.displayName || 'No Name'}</span>
-                  <span className="text-xs text-muted-foreground">{student.email}</span>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {errors.assignedTo && <p className="text-sm text-red-500">{errors.assignedTo.message}</p>}
-      </div>
+      {/* Assign to Athlete - only show for coaches */}
+      {!hideAthleteSelector && (
+        <div className="space-y-2">
+          <Label htmlFor="assignedTo">Assign to Athlete *</Label>
+          <Select value={selectedStudent} onValueChange={(value) => setValue('assignedTo', value)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select athlete" />
+            </SelectTrigger>
+            <SelectContent>
+              {athletes.map((athlete) => (
+                <SelectItem key={athlete.uid} value={athlete.uid}>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{athlete.displayName || 'No Name'}</span>
+                    <span className="text-xs text-muted-foreground">{athlete.email}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {errors.assignedTo && <p className="text-sm text-red-500">{errors.assignedTo.message}</p>}
+        </div>
+      )}
 
       {/* Recurring Workout Toggle */}
       <div className="border rounded-lg p-4 space-y-4">

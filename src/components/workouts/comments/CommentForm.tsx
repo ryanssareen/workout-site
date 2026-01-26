@@ -57,7 +57,7 @@ export function CommentForm({
         </div>
       )}
 
-      {/* Rating selector - only for students (not coaches replying) */}
+      {/* Rating selector - only for athletes (not coaches replying) */}
       {!isCoach && !replyingTo && (
         <div>
           <label className="text-sm font-medium text-muted-foreground mb-2 block">

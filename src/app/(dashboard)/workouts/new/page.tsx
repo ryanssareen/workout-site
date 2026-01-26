@@ -24,10 +24,13 @@ export default function NewWorkoutPage() {
   const templateId = searchParams.get('templateId');
   const aiGenerated = searchParams.get('aiGenerated') === 'true';
 
+  const isCoach = user?.role === 'coach';
+  const isUnconnectedAthlete = user?.role === 'student' && !user?.coachId;
+
   useEffect(() => {
     async function loadStudents() {
       if (!user || user.role !== 'coach') return;
-      
+
       const data = await getCoachStudents(user.uid);
       setStudents(data);
     }
@@ -83,25 +86,27 @@ export default function NewWorkoutPage() {
     }
   }, [aiGenerated]);
 
-  // Redirect if not a coach
+  // Redirect if not authorized (must be coach OR unconnected athlete)
   useEffect(() => {
-    if (user && user.role !== 'coach') {
+    if (user && !isCoach && !isUnconnectedAthlete) {
       router.push('/dashboard');
     }
-  }, [user, router]);
+  }, [user, router, isCoach, isUnconnectedAthlete]);
 
   const handleSubmit = async (data: WorkoutSchema) => {
     if (!user) return;
-    
+
     setLoading(true);
     try {
-      const workoutId = await createWorkout(data, user.uid);
-      
-      // Find the student's email
-      const student = students.find(s => s.uid === data.assignedTo);
-      
+      // For athletes creating their own workouts, set assignedTo to themselves
+      const workoutData = isUnconnectedAthlete
+        ? { ...data, assignedTo: user.uid }
+        : data;
+
+      await createWorkout(workoutData, user.uid);
+
       toast.success('Workout created successfully!');
-      
+
       // Wait a bit then redirect
       setTimeout(() => router.push('/workouts'), 1000);
     } catch (error: any) {
@@ -111,7 +116,7 @@ export default function NewWorkoutPage() {
     }
   };
 
-  if (!user || user.role !== 'coach') {
+  if (!user || (!isCoach && !isUnconnectedAthlete)) {
     return null;
   }
 
@@ -137,12 +142,16 @@ export default function NewWorkoutPage() {
 
   const getHeaderDescription = () => {
     if (aiGenerated) {
-      return 'AI-generated workout ready to customize. Modify as needed and assign to a student.';
+      return isCoach
+        ? 'AI-generated workout ready to customize. Modify as needed and assign to an athlete.'
+        : 'AI-generated workout ready to customize.';
     }
     if (templateData) {
-      return 'Pre-filled from template. Modify as needed and assign to a student.';
+      return isCoach
+        ? 'Pre-filled from template. Modify as needed and assign to an athlete.'
+        : 'Pre-filled from template. Modify as needed.';
     }
-    return 'Fill in the details for the new workout';
+    return isCoach ? 'Fill in the details for the new workout' : 'Create a workout to track your training';
   };
 
   return (
@@ -155,7 +164,9 @@ export default function NewWorkoutPage() {
         </Button>
         <div>
           <h1 className="text-3xl font-bold">Create New Workout</h1>
-          <p className="text-muted-foreground">Design and assign workouts to your students</p>
+          <p className="text-muted-foreground">
+            {isCoach ? 'Design and assign workouts to your athletes' : 'Track your own training'}
+          </p>
         </div>
       </div>
 
@@ -167,13 +178,14 @@ export default function NewWorkoutPage() {
         <CardContent>
           <WorkoutForm
             onSubmit={handleSubmit}
-            students={students}
+            athletes={students}
             loading={loading || loadingTemplate}
+            hideAthleteSelector={isUnconnectedAthlete}
             defaultValues={templateData ? {
               name: templateData.name,
               type: templateData.type,
               date: new Date(),
-              assignedTo: students[0]?.uid || '',
+              assignedTo: isUnconnectedAthlete ? user?.uid : students[0]?.uid || '',
               // Pass the type-specific nested data
               // AI generates: { name, type: "run", run: { distance, time, ... } }
               // WorkoutForm expects exactly this structure

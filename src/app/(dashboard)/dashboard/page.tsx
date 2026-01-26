@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { getUserWorkouts, getCoachDashboardStats, CoachStats } from '@/lib/firebase/firestore';
 import { Workout } from '@/types';
@@ -18,6 +18,28 @@ import { StatCard } from '@/components/dashboard/stats/StatCard';
 import { ProgressRing } from '@/components/dashboard/stats/ProgressRing';
 import { StudentOverview } from '@/components/dashboard/StudentOverview';
 import { cn } from '@/lib/utils';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+} from 'recharts';
+
+interface TypeData {
+  name: string;
+  value: number;
+  color: string;
+  [key: string]: string | number;
+}
+
+const TYPE_COLORS: Record<string, string> = {
+  run: '#3b82f6',
+  bike: '#22c55e',
+  swim: '#06b6d4',
+  strength: '#ec4899',
+};
 
 export default function DashboardPage() {
   const user = useAuthStore((state) => state.user);
@@ -73,6 +95,23 @@ export default function DashboardPage() {
     ? Math.round((completedCount / workouts.length) * 100)
     : 0;
 
+  // Calculate workout type distribution
+  const typeData = useMemo((): TypeData[] => {
+    const counts: Record<string, number> = { run: 0, bike: 0, swim: 0, strength: 0 };
+
+    workouts.filter(w => w.completed).forEach(workout => {
+      counts[workout.type]++;
+    });
+
+    return Object.entries(counts)
+      .filter(([_, value]) => value > 0)
+      .map(([name, value]) => ({
+        name: name.charAt(0).toUpperCase() + name.slice(1),
+        value,
+        color: TYPE_COLORS[name],
+      }));
+  }, [workouts]);
+
   // Render Coach Dashboard
   if (user?.role === 'coach') {
     return (
@@ -123,11 +162,11 @@ export default function DashboardPage() {
         {/* Student Metrics Row */}
         <div>
           <h2 className="text-sm font-medium text-muted-foreground mb-4 animate-in fade-in duration-500">
-            STUDENT OVERVIEW
+            ATHLETE OVERVIEW
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <StatCard
-              title="Total Students"
+              title="Total Athletes"
               value={coachStats?.totalStudents ?? 0}
               description="Athletes enrolled"
               icon={Users}
@@ -320,10 +359,12 @@ export default function DashboardPage() {
     );
   }
 
-  // Render Student Dashboard
+  const isConnected = !!user?.coachId;
+
+  // Render Athlete Dashboard
   return (
     <div className="space-y-8 pb-8">
-      {/* Header with Progress Ring */}
+      {/* Header with Progress Ring or Settings Button */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
         <div className="space-y-2 animate-in fade-in slide-in-from-left-4 duration-500">
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
@@ -332,28 +373,40 @@ export default function DashboardPage() {
           <p className="text-muted-foreground">Track your training progress</p>
         </div>
 
-        <div
-          className="flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-r from-green-500/5 to-emerald-500/10 border border-green-500/20 animate-in fade-in slide-in-from-right-4 duration-500"
-        >
-          <ProgressRing
-            progress={completionRate}
-            size="lg"
-            color="stroke-green-500"
-          />
-          <div>
-            <p className="text-sm text-muted-foreground">Overall Progress</p>
-            <p className="text-2xl font-bold">{completedCount}/{workouts.length}</p>
-            <p className="text-xs text-muted-foreground">workouts completed</p>
-          </div>
+        <div className="flex items-center gap-4 animate-in fade-in slide-in-from-right-4 duration-500">
+          {/* Settings button for unconnected athletes */}
+          {!isConnected && (
+            <Button asChild size="lg" className="shadow-lg shadow-primary/20">
+              <Link href="/settings">
+                <Users className="mr-2 h-5 w-5" />
+                Connect to Coach
+              </Link>
+            </Button>
+          )}
+
+          {workouts.length > 0 && (
+            <div className="flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-r from-green-500/5 to-emerald-500/10 border border-green-500/20">
+              <ProgressRing
+                progress={completionRate}
+                size="lg"
+                color="stroke-green-500"
+              />
+              <div>
+                <p className="text-sm text-muted-foreground">Overall Progress</p>
+                <p className="text-2xl font-bold">{completedCount}/{workouts.length}</p>
+                <p className="text-xs text-muted-foreground">workouts completed</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Student Stats */}
+      {/* Athlete Stats */}
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
-          title="Assigned Workouts"
+          title="Total Workouts"
           value={workouts.length}
-          description="Total from your coach"
+          description={isConnected ? "From your coach" : "Your workouts"}
           icon={Target}
           gradient="from-blue-500/5 to-cyan-500/5"
           iconGradient="from-blue-500 to-cyan-500"
@@ -460,10 +513,57 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
+      {/* Workout Distribution Chart */}
+      <Card
+        className="animate-in fade-in slide-in-from-bottom-4 duration-500"
+        style={{ animationDelay: '600ms', animationFillMode: 'backwards' }}
+      >
+        <CardHeader>
+          <CardTitle>Workout Distribution</CardTitle>
+          <CardDescription>Breakdown of completed workouts by type</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px]">
+            {typeData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={typeData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={2}
+                    dataKey="value"
+                    label={({ name, value }) => `${name}: ${value}`}
+                  >
+                    {typeData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                    }}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                No completed workouts yet
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Quick Actions */}
       <div
         className="grid gap-4 sm:grid-cols-2 animate-in fade-in slide-in-from-bottom-4 duration-500"
-        style={{ animationDelay: '600ms', animationFillMode: 'backwards' }}
+        style={{ animationDelay: '700ms', animationFillMode: 'backwards' }}
       >
         <Card className="hover:shadow-md hover:border-primary/20 transition-all duration-300 group">
           <CardHeader className="pb-3">

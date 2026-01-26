@@ -299,7 +299,7 @@ export default function CoachSuggestionsPage() {
             <CheckCircle2 className="h-12 w-12 text-green-500 mb-4" />
             <h3 className="text-lg font-semibold mb-2">Everything looks great!</h3>
             <p className="text-muted-foreground text-center max-w-md">
-              No immediate suggestions. Your students are making good progress. Check back later for new insights.
+              No immediate suggestions. Your athletes are making good progress. Check back later for new insights.
             </p>
           </CardContent>
         </Card>
@@ -314,7 +314,7 @@ export default function CoachSuggestionsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>• Analyzes all your students' workout data from the last 30 days</p>
+          <p>• Analyzes all your athletes' workout data from the last 30 days</p>
           <p>• Identifies patterns in completion rates, missed workouts, and late completions</p>
           <p>• Provides specific, actionable recommendations to improve coaching effectiveness</p>
           <p>• Updates in real-time when you click "Refresh Analysis"</p>

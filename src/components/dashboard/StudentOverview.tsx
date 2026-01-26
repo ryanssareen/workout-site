@@ -89,10 +89,10 @@ export function StudentOverview({ students, delay = 0 }: StudentOverviewProps) {
           <div className="space-y-1">
             <CardTitle className="text-lg flex items-center gap-2">
               <Users className="h-5 w-5 text-primary" />
-              Your Students
+              Your Athletes
             </CardTitle>
             <CardDescription>
-              {students.length} student{students.length !== 1 ? 's' : ''} enrolled
+              {students.length} athlete{students.length !== 1 ? 's' : ''} enrolled
             </CardDescription>
           </div>
           {hasMore && (
@@ -110,7 +110,7 @@ export function StudentOverview({ students, delay = 0 }: StudentOverviewProps) {
               <Users className="h-6 w-6 text-muted-foreground" />
             </div>
             <p className="text-sm text-muted-foreground">
-              No students yet. Share your coach code to get started!
+              No athletes yet. Share your coach code to get started!
             </p>
           </div>
         ) : (

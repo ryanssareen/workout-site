@@ -13,8 +13,8 @@ import {
 const features = [
   {
     icon: Users,
-    title: 'Coach-Student System',
-    description: 'Coaches create workouts and assign them to students. Students track progress and mark completions.',
+    title: 'Coach-Athlete System',
+    description: 'Coaches create workouts and assign them to athletes. Athletes track progress and mark completions.',
     badge: 'Core',
     color: 'text-blue-500',
   },
@@ -49,7 +49,7 @@ const features = [
   {
     icon: MessageSquare,
     title: 'Comments & Feedback',
-    description: 'Coaches and students can leave comments on workouts for better communication.',
+    description: 'Coaches and athletes can leave comments on workouts for better communication.',
     badge: 'Communication',
     color: 'text-green-500',
   },
@@ -70,7 +70,7 @@ const features = [
   {
     icon: Mail,
     title: 'Email Notifications',
-    description: 'Get notified when new workouts are assigned or when students complete tasks.',
+    description: 'Get notified when new workouts are assigned or when athletes complete tasks.',
     badge: 'Communication',
     color: 'text-green-500',
   },
@@ -230,7 +230,7 @@ export default function FeaturesPage() {
               <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xl font-bold mx-auto mb-4">
                 2
               </div>
-              <h3 className="font-semibold mb-2">Students Join</h3>
+              <h3 className="font-semibold mb-2">Athletes Join</h3>
               <p className="text-sm text-muted-foreground">
                 Athletes sign up with the coach code and connect their Strava account
               </p>

@@ -6,8 +6,8 @@ import { ClientProviders } from '@/components/providers/ClientProviders';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'CoachTrack - Coach & Student Platform',
-  description: 'Manage and track workouts for coaches and students',
+  title: 'CoachTrack - Coach & Athlete Platform',
+  description: 'Manage and track workouts for coaches and athletes',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

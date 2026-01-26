@@ -136,7 +136,7 @@ export default function EditWorkoutPage() {
           duration: workout.duration,
           assignedTo: workout.assignedTo,
         }}
-        students={students}
+        athletes={students}
         loading={submitting}
       />
     </div>

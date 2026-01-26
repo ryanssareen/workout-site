@@ -433,7 +433,7 @@ export default function WorkoutDetailPage() {
                   </div>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Only students can complete workouts</p>
+                  <p>Only athletes can complete workouts</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
