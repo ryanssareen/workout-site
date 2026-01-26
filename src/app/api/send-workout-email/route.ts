@@ -6,10 +6,10 @@ import nodemailer from 'nodemailer';
 export async function POST(request: NextRequest) {
   console.log('📧 Email API called!');
   try {
-    const { athleteEmail, athleteName, workout } = await request.json();
-    console.log('📧 Received data:', { athleteEmail, athleteName, workoutName: workout.name });
+    const { studentEmail, studentName, workout } = await request.json();
+    console.log('📧 Received data:', { studentEmail, studentName, workoutName: workout.name });
 
-    if (!athleteEmail || !workout) {
+    if (!studentEmail || !workout) {
       console.log('❌ Missing required fields');
       return NextResponse.json(
         { error: 'Missing required fields' },
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
               <h1>🏃 New Workout Assigned!</h1>
             </div>
             <div class="content">
-              <p>Hi ${athleteName || 'there'}! 👋</p>
+              <p>Hi ${studentName || 'there'}! 👋</p>
               <p>Your coach has assigned you a new workout. Here are the details:</p>
               
               <div class="workout-detail">
@@ -137,10 +137,10 @@ export async function POST(request: NextRequest) {
     `;
 
     // Send the email
-    console.log('📧 Attempting to send email to:', athleteEmail);
+    console.log('📧 Attempting to send email to:', studentEmail);
     const info = await transporter.sendMail({
       from: `"CoachTrack" <${process.env.GMAIL_USER}>`,
-      to: athleteEmail,
+      to: studentEmail,
       subject: `🏃 New Workout: ${workout.name}`,
       html: emailHtml,
     });

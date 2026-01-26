@@ -14,7 +14,7 @@ interface CommentSectionProps {
   workoutName: string;
   currentUserId: string;
   currentUserName: string;
-  currentUserRole: 'coach' | 'athlete';
+  currentUserRole: 'coach' | 'student';
   coachId?: string;
 }
 
@@ -51,8 +51,8 @@ export function CommentSection({
         replyingTo
       );
 
-      // Send notification email to coach if athlete comments
-      if (currentUserRole === 'athlete') {
+      // Send notification email to coach if student comments
+      if (currentUserRole === 'student') {
         try {
           await fetch('/api/notifications/workout-comment', {
             method: 'POST',
@@ -61,7 +61,7 @@ export function CommentSection({
               workoutId,
               workoutName,
               commentText: text,
-              athleteName: currentUserName,
+              studentName: currentUserName,
               rating,
             }),
           });
@@ -129,7 +129,7 @@ export function CommentSection({
           onCancelReply={() => setReplyingTo(undefined)}
           placeholder={
             currentUserRole === 'coach'
-              ? 'Add a note for your athlete...'
+              ? 'Add a note for your student...'
               : 'How did this workout feel?'
           }
         />

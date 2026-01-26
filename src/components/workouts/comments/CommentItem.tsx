@@ -72,8 +72,8 @@ export function CommentItem({
         </p>
 
         <div className="flex items-center gap-2 mt-2">
-          {/* Coach can reply to athlete comments */}
-          {isCoach && comment.userRole === 'athlete' && !comment.isCoachReply && onReply && (
+          {/* Coach can reply to student comments */}
+          {isCoach && comment.userRole === 'student' && !comment.isCoachReply && onReply && (
             <Button
               variant="ghost"
               size="sm"

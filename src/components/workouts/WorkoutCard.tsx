@@ -49,7 +49,7 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
   const tags = (workout as any).tags as WorkoutTag[] | undefined;
 
   const handleCompletionClick = () => {
-    if (isCoach) { alert('Workout is to be completed by the Athlete'); return; }
+    if (isCoach) { alert('Workout is to be completed by the Student'); return; }
     const workoutDate = workout.date.toDate();
     const today = new Date();
     today.setHours(0, 0, 0, 0);

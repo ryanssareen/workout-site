@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { StatCard } from '@/components/dashboard/stats/StatCard';
 import { ProgressRing } from '@/components/dashboard/stats/ProgressRing';
-import { AthleteOverview } from '@/components/dashboard/AthleteOverview';
+import { StudentOverview } from '@/components/dashboard/StudentOverview';
 import { cn } from '@/lib/utils';
 import {
   PieChart,
@@ -159,7 +159,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Athlete Metrics Row */}
+        {/* Student Metrics Row */}
         <div>
           <h2 className="text-sm font-medium text-muted-foreground mb-4 animate-in fade-in duration-500">
             ATHLETE OVERVIEW
@@ -167,7 +167,7 @@ export default function DashboardPage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <StatCard
               title="Total Athletes"
-              value={coachStats?.totalAthletes ?? 0}
+              value={coachStats?.totalStudents ?? 0}
               description="Athletes enrolled"
               icon={Users}
               gradient="from-blue-500/5 to-cyan-500/5"
@@ -176,7 +176,7 @@ export default function DashboardPage() {
             />
             <StatCard
               title="Active This Week"
-              value={coachStats?.activeAthletes ?? 0}
+              value={coachStats?.activeStudents ?? 0}
               description="Completed a workout"
               icon={Activity}
               gradient="from-green-500/5 to-emerald-500/5"
@@ -231,11 +231,11 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Two Column Section: Athletes & Upcoming */}
+        {/* Two Column Section: Students & Upcoming */}
         <div className="grid gap-6 lg:grid-cols-2">
-          {/* Athlete Overview */}
-          <AthleteOverview
-            athletes={coachStats?.athletesWithStats ?? []}
+          {/* Student Overview */}
+          <StudentOverview
+            students={coachStats?.studentsWithStats ?? []}
             delay={600}
           />
 
@@ -374,22 +374,14 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center gap-4 animate-in fade-in slide-in-from-right-4 duration-500">
-          {/* Buttons for unconnected athletes */}
+          {/* Settings button for unconnected athletes */}
           {!isConnected && (
-            <div className="flex gap-3">
-              <Button asChild size="lg" className="shadow-lg shadow-primary/20">
-                <Link href="/workouts/new">
-                  <Plus className="mr-2 h-5 w-5" />
-                  Add Workout
-                </Link>
-              </Button>
-              <Button asChild size="lg" variant="outline">
-                <Link href="/settings">
-                  <Users className="mr-2 h-5 w-5" />
-                  Connect to Coach
-                </Link>
-              </Button>
-            </div>
+            <Button asChild size="lg" className="shadow-lg shadow-primary/20">
+              <Link href="/settings">
+                <Users className="mr-2 h-5 w-5" />
+                Connect to Coach
+              </Link>
+            </Button>
           )}
 
           {workouts.length > 0 && (

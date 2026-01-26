@@ -67,7 +67,7 @@ export const workoutSchema = z.object({
   date: z.date({
     message: 'Please select a date',
   }),
-  assignedTo: z.string().min(1, 'Please select an athlete'),
+  assignedTo: z.string().min(1, 'Please select a student'),
   
   // Tags (optional, 0-5 tags)
   tags: z.array(workoutTagSchema).max(5, 'Maximum 5 tags allowed').optional(),

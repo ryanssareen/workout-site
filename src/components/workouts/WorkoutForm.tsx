@@ -78,7 +78,7 @@ export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAt
 
   const selectedDate = watch('date');
   const selectedType = watch('type');
-  const selectedAthlete = watch('assignedTo');
+  const selectedStudent = watch('assignedTo');
   const selectedTags = watch('tags') || [];
   const isRecurring = watch('isRecurring');
   const recurringFrequency = watch('recurringFrequency');
@@ -282,7 +282,7 @@ export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAt
       {!hideAthleteSelector && (
         <div className="space-y-2">
           <Label htmlFor="assignedTo">Assign to Athlete *</Label>
-          <Select value={selectedAthlete} onValueChange={(value) => setValue('assignedTo', value)}>
+          <Select value={selectedStudent} onValueChange={(value) => setValue('assignedTo', value)}>
             <SelectTrigger>
               <SelectValue placeholder="Select athlete" />
             </SelectTrigger>

@@ -1,6 +1,6 @@
 'use client';
 
-import { AthleteWithStats } from '@/lib/firebase/firestore';
+import { StudentWithStats } from '@/lib/firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,8 +9,8 @@ import { Users, ArrowRight, CheckCircle2, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
-interface AthleteOverviewProps {
-  athletes: AthleteWithStats[];
+interface StudentOverviewProps {
+  students: StudentWithStats[];
   delay?: number;
 }
 
@@ -23,7 +23,7 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-function AthleteCard({ athlete, index }: { athlete: AthleteWithStats; index: number }) {
+function StudentCard({ student, index }: { student: StudentWithStats; index: number }) {
   return (
     <div
       className={cn(
@@ -36,18 +36,18 @@ function AthleteCard({ athlete, index }: { athlete: AthleteWithStats; index: num
         {/* Avatar */}
         <div className={cn(
           'w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm',
-          athlete.isActive
+          student.isActive
             ? 'bg-gradient-to-br from-green-500 to-emerald-500 text-white'
             : 'bg-muted text-muted-foreground'
         )}>
-          {getInitials(athlete.displayName)}
+          {getInitials(student.displayName)}
         </div>
 
         {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h4 className="font-medium text-sm truncate">{athlete.displayName}</h4>
-            {athlete.isActive && (
+            <h4 className="font-medium text-sm truncate">{student.displayName}</h4>
+            {student.isActive && (
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" title="Active this week" />
             )}
           </div>
@@ -55,29 +55,29 @@ function AthleteCard({ athlete, index }: { athlete: AthleteWithStats; index: num
           <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <Clock className="h-3 w-3" />
-              {athlete.assignedWorkouts}
+              {student.assignedWorkouts}
             </span>
             <span className="flex items-center gap-1">
               <CheckCircle2 className="h-3 w-3 text-green-500" />
-              {athlete.completedWorkouts}
+              {student.completedWorkouts}
             </span>
           </div>
         </div>
 
         {/* Progress */}
         <ProgressRing
-          progress={athlete.completionRate}
+          progress={student.completionRate}
           size="sm"
-          color={athlete.completionRate >= 70 ? 'stroke-green-500' : athlete.completionRate >= 40 ? 'stroke-amber-500' : 'stroke-red-400'}
+          color={student.completionRate >= 70 ? 'stroke-green-500' : student.completionRate >= 40 ? 'stroke-amber-500' : 'stroke-red-400'}
         />
       </div>
     </div>
   );
 }
 
-export function AthleteOverview({ athletes, delay = 0 }: AthleteOverviewProps) {
-  const displayAthletes = athletes.slice(0, 6);
-  const hasMore = athletes.length > 6;
+export function StudentOverview({ students, delay = 0 }: StudentOverviewProps) {
+  const displayStudents = students.slice(0, 6);
+  const hasMore = students.length > 6;
 
   return (
     <Card
@@ -92,19 +92,19 @@ export function AthleteOverview({ athletes, delay = 0 }: AthleteOverviewProps) {
               Your Athletes
             </CardTitle>
             <CardDescription>
-              {athletes.length} athlete{athletes.length !== 1 ? 's' : ''} enrolled
+              {students.length} athlete{students.length !== 1 ? 's' : ''} enrolled
             </CardDescription>
           </div>
           {hasMore && (
             <Badge variant="secondary" className="text-xs">
-              +{athletes.length - 6} more
+              +{students.length - 6} more
             </Badge>
           )}
         </div>
       </CardHeader>
 
       <CardContent>
-        {athletes.length === 0 ? (
+        {students.length === 0 ? (
           <div className="text-center py-8">
             <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-3">
               <Users className="h-6 w-6 text-muted-foreground" />
@@ -115,13 +115,13 @@ export function AthleteOverview({ athletes, delay = 0 }: AthleteOverviewProps) {
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
-            {displayAthletes.map((athlete, index) => (
-              <AthleteCard key={athlete.uid} athlete={athlete} index={index} />
+            {displayStudents.map((student, index) => (
+              <StudentCard key={student.uid} student={student} index={index} />
             ))}
           </div>
         )}
 
-        {athletes.length > 0 && (
+        {students.length > 0 && (
           <Button
             variant="ghost"
             className="w-full mt-4 group"

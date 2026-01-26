@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 import { adminDb } from '@/lib/firebase/admin';
 
-interface AthleteStats {
+interface StudentStats {
   name: string;
   email: string;
   totalWorkouts: number;
@@ -38,35 +38,35 @@ export async function POST(req: NextRequest) {
 
     console.log('📊 Generating suggestions for coach:', coachId);
 
-    // Admin override: rsareen@gmail.com sees ALL athletes
+    // Admin override: rsareen@gmail.com sees ALL students
     const isAdmin = userEmail === 'rsareen@gmail.com';
     console.log('👑 Admin mode:', isAdmin);
 
-    // Get athletes
-    console.log('1️⃣ Fetching athletes...');
-    let athletesSnapshot;
+    // Get students
+    console.log('1️⃣ Fetching students...');
+    let studentsSnapshot;
     if (isAdmin) {
-      // Admin sees ALL athletes (role = athlete)
-      athletesSnapshot = await adminDb
+      // Admin sees ALL students (role = student)
+      studentsSnapshot = await adminDb
         .collection('users')
-        .where('role', '==', 'athlete')
+        .where('role', '==', 'student')
         .get();
     } else {
-      // Regular coach sees only their athletes
-      athletesSnapshot = await adminDb
+      // Regular coach sees only their students
+      studentsSnapshot = await adminDb
         .collection('users')
         .where('coachId', '==', coachId)
         .get();
     }
-    console.log('   Found athletes:', athletesSnapshot.size);
+    console.log('   Found students:', studentsSnapshot.size);
 
-    if (athletesSnapshot.empty) {
-      console.log('⚠️ No athletes found');
+    if (studentsSnapshot.empty) {
+      console.log('⚠️ No students found');
       return NextResponse.json({
         suggestions: [],
-        summary: 'No athletes found. Start by inviting athletes to join!',
+        summary: 'No students found. Start by inviting students to join!',
         stats: {
-          totalAthletes: 0,
+          totalStudents: 0,
           totalWorkouts: 0,
           overallCompletionRate: 0,
         },
@@ -90,27 +90,27 @@ export async function POST(req: NextRequest) {
     }
     console.log('   Found workouts:', workoutsSnapshot.size);
 
-    // Analyze each athlete
-    console.log('3️⃣ Analyzing athlete data...');
-    const athleteStats: AthleteStats[] = [];
+    // Analyze each student
+    console.log('3️⃣ Analyzing student data...');
+    const studentStats: StudentStats[] = [];
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    for (const athleteDoc of athletesSnapshot.docs) {
-      const athlete = athleteDoc.data();
-      const athleteId = athleteDoc.id;
-      console.log(`   Processing athlete: ${athlete.displayName || 'Unnamed'} (${athleteId})`);
+    for (const studentDoc of studentsSnapshot.docs) {
+      const student = studentDoc.data();
+      const studentId = studentDoc.id;
+      console.log(`   Processing student: ${student.displayName || 'Unnamed'} (${studentId})`);
 
-      // Get athlete's workouts with proper typing
-      const athleteWorkouts = workoutsSnapshot.docs
+      // Get student's workouts with proper typing
+      const studentWorkouts = workoutsSnapshot.docs
         .map(doc => ({
           id: doc.id,
           ...doc.data(),
         }))
-        .filter((w: any) => w.assignedTo === athleteId) as any[];
-      console.log(`     -> ${athleteWorkouts.length} workouts assigned`);
+        .filter((w: any) => w.assignedTo === studentId) as any[];
+      console.log(`     -> ${studentWorkouts.length} workouts assigned`);
 
-      const recentWorkouts = athleteWorkouts.filter((w: any) => {
+      const recentWorkouts = studentWorkouts.filter((w: any) => {
         const workoutDate = w.date?.toDate ? w.date.toDate() : new Date(w.date);
         return workoutDate >= thirtyDaysAgo;
       });
@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
         return !w.completed && workoutDate < new Date();
       });
 
-      const lastWorkout = athleteWorkouts
+      const lastWorkout = studentWorkouts
         .sort((a: any, b: any) => {
           const dateA = a.date?.toDate ? a.date.toDate() : new Date(a.date);
           const dateB = b.date?.toDate ? b.date.toDate() : new Date(b.date);
@@ -135,9 +135,9 @@ export async function POST(req: NextRequest) {
         ? new Date(lastWorkout.date)
         : undefined;
 
-      athleteStats.push({
-        name: athlete.displayName || 'Unnamed Athlete',
-        email: athlete.email,
+      studentStats.push({
+        name: student.displayName || 'Unnamed Student',
+        email: student.email,
         totalWorkouts: recentWorkouts.length,
         completedWorkouts: completed.length,
         completionRate: recentWorkouts.length > 0 
@@ -156,15 +156,15 @@ export async function POST(req: NextRequest) {
     const analysisContext = `
 COACHING DASHBOARD ANALYSIS - Last 30 Days
 
-Total Athletes: ${athleteStats.length}
-Total Workouts Assigned: ${athleteStats.reduce((sum, s) => sum + s.totalWorkouts, 0)}
+Total Students: ${studentStats.length}
+Total Workouts Assigned: ${studentStats.reduce((sum, s) => sum + s.totalWorkouts, 0)}
 Overall Completion Rate: ${Math.round(
-  athleteStats.reduce((sum, s) => sum + s.completedWorkouts, 0) /
-  Math.max(athleteStats.reduce((sum, s) => sum + s.totalWorkouts, 0), 1) * 100
+  studentStats.reduce((sum, s) => sum + s.completedWorkouts, 0) / 
+  Math.max(studentStats.reduce((sum, s) => sum + s.totalWorkouts, 0), 1) * 100
 )}%
 
-ATHLETE BREAKDOWN:
-${athleteStats.map(s => `
+STUDENT BREAKDOWN:
+${studentStats.map(s => `
 - ${s.name} (${s.email}):
   * Completion Rate: ${s.completionRate}%
   * Completed: ${s.completedWorkouts}/${s.totalWorkouts} workouts
@@ -175,8 +175,8 @@ ${athleteStats.map(s => `
 `).join('\n')}
 
 IDENTIFY:
-1. Athletes who need attention (low completion, many missed workouts)
-2. Athletes doing well (consistent, high completion)
+1. Students who need attention (low completion, many missed workouts)
+2. Students doing well (consistent, high completion)
 3. Patterns (everyone missing Mondays? Too much volume?)
 4. Actionable recommendations for the coach
 
@@ -188,7 +188,7 @@ Provide 5-7 specific, actionable suggestions in JSON format:
       "title": "Short title",
       "description": "Detailed recommendation",
       "priority": "high" | "medium" | "low",
-      "athletes": ["athlete names if relevant"]
+      "students": ["student names if relevant"]
     }
   ]
 }
@@ -204,7 +204,7 @@ Provide 5-7 specific, actionable suggestions in JSON format:
       messages: [
         {
           role: 'system',
-          content: 'You are an expert fitness coach advisor. Analyze athlete workout data and provide actionable coaching suggestions. Return ONLY valid JSON, no markdown or explanations.',
+          content: 'You are an expert fitness coach advisor. Analyze student workout data and provide actionable coaching suggestions. Return ONLY valid JSON, no markdown or explanations.',
         },
         {
           role: 'user',
@@ -229,9 +229,9 @@ Provide 5-7 specific, actionable suggestions in JSON format:
           {
             type: 'info',
             title: 'Analysis Complete',
-            description: 'Your athletes are making progress! Keep monitoring their activity.',
+            description: 'Your students are making progress! Keep monitoring their activity.',
             priority: 'low',
-            athletes: [],
+            students: [],
           },
         ],
       };
@@ -240,11 +240,11 @@ Provide 5-7 specific, actionable suggestions in JSON format:
     return NextResponse.json({
       ...aiSuggestions,
       stats: {
-        totalAthletes: athleteStats.length,
-        totalWorkouts: athleteStats.reduce((sum, s) => sum + s.totalWorkouts, 0),
+        totalStudents: studentStats.length,
+        totalWorkouts: studentStats.reduce((sum, s) => sum + s.totalWorkouts, 0),
         overallCompletionRate: Math.round(
-          athleteStats.reduce((sum, s) => sum + s.completedWorkouts, 0) /
-          Math.max(athleteStats.reduce((sum, s) => sum + s.totalWorkouts, 0), 1) * 100
+          studentStats.reduce((sum, s) => sum + s.completedWorkouts, 0) / 
+          Math.max(studentStats.reduce((sum, s) => sum + s.totalWorkouts, 0), 1) * 100
         ),
       },
     });

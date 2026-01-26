@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { getUserWorkouts } from '@/lib/firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -38,7 +37,6 @@ interface ChatThread {
 }
 
 export default function AICoachPage() {
-  const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
@@ -51,20 +49,13 @@ export default function AICoachPage() {
   const [workoutData, setWorkoutData] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Redirect athletes away - AI Coach is for coaches only
-  useEffect(() => {
-    if (user && user.role !== 'coach') {
-      router.push('/dashboard');
-    }
-  }, [user, router]);
-
-  // Load user's workout data (for coaches viewing their own data)
+  // Load user's workout data
   useEffect(() => {
     const loadWorkoutData = async () => {
-      if (!user || user.role !== 'coach') return;
+      if (!user) return;
 
       try {
-        const workouts = await getUserWorkouts(user.uid, 'athlete');
+        const workouts = await getUserWorkouts(user.uid, 'student');
         const thirtyDaysAgo = subDays(new Date(), 30);
         const recentWorkouts = workouts
           .filter(w => w.date.toDate() >= thirtyDaysAgo)

@@ -23,13 +23,13 @@ interface Suggestion {
   title: string;
   description: string;
   priority: 'high' | 'medium' | 'low';
-  athletes?: string[];
+  students?: string[];
 }
 
 interface SuggestionsResponse {
   suggestions: Suggestion[];
   stats: {
-    totalAthletes: number;
+    totalStudents: number;
     totalWorkouts: number;
     overallCompletionRate: number;
   };
@@ -170,12 +170,12 @@ export default function CoachSuggestionsPage() {
         <div className="grid md:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardDescription>Total Athletes</CardDescription>
+              <CardDescription>Total Students</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">
                 <Users className="h-5 w-5 text-blue-500" />
-                <span className="text-3xl font-bold">{data.stats.totalAthletes}</span>
+                <span className="text-3xl font-bold">{data.stats.totalStudents}</span>
               </div>
             </CardContent>
           </Card>
@@ -213,7 +213,7 @@ export default function CoachSuggestionsPage() {
             <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
             <h3 className="text-lg font-semibold mb-2">AI is analyzing your data...</h3>
             <p className="text-muted-foreground text-center max-w-md">
-              Reviewing athlete performance, identifying patterns, and generating personalized recommendations.
+              Reviewing student performance, identifying patterns, and generating personalized recommendations.
             </p>
           </CardContent>
         </Card>
@@ -259,9 +259,9 @@ export default function CoachSuggestionsPage() {
                             >
                               {suggestion.priority.toUpperCase()} PRIORITY
                             </Badge>
-                            {suggestion.athletes && suggestion.athletes.length > 0 && (
+                            {suggestion.students && suggestion.students.length > 0 && (
                               <Badge variant="secondary">
-                                {suggestion.athletes.length} athlete{suggestion.athletes.length !== 1 ? 's' : ''}
+                                {suggestion.students.length} student{suggestion.students.length !== 1 ? 's' : ''}
                               </Badge>
                             )}
                           </div>
@@ -273,13 +273,13 @@ export default function CoachSuggestionsPage() {
                     <p className="text-muted-foreground leading-relaxed mb-3">
                       {suggestion.description}
                     </p>
-                    {suggestion.athletes && suggestion.athletes.length > 0 && (
+                    {suggestion.students && suggestion.students.length > 0 && (
                       <div className="mt-3 pt-3 border-t">
-                        <p className="text-sm font-medium mb-2">Affected Athletes:</p>
+                        <p className="text-sm font-medium mb-2">Affected Students:</p>
                         <div className="flex flex-wrap gap-2">
-                          {suggestion.athletes.map((athlete, idx) => (
+                          {suggestion.students.map((student, idx) => (
                             <Badge key={idx} variant="outline">
-                              {athlete}
+                              {student}
                             </Badge>
                           ))}
                         </div>

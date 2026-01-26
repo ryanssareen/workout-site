@@ -104,10 +104,10 @@ export async function GET(request: NextRequest) {
     console.log(`📧 Starting summary email job at ${now.toISOString()}`);
     console.log(`Looking for users who haven't received summary since: ${cutoffDate.toISOString()}`);
 
-    // Get all athletes who need summaries
+    // Get all students who need summaries
     const usersSnapshot = await adminDb
       .collection('users')
-      .where('role', '==', 'athlete')
+      .where('role', '==', 'student')
       .get();
 
     const eligibleUsers: UserData[] = [];
