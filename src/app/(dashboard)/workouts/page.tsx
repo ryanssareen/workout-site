@@ -1,33 +1,36 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { getUserWorkouts, deleteWorkout, completeWorkout } from '@/lib/firebase/firestore';
 import { Workout, WorkoutType } from '@/types';
 import { WorkoutList } from '@/components/workouts/WorkoutList';
 import { AIWorkoutSuggestions } from '@/components/workouts/AIWorkoutSuggestions';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import Link from 'next/link';
-import { Plus, ListChecks, Loader2, Waves, Footprints, Bike, Dumbbell, MoreHorizontal } from 'lucide-react';
+import { Plus, ListChecks, Loader2, Waves, Footprints, Bike, Dumbbell, MoreHorizontal, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-const WORKOUT_CATEGORIES: { type: WorkoutType | 'all'; label: string; icon: React.ReactNode; color: string }[] = [
-  { type: 'all', label: 'All', icon: <ListChecks className="h-4 w-4" />, color: 'bg-gray-500' },
-  { type: 'swim', label: 'Swim', icon: <Waves className="h-4 w-4" />, color: 'bg-blue-500' },
-  { type: 'run', label: 'Run', icon: <Footprints className="h-4 w-4" />, color: 'bg-green-500' },
-  { type: 'bike', label: 'Bike', icon: <Bike className="h-4 w-4" />, color: 'bg-orange-500' },
-  { type: 'strength', label: 'Strength', icon: <Dumbbell className="h-4 w-4" />, color: 'bg-purple-500' },
-  { type: 'other', label: 'Other', icon: <MoreHorizontal className="h-4 w-4" />, color: 'bg-gray-500' },
+const WORKOUT_CATEGORIES: { type: WorkoutType; label: string; icon: React.ReactNode; color: string; bgColor: string }[] = [
+  { type: 'swim', label: 'Swim', icon: <Waves className="h-6 w-6" />, color: 'bg-blue-500', bgColor: 'bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/20' },
+  { type: 'run', label: 'Run', icon: <Footprints className="h-6 w-6" />, color: 'bg-green-500', bgColor: 'bg-green-500/10 hover:bg-green-500/20 border-green-500/20' },
+  { type: 'bike', label: 'Bike', icon: <Bike className="h-6 w-6" />, color: 'bg-orange-500', bgColor: 'bg-orange-500/10 hover:bg-orange-500/20 border-orange-500/20' },
+  { type: 'strength', label: 'Strength', icon: <Dumbbell className="h-6 w-6" />, color: 'bg-purple-500', bgColor: 'bg-purple-500/10 hover:bg-purple-500/20 border-purple-500/20' },
+  { type: 'other', label: 'Other', icon: <MoreHorizontal className="h-6 w-6" />, color: 'bg-gray-500', bgColor: 'bg-gray-500/10 hover:bg-gray-500/20 border-gray-500/20' },
 ];
 
 export default function WorkoutsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const user = useAuthStore((state) => state.user);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState<WorkoutType | 'all'>('all');
+
+  // Get category from URL params
+  const selectedCategory = searchParams.get('category') as WorkoutType | null;
 
   const loadWorkouts = async () => {
     if (!user) return;
@@ -39,15 +42,13 @@ export default function WorkoutsPage() {
   useEffect(() => { loadWorkouts(); }, [user]);
 
   // Filter workouts by selected category
-  const filteredWorkouts = selectedCategory === 'all'
-    ? workouts
-    : workouts.filter(w => w.type === selectedCategory);
+  const filteredWorkouts = selectedCategory
+    ? workouts.filter(w => w.type === selectedCategory)
+    : [];
 
   // Get workout counts per category
   const workoutCounts = WORKOUT_CATEGORIES.reduce((acc, cat) => {
-    acc[cat.type] = cat.type === 'all'
-      ? workouts.length
-      : workouts.filter(w => w.type === cat.type).length;
+    acc[cat.type] = workouts.filter(w => w.type === cat.type).length;
     return acc;
   }, {} as Record<string, number>);
 
@@ -87,6 +88,53 @@ export default function WorkoutsPage() {
     );
   }
 
+  // If a category is selected, show the workout list for that category
+  if (selectedCategory) {
+    const categoryConfig = WORKOUT_CATEGORIES.find(c => c.type === selectedCategory);
+
+    return (
+      <div className="space-y-6">
+        {/* Header with back button */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => router.push('/workouts')}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className={cn('p-2.5 rounded-xl', categoryConfig?.color)}>
+              {categoryConfig?.icon}
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">{categoryConfig?.label} Workouts</h1>
+              <p className="text-sm text-muted-foreground">
+                {filteredWorkouts.length} workout{filteredWorkouts.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+          </div>
+          {user?.role === 'coach' && (
+            <Button asChild className="shadow-lg shadow-primary/20">
+              <Link href="/workouts/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Create Workout
+              </Link>
+            </Button>
+          )}
+        </div>
+
+        {/* Workout List */}
+        <WorkoutList
+          workouts={filteredWorkouts}
+          onEdit={user?.role === 'coach' ? handleEdit : undefined}
+          onDelete={user?.role === 'coach' ? handleDelete : undefined}
+          onToggleComplete={handleToggleComplete}
+          onViewDetails={handleViewDetails}
+          isCoach={user?.role === 'coach'}
+          emptyMessage={`No ${selectedCategory} workouts found`}
+        />
+      </div>
+    );
+  }
+
+  // Main page: show category cards and AI suggestions
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -97,10 +145,10 @@ export default function WorkoutsPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold">
-              {user?.role === 'coach' ? 'My Workouts' : 'Assigned Workouts'}
+              {user?.role === 'coach' ? 'My Workouts' : 'Workouts'}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {user?.role === 'coach' ? 'Manage workouts you\'ve created' : 'Track your training sessions'}
+              {user?.role === 'coach' ? 'Manage workouts you\'ve created' : 'Select a category to view workouts'}
             </p>
           </div>
         </div>
@@ -114,46 +162,31 @@ export default function WorkoutsPage() {
         )}
       </div>
 
-      {/* Category Filter Tabs */}
-      <div className="flex flex-wrap gap-2">
+      {/* Category Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         {WORKOUT_CATEGORIES.map((cat) => (
-          <button
+          <Card
             key={cat.type}
-            onClick={() => setSelectedCategory(cat.type)}
             className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all',
-              selectedCategory === cat.type
-                ? `${cat.color} text-white shadow-lg`
-                : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+              'p-4 cursor-pointer transition-all border-2',
+              cat.bgColor
             )}
+            onClick={() => router.push(`/workouts?category=${cat.type}`)}
           >
-            {cat.icon}
-            <span>{cat.label}</span>
-            <span className={cn(
-              'ml-1 px-1.5 py-0.5 rounded-full text-xs',
-              selectedCategory === cat.type
-                ? 'bg-white/20 text-white'
-                : 'bg-background text-muted-foreground'
-            )}>
-              {workoutCounts[cat.type]}
-            </span>
-          </button>
+            <div className="flex flex-col items-center text-center gap-3">
+              <div className={cn('p-3 rounded-xl text-white', cat.color)}>
+                {cat.icon}
+              </div>
+              <div>
+                <h3 className="font-semibold">{cat.label}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {workoutCounts[cat.type]} workout{workoutCounts[cat.type] !== 1 ? 's' : ''}
+                </p>
+              </div>
+            </div>
+          </Card>
         ))}
       </div>
-
-      {/* Workout List */}
-      <WorkoutList
-        workouts={filteredWorkouts}
-        onEdit={user?.role === 'coach' ? handleEdit : undefined}
-        onDelete={user?.role === 'coach' ? handleDelete : undefined}
-        onToggleComplete={handleToggleComplete}
-        onViewDetails={handleViewDetails}
-        isCoach={user?.role === 'coach'}
-        emptyMessage={selectedCategory === 'all'
-          ? 'No workouts found'
-          : `No ${selectedCategory} workouts found`
-        }
-      />
 
       {/* AI Suggestions */}
       {user && <AIWorkoutSuggestions userId={user.uid} recentWorkouts={workouts} />}
