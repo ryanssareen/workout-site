@@ -41,7 +41,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     async function loadCoachInfo() {
-      if (user?.role === 'student' && user.coachId) {
+      if (user?.role === 'athlete' && user.coachId) {
         setLoadingCoachInfo(true);
         try { const coach = await getCoachInfo(user.coachId); setCoachName(coach?.displayName || 'Unknown Coach'); } 
         catch (error) { console.error('Error loading coach info:', error); }
@@ -196,7 +196,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Coach Connection */}
-      {user?.role === 'student' && (
+      {user?.role === 'athlete' && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2"><Users className="h-4 w-4 text-primary" />Coach Connection</CardTitle>
@@ -235,7 +235,7 @@ export default function SettingsPage() {
       )}
 
       {/* Strava */}
-      {user?.role === 'student' && (
+      {user?.role === 'athlete' && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">

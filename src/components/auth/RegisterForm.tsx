@@ -33,8 +33,8 @@ export function RegisterForm() {
       
       let coachId: string | undefined;
       
-      // If student with coach code, validate and get coach ID
-      if (formData.role === 'student' && formData.coachCode) {
+      // If athlete with coach code, validate and get coach ID
+      if (formData.role === 'athlete' && formData.coachCode) {
         console.log('🔍 Looking for coach with code:', formData.coachCode);
         const coach = await findCoachByCode(formData.coachCode);
         console.log('🔍 Found coach:', coach);
@@ -59,7 +59,7 @@ export function RegisterForm() {
           `Account created! Your coach code is: ${newUser.coachCode}`,
           { duration: 10000 }
         );
-      } else if (formData.role === 'student' && !coachId) {
+      } else if (formData.role === 'athlete' && !coachId) {
         toast.success(
           'Account created! You can connect to a coach anytime in Settings.',
           { duration: 5000 }
@@ -131,12 +131,12 @@ export function RegisterForm() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="coach">Coach</SelectItem>
-                <SelectItem value="student">Student</SelectItem>
+                <SelectItem value="athlete">Athlete</SelectItem>
               </SelectContent>
             </Select>
           </div>
           
-          {formData.role === 'student' && (
+          {formData.role === 'athlete' && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="coachCode">Coach Code</Label>

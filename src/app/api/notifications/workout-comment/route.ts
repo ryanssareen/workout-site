@@ -9,7 +9,7 @@ interface CommentNotificationPayload {
   workoutId: string;
   workoutName: string;
   commentText: string;
-  studentName: string;
+  athleteName: string;
   rating?: WorkoutRating;
 }
 
@@ -21,7 +21,7 @@ const ratingLabels: Record<WorkoutRating, { emoji: string; label: string }> = {
 
 function generateNotificationEmail(
   coachName: string,
-  studentName: string,
+  athleteName: string,
   workoutName: string,
   commentText: string,
   rating: WorkoutRating | undefined,
@@ -58,7 +58,7 @@ function generateNotificationEmail(
           <!-- Main Content -->
           <div style="padding: 30px;">
             <p style="font-size: 16px; color: #333; margin-bottom: 20px;">
-              Hey ${coachName}! <strong>${studentName}</strong> left feedback on their workout.
+              Hey ${coachName}! <strong>${athleteName}</strong> left feedback on their workout.
             </p>
 
             <!-- Workout Info -->
@@ -100,9 +100,9 @@ function generateNotificationEmail(
 export async function POST(request: NextRequest) {
   try {
     const body: CommentNotificationPayload = await request.json();
-    const { workoutId, workoutName, commentText, studentName, rating } = body;
+    const { workoutId, workoutName, commentText, athleteName, rating } = body;
 
-    if (!workoutId || !commentText || !studentName) {
+    if (!workoutId || !commentText || !athleteName) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -149,10 +149,10 @@ export async function POST(request: NextRequest) {
     const sendSmtpEmail = new brevo.SendSmtpEmail();
     sendSmtpEmail.sender = { name: 'CoachTrack', email: 'ryansareen6@gmail.com' };
     sendSmtpEmail.to = [{ email: coachEmail, name: coachName }];
-    sendSmtpEmail.subject = `💬 ${studentName} commented on "${workoutName}"`;
+    sendSmtpEmail.subject = `💬 ${athleteName} commented on "${workoutName}"`;
     sendSmtpEmail.htmlContent = generateNotificationEmail(
       coachName,
-      studentName,
+      athleteName,
       workoutName,
       commentText,
       rating,

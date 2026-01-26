@@ -13,7 +13,7 @@ import ReactMarkdown from 'react-markdown';
 interface SuggestionsData {
   suggestions: string;
   dataSnapshot: {
-    students: number;
+    athletes: number;
     totalWorkouts: number;
     completionRate: number;
     recentActivity: number;
@@ -125,11 +125,11 @@ export default function SuggestionsPage() {
             <CardHeader className="pb-2">
               <CardDescription className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
-                Students
+                Athletes
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{suggestions.dataSnapshot.students}</div>
+              <div className="text-2xl font-bold">{suggestions.dataSnapshot.athletes}</div>
             </CardContent>
           </Card>
 

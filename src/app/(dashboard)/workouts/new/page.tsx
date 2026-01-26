@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { createWorkout, getCoachStudents } from '@/lib/firebase/firestore';
+import { createWorkout, getCoachAthletes } from '@/lib/firebase/firestore';
 import { WorkoutForm } from '@/components/workouts/WorkoutForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
@@ -16,7 +16,7 @@ export default function NewWorkoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const user = useAuthStore((state) => state.user);
-  const [students, setStudents] = useState<any[]>([]);
+  const [athletes, setAthletes] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [templateData, setTemplateData] = useState<any>(null);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
@@ -25,17 +25,17 @@ export default function NewWorkoutPage() {
   const aiGenerated = searchParams.get('aiGenerated') === 'true';
 
   const isCoach = user?.role === 'coach';
-  const isUnconnectedAthlete = user?.role === 'student' && !user?.coachId;
+  const isUnconnectedAthlete = user?.role === 'athlete' && !user?.coachId;
 
   useEffect(() => {
-    async function loadStudents() {
+    async function loadAthletes() {
       if (!user || user.role !== 'coach') return;
 
-      const data = await getCoachStudents(user.uid);
-      setStudents(data);
+      const data = await getCoachAthletes(user.uid);
+      setAthletes(data);
     }
 
-    loadStudents();
+    loadAthletes();
   }, [user]);
 
   // Load template if templateId is provided
@@ -88,7 +88,7 @@ export default function NewWorkoutPage() {
 
   // Redirect if not authorized (must be coach OR unconnected athlete)
   useEffect(() => {
-    const canCreate = user?.role === 'coach' || (user?.role === 'student' && !user?.coachId);
+    const canCreate = user?.role === 'coach' || (user?.role === 'athlete' && !user?.coachId);
     if (user && !canCreate) {
       router.push('/dashboard');
     }
@@ -179,14 +179,14 @@ export default function NewWorkoutPage() {
         <CardContent>
           <WorkoutForm
             onSubmit={handleSubmit}
-            athletes={students}
+            athletes={athletes}
             loading={loading || loadingTemplate}
             hideAthleteSelector={isUnconnectedAthlete}
             defaultValues={templateData ? {
               name: templateData.name,
               type: templateData.type,
               date: new Date(),
-              assignedTo: isUnconnectedAthlete ? user?.uid : students[0]?.uid || '',
+              assignedTo: isUnconnectedAthlete ? user?.uid : athletes[0]?.uid || '',
               // Pass the type-specific nested data
               // AI generates: { name, type: "run", run: { distance, time, ... } }
               // WorkoutForm expects exactly this structure

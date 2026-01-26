@@ -110,7 +110,7 @@ export default function WorkoutsPage() {
               </p>
             </div>
           </div>
-          {(user?.role === 'coach' || (user?.role === 'student' && !user?.coachId)) && (
+          {(user?.role === 'coach' || (user?.role === 'athlete' && !user?.coachId)) && (
             <Button asChild className="shadow-lg shadow-primary/20">
               <Link href="/workouts/new">
                 <Plus className="mr-2 h-4 w-4" />
@@ -123,8 +123,8 @@ export default function WorkoutsPage() {
         {/* Workout List */}
         <WorkoutList
           workouts={filteredWorkouts}
-          onEdit={(user?.role === 'coach' || (user?.role === 'student' && !user?.coachId)) ? handleEdit : undefined}
-          onDelete={(user?.role === 'coach' || (user?.role === 'student' && !user?.coachId)) ? handleDelete : undefined}
+          onEdit={(user?.role === 'coach' || (user?.role === 'athlete' && !user?.coachId)) ? handleEdit : undefined}
+          onDelete={(user?.role === 'coach' || (user?.role === 'athlete' && !user?.coachId)) ? handleDelete : undefined}
           onToggleComplete={handleToggleComplete}
           onViewDetails={handleViewDetails}
           isCoach={user?.role === 'coach'}
@@ -152,7 +152,7 @@ export default function WorkoutsPage() {
             </p>
           </div>
         </div>
-        {(user?.role === 'coach' || (user?.role === 'student' && !user?.coachId)) && (
+        {(user?.role === 'coach' || (user?.role === 'athlete' && !user?.coachId)) && (
           <Button asChild className="shadow-lg shadow-primary/20">
             <Link href="/workouts/new">
               <Plus className="mr-2 h-4 w-4" />

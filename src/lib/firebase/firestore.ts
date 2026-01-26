@@ -121,23 +121,23 @@ export async function getWorkout(id: string): Promise<Workout | null> {
   }
 }
 
-export async function getUserWorkouts(userId: string, role: 'coach' | 'student'): Promise<Workout[]> {
+export async function getUserWorkouts(userId: string, role: 'coach' | 'athlete'): Promise<Workout[]> {
   try {
     const workoutsRef = collection(getDbInstance(), 'workouts');
-    
-    if (role === 'student') {
-      // Students see workouts assigned to them
+
+    if (role === 'athlete') {
+      // Athletes see workouts assigned to them
       const q = query(workoutsRef, where('assignedTo', '==', userId), orderBy('date', 'desc'));
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Workout[];
     } else {
       // Coaches see:
       // 1. Workouts they created (createdBy = coachId)
-      // 2. Workouts assigned to their students (including Strava imports)
+      // 2. Workouts assigned to their athletes (including Strava imports)
       
-      // Get coach's students
-      const students = await getCoachStudents(userId);
-      const studentIds = students.map(s => s.uid);
+      // Get coach's athletes
+      const athletes = await getCoachAthletes(userId);
+      const athleteIds = athletes.map(a => a.uid);
       
       // Query 1: Workouts created by coach
       const coachWorkoutsQuery = query(
@@ -147,33 +147,33 @@ export async function getUserWorkouts(userId: string, role: 'coach' | 'student')
       );
       const coachWorkouts = await getDocs(coachWorkoutsQuery);
       
-      // Query 2: Workouts assigned to students (Strava imports)
+      // Query 2: Workouts assigned to athletes (Strava imports)
       // We need to fetch these separately since Firestore doesn't support OR queries well
-      const studentWorkouts: Workout[] = [];
-      
-      if (studentIds.length > 0) {
+      const athleteWorkouts: Workout[] = [];
+
+      if (athleteIds.length > 0) {
         // Firestore 'in' supports max 10 items, so batch if needed
         const batches = [];
-        for (let i = 0; i < studentIds.length; i += 10) {
-          const batch = studentIds.slice(i, i + 10);
+        for (let i = 0; i < athleteIds.length; i += 10) {
+          const batch = athleteIds.slice(i, i + 10);
           batches.push(batch);
         }
-        
+
         for (const batch of batches) {
-          const studentQuery = query(
+          const athleteQuery = query(
             workoutsRef,
             where('assignedTo', 'in', batch),
             where('source', '==', 'strava')
           );
-          const studentDocs = await getDocs(studentQuery);
-          studentWorkouts.push(...studentDocs.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Workout));
+          const athleteDocs = await getDocs(athleteQuery);
+          athleteWorkouts.push(...athleteDocs.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Workout));
         }
       }
-      
+
       // Combine and deduplicate
       const allWorkouts = [
         ...coachWorkouts.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Workout),
-        ...studentWorkouts
+        ...athleteWorkouts
       ];
       
       // Remove duplicates by ID
@@ -288,7 +288,7 @@ export async function completeWorkout(
 export async function addWorkoutComment(
   workoutId: string,
   userId: string,
-  userRole: 'coach' | 'student',
+  userRole: 'coach' | 'athlete',
   userName: string,
   text: string,
   rating?: WorkoutRating,
@@ -335,38 +335,38 @@ export async function deleteWorkoutComment(workoutId: string, commentId: string)
   }
 }
 
-export async function getCoachStudents(coachId: string): Promise<any[]> {
+export async function getCoachAthletes(coachId: string): Promise<any[]> {
   try {
     // Get coach's user document to check email
     const coachDoc = await getDoc(doc(getDbInstance(), 'users', coachId));
     const coachEmail = coachDoc.exists() ? coachDoc.data()?.email : null;
 
-    console.log('👑 getCoachStudents - Admin check:', { coachId, coachEmail });
+    console.log('👑 getCoachAthletes - Admin check:', { coachId, coachEmail });
 
     const usersRef = collection(getDbInstance(), 'users');
     let q;
 
-    // Special case: rsareen@gmail.com gets ALL students
+    // Special case: rsareen@gmail.com gets ALL athletes
     if (coachEmail === 'rsareen@gmail.com') {
-      console.log('👑 ADMIN MODE: Fetching ALL students');
-      q = query(usersRef, where('role', '==', 'student'));
+      console.log('👑 ADMIN MODE: Fetching ALL athletes');
+      q = query(usersRef, where('role', '==', 'athlete'));
     } else {
-      // Regular coaches only see students assigned to them
-      console.log('👤 Regular mode: Fetching assigned students only');
-      q = query(usersRef, where('coachId', '==', coachId), where('role', '==', 'student'));
+      // Regular coaches only see athletes assigned to them
+      console.log('👤 Regular mode: Fetching assigned athletes only');
+      q = query(usersRef, where('coachId', '==', coachId), where('role', '==', 'athlete'));
     }
 
     const querySnapshot = await getDocs(q);
-    const students = querySnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
-    console.log('📊 Found students:', students.length);
-    return students;
+    const athletes = querySnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+    console.log('📊 Found athletes:', athletes.length);
+    return athletes;
   } catch (error) {
-    console.error('❌ Error fetching students:', error);
+    console.error('❌ Error fetching athletes:', error);
     return [];
   }
 }
 
-export interface StudentWithStats {
+export interface AthleteWithStats {
   uid: string;
   displayName: string;
   email: string;
@@ -377,8 +377,8 @@ export interface StudentWithStats {
 }
 
 export interface CoachStats {
-  totalStudents: number;
-  activeStudents: number;
+  totalAthletes: number;
+  activeAthletes: number;
   totalWorkouts: number;
   completedWorkouts: number;
   pendingWorkouts: number;
@@ -389,13 +389,13 @@ export interface CoachStats {
     bike: { total: number; completed: number };
     strength: { total: number; completed: number };
   };
-  studentsWithStats: StudentWithStats[];
+  athletesWithStats: AthleteWithStats[];
 }
 
 export async function getCoachDashboardStats(coachId: string): Promise<CoachStats> {
   try {
-    // Get students
-    const students = await getCoachStudents(coachId);
+    // Get athletes
+    const athletes = await getCoachAthletes(coachId);
 
     // Get all workouts created by this coach
     const workouts = await getUserWorkouts(coachId, 'coach');
@@ -422,38 +422,38 @@ export async function getCoachDashboardStats(coachId: string): Promise<CoachStat
       }
     });
 
-    // Calculate per-student stats
+    // Calculate per-athlete stats
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    const studentsWithStats: StudentWithStats[] = students.map(student => {
-      const studentWorkouts = workouts.filter(w => w.assignedTo === student.uid);
-      const studentCompleted = studentWorkouts.filter(w => w.completed);
+    const athletesWithStats: AthleteWithStats[] = athletes.map(athlete => {
+      const athleteWorkouts = workouts.filter(w => w.assignedTo === athlete.uid);
+      const athleteCompleted = athleteWorkouts.filter(w => w.completed);
 
-      // Check if student completed any workout in last 7 days
-      const isActive = studentCompleted.some(w => {
+      // Check if athlete completed any workout in last 7 days
+      const isActive = athleteCompleted.some(w => {
         const workoutDate = w.updatedAt?.toDate?.() || w.date.toDate();
         return workoutDate >= sevenDaysAgo;
       });
 
       return {
-        uid: student.uid,
-        displayName: student.displayName || 'Unknown',
-        email: student.email || '',
-        assignedWorkouts: studentWorkouts.length,
-        completedWorkouts: studentCompleted.length,
-        completionRate: studentWorkouts.length > 0
-          ? Math.round((studentCompleted.length / studentWorkouts.length) * 100)
+        uid: athlete.uid,
+        displayName: athlete.displayName || 'Unknown',
+        email: athlete.email || '',
+        assignedWorkouts: athleteWorkouts.length,
+        completedWorkouts: athleteCompleted.length,
+        completionRate: athleteWorkouts.length > 0
+          ? Math.round((athleteCompleted.length / athleteWorkouts.length) * 100)
           : 0,
         isActive,
       };
     });
 
-    const activeStudents = studentsWithStats.filter(s => s.isActive).length;
+    const activeAthletes = athletesWithStats.filter(a => a.isActive).length;
 
     return {
-      totalStudents: students.length,
-      activeStudents,
+      totalAthletes: athletes.length,
+      activeAthletes,
       totalWorkouts: workouts.length,
       completedWorkouts,
       pendingWorkouts,
@@ -461,13 +461,13 @@ export async function getCoachDashboardStats(coachId: string): Promise<CoachStat
         ? Math.round((completedWorkouts / workouts.length) * 100)
         : 0,
       workoutsByType,
-      studentsWithStats,
+      athletesWithStats,
     };
   } catch (error) {
     console.error('Error fetching coach stats:', error);
     return {
-      totalStudents: 0,
-      activeStudents: 0,
+      totalAthletes: 0,
+      activeAthletes: 0,
       totalWorkouts: 0,
       completedWorkouts: 0,
       pendingWorkouts: 0,
@@ -478,7 +478,7 @@ export async function getCoachDashboardStats(coachId: string): Promise<CoachStat
         bike: { total: 0, completed: 0 },
         strength: { total: 0, completed: 0 },
       },
-      studentsWithStats: [],
+      athletesWithStats: [],
     };
   }
 }
@@ -502,10 +502,10 @@ export async function getCoachInfo(coachId: string): Promise<{ uid: string; disp
   }
 }
 
-// Connect student to coach
-export async function connectToCoach(studentId: string, coachId: string): Promise<void> {
+// Connect athlete to coach
+export async function connectToCoach(athleteId: string, coachId: string): Promise<void> {
   try {
-    const userRef = doc(getDbInstance(), 'users', studentId);
+    const userRef = doc(getDbInstance(), 'users', athleteId);
     await updateDoc(userRef, {
       coachId,
       updatedAt: serverTimestamp(),
@@ -515,10 +515,10 @@ export async function connectToCoach(studentId: string, coachId: string): Promis
   }
 }
 
-// Disconnect student from coach
-export async function disconnectFromCoach(studentId: string): Promise<void> {
+// Disconnect athlete from coach
+export async function disconnectFromCoach(athleteId: string): Promise<void> {
   try {
-    const userRef = doc(getDbInstance(), 'users', studentId);
+    const userRef = doc(getDbInstance(), 'users', athleteId);
     await updateDoc(userRef, {
       coachId: null,
       updatedAt: serverTimestamp(),

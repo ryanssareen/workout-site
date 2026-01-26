@@ -62,7 +62,7 @@ export async function createUser(
       role,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-      ...(role === 'student' && coachId ? { coachId } : {}),
+      ...(role === 'athlete' && coachId ? { coachId } : {}),
       ...(coachCode ? { coachCode } : {}),
     };
     

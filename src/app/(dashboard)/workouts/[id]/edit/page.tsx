@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { getWorkout, updateWorkout, getCoachStudents } from '@/lib/firebase/firestore';
+import { getWorkout, updateWorkout, getCoachAthletes } from '@/lib/firebase/firestore';
 import { WorkoutForm } from '@/components/workouts/WorkoutForm';
 import { WorkoutSchema } from '@/lib/schemas/workout';
 import { Workout } from '@/types';
@@ -32,7 +32,7 @@ export default function EditWorkoutPage() {
   const user = useAuthStore((state) => state.user);
   const loading = useAuthStore((state) => state.loading);
   const [workout, setWorkout] = useState<Workout | null>(null);
-  const [students, setStudents] = useState<Array<{ uid: string; displayName: string; email: string }>>([]);
+  const [athletes, setAthletes] = useState<Array<{ uid: string; displayName: string; email: string }>>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -71,9 +71,9 @@ export default function EditWorkoutPage() {
       
       setWorkout(workoutData);
       
-      // Load students
-      const studentsList = await getCoachStudents(user.uid);
-      setStudents(studentsList);
+      // Load athletes
+      const athletesList = await getCoachAthletes(user.uid);
+      setAthletes(athletesList);
       
       setDataLoading(false);
     }
@@ -136,7 +136,7 @@ export default function EditWorkoutPage() {
           duration: workout.duration,
           assignedTo: workout.assignedTo,
         }}
-        athletes={students}
+        athletes={athletes}
         loading={submitting}
       />
     </div>
