@@ -264,50 +264,26 @@ export async function GET(request: NextRequest) {
       console.log('✅ Token refreshed');
     }
 
-    // Fetch activities from the last year with pagination
-    console.log('📡 Fetching activities from the last year...');
-    const oneYearAgo = Math.floor(Date.now() / 1000) - (365 * 24 * 60 * 60);
-    const activities: any[] = [];
-    let page = 1;
-    const perPage = 200; // Strava max is 200 per page
+    // Fetch activities from the last 30 days (quick catch-up sync)
+    // New activities sync automatically via webhook in real-time
+    console.log('📡 Fetching recent activities (last 30 days)...');
+    const thirtyDaysAgo = Math.floor(Date.now() / 1000) - (30 * 24 * 60 * 60);
 
-    while (true) {
-      const activitiesResponse = await fetch(
-        `https://www.strava.com/api/v3/athlete/activities?after=${oneYearAgo}&per_page=${perPage}&page=${page}`,
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }
-      );
-
-      if (!activitiesResponse.ok) {
-        const errorData = await activitiesResponse.json().catch(() => ({ message: 'Unknown error' }));
-        console.error('❌ Strava API error:', errorData);
-        return NextResponse.json({ error: 'Failed to fetch Strava activities: ' + (errorData.message || 'Unknown error') }, { status: 500 });
+    const activitiesResponse = await fetch(
+      `https://www.strava.com/api/v3/athlete/activities?after=${thirtyDaysAgo}&per_page=100`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
       }
+    );
 
-      const pageActivities = await activitiesResponse.json();
-      console.log(`📄 Page ${page}: fetched ${pageActivities.length} activities`);
-
-      if (pageActivities.length === 0) {
-        break; // No more activities
-      }
-
-      activities.push(...pageActivities);
-
-      if (pageActivities.length < perPage) {
-        break; // Last page (partial)
-      }
-
-      page++;
-
-      // Safety limit to prevent infinite loops
-      if (page > 20) {
-        console.log('⚠️ Reached page limit (20 pages)');
-        break;
-      }
+    if (!activitiesResponse.ok) {
+      const errorData = await activitiesResponse.json().catch(() => ({ message: 'Unknown error' }));
+      console.error('❌ Strava API error:', errorData);
+      return NextResponse.json({ error: 'Failed to fetch Strava activities: ' + (errorData.message || 'Unknown error') }, { status: 500 });
     }
 
-    console.log(`✅ Fetched ${activities.length} total activities from Strava`);
+    const activities = await activitiesResponse.json();
+    console.log(`✅ Fetched ${activities.length} activities from last 30 days`);
 
     // Get existing Strava workout IDs to avoid duplicates
     const existingWorkoutsSnapshot = await adminDb
