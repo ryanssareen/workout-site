@@ -88,10 +88,11 @@ export default function NewWorkoutPage() {
 
   // Redirect if not authorized (must be coach OR unconnected athlete)
   useEffect(() => {
-    if (user && !isCoach && !isUnconnectedAthlete) {
+    const canCreate = user?.role === 'coach' || (user?.role === 'student' && !user?.coachId);
+    if (user && !canCreate) {
       router.push('/dashboard');
     }
-  }, [user, router, isCoach, isUnconnectedAthlete]);
+  }, [user, router]);
 
   const handleSubmit = async (data: WorkoutSchema) => {
     if (!user) return;
