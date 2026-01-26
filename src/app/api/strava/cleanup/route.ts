@@ -7,10 +7,27 @@ import { adminDb } from '@/lib/firebase/admin';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    let userId = searchParams.get('userId');
+    const email = searchParams.get('email');
+
+    // If email provided, look up user ID
+    if (!userId && email) {
+      const usersSnapshot = await adminDb
+        .collection('users')
+        .where('email', '==', email)
+        .limit(1)
+        .get();
+
+      if (usersSnapshot.empty) {
+        return NextResponse.json({ error: `No user found with email: ${email}` }, { status: 404 });
+      }
+
+      userId = usersSnapshot.docs[0].id;
+      console.log(`📧 Found user ID ${userId} for email ${email}`);
+    }
 
     if (!userId) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+      return NextResponse.json({ error: 'User ID or email is required' }, { status: 400 });
     }
 
     console.log(`🧹 Cleaning up duplicate Strava workouts for user: ${userId}`);
