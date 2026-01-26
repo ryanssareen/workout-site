@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // Allow up to 60 seconds
 
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
@@ -23,14 +24,11 @@ export async function GET(request: NextRequest) {
       }
 
       userId = usersSnapshot.docs[0].id;
-      console.log(`📧 Found user ID ${userId} for email ${email}`);
     }
 
     if (!userId) {
       return NextResponse.json({ error: 'User ID or email is required' }, { status: 400 });
     }
-
-    console.log(`🧹 Cleaning up duplicate Strava workouts for user: ${userId}`);
 
     // Get all Strava workouts for this user
     const workoutsSnapshot = await adminDb
@@ -39,36 +37,28 @@ export async function GET(request: NextRequest) {
       .where('source', '==', 'strava')
       .get();
 
-    console.log(`📊 Found ${workoutsSnapshot.size} total Strava workouts`);
-
     // Group by stravaActivityId
     const workoutsByStravaId: Record<string, { id: string; createdAt: any }[]> = {};
 
     for (const doc of workoutsSnapshot.docs) {
       const data = doc.data();
       const stravaId = data.stravaActivityId;
-
       if (!stravaId) continue;
 
       if (!workoutsByStravaId[stravaId]) {
         workoutsByStravaId[stravaId] = [];
       }
-
       workoutsByStravaId[stravaId].push({
         id: doc.id,
         createdAt: data.createdAt,
       });
     }
 
-    // Find duplicates and delete all but the first one
-    let deletedCount = 0;
-    const duplicateStravaIds: string[] = [];
+    // Find duplicates and batch delete
+    const toDelete: string[] = [];
 
-    for (const [stravaId, workouts] of Object.entries(workoutsByStravaId)) {
+    for (const [, workouts] of Object.entries(workoutsByStravaId)) {
       if (workouts.length > 1) {
-        duplicateStravaIds.push(stravaId);
-        console.log(`🔍 Found ${workouts.length} duplicates for Strava activity ${stravaId}`);
-
         // Sort by createdAt to keep the oldest one
         workouts.sort((a, b) => {
           const aTime = a.createdAt?.toMillis?.() || 0;
@@ -76,24 +66,34 @@ export async function GET(request: NextRequest) {
           return aTime - bTime;
         });
 
-        // Delete all except the first (oldest) one
+        // Mark all except the first (oldest) for deletion
         for (let i = 1; i < workouts.length; i++) {
-          console.log(`  🗑️ Deleting duplicate: ${workouts[i].id}`);
-          await adminDb.collection('workouts').doc(workouts[i].id).delete();
-          deletedCount++;
+          toDelete.push(workouts[i].id);
         }
       }
     }
 
-    console.log(`✅ Cleanup complete: Deleted ${deletedCount} duplicate workouts`);
+    // Batch delete in chunks of 500 (Firestore limit)
+    let deletedCount = 0;
+    for (let i = 0; i < toDelete.length; i += 500) {
+      const chunk = toDelete.slice(i, i + 500);
+      const batch = adminDb.batch();
+
+      for (const docId of chunk) {
+        batch.delete(adminDb.collection('workouts').doc(docId));
+      }
+
+      await batch.commit();
+      deletedCount += chunk.length;
+    }
 
     return NextResponse.json({
       success: true,
       totalWorkouts: workoutsSnapshot.size,
-      duplicateActivities: duplicateStravaIds.length,
       deletedWorkouts: deletedCount,
+      remainingWorkouts: workoutsSnapshot.size - deletedCount,
       message: deletedCount > 0
-        ? `Deleted ${deletedCount} duplicate workouts from ${duplicateStravaIds.length} activities`
+        ? `Deleted ${deletedCount} duplicates. ${workoutsSnapshot.size - deletedCount} workouts remain.`
         : 'No duplicates found',
     });
   } catch (error: any) {
