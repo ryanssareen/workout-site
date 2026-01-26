@@ -356,50 +356,83 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Process activities in small batches (2 at a time) to avoid overloading backend
-    const BATCH_SIZE = 2;
+    // Process activities one at a time to avoid duplicates
     let newWorkoutsCount = 0;
     let mergedWorkoutsCount = 0;
+    let skippedCount = 0;
 
-    // Helper function to delay between batches
+    // Helper function to delay between activities
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-    // Process in batches of 2
-    for (let i = 0; i < activitiesToProcess.length; i += BATCH_SIZE) {
-      const batchActivities = activitiesToProcess.slice(i, i + BATCH_SIZE);
-      const batch = adminDb.batch();
+    // Track IDs we've already processed in this sync
+    const processedInThisSync = new Set<string>();
 
-      console.log(`📦 Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(activitiesToProcess.length / BATCH_SIZE)} (${batchActivities.length} activities)`);
+    for (let i = 0; i < activitiesToProcess.length; i++) {
+      const activity = activitiesToProcess[i];
+      const stravaId = String(activity.id);
 
-      for (const activity of batchActivities) {
-        const activityDate = new Date(activity.start_date_local);
-        const workoutType = mapStravaType(activity.type);
-        const stravaId = String(activity.id);
+      // Skip if already processed in this sync run
+      if (processedInThisSync.has(stravaId)) {
+        console.log(`  ⏭️ Already processed in this sync: ${activity.name}`);
+        skippedCount++;
+        continue;
+      }
 
-        // Prepare stats from Strava
-        const actualStats: any = {};
-        if (activity.distance) actualStats.distance = activity.distance;
-        if (activity.moving_time) actualStats.duration = activity.moving_time;
-        if (activity.calories) actualStats.calories = activity.calories;
-        if (activity.average_heartrate) actualStats.avgHeartRate = activity.average_heartrate;
-        if (activity.max_heartrate) actualStats.maxHeartRate = activity.max_heartrate;
-        if (activity.average_speed) actualStats.avgSpeed = activity.average_speed;
-        if (activity.max_speed) actualStats.maxSpeed = activity.max_speed;
-        if (activity.total_elevation_gain) actualStats.elevationGain = activity.total_elevation_gain;
+      // Double-check this activity doesn't already exist (real-time check)
+      const existingCheck = await adminDb
+        .collection('workouts')
+        .where('stravaActivityId', '==', stravaId)
+        .limit(1)
+        .get();
 
-        // Skip AI tags for batch processing to speed things up
-        const aiTags: string[] = [];
+      if (!existingCheck.empty) {
+        console.log(`  ⏭️ Already exists: ${activity.name}`);
+        skippedCount++;
+        processedInThisSync.add(stravaId);
+        continue;
+      }
 
-        // Check if there's a decision for this activity
-        const decision = decisions[stravaId];
+      console.log(`📦 Processing ${i + 1}/${activitiesToProcess.length}: ${activity.name}`);
 
-        if (decision?.action === 'merge' && decision.workoutId) {
-          // User chose to merge with existing workout
-          console.log(`  🔗 Merging: ${activity.name}`);
+      const activityDate = new Date(activity.start_date_local);
+      const workoutType = mapStravaType(activity.type);
 
-          const workoutRef = adminDb.collection('workouts').doc(decision.workoutId);
+      // Prepare stats from Strava
+      const actualStats: any = {};
+      if (activity.distance) actualStats.distance = activity.distance;
+      if (activity.moving_time) actualStats.duration = activity.moving_time;
+      if (activity.calories) actualStats.calories = activity.calories;
+      if (activity.average_heartrate) actualStats.avgHeartRate = activity.average_heartrate;
+      if (activity.max_heartrate) actualStats.maxHeartRate = activity.max_heartrate;
+      if (activity.average_speed) actualStats.avgSpeed = activity.average_speed;
+      if (activity.max_speed) actualStats.maxSpeed = activity.max_speed;
+      if (activity.total_elevation_gain) actualStats.elevationGain = activity.total_elevation_gain;
 
-          batch.update(workoutRef, {
+      // Check if there's a decision for this activity
+      const decision = decisions[stravaId];
+
+      if (decision?.action === 'merge' && decision.workoutId) {
+        // User chose to merge with existing workout
+        console.log(`  🔗 Merging: ${activity.name}`);
+
+        await adminDb.collection('workouts').doc(decision.workoutId).update({
+          completed: true,
+          completedAt: admin.firestore.Timestamp.fromDate(activityDate),
+          completedBy: 'strava',
+          stravaActivityId: stravaId,
+          actualStats,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        mergedWorkoutsCount++;
+      } else {
+        // Try to find a matching coach-assigned workout (date-based auto-merge)
+        const matchingWorkout = await findMatchingWorkout(userId, workoutType, activityDate);
+
+        if (matchingWorkout && !decision) {
+          // Auto-merge with date-matched workout
+          console.log(`  🔗 Auto-merge: ${activity.name} → ${matchingWorkout.data.name}`);
+
+          await adminDb.collection('workouts').doc(matchingWorkout.id).update({
             completed: true,
             completedAt: admin.firestore.Timestamp.fromDate(activityDate),
             completedBy: 'strava',
@@ -409,64 +442,40 @@ export async function GET(request: NextRequest) {
           });
           mergedWorkoutsCount++;
         } else {
-          // Try to find a matching coach-assigned workout (date-based auto-merge)
-          const matchingWorkout = await findMatchingWorkout(userId, workoutType, activityDate);
+          // Create new workout
+          console.log(`  ➕ Creating: ${activity.name}`);
 
-          if (matchingWorkout && !decision) {
-            // Auto-merge with date-matched workout
-            console.log(`  🔗 Auto-merge: ${activity.name} → ${matchingWorkout.data.name}`);
-
-            const workoutRef = adminDb.collection('workouts').doc(matchingWorkout.id);
-
-            batch.update(workoutRef, {
-              completed: true,
-              completedAt: admin.firestore.Timestamp.fromDate(activityDate),
-              completedBy: 'strava',
-              stravaActivityId: stravaId,
-              actualStats,
-              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            });
-            mergedWorkoutsCount++;
-          } else {
-            // Create new workout
-            console.log(`  ➕ Creating: ${activity.name}`);
-
-            const workoutRef = adminDb.collection('workouts').doc();
-            const workoutData: any = {
-              name: activity.name,
-              type: workoutType,
-              description: `Imported from Strava\nDistance: ${((activity.distance || 0) / 1000).toFixed(2)} km\nMoving time: ${Math.round((activity.moving_time || 0) / 60)} min`,
-              date: admin.firestore.Timestamp.fromDate(activityDate),
-              duration: Math.round((activity.moving_time || 0) / 60),
-              createdBy: userId,
-              assignedTo: userId,
-              completed: true,
-              completedAt: admin.firestore.Timestamp.fromDate(activityDate),
-              completedBy: 'strava',
-              createdAt: admin.firestore.FieldValue.serverTimestamp(),
-              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-              source: 'strava',
-              stravaActivityId: stravaId,
-              actualStats,
-            };
-
-            batch.set(workoutRef, workoutData);
-            newWorkoutsCount++;
-          }
+          await adminDb.collection('workouts').add({
+            name: activity.name,
+            type: workoutType,
+            description: `Imported from Strava\nDistance: ${((activity.distance || 0) / 1000).toFixed(2)} km\nMoving time: ${Math.round((activity.moving_time || 0) / 60)} min`,
+            date: admin.firestore.Timestamp.fromDate(activityDate),
+            duration: Math.round((activity.moving_time || 0) / 60),
+            createdBy: userId,
+            assignedTo: userId,
+            completed: true,
+            completedAt: admin.firestore.Timestamp.fromDate(activityDate),
+            completedBy: 'strava',
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            source: 'strava',
+            stravaActivityId: stravaId,
+            actualStats,
+          });
+          newWorkoutsCount++;
         }
       }
 
-      // Commit this batch
-      await batch.commit();
-      console.log(`  ✅ Batch committed`);
+      // Mark as processed
+      processedInThisSync.add(stravaId);
 
-      // Small delay between batches to avoid overwhelming the backend
-      if (i + BATCH_SIZE < activitiesToProcess.length) {
-        await delay(500); // 500ms delay between batches
+      // Small delay between activities
+      if (i < activitiesToProcess.length - 1) {
+        await delay(200);
       }
     }
 
-    console.log(`✅ Finished: Created ${newWorkoutsCount} new workouts, merged ${mergedWorkoutsCount} existing workouts`);
+    console.log(`✅ Finished: Created ${newWorkoutsCount}, merged ${mergedWorkoutsCount}, skipped ${skippedCount}`);
 
     // Build response message
     let message = '';
