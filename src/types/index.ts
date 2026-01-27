@@ -1,6 +1,6 @@
 import { Timestamp } from 'firebase/firestore';
 
-export type UserRole = 'coach' | 'student';
+export type UserRole = 'coach' | 'athlete' | 'student'; // 'student' is legacy, use 'athlete'
 export type WorkoutType = 'swim' | 'run' | 'bike' | 'strength' | 'other';
 
 // Import and re-export workout tags
@@ -74,7 +74,7 @@ export interface WorkoutComment {
   id: string;
   workoutId: string;
   userId: string;
-  userRole: 'coach' | 'student';
+  userRole: 'coach' | 'athlete' | 'student'; // 'student' is legacy
   userName: string;
   text: string;
   rating?: WorkoutRating;

@@ -221,7 +221,7 @@ export default function WorkoutDetailPage() {
   const canEdit = user.role === 'coach' && workout.createdBy === user.uid;
   const isPastWorkout = workout.date.toDate() < new Date();
   const isMissed = isPastWorkout && !workout.completed;
-  const isStudent = user.role === 'student';
+  const isAthlete = user.role === 'athlete' || user.role === 'student';
   const hasTemplate = !!(workout as any).templateId;
 
   return (
@@ -391,8 +391,8 @@ export default function WorkoutDetailPage() {
             </div>
           )}
 
-          {/* Completion button - only show for students */}
-          {isStudent ? (
+          {/* Completion button - only show for athletes */}
+          {isAthlete ? (
             <Button
               onClick={() =>
                 workout.completed

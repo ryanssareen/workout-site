@@ -14,7 +14,7 @@ interface CommentSectionProps {
   workoutName: string;
   currentUserId: string;
   currentUserName: string;
-  currentUserRole: 'coach' | 'student';
+  currentUserRole: 'coach' | 'athlete' | 'student';
   coachId?: string;
 }
 
@@ -51,8 +51,8 @@ export function CommentSection({
         replyingTo
       );
 
-      // Send notification email to coach if student comments
-      if (currentUserRole === 'student') {
+      // Send notification email to coach if athlete comments
+      if (currentUserRole === 'athlete' || currentUserRole === 'student') {
         try {
           await fetch('/api/notifications/workout-comment', {
             method: 'POST',

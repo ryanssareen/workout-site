@@ -25,7 +25,7 @@ export default function NewWorkoutPage() {
   const aiGenerated = searchParams.get('aiGenerated') === 'true';
 
   const isCoach = user?.role === 'coach';
-  const isUnconnectedAthlete = user?.role === 'student' && !user?.coachId;
+  const isUnconnectedAthlete = (user?.role === 'athlete' || user?.role === 'student') && !user?.coachId;
 
   useEffect(() => {
     async function loadStudents() {
@@ -88,7 +88,7 @@ export default function NewWorkoutPage() {
 
   // Redirect if not authorized (must be coach OR unconnected athlete)
   useEffect(() => {
-    const canCreate = user?.role === 'coach' || (user?.role === 'student' && !user?.coachId);
+    const canCreate = user?.role === 'coach' || ((user?.role === 'athlete' || user?.role === 'student') && !user?.coachId);
     if (user && !canCreate) {
       router.push('/dashboard');
     }

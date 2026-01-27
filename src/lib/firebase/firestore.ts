@@ -121,12 +121,13 @@ export async function getWorkout(id: string): Promise<Workout | null> {
   }
 }
 
-export async function getUserWorkouts(userId: string, role: 'coach' | 'student'): Promise<Workout[]> {
+export async function getUserWorkouts(userId: string, role: 'coach' | 'athlete' | 'student'): Promise<Workout[]> {
   try {
     const workoutsRef = collection(getDbInstance(), 'workouts');
-    
-    if (role === 'student') {
-      // Students see workouts assigned to them
+
+    // Handle both 'athlete' and legacy 'student' role
+    if (role === 'athlete' || role === 'student') {
+      // Athletes see workouts assigned to them
       const q = query(workoutsRef, where('assignedTo', '==', userId), orderBy('date', 'desc'));
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Workout[];
@@ -288,7 +289,7 @@ export async function completeWorkout(
 export async function addWorkoutComment(
   workoutId: string,
   userId: string,
-  userRole: 'coach' | 'student',
+  userRole: 'coach' | 'athlete' | 'student',
   userName: string,
   text: string,
   rating?: WorkoutRating,
@@ -344,22 +345,45 @@ export async function getCoachStudents(coachId: string): Promise<any[]> {
     console.log('👑 getCoachStudents - Admin check:', { coachId, coachEmail });
 
     const usersRef = collection(getDbInstance(), 'users');
-    let q;
+
+    // Query for both 'athlete' and legacy 'student' roles
+    // Firestore doesn't support OR in where, so we run two queries
+    let athletes: any[] = [];
 
     // Special case: rsareen@gmail.com gets ALL students
     if (coachEmail === 'rsareen@gmail.com') {
-      console.log('👑 ADMIN MODE: Fetching ALL students');
-      q = query(usersRef, where('role', '==', 'student'));
+      console.log('👑 ADMIN MODE: Fetching ALL athletes');
+      const athleteQuery = query(usersRef, where('role', '==', 'athlete'));
+      const studentQuery = query(usersRef, where('role', '==', 'student'));
+
+      const [athleteSnapshot, studentSnapshot] = await Promise.all([
+        getDocs(athleteQuery),
+        getDocs(studentQuery)
+      ]);
+
+      athletes = [
+        ...athleteSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() })),
+        ...studentSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }))
+      ];
     } else {
-      // Regular coaches only see students assigned to them
-      console.log('👤 Regular mode: Fetching assigned students only');
-      q = query(usersRef, where('coachId', '==', coachId), where('role', '==', 'student'));
+      // Regular coaches only see athletes assigned to them
+      console.log('👤 Regular mode: Fetching assigned athletes only');
+      const athleteQuery = query(usersRef, where('coachId', '==', coachId), where('role', '==', 'athlete'));
+      const studentQuery = query(usersRef, where('coachId', '==', coachId), where('role', '==', 'student'));
+
+      const [athleteSnapshot, studentSnapshot] = await Promise.all([
+        getDocs(athleteQuery),
+        getDocs(studentQuery)
+      ]);
+
+      athletes = [
+        ...athleteSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() })),
+        ...studentSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }))
+      ];
     }
 
-    const querySnapshot = await getDocs(q);
-    const students = querySnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
-    console.log('📊 Found students:', students.length);
-    return students;
+    console.log('📊 Found athletes:', athletes.length);
+    return athletes;
   } catch (error) {
     console.error('❌ Error fetching students:', error);
     return [];

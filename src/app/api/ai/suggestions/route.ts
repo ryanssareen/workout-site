@@ -42,26 +42,28 @@ export async function POST(req: NextRequest) {
     const isAdmin = userEmail === 'rsareen@gmail.com';
     console.log('👑 Admin mode:', isAdmin);
 
-    // Get students
-    console.log('1️⃣ Fetching students...');
-    let studentsSnapshot;
+    // Get athletes (query both 'athlete' and legacy 'student' roles)
+    console.log('1️⃣ Fetching athletes...');
+    let allAthleteDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
     if (isAdmin) {
-      // Admin sees ALL students (role = student)
-      studentsSnapshot = await adminDb
-        .collection('users')
-        .where('role', '==', 'student')
-        .get();
+      // Admin sees ALL athletes
+      const [athleteSnapshot, studentSnapshot] = await Promise.all([
+        adminDb.collection('users').where('role', '==', 'athlete').get(),
+        adminDb.collection('users').where('role', '==', 'student').get()
+      ]);
+      allAthleteDocs = [...athleteSnapshot.docs, ...studentSnapshot.docs];
     } else {
-      // Regular coach sees only their students
-      studentsSnapshot = await adminDb
+      // Regular coach sees only their athletes
+      const coachAthletesSnapshot = await adminDb
         .collection('users')
         .where('coachId', '==', coachId)
         .get();
+      allAthleteDocs = coachAthletesSnapshot.docs;
     }
-    console.log('   Found students:', studentsSnapshot.size);
+    console.log('   Found athletes:', allAthleteDocs.length);
 
-    if (studentsSnapshot.empty) {
-      console.log('⚠️ No students found');
+    if (allAthleteDocs.length === 0) {
+      console.log('⚠️ No athletes found');
       return NextResponse.json({
         suggestions: [],
         summary: 'No students found. Start by inviting students to join!',
@@ -96,7 +98,7 @@ export async function POST(req: NextRequest) {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    for (const studentDoc of studentsSnapshot.docs) {
+    for (const studentDoc of allAthleteDocs) {
       const student = studentDoc.data();
       const studentId = studentDoc.id;
       console.log(`   Processing student: ${student.displayName || 'Unnamed'} (${studentId})`);

@@ -104,15 +104,16 @@ export async function GET(request: NextRequest) {
     console.log(`📧 Starting summary email job at ${now.toISOString()}`);
     console.log(`Looking for users who haven't received summary since: ${cutoffDate.toISOString()}`);
 
-    // Get all students who need summaries
-    const usersSnapshot = await adminDb
-      .collection('users')
-      .where('role', '==', 'student')
-      .get();
+    // Get all athletes who need summaries (query both 'athlete' and legacy 'student' roles)
+    const [athleteSnapshot, studentSnapshot] = await Promise.all([
+      adminDb.collection('users').where('role', '==', 'athlete').get(),
+      adminDb.collection('users').where('role', '==', 'student').get()
+    ]);
 
+    const allUserDocs = [...athleteSnapshot.docs, ...studentSnapshot.docs];
     const eligibleUsers: UserData[] = [];
 
-    for (const doc of usersSnapshot.docs) {
+    for (const doc of allUserDocs) {
       const userData = doc.data() as Omit<UserData, 'uid'>;
       const user: UserData = { uid: doc.id, ...userData };
 
