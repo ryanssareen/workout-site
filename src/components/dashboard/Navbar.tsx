@@ -8,7 +8,7 @@ import { ThemeToggle } from './ThemeToggle';
 import { Dumbbell, LogOut, LayoutDashboard, Calendar as CalendarIcon, ListChecks, Settings, TrendingUp, Trophy, Brain, Lightbulb, Menu, X } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 export function Navbar() {
   const router = useRouter();
@@ -21,7 +21,7 @@ export function Navbar() {
     router.push('/login');
   };
 
-  const navItems = [
+  const navItems = useMemo(() => [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/workouts', label: 'Workouts', icon: ListChecks },
     { href: '/calendar', label: 'Calendar', icon: CalendarIcon },
@@ -29,7 +29,7 @@ export function Navbar() {
       { href: '/ai-coach', label: 'AI Coach', icon: Brain },
       { href: '/coach-suggestions', label: 'Suggestions', icon: Lightbulb }
     ] : []),
-  ];
+  ], [user?.role]);
 
   return (
     <nav className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-xl">
