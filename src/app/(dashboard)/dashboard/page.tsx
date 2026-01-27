@@ -75,20 +75,7 @@ export default function DashboardPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="h-12 w-12 rounded-full border-4 border-muted" />
-            <div className="absolute inset-0 h-12 w-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-          </div>
-          <p className="text-muted-foreground animate-pulse">Loading your dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
+  // All calculations must happen before any early returns to maintain hook order
   const upcomingWorkouts = workouts.filter(w => !w.completed).slice(0, 5);
   const completedCount = workouts.filter(w => w.completed).length;
   const completionRate = workouts.length > 0
@@ -114,6 +101,20 @@ export default function DashboardPage() {
 
   // Calculate isConnected for all users (needed for consistent hook ordering)
   const isConnected = !!user?.coachId;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="h-12 w-12 rounded-full border-4 border-muted" />
+            <div className="absolute inset-0 h-12 w-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+          </div>
+          <p className="text-muted-foreground animate-pulse">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Render Coach Dashboard
   if (user?.role === 'coach') {
