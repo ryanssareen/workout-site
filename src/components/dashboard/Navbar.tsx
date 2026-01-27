@@ -69,17 +69,19 @@ export function Navbar() {
           {/* Right Side */}
           <div className="flex items-center gap-3">
             {/* User Info - Desktop */}
-            <div className="hidden md:flex items-center gap-3 px-3 py-1.5 rounded-xl bg-muted/50">
-              <div className="text-right">
-                <p className="text-sm font-medium leading-none">{user?.displayName}</p>
-                <p className="text-xs text-muted-foreground capitalize">{user?.role === 'student' ? 'athlete' : user?.role}</p>
+            {user && (
+              <div className="hidden md:flex items-center gap-3 px-3 py-1.5 rounded-xl bg-muted/50">
+                <div className="text-right">
+                  <p className="text-sm font-medium leading-none">{user.displayName}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{user.role === 'student' ? 'athlete' : user.role}</p>
+                </div>
+                <Link href="/settings">
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </Link>
               </div>
-              <Link href="/settings">
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <Settings className="h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
+            )}
 
             <ThemeToggle />
             
@@ -117,21 +119,25 @@ export function Navbar() {
               })}
             </div>
             <div className="flex items-center justify-between pt-3 border-t">
-              <div className="flex items-center gap-2">
-                <Link href="/settings">
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <Settings className="h-4 w-4" />
+              {user && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Link href="/settings">
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Settings className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                    <div>
+                      <p className="text-sm font-medium">{user.displayName}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{user.role === 'student' ? 'athlete' : user.role}</p>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={handleLogout}>
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Logout
                   </Button>
-                </Link>
-                <div>
-                  <p className="text-sm font-medium">{user?.displayName}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{user?.role === 'student' ? 'athlete' : user?.role}</p>
-                </div>
-              </div>
-              <Button variant="outline" size="sm" onClick={handleLogout}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
+                </>
+              )}
             </div>
           </div>
         )}
