@@ -112,6 +112,9 @@ export default function DashboardPage() {
       }));
   }, [workouts]);
 
+  // Calculate isConnected for all users (needed for consistent hook ordering)
+  const isConnected = !!user?.coachId;
+
   // Render Coach Dashboard
   if (user?.role === 'coach') {
     return (
@@ -358,8 +361,6 @@ export default function DashboardPage() {
       </div>
     );
   }
-
-  const isConnected = !!user?.coachId;
 
   // Render Athlete Dashboard
   return (
