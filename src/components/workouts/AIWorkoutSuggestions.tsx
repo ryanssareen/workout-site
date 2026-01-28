@@ -61,11 +61,13 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [] }: AIWorkoutS
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId,
-          recentWorkouts: recentWorkouts.slice(0, 5).map(w => ({
-            type: w.type,
-            name: w.name,
-            date: w.date?.toDate?.()?.toLocaleDateString() || 'Recent',
-          })),
+          recentWorkouts: Array.isArray(recentWorkouts)
+            ? recentWorkouts.slice(0, 5).map(w => ({
+                type: w.type,
+                name: w.name,
+                date: w.date?.toDate?.()?.toLocaleDateString() || 'Recent',
+              }))
+            : [],
           preferences: {
             sports: 'Various',
             level: 'Intermediate',
@@ -78,7 +80,15 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [] }: AIWorkoutS
       }
 
       const data = await response.json();
-      setSuggestions(data.suggestions || []);
+
+      // Normalize suggestions to ensure arrays are properly formatted
+      const normalizedSuggestions = (data.suggestions || []).map((suggestion: any) => ({
+        ...suggestion,
+        benefits: Array.isArray(suggestion.benefits) ? suggestion.benefits : [],
+        keyFocus: Array.isArray(suggestion.keyFocus) ? suggestion.keyFocus : [],
+      }));
+
+      setSuggestions(normalizedSuggestions);
     } catch (err: any) {
       console.error('Suggestions error:', err);
       setError(err.message || 'Failed to load suggestions');
@@ -245,7 +255,7 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [] }: AIWorkoutS
                       )}
 
                       {/* Benefits */}
-                      {suggestion.benefits && suggestion.benefits.length > 0 && (
+                      {suggestion.benefits && Array.isArray(suggestion.benefits) && suggestion.benefits.length > 0 && (
                         <div className="space-y-1">
                           <div className="flex items-center gap-2 text-sm font-semibold text-green-700 dark:text-green-400">
                             <TrendingUp className="h-4 w-4" />
@@ -309,7 +319,7 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [] }: AIWorkoutS
                       )}
 
                       {/* Key Focus Points */}
-                      {suggestion.keyFocus && suggestion.keyFocus.length > 0 && (
+                      {suggestion.keyFocus && Array.isArray(suggestion.keyFocus) && suggestion.keyFocus.length > 0 && (
                         <div className="space-y-1">
                           <div className="flex items-center gap-2 text-sm font-semibold">
                             <Target className="h-4 w-4" />
