@@ -80,15 +80,29 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [] }: AIWorkoutS
       }
 
       const data = await response.json();
+      console.log('📊 Received AI response:', data);
 
       // Normalize suggestions to ensure arrays are properly formatted
-      const normalizedSuggestions = (data.suggestions || []).map((suggestion: any) => ({
+      const rawSuggestions = data.suggestions;
+
+      // Ensure suggestions is an array
+      if (!Array.isArray(rawSuggestions)) {
+        console.error('❌ Suggestions is not an array:', typeof rawSuggestions, rawSuggestions);
+        setError('Invalid response format from AI');
+        setSuggestions([]);
+        return;
+      }
+
+      console.log(`✅ Processing ${rawSuggestions.length} suggestions`);
+
+      const normalizedSuggestions = rawSuggestions.map((suggestion: any) => ({
         ...suggestion,
         benefits: Array.isArray(suggestion.benefits) ? suggestion.benefits : [],
         keyFocus: Array.isArray(suggestion.keyFocus) ? suggestion.keyFocus : [],
       }));
 
       setSuggestions(normalizedSuggestions);
+      console.log('✅ Suggestions set successfully');
     } catch (err: any) {
       console.error('Suggestions error:', err);
       setError(err.message || 'Failed to load suggestions');
@@ -179,7 +193,7 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [] }: AIWorkoutS
         </CardContent>
       )}
 
-      {suggestions.length > 0 && (
+      {Array.isArray(suggestions) && suggestions.length > 0 && (
         <CardContent className="space-y-3">
           {suggestions.map((suggestion, index) => {
             const isExpanded = expandedIndex === index;
