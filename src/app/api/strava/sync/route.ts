@@ -291,17 +291,75 @@ export async function GET(request: NextRequest) {
     console.log('📡 Fetching activities from the last year...');
     const oneYearAgo = Math.floor(Date.now() / 1000) - (365 * 24 * 60 * 60);
 
-    const activitiesResponse = await fetch(
+    let activitiesResponse = await fetch(
       `https://www.strava.com/api/v3/athlete/activities?after=${oneYearAgo}&per_page=200`,
       {
         headers: { Authorization: `Bearer ${accessToken}` },
       }
     );
 
+    // Handle authorization errors with token refresh and retry
+    if (!activitiesResponse.ok && (activitiesResponse.status === 401 || activitiesResponse.status === 403)) {
+      const errorData = await activitiesResponse.json().catch(() => ({ message: 'Authorization Error' }));
+      console.error('❌ Strava API authorization error:', {
+        status: activitiesResponse.status,
+        error: errorData
+      });
+
+      // Token is invalid or revoked - try to refresh it
+      console.log('🔄 Authorization failed, attempting token refresh...');
+      const newToken = await refreshStravaToken(userId, userData.stravaRefreshToken);
+
+      if (!newToken) {
+        console.error('❌ Token refresh failed - user needs to reconnect');
+        return NextResponse.json(
+          {
+            error: 'Strava authorization failed. Please disconnect and reconnect your Strava account.',
+            needsReconnect: true
+          },
+          { status: 401 }
+        );
+      }
+
+      // Retry with new token
+      console.log('✅ Token refreshed, retrying request...');
+      activitiesResponse = await fetch(
+        `https://www.strava.com/api/v3/athlete/activities?after=${oneYearAgo}&per_page=200`,
+        {
+          headers: { Authorization: `Bearer ${newToken}` },
+        }
+      );
+
+      if (!activitiesResponse.ok) {
+        const retryErrorData = await activitiesResponse.json().catch(() => ({ message: 'Unknown error' }));
+        console.error('❌ Retry failed:', retryErrorData);
+        return NextResponse.json(
+          {
+            error: 'Strava authorization failed after token refresh. Please disconnect and reconnect your Strava account.',
+            needsReconnect: true
+          },
+          { status: 401 }
+        );
+      }
+
+      console.log('✅ Successfully retried after token refresh');
+    }
+
+    // Handle other errors
     if (!activitiesResponse.ok) {
       const errorData = await activitiesResponse.json().catch(() => ({ message: 'Unknown error' }));
-      console.error('❌ Strava API error:', errorData);
-      return NextResponse.json({ error: 'Failed to fetch Strava activities: ' + (errorData.message || 'Unknown error') }, { status: 500 });
+      console.error('❌ Strava API error:', {
+        status: activitiesResponse.status,
+        statusText: activitiesResponse.statusText,
+        error: errorData
+      });
+      return NextResponse.json(
+        {
+          error: `Failed to fetch Strava activities: ${errorData.message || 'Unknown error'}`,
+          details: errorData
+        },
+        { status: 500 }
+      );
     }
 
     const activities = await activitiesResponse.json();

@@ -116,6 +116,11 @@ export default function SettingsPage() {
           const errorData = await checkResponse.json().catch(() => ({ error: 'Unknown error' }));
           console.error('Duplicate check failed:', errorData);
 
+          // Handle authorization errors that need reconnection
+          if (errorData.needsReconnect) {
+            throw new Error(errorData.error || 'Please reconnect your Strava account');
+          }
+
           // Provide more helpful error messages
           if (errorData.hint) {
             throw new Error(`${errorData.error}: ${errorData.hint}`);
@@ -147,6 +152,12 @@ export default function SettingsPage() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.error('Sync failed:', errorData);
+
+        // Handle authorization errors that need reconnection
+        if (errorData.needsReconnect) {
+          throw new Error(errorData.error || 'Please reconnect your Strava account');
+        }
+
         throw new Error(errorData.error || 'Failed to sync');
       }
 
