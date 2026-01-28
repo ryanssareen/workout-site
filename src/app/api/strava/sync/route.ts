@@ -189,31 +189,54 @@ async function findDuplicatesByName(
   workoutType: string,
   activityName: string
 ): Promise<{ id: string; data: any }[]> {
-  // Normalize the activity name for comparison
-  const normalizedName = activityName.toLowerCase().trim();
+  try {
+    console.log(`🔍 Checking duplicates for: ${activityName} (type: ${workoutType}, userId: ${userId})`);
 
-  // Query for workouts assigned to this user with the same type
-  const workoutsSnapshot = await adminDb
-    .collection('workouts')
-    .where('assignedTo', '==', userId)
-    .where('type', '==', workoutType)
-    .get();
+    // Normalize the activity name for comparison
+    const normalizedName = activityName.toLowerCase().trim();
 
-  const matches: { id: string; data: any }[] = [];
+    // Query for workouts assigned to this user with the same type
+    const workoutsSnapshot = await adminDb
+      .collection('workouts')
+      .where('assignedTo', '==', userId)
+      .where('type', '==', workoutType)
+      .get();
 
-  for (const doc of workoutsSnapshot.docs) {
-    const data = doc.data();
-    // Skip if it's already a Strava import
-    if (data.source === 'strava') continue;
+    console.log(`✅ Found ${workoutsSnapshot.size} workouts with matching type`);
 
-    // Compare normalized names
-    const existingName = (data.name || '').toLowerCase().trim();
-    if (existingName === normalizedName) {
-      matches.push({ id: doc.id, data });
+    const matches: { id: string; data: any }[] = [];
+
+    for (const doc of workoutsSnapshot.docs) {
+      const data = doc.data();
+      // Skip if it's already a Strava import
+      if (data.source === 'strava') continue;
+
+      // Compare normalized names
+      const existingName = (data.name || '').toLowerCase().trim();
+      if (existingName === normalizedName) {
+        matches.push({ id: doc.id, data });
+      }
     }
-  }
 
-  return matches;
+    console.log(`🔍 Found ${matches.length} exact name matches`);
+    return matches;
+  } catch (error: any) {
+    console.error('❌ Error in findDuplicatesByName:', {
+      error: error.message,
+      code: error.code,
+      details: error.details,
+      userId,
+      workoutType,
+      activityName
+    });
+
+    // Check for missing index error
+    if (error.code === 9 || error.message?.includes('index')) {
+      console.error('⚠️ MISSING FIRESTORE INDEX - Please deploy indexes with: firebase deploy --only firestore:indexes');
+    }
+
+    throw new Error(`Failed to check for duplicates: ${error.message}`);
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -314,6 +337,7 @@ export async function GET(request: NextRequest) {
 
     // If checkDuplicates is true, find and return potential duplicates
     if (checkDuplicates) {
+      console.log('🔍 Checking for duplicates...');
       const potentialDuplicates: {
         stravaActivityId: string;
         stravaName: string;
@@ -324,35 +348,55 @@ export async function GET(request: NextRequest) {
         existingWorkouts: { id: string; name: string; date: string; completed: boolean }[];
       }[] = [];
 
-      for (const activity of activitiesToProcess) {
-        const workoutType = mapStravaType(activity.type);
-        const duplicates = await findDuplicatesByName(userId, workoutType, activity.name);
+      try {
+        for (const activity of activitiesToProcess) {
+          const workoutType = mapStravaType(activity.type);
 
-        if (duplicates.length > 0) {
-          potentialDuplicates.push({
-            stravaActivityId: String(activity.id),
-            stravaName: activity.name,
-            stravaType: workoutType,
-            stravaDate: activity.start_date_local,
-            stravaDistance: activity.distance || 0,
-            stravaDuration: activity.moving_time || 0,
-            existingWorkouts: duplicates.map(d => ({
-              id: d.id,
-              name: d.data.name,
-              date: d.data.date?.toDate?.()?.toISOString() || '',
-              completed: d.data.completed || false,
-            })),
-          });
+          try {
+            const duplicates = await findDuplicatesByName(userId, workoutType, activity.name);
+
+            if (duplicates.length > 0) {
+              potentialDuplicates.push({
+                stravaActivityId: String(activity.id),
+                stravaName: activity.name,
+                stravaType: workoutType,
+                stravaDate: activity.start_date_local,
+                stravaDistance: activity.distance || 0,
+                stravaDuration: activity.moving_time || 0,
+                existingWorkouts: duplicates.map(d => ({
+                  id: d.id,
+                  name: d.data.name,
+                  date: d.data.date?.toDate?.()?.toISOString() || '',
+                  completed: d.data.completed || false,
+                })),
+              });
+            }
+          } catch (activityError: any) {
+            console.error(`❌ Error checking duplicates for activity ${activity.name}:`, activityError.message);
+            // Continue processing other activities instead of failing entirely
+          }
         }
-      }
 
-      if (potentialDuplicates.length > 0) {
+        console.log(`✅ Duplicate check complete: found ${potentialDuplicates.length} potential duplicates`);
+
         return NextResponse.json({
           success: true,
-          hasDuplicates: true,
+          hasDuplicates: potentialDuplicates.length > 0,
           duplicates: potentialDuplicates,
           totalNewActivities: activitiesToProcess.length,
         });
+      } catch (error: any) {
+        console.error('❌ Critical error during duplicate check:', error);
+
+        return NextResponse.json(
+          {
+            error: 'Failed to check for duplicates',
+            details: error.message,
+            code: error.code,
+            hint: error.code === 9 ? 'Missing Firestore index. Please run: firebase deploy --only firestore:indexes' : undefined
+          },
+          { status: 500 }
+        );
       }
     }
 

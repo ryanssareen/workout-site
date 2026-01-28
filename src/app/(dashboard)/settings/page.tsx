@@ -111,7 +111,21 @@ export default function SettingsPage() {
           `/api/strava/sync?userId=${user.uid}&checkDuplicates=true`,
           { headers: { 'Accept': 'application/json' } }
         );
-        if (!checkResponse.ok) throw new Error('Failed to check for duplicates');
+
+        if (!checkResponse.ok) {
+          const errorData = await checkResponse.json().catch(() => ({ error: 'Unknown error' }));
+          console.error('Duplicate check failed:', errorData);
+
+          // Provide more helpful error messages
+          if (errorData.hint) {
+            throw new Error(`${errorData.error}: ${errorData.hint}`);
+          } else if (errorData.details) {
+            throw new Error(`${errorData.error}: ${errorData.details}`);
+          } else {
+            throw new Error(errorData.error || 'Failed to check for duplicates');
+          }
+        }
+
         const checkData = await checkResponse.json();
 
         if (checkData.hasDuplicates && checkData.duplicates?.length > 0) {
@@ -129,7 +143,13 @@ export default function SettingsPage() {
         `/api/strava/sync?userId=${user.uid}${decisionsParam}`,
         { headers: { 'Accept': 'application/json' } }
       );
-      if (!response.ok) throw new Error('Failed to sync');
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Sync failed:', errorData);
+        throw new Error(errorData.error || 'Failed to sync');
+      }
+
       const data = await response.json();
 
       let message = '';
@@ -143,7 +163,10 @@ export default function SettingsPage() {
         message = 'All caught up!';
       }
       toast.success(message);
-    } catch (error: any) { toast.error(error.message || 'Failed to sync'); }
+    } catch (error: any) {
+      console.error('Strava sync error:', error);
+      toast.error(error.message || 'Failed to sync');
+    }
     setIsSyncingStrava(false);
   };
 
