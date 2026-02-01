@@ -1,5 +1,4 @@
-{
-  "permissions": {
+"permissions": {
     "allow": [
       "Bash(ls:*)",
       "Bash(cat:*)",
@@ -8,19 +7,16 @@
       "Bash(npm run build:*)",
       "Bash(npm run dev:*)",
       "Bash(git add:*)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nOverhaul dashboard with modern UI and role-based views\n\n- Add animated StatCard and ProgressRing components\n- Create StudentOverview component for coaches\n- Add getCoachDashboardStats() for aggregated metrics\n- Implement distinct coach/student dashboard layouts\n- Add staggered entrance animations and hover effects\n- Include custom CSS keyframes for animations\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git push:*)",
       "Bash(find:*)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nAdd Settings page and Strava integration\n\n- Create Settings page with profile, coach connection, and Strava sections\n- Add Strava OAuth routes (authorize, callback, disconnect)\n- Add Strava sync route to import activities as workouts\n- Add Settings link to navbar\n- Update User type with Strava fields\n- Add Firestore functions for coach/Strava connection management\n- Make coach code optional in registration form\n- Improve registration success messages\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(lsof:*)",
       "Bash(curl:*)",
       "Bash(git commit:*)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nAdd Strava webhook for automatic workout completion\n\n- Create /api/webhooks/strava endpoint to receive Strava activity events\n- Add webhook subscription management at /api/strava/webhook-subscription\n- Implement activity-to-workout matching by date and type\n- Auto-mark workouts as completed with Strava stats (distance, duration, heart rate, etc.)\n- Add test endpoint at /api/strava/test-match for manual testing\n- Update Workout type with completedAt, completionStatus, and actualStats fields\n- Update debug endpoint to show webhook configuration status\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git push)",
       "Bash(git pull:*)",
-      "Bash(npx tsc:*)",
       "Bash(npm install:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(firebase deploy:*)"
     ]
-  }
 }
+

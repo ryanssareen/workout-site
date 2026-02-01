@@ -4,6 +4,8 @@ import {
   signOut as firebaseSignOut,
   onAuthStateChanged,
   User as FirebaseUser,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { getAuthInstance, getDbInstance } from './config';
@@ -115,19 +117,19 @@ export async function findCoachByCode(coachCode: string): Promise<User | null> {
     console.log('🔍 findCoachByCode called with:', coachCode);
     const usersRef = collection(getDbInstance(), 'users');
     const q = query(
-      usersRef, 
+      usersRef,
       where('role', '==', 'coach'),
       where('coachCode', '==', coachCode.toUpperCase())
     );
     console.log('🔍 Executing query...');
     const querySnapshot = await getDocs(q);
     console.log('🔍 Query results:', querySnapshot.size, 'documents found');
-    
+
     if (querySnapshot.empty) {
       console.log('❌ No coach found with code:', coachCode);
       return null;
     }
-    
+
     const coachDoc = querySnapshot.docs[0];
     const coachData = { uid: coachDoc.id, ...coachDoc.data() } as User;
     console.log('✅ Coach found:', coachData.displayName, coachData.email);
@@ -135,5 +137,52 @@ export async function findCoachByCode(coachCode: string): Promise<User | null> {
   } catch (error) {
     console.error('❌ Error finding coach by code:', error);
     return null;
+  }
+}
+
+// Sign in with Google
+export async function signInWithGoogle(): Promise<User> {
+  try {
+    const provider = new GoogleAuthProvider();
+    const result = await signInWithPopup(getAuthInstance(), provider);
+    const { uid, email, displayName, photoURL } = result.user;
+
+    if (!email) {
+      throw new Error('Google account does not have an email address');
+    }
+
+    // Check if user already exists in Firestore
+    const existingUser = await getUserProfile(uid);
+
+    if (existingUser) {
+      // User exists, just return their profile
+      console.log('✅ Existing Google user signed in:', existingUser.displayName);
+      return existingUser;
+    }
+
+    // New user - create profile with default role "student"
+    const userProfile: Omit<User, 'createdAt' | 'updatedAt'> & { createdAt: any; updatedAt: any; photoURL?: string } = {
+      uid,
+      email,
+      displayName: displayName || email.split('@')[0],
+      role: 'student',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      ...(photoURL ? { photoURL } : {}),
+    };
+
+    await setDoc(doc(getDbInstance(), 'users', uid), userProfile);
+    console.log('✅ New Google user created:', userProfile.displayName);
+
+    return userProfile as User;
+  } catch (error: any) {
+    // Handle specific popup errors
+    if (error.code === 'auth/popup-closed-by-user') {
+      throw new Error('Sign-in cancelled');
+    }
+    if (error.code === 'auth/popup-blocked') {
+      throw new Error('Popup was blocked. Please allow popups for this site.');
+    }
+    throw new Error(error.message || 'Failed to sign in with Google');
   }
 }
