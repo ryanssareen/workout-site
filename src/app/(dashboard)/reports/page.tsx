@@ -1,67 +1,45 @@
 'use client';
 
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { getCoachStudents, getUserWorkouts } from '@/lib/firebase/firestore';
-import { Workout, User } from '@/types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import {
-  FileText, Download, Printer, Users, Target, CheckCircle2,
-  TrendingUp, Calendar as CalendarIcon, Loader2, BarChart3
-} from 'lucide-react';
-import { format, subDays, startOfDay, endOfDay, isWithinInterval, eachDayOfInterval, parseISO } from 'date-fns';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
+import { Textarea } from '@/components/ui/textarea';
+import { BarChart3, Send, Loader2, Sparkles, User, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import ReactMarkdown from 'react-markdown';
 
-type DateRange = '7' | '30' | '90' | 'custom';
-
-interface StudentInfo {
-  uid: string;
-  displayName: string;
-  email: string;
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
 }
 
-const TYPE_COLORS: Record<string, string> = {
-  run: '#3b82f6',
-  bike: '#22c55e',
-  swim: '#06b6d4',
-  strength: '#ec4899',
-  other: '#8b5cf6',
-};
+interface Stats {
+  totalAthletes: number;
+  totalWorkouts: number;
+  completionRate: number;
+}
+
+const EXAMPLE_QUESTIONS = [
+  "How are my athletes performing this month?",
+  "Which athletes have the lowest completion rates?",
+  "Show me a breakdown of workouts by type",
+  "Who hasn't completed a workout in the last week?",
+  "Compare athlete performance over the last 30 days",
+  "What's the trend in workout completion?",
+];
 
 export default function ReportsPage() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const loading = useAuthStore((state) => state.loading);
 
-  const [students, setStudents] = useState<StudentInfo[]>([]);
-  const [allWorkouts, setAllWorkouts] = useState<Workout[]>([]);
-  const [selectedStudent, setSelectedStudent] = useState<string>('all');
-  const [dateRange, setDateRange] = useState<DateRange>('30');
-  const [customStartDate, setCustomStartDate] = useState<Date | undefined>();
-  const [customEndDate, setCustomEndDate] = useState<Date | undefined>();
-  const [dataLoading, setDataLoading] = useState(true);
-
-  const reportRef = useRef<HTMLDivElement>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Redirect non-coaches
   useEffect(() => {
@@ -70,146 +48,65 @@ export default function ReportsPage() {
     }
   }, [user, loading, router]);
 
-  // Load students and workouts
+  // Scroll to bottom when messages change
   useEffect(() => {
-    async function loadData() {
-      if (!user || user.role !== 'coach') return;
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
-      setDataLoading(true);
+  const handleSubmit = async (question?: string) => {
+    const queryText = question || input.trim();
+    if (!queryText || isLoading || !user) return;
 
-      const studentData = await getCoachStudents(user.uid);
-      setStudents(studentData.map(s => ({
-        uid: s.uid,
-        displayName: s.displayName || 'Unknown',
-        email: s.email || '',
-      })));
+    const userMessage: Message = { role: 'user', content: queryText };
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
 
-      const workouts = await getUserWorkouts(user.uid, 'coach');
-      setAllWorkouts(workouts);
-
-      setDataLoading(false);
-    }
-
-    loadData();
-  }, [user]);
-
-  // Calculate date range
-  const dateFilter = useMemo(() => {
-    const now = new Date();
-    let start: Date;
-    let end: Date = endOfDay(now);
-
-    if (dateRange === 'custom' && customStartDate && customEndDate) {
-      start = startOfDay(customStartDate);
-      end = endOfDay(customEndDate);
-    } else {
-      const days = parseInt(dateRange);
-      start = startOfDay(subDays(now, days));
-    }
-
-    return { start, end };
-  }, [dateRange, customStartDate, customEndDate]);
-
-  // Filter workouts
-  const filteredWorkouts = useMemo(() => {
-    return allWorkouts.filter(workout => {
-      const workoutDate = workout.date?.toDate?.() || new Date(workout.date as any);
-
-      // Date filter
-      if (!isWithinInterval(workoutDate, { start: dateFilter.start, end: dateFilter.end })) {
-        return false;
-      }
-
-      // Student filter
-      if (selectedStudent !== 'all' && workout.assignedTo !== selectedStudent) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [allWorkouts, dateFilter, selectedStudent]);
-
-  // Calculate stats
-  const stats = useMemo(() => {
-    const total = filteredWorkouts.length;
-    const completed = filteredWorkouts.filter(w => w.completed).length;
-    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
-
-    const byType: Record<string, { total: number; completed: number }> = {
-      run: { total: 0, completed: 0 },
-      bike: { total: 0, completed: 0 },
-      swim: { total: 0, completed: 0 },
-      strength: { total: 0, completed: 0 },
-      other: { total: 0, completed: 0 },
-    };
-
-    filteredWorkouts.forEach(w => {
-      const type = w.type || 'other';
-      if (byType[type]) {
-        byType[type].total++;
-        if (w.completed) byType[type].completed++;
-      }
-    });
-
-    return { total, completed, completionRate, byType };
-  }, [filteredWorkouts]);
-
-  // Chart data - workouts over time
-  const chartData = useMemo(() => {
-    const days = eachDayOfInterval({ start: dateFilter.start, end: dateFilter.end });
-
-    return days.map(day => {
-      const dayWorkouts = filteredWorkouts.filter(w => {
-        const workoutDate = w.date?.toDate?.() || new Date(w.date as any);
-        return format(workoutDate, 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd');
+    try {
+      const response = await fetch('/api/ai/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: queryText,
+          coachId: user.uid,
+          userEmail: user.email,
+        }),
       });
 
-      return {
-        date: format(day, 'MMM d'),
-        total: dayWorkouts.length,
-        completed: dayWorkouts.filter(w => w.completed).length,
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to get response');
+      }
+
+      const assistantMessage: Message = { role: 'assistant', content: data.answer };
+      setMessages(prev => [...prev, assistantMessage]);
+
+      if (data.stats) {
+        setStats(data.stats);
+      }
+    } catch (error: any) {
+      const errorMessage: Message = {
+        role: 'assistant',
+        content: `Sorry, I encountered an error: ${error.message}. Please try again.`,
       };
-    });
-  }, [filteredWorkouts, dateFilter]);
-
-  // Pie chart data for workout types
-  const typeChartData = useMemo(() => {
-    return Object.entries(stats.byType)
-      .filter(([_, data]) => data.total > 0)
-      .map(([type, data]) => ({
-        name: type.charAt(0).toUpperCase() + type.slice(1),
-        value: data.total,
-        color: TYPE_COLORS[type] || '#666',
-      }));
-  }, [stats.byType]);
-
-  // Handle print
-  const handlePrint = () => {
-    window.print();
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // Handle PDF export
-  const handleExportPDF = async () => {
-    // Use browser's print to PDF functionality
-    window.print();
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
   };
 
-  // Get student name
-  const getStudentName = (uid: string) => {
-    const student = students.find(s => s.uid === uid);
-    return student?.displayName || 'Unknown';
-  };
-
-  if (loading || dataLoading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="h-12 w-12 rounded-full border-4 border-muted" />
-            <div className="absolute inset-0 h-12 w-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-          </div>
-          <p className="text-muted-foreground animate-pulse">Loading reports...</p>
-        </div>
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -219,394 +116,155 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="flex flex-col h-[calc(100vh-8rem)]">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <BarChart3 className="h-8 w-8 text-primary" />
-            Reports
-          </h1>
-          <p className="text-muted-foreground mt-1">Analyze athlete performance and progress</p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handlePrint} className="print:hidden">
-            <Printer className="h-4 w-4 mr-2" />
-            Print
-          </Button>
-          <Button variant="outline" onClick={handleExportPDF} className="print:hidden">
-            <Download className="h-4 w-4 mr-2" />
-            Export PDF
-          </Button>
+      <div className="flex-none mb-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+              <BarChart3 className="h-8 w-8 text-primary" />
+              AI Reports
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Ask questions about your athletes' performance in natural language
+            </p>
+          </div>
+          {stats && (
+            <div className="hidden md:flex items-center gap-4 text-sm">
+              <div className="px-3 py-1.5 rounded-lg bg-muted">
+                <span className="text-muted-foreground">Athletes:</span>{' '}
+                <span className="font-semibold">{stats.totalAthletes}</span>
+              </div>
+              <div className="px-3 py-1.5 rounded-lg bg-muted">
+                <span className="text-muted-foreground">Workouts:</span>{' '}
+                <span className="font-semibold">{stats.totalWorkouts}</span>
+              </div>
+              <div className="px-3 py-1.5 rounded-lg bg-muted">
+                <span className="text-muted-foreground">Completion:</span>{' '}
+                <span className="font-semibold">{stats.completionRate}%</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Filters */}
-      <Card className="print:hidden">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Filters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* Student Selector */}
-            <div className="flex-1">
-              <label className="text-sm font-medium mb-2 block">Athlete</label>
-              <Select value={selectedStudent} onValueChange={setSelectedStudent}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select athlete" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Athletes</SelectItem>
-                  {students.map(student => (
-                    <SelectItem key={student.uid} value={student.uid}>
-                      {student.displayName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Date Range Selector */}
-            <div className="flex-1">
-              <label className="text-sm font-medium mb-2 block">Date Range</label>
-              <Select value={dateRange} onValueChange={(v: DateRange) => setDateRange(v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select range" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="7">Last 7 days</SelectItem>
-                  <SelectItem value="30">Last 30 days</SelectItem>
-                  <SelectItem value="90">Last 90 days</SelectItem>
-                  <SelectItem value="custom">Custom range</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Custom Date Pickers */}
-            {dateRange === 'custom' && (
-              <>
-                <div className="flex-1">
-                  <label className="text-sm font-medium mb-2 block">Start Date</label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-start text-left font-normal">
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {customStartDate ? format(customStartDate, 'PPP') : 'Pick a date'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={customStartDate}
-                        onSelect={setCustomStartDate}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div className="flex-1">
-                  <label className="text-sm font-medium mb-2 block">End Date</label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-start text-left font-normal">
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {customEndDate ? format(customEndDate, 'PPP') : 'Pick a date'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={customEndDate}
-                        onSelect={setCustomEndDate}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Report Content - this part gets printed */}
-      <div ref={reportRef} className="space-y-6 print:space-y-4">
-        {/* Print Header */}
-        <div className="hidden print:block mb-8">
-          <h1 className="text-2xl font-bold">Workout Report</h1>
-          <p className="text-sm text-gray-600">
-            {selectedStudent === 'all' ? 'All Athletes' : getStudentName(selectedStudent)} |{' '}
-            {format(dateFilter.start, 'MMM d, yyyy')} - {format(dateFilter.end, 'MMM d, yyyy')}
-          </p>
-          <p className="text-xs text-gray-500">Generated on {format(new Date(), 'PPP')}</p>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription className="flex items-center gap-2">
-                <Target className="h-4 w-4" />
-                Total Workouts
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{stats.total}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4" />
-                Completed
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-green-600">{stats.completed}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
-                Completion Rate
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{stats.completionRate}%</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                Athletes
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
-                {selectedStudent === 'all' ? students.length : 1}
+      {/* Messages Area */}
+      <Card className="flex-1 flex flex-col min-h-0">
+        <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
+          {messages.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-center p-8">
+              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mb-4">
+                <Sparkles className="h-8 w-8 text-primary" />
               </div>
-            </CardContent>
-          </Card>
-        </div>
+              <h2 className="text-xl font-semibold mb-2">Ask me anything about your athletes</h2>
+              <p className="text-muted-foreground mb-6 max-w-md">
+                I can analyze workout data, compare athlete performance, identify trends, and provide insights.
+              </p>
 
-        {/* By Type Stats */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Workouts by Type</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-              {Object.entries(stats.byType).map(([type, data]) => (
-                <div key={type} className="text-center p-3 rounded-lg bg-muted/50">
-                  <div className="text-sm font-medium capitalize mb-1">{type}</div>
-                  <div className="text-2xl font-bold" style={{ color: TYPE_COLORS[type] }}>
-                    {data.total}
+              <div className="grid gap-2 sm:grid-cols-2 max-w-2xl">
+                {EXAMPLE_QUESTIONS.map((question, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSubmit(question)}
+                    className="text-left px-4 py-3 rounded-lg border hover:border-primary/50 hover:bg-muted/50 transition-colors text-sm"
+                  >
+                    {question}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <>
+              {messages.map((message, index) => (
+                <div
+                  key={index}
+                  className={cn(
+                    'flex gap-3 max-w-3xl',
+                    message.role === 'user' ? 'ml-auto flex-row-reverse' : ''
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center',
+                      message.role === 'user'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted'
+                    )}
+                  >
+                    {message.role === 'user' ? (
+                      <User className="h-4 w-4" />
+                    ) : (
+                      <Bot className="h-4 w-4" />
+                    )}
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {data.completed} completed
+                  <div
+                    className={cn(
+                      'rounded-lg px-4 py-3 max-w-[85%]',
+                      message.role === 'user'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted'
+                    )}
+                  >
+                    {message.role === 'assistant' ? (
+                      <div className="prose prose-sm dark:prose-invert max-w-none">
+                        <ReactMarkdown>{message.content}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      <p>{message.content}</p>
+                    )}
                   </div>
                 </div>
               ))}
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Charts */}
-        <div className="grid gap-6 lg:grid-cols-2 print:grid-cols-1">
-          {/* Workouts Over Time */}
-          <Card className="print:break-inside-avoid">
-            <CardHeader>
-              <CardTitle>Workouts Over Time</CardTitle>
-              <CardDescription>Daily workout count in selected period</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px] print:h-[200px]">
-                {chartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis
-                        dataKey="date"
-                        tick={{ fontSize: 12 }}
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <YAxis
-                        tick={{ fontSize: 12 }}
-                        tickLine={false}
-                        axisLine={false}
-                        allowDecimals={false}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'hsl(var(--card))',
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px',
-                        }}
-                      />
-                      <Legend />
-                      <Bar dataKey="total" name="Total" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="completed" name="Completed" fill="#22c55e" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">
-                    No data for selected period
+              {isLoading && (
+                <div className="flex gap-3 max-w-3xl">
+                  <div className="flex-shrink-0 h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                    <Bot className="h-4 w-4" />
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                  <div className="rounded-lg px-4 py-3 bg-muted">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm text-muted-foreground">Analyzing your data...</span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-          {/* Workout Type Distribution */}
-          <Card className="print:break-inside-avoid">
-            <CardHeader>
-              <CardTitle>Type Distribution</CardTitle>
-              <CardDescription>Breakdown by workout type</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px] print:h-[200px]">
-                {typeChartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={typeChartData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={100}
-                        paddingAngle={2}
-                        dataKey="value"
-                        label={({ name, value }) => `${name}: ${value}`}
-                      >
-                        {typeChartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'hsl(var(--card))',
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px',
-                        }}
-                      />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">
-                    No data for selected period
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+              <div ref={messagesEndRef} />
+            </>
+          )}
+        </CardContent>
+
+        {/* Input Area */}
+        <div className="flex-none border-t p-4">
+          <div className="flex gap-2 max-w-3xl mx-auto">
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask a question about your athletes..."
+              className="min-h-[44px] max-h-32 resize-none"
+              rows={1}
+              disabled={isLoading}
+            />
+            <Button
+              onClick={() => handleSubmit()}
+              disabled={!input.trim() || isLoading}
+              size="icon"
+              className="h-11 w-11 flex-shrink-0"
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+          <p className="text-xs text-center text-muted-foreground mt-2">
+            Press Enter to send, Shift+Enter for new line
+          </p>
         </div>
-
-        {/* Workouts Table */}
-        <Card className="print:break-inside-avoid">
-          <CardHeader>
-            <CardTitle>Workout Details</CardTitle>
-            <CardDescription>
-              {filteredWorkouts.length} workouts in selected period
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {filteredWorkouts.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No workouts found for the selected filters
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Athlete</TableHead>
-                      <TableHead>Workout</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredWorkouts
-                      .sort((a, b) => {
-                        const dateA = a.date?.toDate?.() || new Date(a.date as any);
-                        const dateB = b.date?.toDate?.() || new Date(b.date as any);
-                        return dateB.getTime() - dateA.getTime();
-                      })
-                      .slice(0, 50) // Limit to 50 for performance
-                      .map(workout => {
-                        const workoutDate = workout.date?.toDate?.() || new Date(workout.date as any);
-                        return (
-                          <TableRow key={workout.id}>
-                            <TableCell className="font-medium">
-                              {format(workoutDate, 'MMM d, yyyy')}
-                            </TableCell>
-                            <TableCell>{getStudentName(workout.assignedTo)}</TableCell>
-                            <TableCell>{workout.name}</TableCell>
-                            <TableCell>
-                              <Badge
-                                variant="secondary"
-                                className="capitalize"
-                                style={{ backgroundColor: `${TYPE_COLORS[workout.type]}20`, color: TYPE_COLORS[workout.type] }}
-                              >
-                                {workout.type}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              {workout.duration ? `${workout.duration} min` : '-'}
-                            </TableCell>
-                            <TableCell>
-                              {workout.completed ? (
-                                <Badge variant="default" className="bg-green-500">
-                                  Completed
-                                </Badge>
-                              ) : (
-                                <Badge variant="secondary">Pending</Badge>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                  </TableBody>
-                </Table>
-                {filteredWorkouts.length > 50 && (
-                  <p className="text-sm text-muted-foreground mt-4 text-center">
-                    Showing first 50 of {filteredWorkouts.length} workouts
-                  </p>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Print Styles */}
-      <style jsx global>{`
-        @media print {
-          body {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          .print\\:hidden {
-            display: none !important;
-          }
-          .print\\:block {
-            display: block !important;
-          }
-          nav, header, footer {
-            display: none !important;
-          }
-        }
-      `}</style>
+      </Card>
     </div>
   );
 }

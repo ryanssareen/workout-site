@@ -25,8 +25,8 @@ export function Navbar() {
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/workouts', label: 'Workouts', icon: ListChecks },
     { href: '/calendar', label: 'Calendar', icon: CalendarIcon },
+    { href: '/reports', label: 'Reports', icon: BarChart3 },
     ...(user?.role === 'coach' ? [
-      { href: '/reports', label: 'Reports', icon: BarChart3 },
       { href: '/ai-coach', label: 'AI Coach', icon: Brain },
       { href: '/coach-suggestions', label: 'Suggestions', icon: Lightbulb }
     ] : []),
