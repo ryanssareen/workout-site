@@ -180,7 +180,7 @@ export default function ReportsPage() {
 
       {/* Report Modal */}
       <Dialog open={showReport} onOpenChange={setShowReport}>
-        <DialogContent className="max-w-full w-screen max-h-screen h-screen overflow-y-auto p-6 rounded-none">
+        <DialogContent className="!max-w-none !w-screen !h-screen !max-h-screen !top-0 !left-0 !translate-x-0 !translate-y-0 !rounded-none overflow-y-auto p-6">
           {insufficientMessage ? (
             // Insufficient Data Display
             <div className="flex flex-col items-center justify-center py-12 text-center">
