@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { ChartSection as ChartSectionType } from '@/types/reports';
 import {
   LineChart,
@@ -34,6 +35,29 @@ const COLORS = [
 
 export function ChartSection({ section }: ChartSectionProps) {
   const { chartType, title, data, xKey, yKey, label } = section;
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    // Check initial dark mode
+    setIsDarkMode(document.documentElement.classList.contains('dark'));
+
+    // Watch for changes
+    const observer = new MutationObserver(() => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'));
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  const gridColor = isDarkMode ? '#334155' : '#e2e8f0';
+  const axisColor = isDarkMode ? '#94a3b8' : '#64748b';
+  const tooltipBg = isDarkMode ? '#1e293b' : '#ffffff';
+  const tooltipBorder = isDarkMode ? '#475569' : '#e2e8f0';
 
   const renderChart = () => {
     switch (chartType) {
@@ -41,22 +65,23 @@ export function ChartSection({ section }: ChartSectionProps) {
         return (
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
               <XAxis
                 dataKey={xKey}
-                stroke="#64748b"
+                stroke={axisColor}
                 style={{ fontSize: '12px' }}
               />
               <YAxis
-                stroke="#64748b"
+                stroke={axisColor}
                 style={{ fontSize: '12px' }}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: '#fff',
-                  border: '1px solid #e2e8f0',
+                  backgroundColor: tooltipBg,
+                  border: `1px solid ${tooltipBorder}`,
                   borderRadius: '8px',
                   boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  color: isDarkMode ? '#f1f5f9' : '#0f172a',
                 }}
               />
               <Legend />
@@ -77,22 +102,23 @@ export function ChartSection({ section }: ChartSectionProps) {
         return (
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
               <XAxis
                 dataKey={xKey}
-                stroke="#64748b"
+                stroke={axisColor}
                 style={{ fontSize: '12px' }}
               />
               <YAxis
-                stroke="#64748b"
+                stroke={axisColor}
                 style={{ fontSize: '12px' }}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: '#fff',
-                  border: '1px solid #e2e8f0',
+                  backgroundColor: tooltipBg,
+                  border: `1px solid ${tooltipBorder}`,
                   borderRadius: '8px',
                   boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  color: isDarkMode ? '#f1f5f9' : '#0f172a',
                 }}
               />
               <Legend />
@@ -110,22 +136,23 @@ export function ChartSection({ section }: ChartSectionProps) {
         return (
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
               <XAxis
                 dataKey={xKey}
-                stroke="#64748b"
+                stroke={axisColor}
                 style={{ fontSize: '12px' }}
               />
               <YAxis
-                stroke="#64748b"
+                stroke={axisColor}
                 style={{ fontSize: '12px' }}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: '#fff',
-                  border: '1px solid #e2e8f0',
+                  backgroundColor: tooltipBg,
+                  border: `1px solid ${tooltipBorder}`,
                   borderRadius: '8px',
                   boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  color: isDarkMode ? '#f1f5f9' : '#0f172a',
                 }}
               />
               <Legend />
@@ -161,10 +188,11 @@ export function ChartSection({ section }: ChartSectionProps) {
               </Pie>
               <Tooltip
                 contentStyle={{
-                  backgroundColor: '#fff',
-                  border: '1px solid #e2e8f0',
+                  backgroundColor: tooltipBg,
+                  border: `1px solid ${tooltipBorder}`,
                   borderRadius: '8px',
                   boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  color: isDarkMode ? '#f1f5f9' : '#0f172a',
                 }}
               />
               <Legend />
@@ -184,7 +212,7 @@ export function ChartSection({ section }: ChartSectionProps) {
           {title}
         </h3>
       )}
-      <div className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+      <div className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
         {renderChart()}
       </div>
     </div>
