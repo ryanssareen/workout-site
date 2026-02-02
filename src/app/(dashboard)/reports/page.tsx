@@ -180,7 +180,7 @@ export default function ReportsPage() {
 
       {/* Report Modal */}
       <Dialog open={showReport} onOpenChange={setShowReport}>
-        <DialogContent className="max-w-[98vw] w-[98vw] max-h-[98vh] h-[98vh] overflow-y-auto p-6">
+        <DialogContent className="max-w-[95vw] w-[95vw] max-h-[95vh] h-[95vh] overflow-y-auto p-4">
           {insufficientMessage ? (
             // Insufficient Data Display
             <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -206,28 +206,37 @@ export default function ReportsPage() {
       <style jsx global>{`
         @media print {
           body * {
-            visibility: hidden;
+            visibility: hidden !important;
           }
-          [data-radix-dialog-content],
-          [data-radix-dialog-content] * {
-            visibility: visible;
+
+          [data-report-container],
+          [data-report-container] * {
+            visibility: visible !important;
           }
-          [data-radix-dialog-content] {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            max-width: 100% !important;
-            max-height: none !important;
-            overflow: visible !important;
-            box-shadow: none !important;
-            border: none !important;
+
+          [data-report-container] {
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            margin: 0 !important;
+            padding: 1rem !important;
           }
-          .print\\:hidden {
+
+          [data-radix-dialog-overlay],
+          [data-radix-dialog-close-button] {
             display: none !important;
           }
+
+          .print\\:hidden {
+            display: none !important;
+            visibility: hidden !important;
+          }
+
           @page {
             margin: 0.5in;
+            size: auto;
           }
         }
       `}</style>
