@@ -1,22 +1,7 @@
-"permissions": {
+{
+  "permissions": {
     "allow": [
-      "Bash(ls:*)",
-      "Bash(cat:*)",
-      "WebFetch(domain:www.npmjs.com)",
-      "WebSearch",
-      "Bash(npm run build:*)",
-      "Bash(npm run dev:*)",
-      "Bash(git add:*)",
-      "Bash(git push:*)",
-      "Bash(find:*)",
-      "Bash(lsof:*)",
-      "Bash(curl:*)",
-      "Bash(git commit:*)",
-      "Bash(git push)",
-      "Bash(git pull:*)",
-      "Bash(npm install:*)",
-      "Bash(pkill:*)",
-      "Bash(firebase deploy:*)"
+      "Bash(npx tsc:*)"
     ]
+  }
 }
-

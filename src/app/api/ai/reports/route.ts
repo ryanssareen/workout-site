@@ -4,18 +4,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 import { adminDb } from '@/lib/firebase/admin';
 
-const SYSTEM_PROMPT = `You are an expert fitness coach analytics assistant. You help coaches analyze their athletes' workout data and performance.
+const SYSTEM_PROMPT = `You are CoachTrack's AI report generator. Your job is to create professional, formatted reports based on workout data.
 
-When responding to questions:
-1. Be concise but thorough
-2. Use data to support your answers
-3. Format responses with markdown for readability (headers, bullet points, tables when appropriate)
-4. Highlight key insights and actionable recommendations
-5. If asked about specific athletes, focus on their data
-6. If asked for comparisons, use tables or clear comparisons
-7. Always be encouraging but honest about areas for improvement
+IMPORTANT RULES:
+1. If there is insufficient data to answer the question or generate the report, respond with EXACTLY: "INSUFFICIENT_DATA: [reason]" - for example "INSUFFICIENT_DATA: No workout data available for this period" or "INSUFFICIENT_DATA: No athletes found"
+2. Format your reports professionally with clear sections using markdown:
+   - Use ## for main headers
+   - Use ### for sub-sections
+   - Use bullet points for lists
+   - Use **bold** for emphasis
+   - Use tables when comparing data
+3. Include specific numbers and percentages from the data
+4. Be concise but thorough
+5. End with actionable insights or recommendations when appropriate
+6. If asked about something not in the data, say so clearly
 
-You have access to the coach's complete workout and athlete data. Use it to provide accurate, data-driven answers.`;
+You have access to the user's workout data. Generate reports that are ready to be saved or printed.`;
 
 interface WorkoutData {
   id: string;
@@ -48,132 +52,130 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { question, coachId, userEmail } = await req.json();
+    const { question, userId, userEmail, userRole } = await req.json();
 
-    if (!question || !coachId) {
+    if (!question || !userId) {
       return NextResponse.json(
-        { error: 'Question and coach ID are required' },
+        { error: 'Question and user ID are required' },
         { status: 400 }
       );
     }
 
-    console.log('📊 Reports query:', question);
+    console.log('📊 Reports query:', question, 'Role:', userRole);
 
-    // Admin override for rsareen@gmail.com
+    const isCoach = userRole === 'coach';
     const isAdmin = userEmail === 'rsareen@gmail.com';
 
-    // Fetch athletes
-    let athleteDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
-    if (isAdmin) {
-      const [athleteSnapshot, studentSnapshot] = await Promise.all([
-        adminDb.collection('users').where('role', '==', 'athlete').get(),
-        adminDb.collection('users').where('role', '==', 'student').get()
-      ]);
-      athleteDocs = [...athleteSnapshot.docs, ...studentSnapshot.docs];
-    } else {
-      const coachAthletesSnapshot = await adminDb
-        .collection('users')
-        .where('coachId', '==', coachId)
-        .get();
-      athleteDocs = coachAthletesSnapshot.docs;
-    }
+    let dataContext: string;
+    let hasData = false;
 
-    // Fetch workouts
-    let workoutsSnapshot;
-    if (isAdmin) {
-      workoutsSnapshot = await adminDb.collection('workouts').get();
-    } else {
-      workoutsSnapshot = await adminDb
-        .collection('workouts')
-        .where('createdBy', '==', coachId)
-        .get();
-    }
+    if (isCoach) {
+      // Coach flow - analyze all their athletes
+      let athleteDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
+      if (isAdmin) {
+        const [athleteSnapshot, studentSnapshot] = await Promise.all([
+          adminDb.collection('users').where('role', '==', 'athlete').get(),
+          adminDb.collection('users').where('role', '==', 'student').get()
+        ]);
+        athleteDocs = [...athleteSnapshot.docs, ...studentSnapshot.docs];
+      } else {
+        const coachAthletesSnapshot = await adminDb
+          .collection('users')
+          .where('coachId', '==', userId)
+          .get();
+        athleteDocs = coachAthletesSnapshot.docs;
+      }
 
-    // Process data
-    const athleteMap = new Map<string, AthleteData>();
+      let workoutsSnapshot;
+      if (isAdmin) {
+        workoutsSnapshot = await adminDb.collection('workouts').get();
+      } else {
+        workoutsSnapshot = await adminDb
+          .collection('workouts')
+          .where('createdBy', '==', userId)
+          .get();
+      }
 
-    athleteDocs.forEach(doc => {
-      const data = doc.data();
-      athleteMap.set(doc.id, {
-        id: doc.id,
-        name: data.displayName || 'Unknown',
-        email: data.email || '',
-        workouts: [],
-        completedCount: 0,
-        totalCount: 0,
-        completionRate: 0,
-        lateCount: 0,
+      const athleteMap = new Map<string, AthleteData>();
+      athleteDocs.forEach(doc => {
+        const data = doc.data();
+        athleteMap.set(doc.id, {
+          id: doc.id,
+          name: data.displayName || 'Unknown',
+          email: data.email || '',
+          workouts: [],
+          completedCount: 0,
+          totalCount: 0,
+          completionRate: 0,
+          lateCount: 0,
+        });
       });
-    });
 
-    // Process workouts
-    const allWorkouts: WorkoutData[] = [];
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      const allWorkouts: WorkoutData[] = [];
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
 
-    workoutsSnapshot.docs.forEach(doc => {
-      const data = doc.data();
-      const workoutDate = data.date?.toDate ? data.date.toDate() : new Date(data.date);
+      workoutsSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        const workoutDate = data.date?.toDate ? data.date.toDate() : new Date(data.date);
 
-      const workout: WorkoutData = {
-        id: doc.id,
-        name: data.name || 'Unnamed',
-        type: data.type || 'other',
-        date: workoutDate,
-        completed: !!data.completed,
-        completedLate: !!data.completedLate,
-        assignedTo: data.assignedTo || '',
-        duration: data.duration,
-      };
+        const workout: WorkoutData = {
+          id: doc.id,
+          name: data.name || 'Unnamed',
+          type: data.type || 'other',
+          date: workoutDate,
+          completed: !!data.completed,
+          completedLate: !!data.completedLate,
+          assignedTo: data.assignedTo || '',
+          duration: data.duration,
+        };
 
-      allWorkouts.push(workout);
+        allWorkouts.push(workout);
 
-      // Add to athlete's workouts
-      const athlete = athleteMap.get(workout.assignedTo);
-      if (athlete) {
-        athlete.workouts.push(workout);
-        athlete.totalCount++;
-        if (workout.completed) {
-          athlete.completedCount++;
-          if (workout.completedLate) {
-            athlete.lateCount++;
+        const athlete = athleteMap.get(workout.assignedTo);
+        if (athlete) {
+          athlete.workouts.push(workout);
+          athlete.totalCount++;
+          if (workout.completed) {
+            athlete.completedCount++;
+            if (workout.completedLate) {
+              athlete.lateCount++;
+            }
           }
         }
-      }
-    });
+      });
 
-    // Calculate completion rates
-    athleteMap.forEach(athlete => {
-      athlete.completionRate = athlete.totalCount > 0
-        ? Math.round((athlete.completedCount / athlete.totalCount) * 100)
+      athleteMap.forEach(athlete => {
+        athlete.completionRate = athlete.totalCount > 0
+          ? Math.round((athlete.completedCount / athlete.totalCount) * 100)
+          : 0;
+      });
+
+      const athletes = Array.from(athleteMap.values());
+      const totalWorkouts = allWorkouts.length;
+      const completedWorkouts = allWorkouts.filter(w => w.completed).length;
+      const overallCompletionRate = totalWorkouts > 0
+        ? Math.round((completedWorkouts / totalWorkouts) * 100)
         : 0;
-    });
 
-    const athletes = Array.from(athleteMap.values());
+      hasData = athletes.length > 0 || totalWorkouts > 0;
 
-    // Build context for AI
-    const totalWorkouts = allWorkouts.length;
-    const completedWorkouts = allWorkouts.filter(w => w.completed).length;
-    const overallCompletionRate = totalWorkouts > 0
-      ? Math.round((completedWorkouts / totalWorkouts) * 100)
-      : 0;
+      const last7Days = allWorkouts.filter(w => w.date >= sevenDaysAgo);
+      const last30Days = allWorkouts.filter(w => w.date >= thirtyDaysAgo);
+      const last90Days = allWorkouts.filter(w => w.date >= ninetyDaysAgo);
 
-    const last7Days = allWorkouts.filter(w => w.date >= sevenDaysAgo);
-    const last30Days = allWorkouts.filter(w => w.date >= thirtyDaysAgo);
-    const last90Days = allWorkouts.filter(w => w.date >= ninetyDaysAgo);
+      const workoutsByType: Record<string, { total: number; completed: number }> = {};
+      allWorkouts.forEach(w => {
+        if (!workoutsByType[w.type]) {
+          workoutsByType[w.type] = { total: 0, completed: 0 };
+        }
+        workoutsByType[w.type].total++;
+        if (w.completed) workoutsByType[w.type].completed++;
+      });
 
-    const workoutsByType: Record<string, { total: number; completed: number }> = {};
-    allWorkouts.forEach(w => {
-      if (!workoutsByType[w.type]) {
-        workoutsByType[w.type] = { total: 0, completed: 0 };
-      }
-      workoutsByType[w.type].total++;
-      if (w.completed) workoutsByType[w.type].completed++;
-    });
-
-    const dataContext = `
+      dataContext = `
 COACH'S DATA SUMMARY
 ====================
 
@@ -188,23 +190,134 @@ RECENT ACTIVITY:
 - Last 90 days: ${last90Days.length} workouts, ${last90Days.filter(w => w.completed).length} completed
 
 WORKOUTS BY TYPE:
-${Object.entries(workoutsByType).map(([type, data]) =>
-  `- ${type}: ${data.total} total, ${data.completed} completed (${Math.round((data.completed / data.total) * 100)}%)`
-).join('\n')}
+${Object.entries(workoutsByType).length > 0
+  ? Object.entries(workoutsByType).map(([type, data]) =>
+    `- ${type}: ${data.total} total, ${data.completed} completed (${data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0}%)`
+  ).join('\n')
+  : '- No workout data available'}
 
 ATHLETE DETAILS:
-${athletes.map(a => `
+${athletes.length > 0
+  ? athletes.map(a => `
 ${a.name} (${a.email}):
   - Total Workouts: ${a.totalCount}
   - Completed: ${a.completedCount} (${a.completionRate}%)
   - Late Completions: ${a.lateCount}
   - Recent workouts: ${a.workouts.slice(-5).map(w =>
     `${w.name} (${w.type}) on ${w.date.toLocaleDateString()} - ${w.completed ? '✅' : '❌'}`
-  ).join(', ')}
-`).join('\n')}
+  ).join(', ') || 'None'}
+`).join('\n')
+  : '- No athletes found'}
 
 Today's Date: ${now.toLocaleDateString()}
 `;
+    } else {
+      // Athlete flow - analyze only their own workouts
+      const workoutsSnapshot = await adminDb
+        .collection('workouts')
+        .where('assignedTo', '==', userId)
+        .get();
+
+      const userDoc = await adminDb.collection('users').doc(userId).get();
+      const userName = userDoc.exists ? userDoc.data()?.displayName || 'Athlete' : 'Athlete';
+
+      const allWorkouts: WorkoutData[] = [];
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+
+      workoutsSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        const workoutDate = data.date?.toDate ? data.date.toDate() : new Date(data.date);
+
+        allWorkouts.push({
+          id: doc.id,
+          name: data.name || 'Unnamed',
+          type: data.type || 'other',
+          date: workoutDate,
+          completed: !!data.completed,
+          completedLate: !!data.completedLate,
+          assignedTo: data.assignedTo || '',
+          duration: data.duration,
+        });
+      });
+
+      const totalWorkouts = allWorkouts.length;
+      const completedWorkouts = allWorkouts.filter(w => w.completed).length;
+      const lateWorkouts = allWorkouts.filter(w => w.completedLate).length;
+      const overallCompletionRate = totalWorkouts > 0
+        ? Math.round((completedWorkouts / totalWorkouts) * 100)
+        : 0;
+
+      hasData = totalWorkouts > 0;
+
+      const last7Days = allWorkouts.filter(w => w.date >= sevenDaysAgo);
+      const last30Days = allWorkouts.filter(w => w.date >= thirtyDaysAgo);
+      const last90Days = allWorkouts.filter(w => w.date >= ninetyDaysAgo);
+
+      const workoutsByType: Record<string, { total: number; completed: number }> = {};
+      allWorkouts.forEach(w => {
+        if (!workoutsByType[w.type]) {
+          workoutsByType[w.type] = { total: 0, completed: 0 };
+        }
+        workoutsByType[w.type].total++;
+        if (w.completed) workoutsByType[w.type].completed++;
+      });
+
+      const pendingWorkouts = allWorkouts
+        .filter(w => !w.completed && w.date >= now)
+        .sort((a, b) => a.date.getTime() - b.date.getTime())
+        .slice(0, 5);
+
+      const missedWorkouts = allWorkouts
+        .filter(w => !w.completed && w.date < now)
+        .sort((a, b) => b.date.getTime() - a.date.getTime())
+        .slice(0, 5);
+
+      dataContext = `
+${userName.toUpperCase()}'S WORKOUT DATA
+${'='.repeat(userName.length + 15)}
+
+OVERVIEW:
+- Total Workouts (all time): ${totalWorkouts}
+- Completed: ${completedWorkouts} (${overallCompletionRate}%)
+- Late Completions: ${lateWorkouts}
+
+RECENT ACTIVITY:
+- Last 7 days: ${last7Days.length} workouts, ${last7Days.filter(w => w.completed).length} completed
+- Last 30 days: ${last30Days.length} workouts, ${last30Days.filter(w => w.completed).length} completed
+- Last 90 days: ${last90Days.length} workouts, ${last90Days.filter(w => w.completed).length} completed
+
+WORKOUTS BY TYPE:
+${Object.entries(workoutsByType).length > 0
+  ? Object.entries(workoutsByType).map(([type, data]) =>
+    `- ${type}: ${data.total} total, ${data.completed} completed (${data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0}%)`
+  ).join('\n')
+  : '- No workout data available'}
+
+UPCOMING WORKOUTS:
+${pendingWorkouts.length > 0
+  ? pendingWorkouts.map(w => `- ${w.name} (${w.type}) - ${w.date.toLocaleDateString()}`).join('\n')
+  : '- No upcoming workouts scheduled'}
+
+MISSED WORKOUTS:
+${missedWorkouts.length > 0
+  ? missedWorkouts.map(w => `- ${w.name} (${w.type}) - ${w.date.toLocaleDateString()}`).join('\n')
+  : '- No missed workouts'}
+
+RECENT WORKOUT HISTORY (last 10):
+${allWorkouts.length > 0
+  ? allWorkouts
+    .sort((a, b) => b.date.getTime() - a.date.getTime())
+    .slice(0, 10)
+    .map(w => `- ${w.date.toLocaleDateString()}: ${w.name} (${w.type}) ${w.completed ? '✅' : '❌'}${w.completedLate ? ' (late)' : ''}`)
+    .join('\n')
+  : '- No workout history'}
+
+Today's Date: ${now.toLocaleDateString()}
+`;
+    }
 
     const groq = new Groq({
       apiKey: process.env.GROQ_API_KEY.trim(),
@@ -214,7 +327,7 @@ Today's Date: ${now.toLocaleDateString()}
       model: 'llama-3.3-70b-versatile',
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: `Here is my coaching data:\n\n${dataContext}\n\nMy question: ${question}` },
+        { role: 'user', content: `Here is my workout data:\n\n${dataContext}\n\nGenerate a report for: ${question}` },
       ],
       temperature: 0.7,
       max_tokens: 2048,
@@ -222,13 +335,13 @@ Today's Date: ${now.toLocaleDateString()}
 
     const response = completion.choices[0]?.message?.content || 'Unable to generate response';
 
+    // Check if it's an insufficient data response
+    const isInsufficient = response.startsWith('INSUFFICIENT_DATA:');
+
     return NextResponse.json({
-      answer: response,
-      stats: {
-        totalAthletes: athletes.length,
-        totalWorkouts,
-        completionRate: overallCompletionRate,
-      },
+      report: response,
+      isInsufficient,
+      hasData,
     });
   } catch (error: any) {
     console.error('Reports API error:', error);
