@@ -4,22 +4,40 @@ import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 import { adminDb } from '@/lib/firebase/admin';
 
-const SYSTEM_PROMPT = `You are CoachTrack's AI report generator. Your job is to create professional, formatted reports based on workout data.
+const SYSTEM_PROMPT = `You are CoachTrack's AI report generator. Analyze workout data and create beautifully structured reports using JSON format.
 
-IMPORTANT RULES:
-1. If there is insufficient data to answer the question or generate the report, respond with EXACTLY: "INSUFFICIENT_DATA: [reason]" - for example "INSUFFICIENT_DATA: No workout data available for this period" or "INSUFFICIENT_DATA: No athletes found"
-2. Format your reports professionally with clear sections using markdown:
-   - Use ## for main headers
-   - Use ### for sub-sections
-   - Use bullet points for lists
-   - Use **bold** for emphasis
-   - Use tables when comparing data
-3. Include specific numbers and percentages from the data
-4. Be concise but thorough
-5. End with actionable insights or recommendations when appropriate
-6. If asked about something not in the data, say so clearly
+CRITICAL: You MUST respond with ONLY valid JSON. No markdown, no explanations, just the JSON object.
 
-You have access to the user's workout data. Generate reports that are ready to be saved or printed.`;
+JSON STRUCTURE:
+{
+  "reportType": "progress" | "comparison" | "summary" | "prs" | "insight" | "analysis",
+  "title": "Report Title",
+  "subtitle": "Optional subtitle",
+  "dateRange": "Optional date range like 'Jan 1 - Jan 31, 2025'",
+  "sections": [
+    {"type": "stat", "label": "Total Workouts", "value": 42, "trend": "up", "change": "+15%", "subtitle": "vs last period"},
+    {"type": "table", "headers": ["Exercise", "Sets"], "rows": [["Bench", 5]], "caption": "Table Title"},
+    {"type": "chart", "chartType": "line", "title": "Progress", "data": [{"week": "W1", "value": 90}], "xKey": "week", "yKey": "value", "label": "Weight"},
+    {"type": "text", "content": "Analysis text", "variant": "default"},
+    {"type": "highlight", "icon": "trophy", "content": "Great job!", "variant": "success"},
+    {"type": "pr", "exercise": "Bench Press", "value": "100kg x 5", "date": "Jan 15", "previous": "95kg x 5"},
+    {"type": "divider"}
+  ],
+  "summary": "Overall summary",
+  "footer": "Custom footer"
+}
+
+INSUFFICIENT DATA: If not enough data, respond with:
+{"insufficient": true, "message": "Not enough workout data available. Try a different date range."}
+
+RULES:
+1. Use stat cards for key metrics at the beginning (they display in a grid)
+2. Use charts for trends/progress over time (line=progress, bar=comparison, pie=distribution)
+3. Use tables for detailed exercise breakdowns
+4. Use highlights for insights/achievements/warnings
+5. Use PR badges for personal records
+6. Be specific with numbers from the data
+7. Return ONLY valid JSON`;
 
 interface WorkoutData {
   id: string;
@@ -330,17 +348,39 @@ Today's Date: ${now.toLocaleDateString()}
         { role: 'user', content: `Here is my workout data:\n\n${dataContext}\n\nGenerate a report for: ${question}` },
       ],
       temperature: 0.7,
-      max_tokens: 2048,
+      max_tokens: 3000,
+      response_format: { type: 'json_object' },
     });
 
-    const response = completion.choices[0]?.message?.content || 'Unable to generate response';
+    const responseText = completion.choices[0]?.message?.content || '{}';
+    console.log('📝 AI response length:', responseText.length);
+
+    let parsedResponse;
+    try {
+      parsedResponse = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('❌ Failed to parse AI response:', responseText);
+      return NextResponse.json({
+        report: null,
+        isInsufficient: true,
+        insufficientMessage: 'Failed to generate report. Please try again.',
+        hasData,
+      });
+    }
 
     // Check if it's an insufficient data response
-    const isInsufficient = response.startsWith('INSUFFICIENT_DATA:');
+    if (parsedResponse.insufficient) {
+      return NextResponse.json({
+        report: null,
+        isInsufficient: true,
+        insufficientMessage: parsedResponse.message || 'Not enough data available.',
+        hasData,
+      });
+    }
 
     return NextResponse.json({
-      report: response,
-      isInsufficient,
+      report: parsedResponse,
+      isInsufficient: false,
       hasData,
     });
   } catch (error: any) {

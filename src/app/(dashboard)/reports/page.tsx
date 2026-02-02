@@ -1,16 +1,15 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { BarChart3, FileText, Image, Printer, Loader2, Dumbbell, AlertCircle, Sparkles } from 'lucide-react';
-import { format } from 'date-fns';
-import { toPng } from 'html-to-image';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { BarChart3, FileText, Loader2, AlertCircle, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
-import ReactMarkdown from 'react-markdown';
+import { StructuredReport } from '@/types/reports';
+import { ReportContainer } from '@/components/reports/ReportContainer';
 
 const EXAMPLE_REQUESTS = [
   "Performance report for last 30 days",
@@ -27,12 +26,10 @@ export default function ReportsPage() {
 
   const [input, setInput] = useState('');
   const [generating, setGenerating] = useState(false);
-  const [reportContent, setReportContent] = useState<string | null>(null);
-  const [isInsufficient, setIsInsufficient] = useState(false);
+  const [report, setReport] = useState<StructuredReport | null>(null);
+  const [insufficientMessage, setInsufficientMessage] = useState<string>('');
   const [showReport, setShowReport] = useState(false);
-  const [exporting, setExporting] = useState(false);
 
-  const reportRef = useRef<HTMLDivElement>(null);
   const isCoach = user?.role === 'coach';
 
   const handleGenerateReport = async (request?: string) => {
@@ -63,12 +60,15 @@ export default function ReportsPage() {
         throw new Error(data.error || 'Failed to generate report');
       }
 
-      setReportContent(data.report);
-      setIsInsufficient(data.isInsufficient || false);
-      setShowReport(true);
-
       if (data.isInsufficient) {
+        setReport(null);
+        setInsufficientMessage(data.insufficientMessage || 'Not enough data available.');
+        setShowReport(true);
         toast.info('Insufficient data for detailed report');
+      } else {
+        setReport(data.report);
+        setInsufficientMessage('');
+        setShowReport(true);
       }
     } catch (error: any) {
       toast.error(error.message || 'Failed to generate report');
@@ -82,34 +82,6 @@ export default function ReportsPage() {
       e.preventDefault();
       handleGenerateReport();
     }
-  };
-
-  const handleExportImage = async () => {
-    if (!reportRef.current) return;
-
-    setExporting(true);
-    try {
-      const dataUrl = await toPng(reportRef.current, {
-        quality: 1,
-        pixelRatio: 2,
-        backgroundColor: '#ffffff',
-      });
-
-      const link = document.createElement('a');
-      link.download = `CoachTrack-Report-${format(new Date(), 'yyyy-MM-dd-HHmmss')}.png`;
-      link.href = dataUrl;
-      link.click();
-
-      toast.success('Report saved as image');
-    } catch (error) {
-      toast.error('Failed to export image');
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  const handlePrint = () => {
-    window.print();
   };
 
   if (loading) {
@@ -131,7 +103,7 @@ export default function ReportsPage() {
           AI Reports
         </h1>
         <p className="text-muted-foreground mt-1">
-          Describe what report you want, and AI will format it professionally
+          Ask for any report and get beautifully formatted insights with charts and stats
         </p>
       </div>
 
@@ -142,7 +114,7 @@ export default function ReportsPage() {
           <CardDescription>
             {isCoach
               ? "Ask for any report about your athletes (e.g., 'Performance report for last 30 days')"
-              : "Ask for any report about your workouts (e.g., 'My progress report for this month')"}
+              : "Ask for any report about your workouts (e.g., 'Show my bench press progress this month')"}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -151,8 +123,8 @@ export default function ReportsPage() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={isCoach
-              ? "e.g., Performance report for all athletes last 30 days"
-              : "e.g., My workout summary for the last month"}
+              ? "e.g., Compare my athletes' completion rates this month"
+              : "e.g., Show my workout progress this week with charts"}
             className="min-h-[100px] resize-none"
             disabled={generating}
           />
@@ -208,116 +180,25 @@ export default function ReportsPage() {
 
       {/* Report Modal */}
       <Dialog open={showReport} onOpenChange={setShowReport}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
-          <DialogHeader className="p-6 pb-0 print:hidden">
-            <DialogTitle className="flex items-center justify-between">
-              <span>CoachTrack Report</span>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExportImage}
-                  disabled={exporting || isInsufficient}
-                >
-                  {exporting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Image className="h-4 w-4" />
-                  )}
-                  <span className="ml-2 hidden sm:inline">Save Image</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handlePrint}
-                  disabled={isInsufficient}
-                >
-                  <Printer className="h-4 w-4" />
-                  <span className="ml-2 hidden sm:inline">Print</span>
-                </Button>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          {insufficientMessage ? (
+            // Insufficient Data Display
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900/20 mb-4">
+                <AlertCircle className="h-8 w-8 text-orange-600 dark:text-orange-400" />
               </div>
-            </DialogTitle>
-          </DialogHeader>
-
-          <div ref={reportRef} className="bg-white text-gray-900 p-8">
-            {/* Report Header with CoachTrack Branding */}
-            <div className="border-b-2 border-primary pb-6 mb-8">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
-                    <Dumbbell className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <h1 className="text-2xl font-bold text-primary">CoachTrack</h1>
-                    <p className="text-sm text-gray-500">Performance Report</p>
-                  </div>
-                </div>
-                <div className="text-right text-sm text-gray-500">
-                  <p>{user.displayName}</p>
-                  <p>{format(new Date(), 'MMMM d, yyyy')}</p>
-                </div>
-              </div>
+              <h2 className="text-2xl font-bold mb-2">Insufficient Information</h2>
+              <p className="max-w-md text-muted-foreground mb-4">
+                {insufficientMessage}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Try requesting a different report or add more workout data.
+              </p>
             </div>
-
-            {/* Report Content */}
-            {isInsufficient ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-orange-100 mb-4">
-                  <AlertCircle className="h-8 w-8 text-orange-600" />
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Insufficient Information</h2>
-                <div className="max-w-md text-gray-600">
-                  <ReactMarkdown>{reportContent?.replace('INSUFFICIENT_DATA:', '') || 'Not enough data available to generate this report.'}</ReactMarkdown>
-                </div>
-                <p className="text-sm text-gray-500 mt-4">
-                  Try requesting a different report or add more workout data.
-                </p>
-              </div>
-            ) : (
-              <div className="prose prose-gray max-w-none">
-                <ReactMarkdown
-                  components={{
-                    h2: ({ node, ...props }) => (
-                      <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4 pb-2 border-b border-gray-200" {...props} />
-                    ),
-                    h3: ({ node, ...props }) => (
-                      <h3 className="text-xl font-semibold text-gray-800 mt-6 mb-3" {...props} />
-                    ),
-                    p: ({ node, ...props }) => (
-                      <p className="text-gray-700 leading-relaxed mb-4" {...props} />
-                    ),
-                    ul: ({ node, ...props }) => (
-                      <ul className="list-disc list-inside space-y-2 mb-4 text-gray-700" {...props} />
-                    ),
-                    ol: ({ node, ...props }) => (
-                      <ol className="list-decimal list-inside space-y-2 mb-4 text-gray-700" {...props} />
-                    ),
-                    strong: ({ node, ...props }) => (
-                      <strong className="font-bold text-gray-900" {...props} />
-                    ),
-                    table: ({ node, ...props }) => (
-                      <div className="overflow-x-auto mb-4">
-                        <table className="min-w-full divide-y divide-gray-200 border border-gray-200" {...props} />
-                      </div>
-                    ),
-                    th: ({ node, ...props }) => (
-                      <th className="px-4 py-2 bg-gray-50 text-left text-sm font-semibold text-gray-900" {...props} />
-                    ),
-                    td: ({ node, ...props }) => (
-                      <td className="px-4 py-2 text-sm text-gray-700 border-t border-gray-200" {...props} />
-                    ),
-                  }}
-                >
-                  {reportContent || ''}
-                </ReactMarkdown>
-              </div>
-            )}
-
-            {/* Footer */}
-            <div className="mt-12 pt-6 border-t border-gray-200 text-center text-xs text-gray-400">
-              <p>Generated by CoachTrack | {format(new Date(), 'MMMM d, yyyy \'at\' h:mm a')}</p>
-            </div>
-          </div>
+          ) : report ? (
+            // Structured Report Display
+            <ReportContainer report={report} userName={user.displayName} />
+          ) : null}
         </DialogContent>
       </Dialog>
 
