@@ -26,8 +26,10 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Format the date nicely
-    const workoutDate = new Date(workout.date.seconds * 1000);
+    // Format the date nicely — handle Firestore Timestamp, ISO string, or epoch
+    const workoutDate = workout.date?.seconds
+      ? new Date(workout.date.seconds * 1000)
+      : new Date(workout.date);
     const formattedDate = workoutDate.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
