@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { getUserWorkouts, deleteWorkout, completeWorkout } from '@/lib/firebase/firestore';
 import { Workout, WorkoutType } from '@/types';
 import { WorkoutList } from '@/components/workouts/WorkoutList';
-import { AIWorkoutSuggestions } from '@/components/workouts/AIWorkoutSuggestions';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import Link from 'next/link';
@@ -22,7 +21,7 @@ const WORKOUT_CATEGORIES: { type: WorkoutType; label: string; icon: React.ReactN
   { type: 'other', label: 'Other', icon: <MoreHorizontal className="h-6 w-6" />, color: 'bg-gray-500', bgColor: 'bg-gray-500/10 hover:bg-gray-500/20 border-gray-500/20' },
 ];
 
-export default function WorkoutsPage() {
+function WorkoutsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const user = useAuthStore((state) => state.user);
@@ -32,14 +31,14 @@ export default function WorkoutsPage() {
   // Get category from URL params
   const selectedCategory = searchParams.get('category') as WorkoutType | null;
 
-  const loadWorkouts = async () => {
+  const loadWorkouts = useCallback(async () => {
     if (!user) return;
     const data = await getUserWorkouts(user.uid, user.role);
     setWorkouts(data);
     setLoading(false);
-  };
+  }, [user]);
 
-  useEffect(() => { loadWorkouts(); }, [user]);
+  useEffect(() => { loadWorkouts(); }, [loadWorkouts]);
 
   // Filter workouts by selected category
   const filteredWorkouts = selectedCategory
@@ -77,6 +76,8 @@ export default function WorkoutsPage() {
 
   const handleViewDetails = (id: string) => router.push(`/workouts/${id}`);
 
+  const canManageWorkouts = user?.role === 'coach' || ((user?.role === 'athlete' || user?.role === 'student') && !user?.coachId);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -110,7 +111,7 @@ export default function WorkoutsPage() {
               </p>
             </div>
           </div>
-          {(user?.role === 'coach' || ((user?.role === 'athlete' || user?.role === 'student') && !user?.coachId)) && (
+          {canManageWorkouts && (
             <Button asChild className="shadow-lg shadow-primary/20">
               <Link href="/workouts/new">
                 <Plus className="mr-2 h-4 w-4" />
@@ -123,8 +124,8 @@ export default function WorkoutsPage() {
         {/* Workout List */}
         <WorkoutList
           workouts={filteredWorkouts}
-          onEdit={(user?.role === 'coach' || ((user?.role === 'athlete' || user?.role === 'student') && !user?.coachId)) ? handleEdit : undefined}
-          onDelete={(user?.role === 'coach' || ((user?.role === 'athlete' || user?.role === 'student') && !user?.coachId)) ? handleDelete : undefined}
+          onEdit={canManageWorkouts ? handleEdit : undefined}
+          onDelete={canManageWorkouts ? handleDelete : undefined}
           onToggleComplete={handleToggleComplete}
           onViewDetails={handleViewDetails}
           isCoach={user?.role === 'coach'}
@@ -134,7 +135,7 @@ export default function WorkoutsPage() {
     );
   }
 
-  // Main page: show category cards and AI suggestions
+  // Main page: show category cards
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -152,7 +153,7 @@ export default function WorkoutsPage() {
             </p>
           </div>
         </div>
-        {(user?.role === 'coach' || ((user?.role === 'athlete' || user?.role === 'student') && !user?.coachId)) && (
+        {canManageWorkouts && (
           <Button asChild className="shadow-lg shadow-primary/20">
             <Link href="/workouts/new">
               <Plus className="mr-2 h-4 w-4" />
@@ -187,9 +188,21 @@ export default function WorkoutsPage() {
           </Card>
         ))}
       </div>
-
-      {/* AI Suggestions */}
-      {user && <AIWorkoutSuggestions userId={user.uid} recentWorkouts={workouts} />}
     </div>
+  );
+}
+
+export default function WorkoutsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-96">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading workouts...</p>
+        </div>
+      </div>
+    }>
+      <WorkoutsContent />
+    </Suspense>
   );
 }

@@ -5,7 +5,7 @@ import { signOut } from '@/lib/firebase/auth';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
-import { Dumbbell, LogOut, LayoutDashboard, Calendar as CalendarIcon, ListChecks, Settings, TrendingUp, Trophy, Brain, Lightbulb, Menu, X, BarChart3 } from 'lucide-react';
+import { Dumbbell, LogOut, LayoutDashboard, Calendar as CalendarIcon, ListChecks, Settings, Menu, X, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useState, useMemo } from 'react';
@@ -26,11 +26,7 @@ export function Navbar() {
     { href: '/workouts', label: 'Workouts', icon: ListChecks },
     { href: '/calendar', label: 'Calendar', icon: CalendarIcon },
     { href: '/reports', label: 'Reports', icon: BarChart3 },
-    ...(user?.role === 'coach' ? [
-      { href: '/ai-coach', label: 'AI Coach', icon: Brain },
-      { href: '/coach-suggestions', label: 'Suggestions', icon: Lightbulb }
-    ] : []),
-  ], [user?.role]);
+  ], []);
 
   return (
     <nav className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-xl">

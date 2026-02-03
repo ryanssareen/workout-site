@@ -196,6 +196,10 @@ Provide 5-7 specific, actionable suggestions in JSON format:
 }
 `;
 
+    if (!process.env.GROQ_API_KEY) {
+      return NextResponse.json({ error: 'AI service not configured' }, { status: 503 });
+    }
+
     const groq = new Groq({
       apiKey: process.env.GROQ_API_KEY.trim(),
     });

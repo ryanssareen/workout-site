@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { findCoachByCode } from '@/lib/firebase/auth';
@@ -15,7 +15,7 @@ import { signOut } from '@/lib/firebase/auth';
 import Link from 'next/link';
 import { StravaDuplicateDialog } from '@/components/strava/DuplicateDialog';
 
-export default function SettingsPage() {
+function SettingsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const user = useAuthStore((state) => state.user);
@@ -334,5 +334,17 @@ export default function SettingsPage() {
         isLoading={isSyncingStrava}
       />
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <SettingsContent />
+    </Suspense>
   );
 }

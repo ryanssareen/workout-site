@@ -35,8 +35,8 @@ function mapStravaType(stravaType: string): 'swim' | 'run' | 'bike' | 'strength'
 function verifyWebhookSignature(body: string, signature: string): boolean {
   const verifyToken = process.env.STRAVA_WEBHOOK_VERIFY_TOKEN;
   if (!verifyToken) {
-    console.warn('STRAVA_WEBHOOK_VERIFY_TOKEN not set, skipping signature verification');
-    return true;
+    console.warn('STRAVA_WEBHOOK_VERIFY_TOKEN not set - rejecting webhook for safety');
+    return false;
   }
 
   const expectedSignature = crypto
@@ -90,7 +90,14 @@ async function getAccessToken(userId: string, userData: any): Promise<string | n
   let accessToken = userData.stravaAccessToken;
   const currentTime = Math.floor(Date.now() / 1000);
 
-  if (userData.stravaTokenExpiresAt && userData.stravaTokenExpiresAt < currentTime) {
+  // Handle stravaTokenExpiresAt stored as number, Date, or Firestore Timestamp
+  const expiresAt = userData.stravaTokenExpiresAt?.toDate
+    ? Math.floor(userData.stravaTokenExpiresAt.toDate().getTime() / 1000)
+    : userData.stravaTokenExpiresAt instanceof Date
+      ? Math.floor(userData.stravaTokenExpiresAt.getTime() / 1000)
+      : userData.stravaTokenExpiresAt;
+
+  if (expiresAt && expiresAt < currentTime) {
     const newToken = await refreshStravaToken(userId, userData.stravaRefreshToken);
     if (!newToken) {
       return null;
@@ -229,9 +236,9 @@ async function processActivity(
     const newWorkoutData = {
       name: activity.name,
       type: workoutType,
-      description: `Imported from Strava\nDistance: ${(activity.distance / 1000).toFixed(2)} km\nMoving time: ${Math.round(activity.moving_time / 60)} min`,
+      description: `Imported from Strava\nDistance: ${((activity.distance || 0) / 1000).toFixed(2)} km\nMoving time: ${Math.round((activity.moving_time || 0) / 60)} min`,
       date: admin.firestore.Timestamp.fromDate(activityDate),
-      duration: Math.round(activity.moving_time / 60),
+      duration: Math.round((activity.moving_time || 0) / 60),
       createdBy: userId,
       assignedTo: userId,
       completed: true,

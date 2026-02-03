@@ -24,11 +24,17 @@ function mapStravaType(stravaType: string): 'swim' | 'run' | 'bike' | 'strength'
     'VirtualRide': 'bike',
     'MountainBikeRide': 'bike',
     'GravelRide': 'bike',
+    'EBikeRide': 'bike',
     'Swim': 'swim',
+    'OpenWaterSwim': 'swim',
     'WeightTraining': 'strength',
     'Workout': 'strength',
     'CrossFit': 'strength',
     'Yoga': 'strength',
+    'HIIT': 'strength',
+    'Elliptical': 'strength',
+    'StairStepper': 'strength',
+    'Rowing': 'strength',
   };
 
   return typeMap[stravaType] || 'strength';
@@ -276,7 +282,14 @@ export async function GET(request: NextRequest) {
     let accessToken = userData.stravaAccessToken;
     const currentTime = Math.floor(Date.now() / 1000);
 
-    if (userData.stravaTokenExpiresAt && userData.stravaTokenExpiresAt < currentTime) {
+    // Handle stravaTokenExpiresAt stored as number, Date, or Firestore Timestamp
+    const expiresAt = userData.stravaTokenExpiresAt?.toDate
+      ? Math.floor(userData.stravaTokenExpiresAt.toDate().getTime() / 1000)
+      : userData.stravaTokenExpiresAt instanceof Date
+        ? Math.floor(userData.stravaTokenExpiresAt.getTime() / 1000)
+        : userData.stravaTokenExpiresAt;
+
+    if (expiresAt && expiresAt < currentTime) {
       console.log('🔄 Token expired, refreshing...');
       const newToken = await refreshStravaToken(userId, userData.stravaRefreshToken);
       if (!newToken) {
@@ -363,6 +376,15 @@ export async function GET(request: NextRequest) {
     }
 
     const activities = await activitiesResponse.json();
+
+    if (!Array.isArray(activities)) {
+      console.error('❌ Unexpected Strava response format:', activities);
+      return NextResponse.json(
+        { error: 'Unexpected response from Strava. Please try again.' },
+        { status: 502 }
+      );
+    }
+
     console.log(`✅ Fetched ${activities.length} activities from last year`);
 
     // Get existing Strava workout IDs to avoid duplicates
@@ -373,7 +395,7 @@ export async function GET(request: NextRequest) {
       .get();
 
     const existingStravaIds = new Set(
-      existingWorkoutsSnapshot.docs.map(doc => doc.data().stravaActivityId)
+      existingWorkoutsSnapshot.docs.map(doc => String(doc.data().stravaActivityId))
     );
 
     console.log(`📊 Found ${existingStravaIds.size} existing Strava workouts`);
