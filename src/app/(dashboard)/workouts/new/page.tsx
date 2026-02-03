@@ -139,10 +139,13 @@ export default function NewWorkoutPage() {
           workout: createdWorkoutData,
         }),
       });
-      if (!res.ok) throw new Error('Failed to send email');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Failed to send email');
+      }
       toast.success(`Email sent to ${athlete.displayName}`);
-    } catch {
-      toast.error('Failed to send email notification');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to send email notification');
     } finally {
       setSendingEmail(false);
       setShowEmailDialog(false);
