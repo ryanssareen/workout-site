@@ -8,7 +8,7 @@ import { WorkoutForm } from '@/components/workouts/WorkoutForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { WorkoutSchema } from '@/lib/schemas/workout';
-import { ArrowLeft, BookmarkCheck } from 'lucide-react';
+import { ArrowLeft, BookmarkCheck, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
@@ -22,6 +22,7 @@ export default function NewWorkoutPage() {
   const [loadingTemplate, setLoadingTemplate] = useState(false);
 
   const templateId = searchParams.get('templateId');
+  const aiGenerated = searchParams.get('aiGenerated') === 'true';
 
   const isCoach = user?.role === 'coach';
   const isUnconnectedAthlete = (user?.role === 'athlete' || user?.role === 'student') && !user?.coachId;
@@ -60,6 +61,24 @@ export default function NewWorkoutPage() {
     loadTemplate();
   }, [templateId]);
 
+  // Load AI-generated workout data from sessionStorage
+  useEffect(() => {
+    if (aiGenerated) {
+      try {
+        const storedData = sessionStorage.getItem('aiWorkoutData');
+        if (storedData) {
+          const aiWorkout = JSON.parse(storedData);
+          setTemplateData(aiWorkout);
+          sessionStorage.removeItem('aiWorkoutData');
+          toast.success('AI-generated workout loaded! Modify and assign as needed.');
+        }
+      } catch (error) {
+        console.error('Failed to load AI workout data:', error);
+        toast.error('Failed to load AI workout data');
+      }
+    }
+  }, [aiGenerated]);
+
   // Redirect if not authorized (must be coach OR unconnected athlete)
   useEffect(() => {
     const canCreate = user?.role === 'coach' || ((user?.role === 'athlete' || user?.role === 'student') && !user?.coachId);
@@ -96,6 +115,14 @@ export default function NewWorkoutPage() {
   }
 
   const getHeaderTitle = () => {
+    if (aiGenerated) {
+      return (
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-purple-600" />
+          AI-Generated Workout Template
+        </div>
+      );
+    }
     if (templateData) {
       return (
         <div className="flex items-center gap-2">
@@ -108,6 +135,11 @@ export default function NewWorkoutPage() {
   };
 
   const getHeaderDescription = () => {
+    if (aiGenerated) {
+      return isCoach
+        ? 'AI-generated workout ready to customize. Modify as needed and assign to an athlete.'
+        : 'AI-generated workout ready to customize.';
+    }
     if (templateData) {
       return isCoach
         ? 'Pre-filled from template. Modify as needed and assign to an athlete.'
@@ -132,7 +164,7 @@ export default function NewWorkoutPage() {
         </div>
       </div>
 
-      <Card>
+      <Card className={aiGenerated ? 'border-purple-200 dark:border-purple-900' : ''}>
         <CardHeader>
           <CardTitle>{getHeaderTitle()}</CardTitle>
           <CardDescription>{getHeaderDescription()}</CardDescription>

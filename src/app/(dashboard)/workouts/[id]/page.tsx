@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { CommentSection } from '@/components/workouts/comments';
 import { CompletionDialog, UncompletionDialog } from '@/components/workouts/CompletionDialog';
+import { WorkoutRecommendations } from '@/components/ai/WorkoutRecommendations';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -439,6 +440,9 @@ export default function WorkoutDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* AI Recommendations */}
+      <WorkoutRecommendations workout={workout} />
 
       {/* Comments section */}
       <CommentSection

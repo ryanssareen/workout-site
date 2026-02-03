@@ -6,6 +6,7 @@ import { useAuthStore } from '@/lib/stores/authStore';
 import { getUserWorkouts, deleteWorkout, completeWorkout } from '@/lib/firebase/firestore';
 import { Workout, WorkoutType } from '@/types';
 import { WorkoutList } from '@/components/workouts/WorkoutList';
+import { AIWorkoutSuggestions } from '@/components/workouts/AIWorkoutSuggestions';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import Link from 'next/link';
@@ -188,6 +189,9 @@ function WorkoutsContent() {
           </Card>
         ))}
       </div>
+
+      {/* AI Workout Suggestions */}
+      {user && <AIWorkoutSuggestions userId={user.uid} recentWorkouts={workouts} />}
     </div>
   );
 }
