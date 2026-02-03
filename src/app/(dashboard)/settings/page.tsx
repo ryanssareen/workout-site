@@ -35,8 +35,20 @@ function SettingsContent() {
 
   useEffect(() => {
     const stravaStatus = searchParams.get('strava');
-    if (stravaStatus === 'connected') { toast.success('Strava connected!'); router.replace('/settings'); }
-    else if (stravaStatus === 'error') { toast.error('Failed to connect Strava'); router.replace('/settings'); }
+    const reason = searchParams.get('reason');
+    if (stravaStatus === 'connected') {
+      toast.success('Strava account connected successfully');
+      router.replace('/settings');
+    } else if (stravaStatus === 'error') {
+      const messages: Record<string, string> = {
+        denied: 'Strava authorization was denied. Please try again and click "Authorize" on the Strava page.',
+        token_failed: 'Failed to exchange Strava token. Please try connecting again.',
+        no_cookie: 'Session expired before Strava connected. Please try again.',
+        exception: 'Something went wrong connecting to Strava. Please try again.',
+      };
+      toast.error(reason && messages[reason] ? messages[reason] : 'Failed to connect Strava. Please try again.');
+      router.replace('/settings');
+    }
   }, [searchParams, router]);
 
   useEffect(() => {
@@ -176,7 +188,13 @@ function SettingsContent() {
       toast.success(message);
     } catch (error: any) {
       console.error('Strava sync error:', error);
-      toast.error(error.message || 'Failed to sync');
+      if (error.message?.includes('reconnect')) {
+        toast.error('Strava authorization expired', {
+          description: 'Disconnect and reconnect your Strava account to fix this.',
+        });
+      } else {
+        toast.error(error.message || 'Failed to sync with Strava');
+      }
     }
     setIsSyncingStrava(false);
   };

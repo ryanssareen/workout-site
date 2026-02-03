@@ -6,9 +6,10 @@ import { useAuthStore } from '@/lib/stores/authStore';
 import { createWorkout, getCoachStudents } from '@/lib/firebase/firestore';
 import { WorkoutForm } from '@/components/workouts/WorkoutForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { WorkoutSchema } from '@/lib/schemas/workout';
-import { ArrowLeft, BookmarkCheck, Sparkles } from 'lucide-react';
+import { ArrowLeft, BookmarkCheck, Loader2, Mail, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
@@ -16,10 +17,14 @@ export default function NewWorkoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const user = useAuthStore((state) => state.user);
+  const authLoading = useAuthStore((state) => state.loading);
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [templateData, setTemplateData] = useState<any>(null);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [createdWorkoutData, setCreatedWorkoutData] = useState<WorkoutSchema | null>(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   const templateId = searchParams.get('templateId');
   const aiGenerated = searchParams.get('aiGenerated') === 'true';
@@ -81,18 +86,18 @@ export default function NewWorkoutPage() {
 
   // Redirect if not authorized (must be coach OR unconnected athlete)
   useEffect(() => {
+    if (authLoading) return;
     const canCreate = user?.role === 'coach' || ((user?.role === 'athlete' || user?.role === 'student') && !user?.coachId);
     if (user && !canCreate) {
       router.push('/dashboard');
     }
-  }, [user, router]);
+  }, [user, authLoading, router]);
 
   const handleSubmit = async (data: WorkoutSchema) => {
     if (!user) return;
 
     setLoading(true);
     try {
-      // For athletes creating their own workouts, set assignedTo to themselves
       const workoutData = isUnconnectedAthlete
         ? { ...data, assignedTo: user.uid }
         : data;
@@ -101,7 +106,15 @@ export default function NewWorkoutPage() {
 
       toast.success('Workout created successfully!');
 
-      // Wait a bit then redirect
+      if (isCoach && data.assignedTo) {
+        const athlete = students.find((s) => s.uid === data.assignedTo);
+        if (athlete?.email) {
+          setCreatedWorkoutData(data);
+          setShowEmailDialog(true);
+          return;
+        }
+      }
+
       setTimeout(() => router.push('/workouts'), 1000);
     } catch (error: any) {
       toast.error(error.message || 'Failed to create workout');
@@ -109,6 +122,46 @@ export default function NewWorkoutPage() {
       setLoading(false);
     }
   };
+
+  const handleSendEmail = async () => {
+    if (!createdWorkoutData) return;
+    const athlete = students.find((s) => s.uid === createdWorkoutData.assignedTo);
+    if (!athlete?.email) return;
+
+    setSendingEmail(true);
+    try {
+      const res = await fetch('/api/send-workout-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentEmail: athlete.email,
+          studentName: athlete.displayName,
+          workout: createdWorkoutData,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to send email');
+      toast.success(`Email sent to ${athlete.displayName}`);
+    } catch {
+      toast.error('Failed to send email notification');
+    } finally {
+      setSendingEmail(false);
+      setShowEmailDialog(false);
+      router.push('/workouts');
+    }
+  };
+
+  const handleSkipEmail = () => {
+    setShowEmailDialog(false);
+    router.push('/workouts');
+  };
+
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (!user || (!isCoach && !isUnconnectedAthlete)) {
     return null;
@@ -192,6 +245,31 @@ export default function NewWorkoutPage() {
           />
         </CardContent>
       </Card>
+
+      <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send email notification?</DialogTitle>
+            <DialogDescription>
+              Would you like to notify{' '}
+              {students.find((s) => s.uid === createdWorkoutData?.assignedTo)?.displayName ?? 'the athlete'}{' '}
+              about this new workout via email?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={handleSkipEmail} disabled={sendingEmail}>
+              Skip
+            </Button>
+            <Button onClick={handleSendEmail} disabled={sendingEmail}>
+              {sendingEmail ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Sending...</>
+              ) : (
+                <><Mail className="h-4 w-4 mr-2" />Send Email</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
