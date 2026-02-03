@@ -13,7 +13,7 @@ interface StrengthFormProps {
 }
 
 export function StrengthForm({ data, onChange }: StrengthFormProps) {
-  const exercises = data.exercises || [];
+  const exercises = Array.isArray(data.exercises) ? data.exercises : [];
 
   const addExercise = () => {
     onChange({

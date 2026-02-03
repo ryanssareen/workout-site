@@ -79,7 +79,8 @@ export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAt
   const selectedDate = watch('date');
   const selectedType = watch('type');
   const selectedStudent = watch('assignedTo');
-  const selectedTags = watch('tags') || [];
+  const rawTags = watch('tags');
+  const selectedTags = Array.isArray(rawTags) ? rawTags : [];
   const isRecurring = watch('isRecurring');
   const recurringFrequency = watch('recurringFrequency');
   const recurringEndDate = watch('recurringEndDate');
@@ -287,7 +288,7 @@ export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAt
               <SelectValue placeholder="Select athlete" />
             </SelectTrigger>
             <SelectContent>
-              {athletes.map((athlete) => (
+              {(Array.isArray(athletes) ? athletes : []).map((athlete) => (
                 <SelectItem key={athlete.uid} value={athlete.uid}>
                   <div className="flex flex-col">
                     <span className="font-medium">{athlete.displayName || 'No Name'}</span>
