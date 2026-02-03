@@ -1,13 +1,13 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import nodemailer from 'nodemailer';
+import * as brevo from '@getbrevo/brevo';
 
 export async function POST(request: NextRequest) {
   try {
-    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    if (!process.env.BREVO_API_KEY) {
       return NextResponse.json(
-        { error: 'Email service not configured (missing GMAIL credentials)' },
+        { error: 'Email service not configured (missing BREVO_API_KEY)' },
         { status: 500 }
       );
     }
@@ -27,14 +27,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD,
-      },
-    });
 
     let formattedDate = 'TBD';
     try {
@@ -110,23 +102,25 @@ export async function POST(request: NextRequest) {
       </html>
     `;
 
-    try {
-      const info = await transporter.sendMail({
-        from: `"CoachTrack" <${process.env.GMAIL_USER}>`,
-        to: studentEmail,
-        subject: `New Workout: ${workout.name}`,
-        html: emailHtml,
-      });
-      return NextResponse.json({ success: true, messageId: info.messageId });
-    } catch (mailErr: any) {
-      return NextResponse.json(
-        { error: `Mail send failed: ${mailErr.message}` },
-        { status: 500 }
-      );
-    }
-  } catch (error: any) {
+    const apiInstance = new brevo.TransactionalEmailsApi();
+    apiInstance.setApiKey(
+      brevo.TransactionalEmailsApiApiKeys.apiKey,
+      process.env.BREVO_API_KEY
+    );
+
+    const sendSmtpEmail = new brevo.SendSmtpEmail();
+    sendSmtpEmail.sender = { name: 'CoachTrack', email: 'ryansareen6@gmail.com' };
+    sendSmtpEmail.to = [{ email: studentEmail, name: studentName }];
+    sendSmtpEmail.subject = `New Workout: ${workout.name}`;
+    sendSmtpEmail.htmlContent = emailHtml;
+
+    const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
+
+    return NextResponse.json({ success: true, messageId: data.body.messageId });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Unexpected error: ${error.message}` },
+      { error: `Mail send failed: ${message}` },
       { status: 500 }
     );
   }
