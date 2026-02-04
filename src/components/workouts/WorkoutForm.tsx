@@ -7,6 +7,7 @@ import { workoutSchema, WorkoutSchema, RECURRING_FREQUENCIES } from '@/lib/schem
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
@@ -209,6 +210,17 @@ export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAt
             {selectedTags.length} tag{selectedTags.length > 1 ? 's' : ''} selected
           </p>
         )}
+      </div>
+
+      {/* Free-Text Description */}
+      <div className="space-y-2">
+        <Label htmlFor="description">Description (optional)</Label>
+        <Textarea
+          id="description"
+          placeholder="Add any notes, goals, cues, or context for this workout..."
+          {...register('description')}
+        />
+        {errors.description && <p className="text-sm text-red-500">{errors.description.message}</p>}
       </div>
 
       {/* Type-Specific Forms */}

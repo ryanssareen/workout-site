@@ -235,6 +235,7 @@ export default function NewWorkoutPage() {
               name: templateData.name,
               type: templateData.type,
               date: new Date(),
+              description: templateData.description,
               assignedTo: isUnconnectedAthlete ? user?.uid : students[0]?.uid || '',
               // Pass the type-specific nested data
               // AI generates: { name, type: "run", run: { distance, time, ... } }
