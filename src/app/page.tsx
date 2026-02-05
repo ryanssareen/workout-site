@@ -70,30 +70,80 @@ export default function Home() {
           </div>
 
           <div className="container mx-auto px-4 py-16 md:py-24">
-            <div className="max-w-3xl mx-auto text-center space-y-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 text-green-600 text-sm font-medium">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                100% Free Forever
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              <div className="space-y-6">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 text-green-600 text-sm font-medium">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  100% Free Forever
+                </div>
+                <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-tight">
+                  Workout Planning
+                  <span className="block bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent">Made Simple</span>
+                </h1>
+                <p className="text-lg md:text-xl text-muted-foreground">
+                  Assign, track, and celebrate workouts with a visual calendar, Strava sync, and AI suggestions that keep every athlete on track.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button asChild size="lg" className="h-12 px-8 shadow-xl shadow-primary/25">
+                    <Link href="/register">
+                      Create Free Account
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" size="lg" className="h-12 px-8">
+                    <Link href="/login">I already have an account</Link>
+                  </Button>
+                </div>
+                <div className="grid grid-cols-3 gap-4 max-w-lg pt-4">
+                  <div className="rounded-xl border bg-card/60 p-4 shadow-sm">
+                    <p className="text-xs text-muted-foreground">Avg completion</p>
+                    <p className="text-2xl font-bold">82%</p>
+                  </div>
+                  <div className="rounded-xl border bg-card/60 p-4 shadow-sm">
+                    <p className="text-xs text-muted-foreground">Time to setup</p>
+                    <p className="text-2xl font-bold">&lt; 1 min</p>
+                  </div>
+                  <div className="rounded-xl border bg-card/60 p-4 shadow-sm">
+                    <p className="text-xs text-muted-foreground">Platforms</p>
+                    <p className="text-2xl font-bold">Web + Strava</p>
+                  </div>
+                </div>
               </div>
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-tight">
-                Workout Planning
-                <span className="block bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent">Made Simple</span>
-              </h1>
-              <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-                CoachTrack helps coaches assign workouts and athletes track their training.
-                Connect with Strava, get reminders, and never miss a workout.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
-                <Button asChild size="lg" className="h-12 px-8 shadow-xl shadow-primary/25">
-                  <Link href="/register">
-                    Create Free Account
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
+
+              <div className="relative">
+                <div className="absolute -inset-6 bg-gradient-to-br from-primary/15 via-purple-500/10 to-pink-500/10 blur-3xl rounded-3xl" />
+                <Card className="relative p-6 md:p-8 shadow-2xl border-primary/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-primary mb-4">
+                    <Calendar className="h-4 w-4" />
+                    Live Training Calendar
+                  </div>
+                  <div className="grid grid-cols-7 gap-2 text-center text-xs text-muted-foreground mb-3">
+                    {['S','M','T','W','T','F','S'].map(d => <div key={d}>{d}</div>)}
+                  </div>
+                  <div className="grid grid-cols-7 gap-2 text-sm">
+                    {[...Array(28)].map((_, i) => (
+                      <div key={i} className="h-16 rounded-lg border bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 flex flex-col items-center justify-center gap-1">
+                        <span className="text-xs text-muted-foreground">{i + 1}</span>
+                        <span className="w-2 h-2 rounded-full bg-primary/70" />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-6 space-y-3">
+                    {[
+                      { icon: Activity, label: 'Auto-completes from Strava', color: 'text-emerald-600' },
+                      { icon: Zap, label: 'AI workout suggestions', color: 'text-amber-600' },
+                      { icon: Shield, label: 'Private to you & your coach', color: 'text-indigo-600' },
+                    ].map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-3 text-sm">
+                        <div className="p-2 rounded-lg bg-muted/60">
+                          <item.icon className={`h-4 w-4 ${item.color}`} />
+                        </div>
+                        <span className="text-muted-foreground">{item.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
               </div>
-              <p className="text-sm text-muted-foreground">
-                No credit card required. Set up in under a minute.
-              </p>
             </div>
           </div>
         </section>

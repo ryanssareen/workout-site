@@ -21,6 +21,9 @@ import {
   CheckCircle2,
   Circle,
   Activity,
+  Filter,
+  Send,
+  RefreshCcw,
 } from 'lucide-react';
 import {
   format,
@@ -48,6 +51,16 @@ export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [activeTypes, setActiveTypes] = useState<Set<Workout['type']>>(new Set(['swim', 'bike', 'run', 'strength', 'other']));
+  const [sendingReport, setSendingReport] = useState(false);
+
+  const typeColors: Record<Workout['type'], string> = {
+    swim: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-100',
+    bike: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-100',
+    run: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-100',
+    strength: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-100',
+    other: 'bg-gray-100 text-gray-800 dark:bg-gray-800/60 dark:text-gray-100',
+  };
 
   useEffect(() => {
     async function loadWorkouts() {
@@ -63,7 +76,7 @@ export default function CalendarPage() {
 
   const getWorkoutsForDate = (date: Date) => {
     return workouts.filter(workout =>
-      isSameDay(workout.date.toDate(), date)
+      activeTypes.has(workout.type) && isSameDay(workout.date.toDate(), date)
     );
   };
 
@@ -74,6 +87,7 @@ export default function CalendarPage() {
     workouts.forEach(workout => {
       const workoutDate = workout.date.toDate();
       if (isSameMonth(workoutDate, currentMonth)) {
+        if (!activeTypes.has(workout.type)) return;
         const weekNum = getWeek(workoutDate);
         if (!stats[weekNum]) {
           stats[weekNum] = { total: 0, completed: 0 };
@@ -86,7 +100,17 @@ export default function CalendarPage() {
     });
 
     return stats;
-  }, [workouts, currentMonth]);
+  }, [workouts, currentMonth, activeTypes]);
+
+  const monthStats = useMemo(() => {
+    const inMonth = workouts.filter(w => isSameMonth(w.date.toDate(), currentMonth) && activeTypes.has(w.type));
+    const total = inMonth.length;
+    const completed = inMonth.filter(w => w.completed).length;
+    const missed = inMonth.filter(w => isPast(w.date.toDate()) && !w.completed).length;
+    const upcoming = inMonth.filter(w => !isPast(w.date.toDate()) && !w.completed).length;
+    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { total, completed, missed, upcoming, completionRate };
+  }, [workouts, currentMonth, activeTypes]);
 
   const daysInMonth = eachDayOfInterval({
     start: startOfMonth(currentMonth),
@@ -186,6 +210,28 @@ export default function CalendarPage() {
     }
   };
 
+  const handleSendReport = async () => {
+    if (!user) return;
+    setSendingReport(true);
+    try {
+      const res = await fetch('/api/reports/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.uid, periodDays: 30 }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to send report');
+      }
+      toast.success('Report sent to your email!');
+    } catch (error: any) {
+      toast.error(error.message || 'Could not send report');
+    } finally {
+      setSendingReport(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -205,11 +251,103 @@ export default function CalendarPage() {
           <p className="text-muted-foreground mt-2">View and manage your workout schedule</p>
         </div>
 
-        <Button variant="outline" onClick={generateICS}>
-          <Download className="h-4 w-4 mr-2" />
-          Export to Calendar
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => setCurrentMonth(new Date())}>
+            <RefreshCcw className="h-4 w-4 mr-2" />
+            Today
+          </Button>
+          <Button variant="outline" onClick={generateICS}>
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+          <Button
+            onClick={handleSendReport}
+            disabled={sendingReport}
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            <Send className="h-4 w-4 mr-2" />
+            {sendingReport ? 'Sending...' : 'Email Report'}
+          </Button>
+        </div>
       </div>
+
+      {/* Quick Stats */}
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="py-4">
+            <p className="text-xs text-muted-foreground">This Month</p>
+            <div className="text-2xl font-bold">{monthStats.total}</div>
+            <p className="text-sm text-muted-foreground">Total workouts</p>
+          </CardContent>
+        </Card>
+        <Card className="border-green-200 bg-green-50 dark:bg-green-950/20">
+          <CardContent className="py-4">
+            <p className="text-xs text-muted-foreground">Completion</p>
+            <div className="text-2xl font-bold">{monthStats.completionRate}%</div>
+            <p className="text-sm text-muted-foreground">{monthStats.completed} completed</p>
+          </CardContent>
+        </Card>
+        <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
+          <CardContent className="py-4">
+            <p className="text-xs text-muted-foreground">Upcoming</p>
+            <div className="text-2xl font-bold">{monthStats.upcoming}</div>
+            <p className="text-sm text-muted-foreground">Scheduled after today</p>
+          </CardContent>
+        </Card>
+        <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
+          <CardContent className="py-4">
+            <p className="text-xs text-muted-foreground">Missed</p>
+            <div className="text-2xl font-bold">{monthStats.missed}</div>
+            <p className="text-sm text-muted-foreground">Needs attention</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <Card className="border-dashed">
+        <CardContent className="py-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Filter className="h-4 w-4" />
+              Filter by type
+            </div>
+            {(['swim', 'bike', 'run', 'strength', 'other'] as Workout['type'][]).map((type) => {
+              const isActive = activeTypes.has(type);
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => {
+                    const next = new Set(activeTypes);
+                    if (isActive && activeTypes.size > 1) {
+                      next.delete(type);
+                    } else {
+                      next.add(type);
+                    }
+                    setActiveTypes(next);
+                  }}
+                  className={cn(
+                    'px-3 py-1 rounded-full text-xs font-medium border transition-all',
+                    isActive
+                      ? `${typeColors[type]} border-transparent shadow-sm`
+                      : 'border-border text-muted-foreground hover:bg-muted'
+                  )}
+                >
+                  {type}
+                </button>
+              );
+            })}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-auto"
+              onClick={() => setActiveTypes(new Set(['swim', 'bike', 'run', 'strength', 'other']))}
+            >
+              Reset
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Calendar View */}
@@ -401,7 +539,7 @@ export default function CalendarPage() {
                           </Link>
                           <Badge
                             variant={workout.completed ? 'default' : 'secondary'}
-                            className="capitalize"
+                            className={cn('capitalize', typeColors[workout.type])}
                           >
                             {workout.type}
                           </Badge>
