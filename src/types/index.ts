@@ -51,12 +51,27 @@ export interface Workout {
   tags?: WorkoutTag[]; // NEW: Workout tags
   createdBy: string;
   assignedTo: string;
+  studentId?: string; // alias for assignedTo used in some components
   completed: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  // Type-specific data
+  swim?: SwimData;
+  bike?: BikeData;
+  run?: RunData;
+  strength?: StrengthData;
+  other?: OtherData;
   // Strava sync fields
   source?: 'manual' | 'strava';
   stravaActivityId?: string;
+  stravaData?: {
+    distance?: number;
+    time?: number;
+    elevationGain?: number;
+    avgPower?: number;
+    avgHeartRate?: number;
+    maxHeartRate?: number;
+  };
   // Auto-completion fields
   completedAt?: Timestamp;
   completionStatus?: 'pending' | 'completed' | 'skipped';
@@ -65,6 +80,14 @@ export interface Workout {
   completionNotes?: string;
   completedBy?: 'manual' | 'strava';
   completedLate?: boolean; // True if completed after due date
+  rating?: number;
+  feedback?: string;
+  prs?: {
+    exerciseName: string;
+    previousValue: number;
+    newValue: number;
+    unit: string;
+  }[];
   // Reminder tracking
   reminderSent?: boolean;
   // Template tracking

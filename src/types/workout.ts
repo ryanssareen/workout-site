@@ -76,7 +76,7 @@ export interface Workout {
   name: string;
   type: WorkoutType;
   date: Date | { seconds: number };
-  studentId: string;
+  studentId?: string;
   createdBy: string;
   completed: boolean;
   completedAt?: Date | { seconds: number };
