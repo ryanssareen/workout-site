@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   Activity, Brain, Calendar, CheckCircle2, Clock, Dumbbell,
   LineChart, Mail, MessageSquare, Smartphone, Sparkles, Users,
-  Zap, Target, TrendingUp, Shield, ArrowRight
+  Zap, Target, TrendingUp, Shield, ArrowRight, CheckSquare, BarChart3, Clock3
 } from 'lucide-react';
 
 const features = [
@@ -141,12 +141,36 @@ export default function FeaturesPage() {
           A complete workout tracking platform for coaches and athletes. 
           Powered by AI, integrated with Strava, built for results.
         </p>
-        <div className="flex items-center justify-center gap-4">
-          <Link href="#features">
+        <div className="flex items-center justify-center gap-3 flex-wrap">
+          <Link href="/register">
             <Button size="lg" className="gap-2">
-              View All Features <ArrowRight className="h-4 w-4" />
+              Get Started Free <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
+          <Link href="#features">
+            <Button size="lg" variant="outline" className="gap-2">
+              View All Features
+            </Button>
+          </Link>
+        </div>
+      </section>
+
+      {/* Highlight Pillars */}
+      <section className="container mx-auto px-4 pb-12">
+        <div className="grid md:grid-cols-3 gap-4">
+          {[
+            { icon: CheckSquare, title: 'Plan & assign fast', desc: 'Create multi-sport workouts, duplicate templates, and auto-tag with AI.' },
+            { icon: BarChart3, title: 'See progress instantly', desc: 'Calendar with completion, missed, and late signals plus weekly % badges.' },
+            { icon: Clock3, title: 'Save time', desc: 'Strava auto-completion, reminders, and one-click email summaries.' },
+          ].map((item) => (
+            <Card key={item.title} className="border-primary/15 bg-card/70 hover:border-primary/30 transition-all">
+              <CardHeader className="flex flex-row items-center gap-3">
+                <item.icon className="h-5 w-5 text-primary" />
+                <CardTitle className="text-base">{item.title}</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">{item.desc}</CardContent>
+            </Card>
+          ))}
         </div>
       </section>
 
@@ -180,10 +204,10 @@ export default function FeaturesPage() {
         </div>
         
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((feature, index) => (
+          {features.map((feature) => (
             <Card 
               key={feature.title}
-              className="group hover:shadow-lg hover:border-primary/20 transition-all duration-300"
+              className="group hover:shadow-lg hover:border-primary/20 transition-all duration-300 bg-white/80 dark:bg-slate-900/60 backdrop-blur"
             >
               <CardHeader>
                 <div className="flex items-center justify-between mb-2">
@@ -216,34 +240,23 @@ export default function FeaturesPage() {
             </p>
           </div>
           
-          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            <div className="text-center">
-              <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xl font-bold mx-auto mb-4">
-                1
-              </div>
-              <h3 className="font-semibold mb-2">Coach Creates Account</h3>
-              <p className="text-sm text-muted-foreground">
-                Sign up as a coach and get a unique code to share with your athletes
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xl font-bold mx-auto mb-4">
-                2
-              </div>
-              <h3 className="font-semibold mb-2">Athletes Join</h3>
-              <p className="text-sm text-muted-foreground">
-                Athletes sign up with the coach code and connect their Strava account
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xl font-bold mx-auto mb-4">
-                3
-              </div>
-              <h3 className="font-semibold mb-2">Train Together</h3>
-              <p className="text-sm text-muted-foreground">
-                Assign workouts, track completions, and achieve goals together
-              </p>
-            </div>
+          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {[
+              { step: '1', title: 'Create & Connect', desc: 'Coaches create an account, share a code, athletes join and link Strava.', icon: Users },
+              { step: '2', title: 'Plan & Automate', desc: 'Build workouts, clone templates, set recurring sessions, auto-tag with AI.', icon: Calendar },
+              { step: '3', title: 'Track & Report', desc: 'Calendar views, completion stats, and one-click email summaries keep everyone aligned.', icon: LineChart },
+            ].map((item) => (
+              <Card key={item.step} className="p-6 border-primary/10 bg-white/80 dark:bg-slate-900/60 backdrop-blur">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
+                    {item.step}
+                  </div>
+                  <item.icon className="h-5 w-5 text-primary" />
+                </div>
+                <h3 className="font-semibold mb-2">{item.title}</h3>
+                <p className="text-sm text-muted-foreground">{item.desc}</p>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
@@ -254,11 +267,18 @@ export default function FeaturesPage() {
         <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
           Join coaches and athletes who are using CoachTrack to train smarter and achieve more.
         </p>
-        <Link href="/">
-          <Button size="lg" variant="outline" className="gap-2">
-            <ArrowRight className="h-4 w-4 rotate-180" /> Back to Home
-          </Button>
-        </Link>
+        <div className="flex flex-wrap justify-center gap-3">
+          <Link href="/register">
+            <Button size="lg" className="gap-2">
+              Get Started Free
+            </Button>
+          </Link>
+          <Link href="/">
+            <Button size="lg" variant="outline" className="gap-2">
+              <ArrowRight className="h-4 w-4 rotate-180" /> Back to Home
+            </Button>
+          </Link>
+        </div>
       </section>
 
       {/* Footer */}

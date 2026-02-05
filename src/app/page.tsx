@@ -93,6 +93,9 @@ export default function Home() {
                   <Button asChild variant="outline" size="lg" className="h-12 px-8">
                     <Link href="/login">I already have an account</Link>
                   </Button>
+                  <Button asChild variant="ghost" size="lg" className="h-12 px-8">
+                    <Link href="/features">See features</Link>
+                  </Button>
                 </div>
                 <div className="grid grid-cols-3 gap-4 max-w-lg pt-4">
                   <div className="rounded-xl border bg-card/60 p-4 shadow-sm">
