@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Workout } from '@/types';
-import { WorkoutTag } from '@/types/workout';
+import { WorkoutTag, getWorkoutSummary } from '@/types/workout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -47,6 +47,7 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
   const isMissed = isPastWorkout && !workout.completed;
   const isCompletedLate = workout.completed && workout.completedLate;
   const tags = (workout as any).tags as WorkoutTag[] | undefined;
+  const plannedSummary = getWorkoutSummary(workout);
 
   const handleCompletionClick = () => {
     if (isCoach) { alert('Workout is to be completed by the Student'); return; }
@@ -74,6 +75,28 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
     try { await onToggleComplete(workout.id, false); setShowUncompletionDialog(false); } 
     finally { setIsLoading(false); }
   };
+
+  const plannedStats = (() => {
+    const parts: string[] = [];
+    if (workout.run) {
+      parts.push(`${workout.run.distance}${workout.run.distanceUnit}`);
+      if (workout.run.time) parts.push(`${workout.run.time} min`);
+    } else if (workout.bike) {
+      parts.push(`${workout.bike.distance}${workout.bike.distanceUnit}`);
+      if (workout.bike.time) parts.push(`${workout.bike.time} min`);
+    } else if (workout.swim) {
+      parts.push(`${workout.swim.distance}${workout.swim.distanceUnit}`);
+      if (workout.swim.time) parts.push(`${workout.swim.time} min`);
+    } else if (workout.strength) {
+      const exercises = workout.strength.exercises?.length || 0;
+      parts.push(`${exercises} exercises`);
+      if (workout.strength.totalTime) parts.push(`${workout.strength.totalTime} min`);
+    }
+    if (parts.length === 0 && workout.duration) {
+      parts.push(`${workout.duration} min`);
+    }
+    return parts.join(' • ');
+  })();
 
   const getCardStyle = () => {
     if (workout.completed && !isCompletedLate) return 'border-l-4 border-l-green-500 bg-green-500/5';
@@ -120,7 +143,22 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
             </div>
           )}
 
-          <p className={cn('text-sm text-muted-foreground line-clamp-2 mb-3', workout.completed && 'line-through opacity-60')}>{workout.description}</p>
+          <p className={cn('text-sm text-muted-foreground line-clamp-3 mb-3', workout.completed && 'line-through opacity-60')}>
+            {workout.description || 'No description provided.'}
+          </p>
+
+          {(plannedSummary || plannedStats) && (
+            <div className="text-xs text-muted-foreground bg-muted/40 rounded-lg p-2.5 mb-3 flex flex-col gap-1">
+              <div className="flex items-center gap-2 font-medium text-foreground">
+                <Clock className="h-3.5 w-3.5" />
+                Planned
+              </div>
+              {plannedSummary && <div>{plannedSummary}</div>}
+              {plannedStats && plannedStats !== plannedSummary && (
+                <div className="text-[11px]">{plannedStats}</div>
+              )}
+            </div>
+          )}
 
           <div className="flex flex-wrap gap-1.5 mb-3">
             {workout.completed && !isCompletedLate && <Badge className="bg-green-500 hover:bg-green-600 text-xs"><CheckCircle2 className="h-3 w-3 mr-1" />Done</Badge>}
