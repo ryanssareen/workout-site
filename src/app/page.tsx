@@ -51,6 +51,12 @@ export default function Home() {
           </Link>
           <div className="flex gap-2 items-center">
             <Button variant="ghost" size="sm" asChild className="text-white/70 hover:text-white hover:bg-white/10">
+              <Link href="/features">Features</Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild className="text-white/70 hover:text-white hover:bg-white/10">
+              <Link href="/contact">Contact</Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild className="text-white/70 hover:text-white hover:bg-white/10">
               <Link href="/login">Sign In</Link>
             </Button>
             <Button size="sm" asChild className="bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/30 border-0">
@@ -98,6 +104,11 @@ export default function Home() {
                   <Button asChild variant="outline" size="lg" className="h-13 px-8 border-white/20 text-white hover:bg-white/5 hover:text-white font-bold text-base">
                     <Link href="/login">I have an account</Link>
                   </Button>
+                </div>
+                <div className="flex gap-3 text-sm text-white/50">
+                  <Link href="/features" className="hover:text-white transition-colors">View Features</Link>
+                  <span className="text-white/20">•</span>
+                  <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
                 </div>
                 <div className="grid grid-cols-3 gap-4 max-w-lg pt-2">
                   <div className="rounded-xl border border-white/10 bg-white/5 p-4">
