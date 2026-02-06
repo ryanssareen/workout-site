@@ -1,5 +1,7 @@
 import { RegisterForm } from '@/components/auth/RegisterForm';
 
+export const dynamic = 'force-dynamic';
+
 interface RegisterPageProps {
   searchParams?: { role?: string | string[] };
 }

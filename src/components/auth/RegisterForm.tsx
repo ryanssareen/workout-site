@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createUser, findCoachByCode, signInWithGoogle } from '@/lib/firebase/auth';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,13 @@ export function RegisterForm({ initialRole = '' }: RegisterFormProps) {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const router = useRouter();
+
+  // Keep role in sync if the initialRole prop changes (e.g., navigation updates query param)
+  useEffect(() => {
+    if (initialRole === 'coach' || initialRole === 'student') {
+      setFormData((prev) => ({ ...prev, role: initialRole as UserRole }));
+    }
+  }, [initialRole]);
 
   const handleGoogleSignUp = async () => {
     setGoogleLoading(true);
