@@ -35,6 +35,17 @@ export function RegisterForm({ initialRole = '' }: RegisterFormProps) {
     }
   }, [initialRole]);
 
+  // Fallback: read query param on client in case SSR prop wasn't set
+  useEffect(() => {
+    if (formData.role) return;
+    if (typeof window === 'undefined') return;
+    const roleParam = new URLSearchParams(window.location.search).get('role');
+    const mapped = roleParam === 'coach' ? 'coach' : roleParam === 'athlete' ? 'student' : '';
+    if (mapped) {
+      setFormData((prev) => ({ ...prev, role: mapped as UserRole }));
+    }
+  }, [formData.role]);
+
   const handleGoogleSignUp = async () => {
     setGoogleLoading(true);
     try {
