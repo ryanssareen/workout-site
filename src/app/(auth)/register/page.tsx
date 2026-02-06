@@ -1,11 +1,11 @@
-'use client';
-
-import { useSearchParams } from 'next/navigation';
 import { RegisterForm } from '@/components/auth/RegisterForm';
 
-export default function RegisterPage() {
-  const searchParams = useSearchParams();
-  const preselectedRole = searchParams.get('role');
+interface RegisterPageProps {
+  searchParams?: { role?: string | string[] };
+}
+
+export default function RegisterPage({ searchParams }: RegisterPageProps) {
+  const preselectedRole = Array.isArray(searchParams?.role) ? searchParams?.role[0] : searchParams?.role;
 
   // Map 'athlete' to 'student' (internal role name)
   const initialRole = preselectedRole === 'coach' ? 'coach' : preselectedRole === 'athlete' ? 'student' : '';

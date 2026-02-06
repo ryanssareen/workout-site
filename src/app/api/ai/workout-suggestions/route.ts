@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
-
 // Helper to analyze training patterns
 function analyzeTrainingData(recentWorkouts: any[]) {
   if (!recentWorkouts || recentWorkouts.length === 0) {
@@ -128,6 +124,16 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { userId, recentWorkouts, preferences } = body;
+    const apiKey = process.env.GROQ_API_KEY;
+
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'GROQ_API_KEY is not configured. Please add it to the environment.' },
+        { status: 503 },
+      );
+    }
+
+    const groq = new Groq({ apiKey });
 
     // Analyze training patterns
     const analysis = analyzeTrainingData(recentWorkouts);
