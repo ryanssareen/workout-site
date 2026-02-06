@@ -12,12 +12,16 @@ import { UserRole } from '@/types';
 import { Dumbbell, Loader2, User, Mail, Lock, ArrowRight, UserCheck, Target } from 'lucide-react';
 import Link from 'next/link';
 
-export function RegisterForm() {
+interface RegisterFormProps {
+  initialRole?: string;
+}
+
+export function RegisterForm({ initialRole = '' }: RegisterFormProps) {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     displayName: '',
-    role: '' as UserRole | '',
+    role: (initialRole || '') as UserRole | '',
     coachCode: '',
   });
   const [loading, setLoading] = useState(false);

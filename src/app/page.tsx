@@ -200,7 +200,7 @@ export default function Home() {
                   ))}
                 </ul>
                 <Button asChild className="w-full mt-6 bg-red-600 hover:bg-red-700 text-white border-0 font-bold">
-                  <Link href="/register">Sign Up as Coach</Link>
+                  <Link href="/register?role=coach">Sign Up as Coach</Link>
                 </Button>
               </div>
 
@@ -226,7 +226,7 @@ export default function Home() {
                   ))}
                 </ul>
                 <Button asChild className="w-full mt-6 bg-white/10 hover:bg-white/15 text-white border border-white/20 font-bold">
-                  <Link href="/register">Sign Up as Athlete</Link>
+                  <Link href="/register?role=athlete">Sign Up as Athlete</Link>
                 </Button>
               </div>
             </div>
@@ -388,6 +388,7 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-4">
             <Link href="/features" className="text-sm text-white/30 hover:text-white/60 transition-colors">Features</Link>
+            <Link href="/contact" className="text-sm text-white/30 hover:text-white/60 transition-colors">Contact</Link>
             <p className="text-sm text-white/30">
               &copy; {new Date().getFullYear()} CoachTrack
             </p>
