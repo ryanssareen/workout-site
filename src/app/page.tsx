@@ -121,23 +121,23 @@ export default function Home() {
                 <div className="relative space-y-4">
                   {/* Workout cards */}
                   {[
-                    { type: 'RUN', name: 'Morning 5K', stat: '5.0 km · 24:30', icon: Activity, color: 'border-red-500/30 bg-red-500/5' },
-                    { type: 'SWIM', name: 'Endurance Set', stat: '2000m · 35:00', icon: Waves, color: 'border-red-600/30 bg-red-600/5' },
-                    { type: 'BIKE', name: 'Hill Intervals', stat: '30 km · 55:00', icon: Bike, color: 'border-red-700/30 bg-red-700/5' },
-                    { type: 'STRENGTH', name: 'Upper Body', stat: '45 min · 6 sets', icon: Dumbbell, color: 'border-red-800/30 bg-red-800/5' },
+                    { type: 'RUN', name: 'Morning 5K', stat: '5.0 km · 24:30', icon: Activity, accent: 'bg-red-500' },
+                    { type: 'SWIM', name: 'Endurance Set', stat: '2000m · 35:00', icon: Waves, accent: 'bg-red-600' },
+                    { type: 'BIKE', name: 'Hill Intervals', stat: '30 km · 55:00', icon: Bike, accent: 'bg-red-700' },
+                    { type: 'STRENGTH', name: 'Upper Body', stat: '45 min · 6 sets', icon: Dumbbell, accent: 'bg-red-800' },
                   ].map((workout, i) => (
-                    <div key={i} className={`flex items-center gap-4 p-4 rounded-xl border ${workout.color} backdrop-blur-sm transition-all duration-300`} style={{ transform: `translateX(${i * 12}px)` }}>
-                      <div className="p-2.5 rounded-lg bg-red-600/20">
-                        <workout.icon className="h-5 w-5 text-red-500" />
+                    <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-white shadow-lg shadow-black/10 transition-all duration-300" style={{ transform: `translateX(${i * 12}px)` }}>
+                      <div className={`p-2.5 rounded-lg ${workout.accent}`}>
+                        <workout.icon className="h-5 w-5 text-white" />
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold tracking-widest text-red-500">{workout.type}</span>
+                          <span className="text-[10px] font-bold tracking-widest text-red-600">{workout.type}</span>
                         </div>
-                        <p className="font-semibold text-white">{workout.name}</p>
-                        <p className="text-sm text-white/40">{workout.stat}</p>
+                        <p className="font-semibold text-gray-900">{workout.name}</p>
+                        <p className="text-sm text-gray-400">{workout.stat}</p>
                       </div>
-                      <CheckCircle2 className="h-5 w-5 text-red-500/60" />
+                      <CheckCircle2 className="h-5 w-5 text-green-500" />
                     </div>
                   ))}
                 </div>
