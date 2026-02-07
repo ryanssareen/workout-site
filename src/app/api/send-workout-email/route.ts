@@ -45,57 +45,92 @@ export async function POST(request: NextRequest) {
       // fallback to 'TBD'
     }
 
+    const typeEmoji: Record<string, string> = { run: '🏃', bike: '🚴', swim: '🏊', strength: '💪', other: '⚡' };
+    const emoji = typeEmoji[workout.type] || '⚡';
+
     const emailHtml = `
       <!DOCTYPE html>
       <html>
         <head>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center; }
-            .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
-            .workout-detail { background: white; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #667eea; }
-            .label { font-weight: bold; color: #667eea; font-size: 14px; text-transform: uppercase; }
-            .value { font-size: 16px; margin-top: 5px; }
-            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
-          </style>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
         </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>New Workout Assigned!</h1>
+        <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #000000;">
+          <div style="max-width: 600px; margin: 0 auto; background-color: #0a0a0a;">
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); padding: 40px 30px; text-align: center;">
+              <div style="font-size: 32px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; margin: 0;">
+                COACHTRACK
+              </div>
+              <div style="font-size: 14px; color: rgba(255,255,255,0.7); margin-top: 6px; text-transform: uppercase; letter-spacing: 3px;">
+                New Workout Assigned
+              </div>
             </div>
-            <div class="content">
-              <p>Hi ${studentName || 'there'}!</p>
-              <p>Your coach has assigned you a new workout. Here are the details:</p>
-              <div class="workout-detail">
-                <div class="label">Workout Name</div>
-                <div class="value">${workout.name}</div>
-              </div>
-              <div class="workout-detail">
-                <div class="label">Type</div>
-                <div class="value">${workout.type}</div>
-              </div>
-              <div class="workout-detail">
-                <div class="label">Date</div>
-                <div class="value">${formattedDate}</div>
-              </div>
-              ${workout.duration ? `
-                <div class="workout-detail">
-                  <div class="label">Duration</div>
-                  <div class="value">${workout.duration} minutes</div>
+
+            <!-- Content -->
+            <div style="padding: 40px 30px;">
+              <p style="color: #ffffff; font-size: 18px; margin: 0 0 8px 0; font-weight: 700;">Hey ${studentName || 'there'},</p>
+              <p style="color: rgba(255,255,255,0.5); font-size: 15px; line-height: 1.6; margin: 0 0 30px 0;">
+                Your coach just assigned you a new workout. Time to get after it.
+              </p>
+
+              <!-- Workout Card -->
+              <div style="background-color: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; overflow: hidden;">
+                <!-- Workout Title Bar -->
+                <div style="background-color: rgba(220,38,38,0.15); padding: 18px 20px; border-bottom: 1px solid rgba(255,255,255,0.08);">
+                  <div style="font-size: 20px; font-weight: 800; color: #ffffff; text-transform: uppercase;">${emoji} ${workout.name}</div>
                 </div>
-              ` : ''}
-              ${workout.description ? `
-                <div class="workout-detail">
-                  <div class="label">Description</div>
-                  <div class="value">${workout.description}</div>
+
+                <!-- Details -->
+                <div style="padding: 20px;">
+                  <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                      <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06);">
+                        <div style="font-size: 11px; font-weight: 700; color: #ef4444; text-transform: uppercase; letter-spacing: 1px;">Type</div>
+                        <div style="font-size: 15px; color: #ffffff; margin-top: 4px; text-transform: capitalize;">${workout.type}</div>
+                      </td>
+                      <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); text-align: right;">
+                        <div style="font-size: 11px; font-weight: 700; color: #ef4444; text-transform: uppercase; letter-spacing: 1px;">Date</div>
+                        <div style="font-size: 15px; color: #ffffff; margin-top: 4px;">${formattedDate}</div>
+                      </td>
+                    </tr>
+                    ${workout.duration ? `
+                    <tr>
+                      <td colspan="2" style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06);">
+                        <div style="font-size: 11px; font-weight: 700; color: #ef4444; text-transform: uppercase; letter-spacing: 1px;">Duration</div>
+                        <div style="font-size: 15px; color: #ffffff; margin-top: 4px;">${workout.duration} minutes</div>
+                      </td>
+                    </tr>
+                    ` : ''}
+                    ${workout.description ? `
+                    <tr>
+                      <td colspan="2" style="padding: 10px 0;">
+                        <div style="font-size: 11px; font-weight: 700; color: #ef4444; text-transform: uppercase; letter-spacing: 1px;">Description</div>
+                        <div style="font-size: 14px; color: rgba(255,255,255,0.7); margin-top: 4px; line-height: 1.5;">${workout.description}</div>
+                      </td>
+                    </tr>
+                    ` : ''}
+                  </table>
                 </div>
-              ` : ''}
-              <div class="footer">
-                <p>Good luck with your training!</p>
-                <p><em>Login to your dashboard to view all your workouts</em></p>
               </div>
+
+              <!-- CTA -->
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://coachtrack.vercel.app'}/workouts" style="display: inline-block; background-color: #dc2626; color: #ffffff; padding: 16px 48px; text-decoration: none; border-radius: 8px; font-weight: 800; font-size: 15px; text-transform: uppercase; letter-spacing: 1px;">
+                  View Workout
+                </a>
+              </div>
+
+              <p style="color: rgba(255,255,255,0.3); font-size: 13px; text-align: center; margin-top: 20px;">
+                Good luck with your training!
+              </p>
+            </div>
+
+            <!-- Footer -->
+            <div style="border-top: 1px solid rgba(255,255,255,0.08); padding: 25px 30px; text-align: center;">
+              <p style="margin: 0; color: rgba(255,255,255,0.25); font-size: 12px;">
+                Sent from CoachTrack — Train Harder. Track Smarter.
+              </p>
             </div>
           </div>
         </body>

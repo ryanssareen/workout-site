@@ -51,70 +51,61 @@ export async function POST(request: NextRequest) {
     const sendSmtpEmail = new brevo.SendSmtpEmail();
     sendSmtpEmail.sender = { name: 'CoachTrack', email: 'ryansareen6@gmail.com' };
     sendSmtpEmail.to = [{ email: email }];
-    sendSmtpEmail.subject = '🔐 Reset Your Password - CoachTrack';
+    sendSmtpEmail.subject = 'Reset Your Password — CoachTrack';
     sendSmtpEmail.htmlContent = `
       <!DOCTYPE html>
       <html>
         <head>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              line-height: 1.6;
-              color: #333;
-            }
-            .container {
-              max-width: 600px;
-              margin: 0 auto;
-              padding: 20px;
-            }
-            .header {
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
-              padding: 30px;
-              border-radius: 10px 10px 0 0;
-              text-align: center;
-            }
-            .content {
-              background: #f9fafb;
-              padding: 30px;
-              border-radius: 0 0 10px 10px;
-            }
-            .button {
-              display: inline-block;
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
-              padding: 15px 30px;
-              text-decoration: none;
-              border-radius: 8px;
-              font-weight: bold;
-              margin: 20px 0;
-            }
-            .footer {
-              text-align: center;
-              margin-top: 20px;
-              color: #666;
-              font-size: 14px;
-            }
-          </style>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
         </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>🔐 Reset Your Password</h1>
+        <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #000000;">
+          <div style="max-width: 600px; margin: 0 auto; background-color: #0a0a0a;">
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); padding: 40px 30px; text-align: center;">
+              <div style="font-size: 32px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; margin: 0;">
+                COACHTRACK
+              </div>
+              <div style="font-size: 14px; color: rgba(255,255,255,0.7); margin-top: 6px; text-transform: uppercase; letter-spacing: 3px;">
+                Password Reset
+              </div>
             </div>
-            <div class="content">
-              <p>Hi there! 👋</p>
-              <p>We received a request to reset your password for CoachTrack.</p>
-              <p>Click the button below to reset your password:</p>
-              <div style="text-align: center;">
-                <a href="${resetLink}" class="button">Reset Password</a>
+
+            <!-- Content -->
+            <div style="padding: 40px 30px;">
+              <p style="color: #ffffff; font-size: 18px; margin: 0 0 10px 0; font-weight: 700;">Hey there,</p>
+              <p style="color: rgba(255,255,255,0.5); font-size: 15px; line-height: 1.6; margin: 0 0 30px 0;">
+                We received a request to reset your password. Click the button below to set a new one.
+              </p>
+
+              <!-- Button -->
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${resetLink}" style="display: inline-block; background-color: #dc2626; color: #ffffff; padding: 16px 48px; text-decoration: none; border-radius: 8px; font-weight: 800; font-size: 16px; text-transform: uppercase; letter-spacing: 1px;">
+                  Reset Password
+                </a>
               </div>
-              <p><strong>This link will expire in 1 hour.</strong></p>
-              <p>If you didn't request this, you can safely ignore this email.</p>
-              <div class="footer">
-                <p>Or copy and paste this link into your browser:</p>
-                <p style="word-break: break-all; color: #667eea;">${resetLink}</p>
+
+              <!-- Expiry notice -->
+              <div style="background-color: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 16px; margin: 25px 0;">
+                <p style="color: rgba(255,255,255,0.6); font-size: 13px; margin: 0; text-align: center;">
+                  This link expires in <strong style="color: #ef4444;">1 hour</strong>. If you didn&apos;t request this, ignore this email.
+                </p>
               </div>
+
+              <!-- Fallback link -->
+              <p style="color: rgba(255,255,255,0.3); font-size: 12px; text-align: center; margin-top: 25px;">
+                Or copy this link into your browser:
+              </p>
+              <p style="word-break: break-all; color: #ef4444; font-size: 12px; text-align: center; margin-top: 5px;">
+                ${resetLink}
+              </p>
+            </div>
+
+            <!-- Footer -->
+            <div style="border-top: 1px solid rgba(255,255,255,0.08); padding: 25px 30px; text-align: center;">
+              <p style="margin: 0; color: rgba(255,255,255,0.25); font-size: 12px;">
+                Sent from CoachTrack — Train Harder. Track Smarter.
+              </p>
             </div>
           </div>
         </body>
