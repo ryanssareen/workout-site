@@ -384,9 +384,9 @@ export default function DashboardPage() {
       {/* Athlete Stats */}
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
-          title="Total Workouts"
+          title="All Time"
           value={workouts.length}
-          description={isConnected ? 'From your coach' : 'Your workouts'}
+          description={isConnected ? 'Total from your coach' : 'Total workouts assigned'}
           icon={Target}
           gradient="from-blue-500/5 to-cyan-500/5 dark:from-blue-500/15 dark:to-cyan-500/15"
           iconGradient="from-blue-500 to-cyan-500"
@@ -395,16 +395,16 @@ export default function DashboardPage() {
         <StatCard
           title="Completed"
           value={completedCount}
-          description="Great progress!"
+          description={`${completionRate}% completion rate`}
           icon={CheckCircle2}
           gradient="from-green-500/5 to-emerald-500/5 dark:from-green-500/15 dark:to-emerald-500/15"
           iconGradient="from-green-500 to-emerald-500"
           delay={100}
         />
         <StatCard
-          title="Pending"
+          title="Remaining"
           value={workouts.length - completedCount}
-          description="Ready to crush"
+          description="Still to complete"
           icon={TrendingUp}
           gradient="from-orange-500/5 to-amber-500/5 dark:from-orange-500/15 dark:to-amber-500/15"
           iconGradient="from-orange-500 to-amber-500"
@@ -504,7 +504,7 @@ export default function DashboardPage() {
           <CardDescription>Breakdown of completed workouts by type</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-[300px]">
+          <div className="h-[300px] min-w-[260px]">
             {typeData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>

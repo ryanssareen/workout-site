@@ -63,8 +63,9 @@ export function ChartSection({ section }: ChartSectionProps) {
     switch (chartType) {
       case 'line':
         return (
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={data}>
+          <div className="w-full min-h-[320px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
               <XAxis
                 dataKey={xKey}
@@ -94,14 +95,16 @@ export function ChartSection({ section }: ChartSectionProps) {
                 activeDot={{ r: 6 }}
                 name={label || yKey}
               />
-            </LineChart>
-          </ResponsiveContainer>
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         );
 
       case 'bar':
         return (
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data}>
+          <div className="w-full min-h-[320px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
               <XAxis
                 dataKey={xKey}
@@ -128,14 +131,16 @@ export function ChartSection({ section }: ChartSectionProps) {
                 radius={[8, 8, 0, 0]}
                 name={label || yKey}
               />
-            </BarChart>
-          </ResponsiveContainer>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         );
 
       case 'area':
         return (
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={data}>
+          <div className="w-full min-h-[320px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
               <XAxis
                 dataKey={xKey}
@@ -165,14 +170,16 @@ export function ChartSection({ section }: ChartSectionProps) {
                 strokeWidth={2}
                 name={label || yKey}
               />
-            </AreaChart>
-          </ResponsiveContainer>
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         );
 
       case 'pie':
         return (
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
+          <div className="w-full min-h-[320px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
               <Pie
                 data={data}
                 dataKey={yKey}
@@ -196,8 +203,9 @@ export function ChartSection({ section }: ChartSectionProps) {
                 }}
               />
               <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
         );
 
       default:
