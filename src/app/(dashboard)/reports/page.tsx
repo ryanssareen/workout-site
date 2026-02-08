@@ -5,7 +5,7 @@ import { useAuthStore } from '@/lib/stores/authStore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { BarChart3, FileText, Loader2, AlertCircle, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { StructuredReport } from '@/types/reports';
@@ -231,6 +231,10 @@ export default function ReportsPage() {
       {/* Report Modal */}
       <Dialog open={showReport} onOpenChange={setShowReport}>
         <DialogContent className="!max-w-none !w-screen !h-screen !max-h-screen !top-0 !left-0 !translate-x-0 !translate-y-0 !rounded-none overflow-y-auto p-6">
+          <DialogTitle className="sr-only">Report</DialogTitle>
+          <DialogDescription className="sr-only">
+            Generated performance report details
+          </DialogDescription>
           {insufficientMessage ? (
             // Insufficient Data Display
             <div className="flex flex-col items-center justify-center py-12 text-center">

@@ -214,13 +214,13 @@ export function ChartSection({ section }: ChartSectionProps) {
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 min-w-[320px]">
       {title && (
         <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
           {title}
         </h3>
       )}
-      <div className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+      <div className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm min-h-[340px]">
         {renderChart()}
       </div>
     </div>

@@ -504,7 +504,7 @@ export default function DashboardPage() {
           <CardDescription>Breakdown of completed workouts by type</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-[300px] min-w-[260px]">
+          <div className="h-[300px] min-w-[300px]">
             {typeData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
