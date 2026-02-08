@@ -32,7 +32,7 @@ export default function Home() {
   ];
 
   const faqs = [
-    { q: 'Is CoachTrack free?', a: 'Yes! CoachTrack is completely free for coaches and athletes.' },
+    { q: 'Is CoachTrack free?', a: 'CoachTrack is currently free while we\'re in early access. Paid plans will be introduced later — early users will get the best deal.' },
     { q: 'Do I need a coach to use this?', a: 'No. Athletes can use CoachTrack independently to track their own workouts and sync with Strava.' },
     { q: 'How do I connect with my coach?', a: 'Your coach will give you a 6-letter code. Enter it in Settings and you\'re connected instantly.' },
     { q: 'Does it work with Garmin/Apple Watch?', a: 'Yes! If your device syncs to Strava, it will automatically sync to CoachTrack.' },
@@ -60,7 +60,7 @@ export default function Home() {
               <Link href="/login">Sign In</Link>
             </Button>
             <Button size="sm" asChild className="bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/30 border-0">
-              <Link href="/register">Get Started Free</Link>
+              <Link href="/register">Get Started</Link>
             </Button>
           </div>
         </div>
@@ -84,7 +84,7 @@ export default function Home() {
               <div className="space-y-8">
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-600/10 border border-red-600/20 text-red-500 text-sm font-medium">
                   <Flame className="h-3.5 w-3.5" />
-                  100% Free Forever
+                  Currently Free — Early Access
                 </div>
                 <h1 className="text-5xl sm:text-6xl md:text-7xl font-black tracking-tight leading-[0.9]">
                   TRAIN
@@ -253,7 +253,7 @@ export default function Home() {
             </div>
             <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
               {[
-                { step: '01', title: 'Create Account', desc: 'Sign up free as a coach or athlete. Takes 30 seconds.' },
+                { step: '01', title: 'Create Account', desc: 'Sign up as a coach or athlete. Takes 30 seconds.' },
                 { step: '02', title: 'Connect', desc: "Athletes enter their coach's code. Optional: link Strava." },
                 { step: '03', title: 'Start Training', desc: 'Coaches assign workouts. Athletes complete and track.' },
               ].map((item) => (
@@ -377,12 +377,12 @@ export default function Home() {
             </p>
             <Button asChild size="lg" className="h-14 px-10 bg-red-600 hover:bg-red-700 text-white shadow-xl shadow-red-600/30 border-0 font-bold text-lg">
               <Link href="/register">
-                Get Started Free
+                Get Started
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
             </Button>
-            <p className="text-xs text-white/30">
-              Free forever. No credit card needed.
+            <p className="text-base text-white/50 font-medium">
+              Free during early access. Paid plans coming soon.
             </p>
           </div>
         </section>

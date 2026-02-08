@@ -70,7 +70,7 @@ export default function FeaturesPage() {
           <div className="flex items-center justify-center gap-3 flex-wrap">
             <Button asChild size="lg" className="h-12 px-8 bg-red-600 hover:bg-red-700 text-white border-0 font-bold shadow-xl shadow-red-600/25">
               <Link href="/register">
-                Get Started Free <ArrowRight className="h-4 w-4 ml-2" />
+                Get Started <ArrowRight className="h-4 w-4 ml-2" />
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline" className="h-12 px-8 border-white/20 text-white hover:bg-white/5 hover:text-white font-bold">
@@ -191,7 +191,7 @@ export default function FeaturesPage() {
           <div className="flex flex-wrap justify-center gap-3">
             <Button asChild size="lg" className="h-14 px-10 bg-red-600 hover:bg-red-700 text-white shadow-xl shadow-red-600/30 border-0 font-bold text-lg">
               <Link href="/register">
-                Get Started Free <ArrowRight className="ml-2 h-5 w-5" />
+                Get Started <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline" className="h-14 px-10 border-white/20 text-white hover:bg-white/5 hover:text-white font-bold text-lg">
