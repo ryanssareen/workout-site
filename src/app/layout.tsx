@@ -8,6 +8,9 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'CoachTrack - Coach & Athlete Platform',
   description: 'Manage and track workouts for coaches and athletes',
+  verification: {
+    google: 'bBqx5L03X5a-nFB0y7-EXrcKf_znxlbfzlR5JunMQjg',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

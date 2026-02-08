@@ -271,34 +271,34 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* Quick Stats */}
+      {/* Monthly Stats */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <Card className="border-primary/20 bg-primary/5 dark:bg-primary/10">
           <CardContent className="py-4">
-            <p className="text-xs text-muted-foreground">This Month</p>
+            <p className="text-xs text-muted-foreground font-medium">{format(currentMonth, 'MMMM')}</p>
             <div className="text-2xl font-bold">{monthStats.total}</div>
-            <p className="text-sm text-muted-foreground">Total workouts</p>
+            <p className="text-sm text-muted-foreground">Scheduled this month</p>
           </CardContent>
         </Card>
         <Card className="border-green-200 bg-green-50 dark:bg-green-950/20">
           <CardContent className="py-4">
-            <p className="text-xs text-muted-foreground">Completion</p>
+            <p className="text-xs text-muted-foreground font-medium">Monthly Rate</p>
             <div className="text-2xl font-bold">{monthStats.completionRate}%</div>
-            <p className="text-sm text-muted-foreground">{monthStats.completed} completed</p>
+            <p className="text-sm text-muted-foreground">{monthStats.completed} of {monthStats.total} done</p>
           </CardContent>
         </Card>
         <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
           <CardContent className="py-4">
-            <p className="text-xs text-muted-foreground">Upcoming</p>
+            <p className="text-xs text-muted-foreground font-medium">Coming Up</p>
             <div className="text-2xl font-bold">{monthStats.upcoming}</div>
-            <p className="text-sm text-muted-foreground">Scheduled after today</p>
+            <p className="text-sm text-muted-foreground">Remaining this month</p>
           </CardContent>
         </Card>
         <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
           <CardContent className="py-4">
-            <p className="text-xs text-muted-foreground">Missed</p>
+            <p className="text-xs text-muted-foreground font-medium">Missed</p>
             <div className="text-2xl font-bold">{monthStats.missed}</div>
-            <p className="text-sm text-muted-foreground">Needs attention</p>
+            <p className="text-sm text-muted-foreground">Past due this month</p>
           </CardContent>
         </Card>
       </div>

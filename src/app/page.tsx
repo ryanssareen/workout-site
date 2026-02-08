@@ -50,10 +50,10 @@ export default function Home() {
             <span className="font-bold text-lg text-white">CoachTrack</span>
           </Link>
           <div className="flex gap-2 items-center">
-            <Button variant="ghost" size="sm" asChild className="text-white/70 hover:text-white hover:bg-white/10">
+            <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex text-white/70 hover:text-white hover:bg-white/10">
               <Link href="/features">Features</Link>
             </Button>
-            <Button variant="ghost" size="sm" asChild className="text-white/70 hover:text-white hover:bg-white/10">
+            <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex text-white/70 hover:text-white hover:bg-white/10">
               <Link href="/contact">Contact</Link>
             </Button>
             <Button variant="ghost" size="sm" asChild className="text-white/70 hover:text-white hover:bg-white/10">
@@ -126,11 +126,10 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Hero visual - workout card stack */}
+              {/* Hero visual - workout card stack (desktop) */}
               <div className="relative hidden lg:block">
                 <div className="absolute -inset-8 bg-gradient-to-br from-red-600/10 via-transparent to-red-900/10 blur-3xl rounded-3xl" />
                 <div className="relative space-y-4">
-                  {/* Workout cards */}
                   {[
                     { type: 'RUN', name: 'Morning 5K', stat: '5.0 km · 24:30', icon: Activity, accent: 'bg-red-500' },
                     { type: 'SWIM', name: 'Endurance Set', stat: '2000m · 35:00', icon: Waves, accent: 'bg-red-600' },
@@ -149,6 +148,30 @@ export default function Home() {
                         <p className="text-sm text-gray-400">{workout.stat}</p>
                       </div>
                       <CheckCircle2 className="h-5 w-5 text-green-500" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Hero visual - horizontal scroll (mobile/tablet) */}
+              <div className="lg:hidden -mx-4 px-4 overflow-x-auto scrollbar-hide">
+                <div className="flex gap-3 pb-2" style={{ width: 'max-content' }}>
+                  {[
+                    { type: 'RUN', name: 'Morning 5K', stat: '5.0 km · 24:30', icon: Activity, accent: 'bg-red-500' },
+                    { type: 'SWIM', name: 'Endurance Set', stat: '2000m · 35:00', icon: Waves, accent: 'bg-red-600' },
+                    { type: 'BIKE', name: 'Hill Intervals', stat: '30 km · 55:00', icon: Bike, accent: 'bg-red-700' },
+                    { type: 'STRENGTH', name: 'Upper Body', stat: '45 min · 6 sets', icon: Dumbbell, accent: 'bg-red-800' },
+                  ].map((workout, i) => (
+                    <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm min-w-[200px]">
+                      <div className={`p-2 rounded-lg ${workout.accent} flex-shrink-0`}>
+                        <workout.icon className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[9px] font-bold tracking-widest text-red-500">{workout.type}</span>
+                        <p className="font-semibold text-sm text-white">{workout.name}</p>
+                        <p className="text-xs text-white/40">{workout.stat}</p>
+                      </div>
+                      <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
                     </div>
                   ))}
                 </div>
