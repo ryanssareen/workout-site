@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,15 @@ export default function ReportsPage() {
   const [report, setReport] = useState<StructuredReport | null>(null);
   const [insufficientMessage, setInsufficientMessage] = useState<string>('');
   const [showReport, setShowReport] = useState(false);
+  const [repCount, setRepCount] = useState(0);
+  const [repTimer, setRepTimer] = useState<NodeJS.Timeout | null>(null);
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (repTimer) clearInterval(repTimer);
+    };
+  }, [repTimer]);
 
   const isCoach = user?.role === 'coach';
 
@@ -40,7 +49,12 @@ export default function ReportsPage() {
     }
 
     setGenerating(true);
-    setInput('');
+    if (repTimer) {
+      clearInterval(repTimer);
+      setRepTimer(null);
+    }
+    const timer = setInterval(() => setRepCount((c) => c + 1), 1000);
+    setRepTimer(timer);
 
     try {
       const response = await fetch('/api/ai/reports', {
@@ -74,6 +88,9 @@ export default function ReportsPage() {
       toast.error(error.message || 'Failed to generate report');
     } finally {
       setGenerating(false);
+      if (repTimer) clearInterval(repTimer);
+      setRepTimer(null);
+      setTimeout(() => setRepCount(0), 1200);
     }
   };
 
@@ -128,6 +145,12 @@ export default function ReportsPage() {
             className="min-h-[100px] resize-none"
             disabled={generating}
           />
+          {generating && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              Generating your report... keep moving!
+            </div>
+          )}
 
           <Button
             onClick={() => handleGenerateReport()}
@@ -151,6 +174,30 @@ export default function ReportsPage() {
           <p className="text-xs text-center text-muted-foreground">
             Press Enter to generate, Shift+Enter for new line
           </p>
+
+          {generating && (
+            <div className="rounded-xl border border-primary/30 bg-primary/10 p-4 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-primary">Do quick reps while you wait</p>
+                <p className="text-xs text-primary/80">Click the button below or let the auto-timer rack up reps.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-2xl font-black text-primary leading-none">{repCount}</p>
+                  <p className="text-[11px] uppercase tracking-wide text-primary/80">reps</p>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setRepCount((c) => c + 5)}
+                  className="bg-primary text-white hover:bg-primary/90 border-0"
+                  disabled={!generating}
+                >
+                  Add 5
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
