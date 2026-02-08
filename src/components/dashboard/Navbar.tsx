@@ -29,19 +29,19 @@ export function Navbar() {
   ], []);
 
   return (
-    <nav className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-xl">
+    <nav className="sticky top-0 z-50 border-b border-border/60 bg-card/80 backdrop-blur-xl shadow-[0_10px_50px_-30px_rgba(239,68,68,0.65)]">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/dashboard" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/20 dark:shadow-none">
-              <Dumbbell className="h-4 w-4 text-primary-foreground" />
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-orange-500 flex items-center justify-center shadow-lg shadow-primary/30">
+              <Dumbbell className="h-4 w-4 text-primary-foreground drop-shadow" />
             </div>
             <span className="font-bold text-lg hidden sm:inline">CoachTrack</span>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-1 bg-muted/50 rounded-xl p-1">
+          <div className="hidden lg:flex items-center gap-1 bg-muted/60 rounded-xl p-1 border border-border/60">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
@@ -51,8 +51,10 @@ export function Navbar() {
                     variant="ghost"
                     size="sm"
                     className={cn(
-                      'gap-2 h-9 rounded-lg transition-all',
-                      isActive && 'bg-background shadow-sm text-primary'
+                      'gap-2 h-9 rounded-lg transition-all text-sm',
+                      isActive
+                        ? 'bg-primary/15 text-primary border border-primary/40 shadow-[0_10px_30px_-20px_rgba(239,68,68,0.8)]'
+                        : 'text-foreground hover:bg-muted/80'
                     )}
                   >
                     <Icon className="h-4 w-4" />
@@ -67,7 +69,7 @@ export function Navbar() {
           <div className="flex items-center gap-3">
             {/* User Info - Desktop */}
             {user && (
-              <div className="hidden md:flex items-center gap-3 px-3 py-1.5 rounded-xl bg-muted/50">
+              <div className="hidden md:flex items-center gap-3 px-3 py-1.5 rounded-xl bg-primary/5 border border-border/60">
                 <div className="text-right">
                   <p className="text-sm font-medium leading-none">{user.displayName}</p>
                   <p className="text-xs text-muted-foreground capitalize">{user.role === 'student' ? 'athlete' : user.role}</p>
@@ -97,7 +99,7 @@ export function Navbar() {
 
         {/* Mobile Navigation */}
         {mobileOpen && (
-          <div className="lg:hidden pb-4 border-t mt-2 pt-4 animate-in slide-in-from-top-2 duration-200">
+          <div className="lg:hidden pb-4 border-t mt-2 pt-4 animate-in slide-in-from-top-2 duration-200 border-border/60">
             <div className="grid grid-cols-4 gap-2 mb-4">
               {navItems.map((item) => {
                 const Icon = item.icon;
@@ -105,8 +107,8 @@ export function Navbar() {
                 return (
                   <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)}>
                     <div className={cn(
-                      'flex flex-col items-center gap-1 p-3 rounded-xl transition-all',
-                      isActive ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
+                      'flex flex-col items-center gap-1 p-3 rounded-xl transition-all border border-transparent',
+                      isActive ? 'bg-primary/15 text-primary border-primary/40' : 'hover:bg-muted'
                     )}>
                       <Icon className="h-5 w-5" />
                       <span className="text-xs font-medium">{item.label}</span>

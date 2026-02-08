@@ -13,7 +13,13 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
   }, [initialize]);
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="dark"
+      enableSystem
+      disableTransitionOnChange
+      themes={['light', 'dark']}
+    >
       {children}
       <Toaster />
     </ThemeProvider>

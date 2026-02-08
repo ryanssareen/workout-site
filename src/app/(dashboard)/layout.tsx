@@ -31,10 +31,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen relative overflow-hidden bg-background text-foreground">
+      <div className="absolute inset-0 bg-energy -z-10 pointer-events-none" aria-hidden />
       <Navbar />
-      <main className="container mx-auto px-4 py-6 max-w-7xl">
-        {children}
+      <main className="relative container mx-auto px-4 py-8 max-w-6xl">
+        <div className="panel-glow rounded-3xl p-6 md:p-8">
+          {children}
+        </div>
       </main>
     </div>
   );
