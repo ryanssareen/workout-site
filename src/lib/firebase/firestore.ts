@@ -130,7 +130,15 @@ export async function getUserWorkouts(userId: string, role: 'coach' | 'athlete' 
       // Athletes see workouts assigned to them
       const q = query(workoutsRef, where('assignedTo', '==', userId), orderBy('date', 'desc'));
       const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Workout[];
+      const allWorkouts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Workout[];
+
+      // Hide recurring workouts that are more than 2 days in the future
+      const twoDaysFromNow = addDays(new Date(), 2);
+      return allWorkouts.filter(w => {
+        if (!(w as any).isRecurring) return true;
+        const workoutDate = w.date?.toDate ? w.date.toDate() : new Date(w.date as any);
+        return workoutDate <= twoDaysFromNow || w.completed;
+      });
     } else {
       // Coaches see:
       // 1. Workouts they created (createdBy = coachId)
