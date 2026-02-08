@@ -197,7 +197,7 @@ export default function ReportsPage() {
             </div>
           ) : report ? (
             // Structured Report Display
-            <ReportContainer report={report} userName={user.displayName} />
+            <ReportContainer report={report} userName={user.displayName} userEmail={user.email || undefined} />
           ) : null}
         </DialogContent>
       </Dialog>
