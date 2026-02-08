@@ -38,7 +38,8 @@ const TYPE_COLORS: Record<string, string> = {
   run: '#3b82f6',
   bike: '#22c55e',
   swim: '#06b6d4',
-  strength: '#ec4899',
+  strength: '#a855f7',
+  other: '#6b7280',
 };
 
 export default function DashboardPage() {
@@ -75,19 +76,21 @@ export default function DashboardPage() {
     }
   };
 
-  // All calculations must happen before any early returns to maintain hook order
   const upcomingWorkouts = workouts.filter(w => !w.completed).slice(0, 5);
   const completedCount = workouts.filter(w => w.completed).length;
   const completionRate = workouts.length > 0
     ? Math.round((completedCount / workouts.length) * 100)
     : 0;
 
-  // Calculate workout type distribution
   const typeData = useMemo((): TypeData[] => {
-    const counts: Record<string, number> = { run: 0, bike: 0, swim: 0, strength: 0 };
+    const counts: Record<string, number> = { run: 0, bike: 0, swim: 0, strength: 0, other: 0 };
 
     workouts.filter(w => w.completed).forEach(workout => {
-      counts[workout.type]++;
+      if (counts[workout.type] !== undefined) {
+        counts[workout.type]++;
+      } else {
+        counts['other']++;
+      }
     });
 
     return Object.entries(counts)
@@ -99,7 +102,6 @@ export default function DashboardPage() {
       }));
   }, [workouts]);
 
-  // Calculate isConnected for all users (needed for consistent hook ordering)
   const isConnected = !!user?.coachId;
 
   if (loading) {
@@ -116,45 +118,30 @@ export default function DashboardPage() {
     );
   }
 
-  // Render Coach Dashboard
+  // ---------- Coach Dashboard ----------
   if (user?.role === 'coach') {
     return (
       <div className="space-y-8 pb-8">
-        {/* Header with Coach Code */}
+        {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
-          <div
-            className="space-y-2 animate-in fade-in slide-in-from-left-4 duration-500"
-          >
+          <div className="space-y-1 animate-in fade-in slide-in-from-left-4 duration-500">
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
               Welcome back, <span className="text-primary">{user?.displayName}</span>
             </h1>
-            <p className="text-muted-foreground">Here's your coaching overview</p>
+            <p className="text-muted-foreground">Here&apos;s your coaching overview</p>
           </div>
 
-          <div
-            className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 animate-in fade-in slide-in-from-right-4 duration-500"
-          >
-            {/* Coach Code */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 animate-in fade-in slide-in-from-right-4 duration-500">
             {user?.coachCode && (
-              <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20">
-                <div className="text-xs text-muted-foreground">Coach Code</div>
+              <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-primary/20 dark:border-primary/30 bg-primary/5 dark:bg-primary/10">
+                <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Code</div>
                 <div className="font-mono text-xl font-bold tracking-wider">{user.coachCode}</div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={handleCopyCode}
-                >
-                  {copied ? (
-                    <Check className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCopyCode}>
+                  {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
             )}
-
-            <Button asChild size="lg" className="shadow-lg shadow-primary/20">
+            <Button asChild size="lg" className="shadow-lg shadow-primary/20 dark:shadow-none">
               <Link href="/workouts/new">
                 <Plus className="mr-2 h-5 w-5" />
                 Create Workout
@@ -163,10 +150,10 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Student Metrics Row */}
+        {/* Athlete Metrics */}
         <div>
-          <h2 className="text-sm font-medium text-muted-foreground mb-4 animate-in fade-in duration-500">
-            ATHLETE OVERVIEW
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-4">
+            Athlete Overview
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <StatCard
@@ -174,7 +161,7 @@ export default function DashboardPage() {
               value={coachStats?.totalStudents ?? 0}
               description="Athletes enrolled"
               icon={Users}
-              gradient="from-blue-500/5 to-cyan-500/5"
+              gradient="from-blue-500/5 to-cyan-500/5 dark:from-blue-500/15 dark:to-cyan-500/15"
               iconGradient="from-blue-500 to-cyan-500"
               delay={0}
             />
@@ -183,7 +170,7 @@ export default function DashboardPage() {
               value={coachStats?.activeStudents ?? 0}
               description="Completed a workout"
               icon={Activity}
-              gradient="from-green-500/5 to-emerald-500/5"
+              gradient="from-green-500/5 to-emerald-500/5 dark:from-green-500/15 dark:to-emerald-500/15"
               iconGradient="from-green-500 to-emerald-500"
               delay={100}
             />
@@ -192,17 +179,17 @@ export default function DashboardPage() {
               value={`${coachStats?.overallCompletionRate ?? 0}%`}
               description="Overall rate"
               icon={Target}
-              gradient="from-violet-500/5 to-purple-500/5"
+              gradient="from-violet-500/5 to-purple-500/5 dark:from-violet-500/15 dark:to-purple-500/15"
               iconGradient="from-violet-500 to-purple-500"
               delay={200}
             />
           </div>
         </div>
 
-        {/* Workout Metrics Row */}
+        {/* Workout Metrics */}
         <div>
-          <h2 className="text-sm font-medium text-muted-foreground mb-4 animate-in fade-in duration-500" style={{ animationDelay: '200ms' }}>
-            WORKOUT STATS
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-4">
+            Workout Stats
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <StatCard
@@ -210,7 +197,7 @@ export default function DashboardPage() {
               value={coachStats?.totalWorkouts ?? 0}
               description="All time"
               icon={Target}
-              gradient="from-orange-500/5 to-amber-500/5"
+              gradient="from-orange-500/5 to-amber-500/5 dark:from-orange-500/15 dark:to-amber-500/15"
               iconGradient="from-orange-500 to-amber-500"
               delay={300}
             />
@@ -219,7 +206,7 @@ export default function DashboardPage() {
               value={coachStats?.completedWorkouts ?? 0}
               description={`${coachStats?.overallCompletionRate ?? 0}% completion rate`}
               icon={CheckCircle2}
-              gradient="from-green-500/5 to-emerald-500/5"
+              gradient="from-green-500/5 to-emerald-500/5 dark:from-green-500/15 dark:to-emerald-500/15"
               iconGradient="from-green-500 to-emerald-500"
               delay={400}
             />
@@ -228,22 +215,17 @@ export default function DashboardPage() {
               value={coachStats?.pendingWorkouts ?? 0}
               description="Awaiting completion"
               icon={Clock}
-              gradient="from-rose-500/5 to-pink-500/5"
+              gradient="from-rose-500/5 to-pink-500/5 dark:from-rose-500/15 dark:to-pink-500/15"
               iconGradient="from-rose-500 to-pink-500"
               delay={500}
             />
           </div>
         </div>
 
-        {/* Two Column Section: Students & Upcoming */}
+        {/* Two Column: Students & Upcoming */}
         <div className="grid gap-6 lg:grid-cols-2">
-          {/* Student Overview */}
-          <StudentOverview
-            students={coachStats?.studentsWithStats ?? []}
-            delay={600}
-          />
+          <StudentOverview students={coachStats?.studentsWithStats ?? []} delay={600} />
 
-          {/* Upcoming Workouts */}
           <Card
             className="animate-in fade-in slide-in-from-bottom-4 duration-500"
             style={{ animationDelay: '700ms', animationFillMode: 'backwards' }}
@@ -286,7 +268,8 @@ export default function DashboardPage() {
                       key={workout.id}
                       href={`/workouts/${workout.id}`}
                       className={cn(
-                        'flex items-center justify-between p-3 rounded-lg border hover:border-primary/20 hover:bg-muted/30 transition-all duration-200 group',
+                        'flex items-center justify-between p-3 rounded-lg border',
+                        'hover:border-primary/20 dark:hover:border-white/20 hover:bg-muted/50 dark:hover:bg-white/5 transition-all duration-200 group',
                         'animate-in fade-in slide-in-from-right-2 duration-300'
                       )}
                       style={{ animationDelay: `${800 + index * 50}ms`, animationFillMode: 'backwards' }}
@@ -323,7 +306,7 @@ export default function DashboardPage() {
           className="grid gap-4 sm:grid-cols-2 animate-in fade-in slide-in-from-bottom-4 duration-500"
           style={{ animationDelay: '900ms', animationFillMode: 'backwards' }}
         >
-          <Card className="hover:shadow-md hover:border-primary/20 transition-all duration-300 group">
+          <Card className="hover:shadow-md dark:hover:shadow-none hover:border-primary/20 dark:hover:border-white/20 transition-all duration-300 group">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-primary" />
@@ -332,7 +315,7 @@ export default function DashboardPage() {
               <CardDescription className="text-sm">See all workouts on a calendar</CardDescription>
             </CardHeader>
             <CardContent>
-              <Button asChild variant="outline" className="w-full group-hover:border-primary/30">
+              <Button asChild variant="outline" className="w-full group-hover:border-primary/30 dark:group-hover:border-white/20">
                 <Link href="/calendar">
                   Open Calendar
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -341,7 +324,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-md hover:border-primary/20 transition-all duration-300 group">
+          <Card className="hover:shadow-md dark:hover:shadow-none hover:border-primary/20 dark:hover:border-white/20 transition-all duration-300 group">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Target className="h-5 w-5 text-primary" />
@@ -350,7 +333,7 @@ export default function DashboardPage() {
               <CardDescription className="text-sm">Browse and manage workouts</CardDescription>
             </CardHeader>
             <CardContent>
-              <Button asChild variant="outline" className="w-full group-hover:border-primary/30">
+              <Button asChild variant="outline" className="w-full group-hover:border-primary/30 dark:group-hover:border-white/20">
                 <Link href="/workouts">
                   View Workouts
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -363,12 +346,12 @@ export default function DashboardPage() {
     );
   }
 
-  // Render Athlete Dashboard
+  // ---------- Athlete Dashboard ----------
   return (
     <div className="space-y-8 pb-8">
-      {/* Header with Progress Ring or Settings Button */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-        <div className="space-y-2 animate-in fade-in slide-in-from-left-4 duration-500">
+        <div className="space-y-1 animate-in fade-in slide-in-from-left-4 duration-500">
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
             Welcome back, <span className="text-primary">{user?.displayName}</span>
           </h1>
@@ -376,9 +359,8 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center gap-4 animate-in fade-in slide-in-from-right-4 duration-500">
-          {/* Settings button for unconnected athletes */}
           {!isConnected && (
-            <Button asChild size="lg" className="shadow-lg shadow-primary/20">
+            <Button asChild size="lg" className="shadow-lg shadow-primary/20 dark:shadow-none">
               <Link href="/settings">
                 <Users className="mr-2 h-5 w-5" />
                 Connect to Coach
@@ -387,12 +369,8 @@ export default function DashboardPage() {
           )}
 
           {workouts.length > 0 && (
-            <div className="flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-r from-green-500/5 to-emerald-500/10 border border-green-500/20">
-              <ProgressRing
-                progress={completionRate}
-                size="lg"
-                color="stroke-green-500"
-              />
+            <div className="flex items-center gap-4 p-4 rounded-2xl border border-green-500/20 dark:border-green-500/30 bg-green-500/5 dark:bg-green-500/10">
+              <ProgressRing progress={completionRate} size="lg" color="stroke-green-500" />
               <div>
                 <p className="text-sm text-muted-foreground">Overall Progress</p>
                 <p className="text-2xl font-bold">{completedCount}/{workouts.length}</p>
@@ -408,9 +386,9 @@ export default function DashboardPage() {
         <StatCard
           title="Total Workouts"
           value={workouts.length}
-          description={isConnected ? "From your coach" : "Your workouts"}
+          description={isConnected ? 'From your coach' : 'Your workouts'}
           icon={Target}
-          gradient="from-blue-500/5 to-cyan-500/5"
+          gradient="from-blue-500/5 to-cyan-500/5 dark:from-blue-500/15 dark:to-cyan-500/15"
           iconGradient="from-blue-500 to-cyan-500"
           delay={0}
         />
@@ -419,7 +397,7 @@ export default function DashboardPage() {
           value={completedCount}
           description="Great progress!"
           icon={CheckCircle2}
-          gradient="from-green-500/5 to-emerald-500/5"
+          gradient="from-green-500/5 to-emerald-500/5 dark:from-green-500/15 dark:to-emerald-500/15"
           iconGradient="from-green-500 to-emerald-500"
           delay={100}
         />
@@ -428,7 +406,7 @@ export default function DashboardPage() {
           value={workouts.length - completedCount}
           description="Ready to crush"
           icon={TrendingUp}
-          gradient="from-orange-500/5 to-amber-500/5"
+          gradient="from-orange-500/5 to-amber-500/5 dark:from-orange-500/15 dark:to-amber-500/15"
           iconGradient="from-orange-500 to-amber-500"
           delay={200}
         />
@@ -444,7 +422,7 @@ export default function DashboardPage() {
             <div className="space-y-1">
               <CardTitle className="text-xl flex items-center gap-2">
                 <Zap className="h-5 w-5 text-primary" />
-                Your Upcoming Workouts
+                Upcoming Workouts
               </CardTitle>
               <CardDescription>Ready to tackle these sessions</CardDescription>
             </div>
@@ -459,22 +437,23 @@ export default function DashboardPage() {
         <CardContent>
           {upcomingWorkouts.length === 0 ? (
             <div className="text-center py-12">
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-green-500/10 to-emerald-500/10 mb-4">
+              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10 dark:bg-green-500/20 mb-4">
                 <CheckCircle2 className="h-8 w-8 text-green-500" />
               </div>
               <h3 className="text-lg font-semibold mb-2">All caught up!</h3>
               <p className="text-muted-foreground max-w-sm mx-auto">
-                You've completed all your assigned workouts. Check back later for new sessions from your coach.
+                You&apos;ve completed all your assigned workouts. Check back later for new sessions.
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {upcomingWorkouts.map((workout, index) => (
                 <Link
                   key={workout.id}
                   href={`/workouts/${workout.id}`}
                   className={cn(
-                    'flex items-center justify-between p-4 rounded-xl border-2 border-transparent hover:border-primary/20 hover:bg-muted/30 transition-all duration-200 group',
+                    'flex items-center justify-between p-4 rounded-xl border',
+                    'hover:border-primary/20 dark:hover:border-white/20 hover:bg-muted/50 dark:hover:bg-white/5 transition-all duration-200 group',
                     'animate-in fade-in slide-in-from-right-4 duration-300'
                   )}
                   style={{ animationDelay: `${400 + index * 100}ms`, animationFillMode: 'backwards' }}
@@ -548,9 +527,20 @@ export default function DashboardPage() {
                       backgroundColor: 'hsl(var(--card))',
                       border: '1px solid hsl(var(--border))',
                       borderRadius: '8px',
+                      color: 'hsl(var(--card-foreground))',
+                    }}
+                    itemStyle={{
+                      color: 'hsl(var(--card-foreground))',
+                    }}
+                    labelStyle={{
+                      color: 'hsl(var(--card-foreground))',
                     }}
                   />
-                  <Legend />
+                  <Legend
+                    wrapperStyle={{
+                      color: 'hsl(var(--muted-foreground))',
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -567,7 +557,7 @@ export default function DashboardPage() {
         className="grid gap-4 sm:grid-cols-2 animate-in fade-in slide-in-from-bottom-4 duration-500"
         style={{ animationDelay: '700ms', animationFillMode: 'backwards' }}
       >
-        <Card className="hover:shadow-md hover:border-primary/20 transition-all duration-300 group">
+        <Card className="hover:shadow-md dark:hover:shadow-none hover:border-primary/20 dark:hover:border-white/20 transition-all duration-300 group">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Calendar className="h-5 w-5 text-primary" />
@@ -576,7 +566,7 @@ export default function DashboardPage() {
             <CardDescription className="text-sm">See your schedule at a glance</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button asChild variant="outline" className="w-full group-hover:border-primary/30">
+            <Button asChild variant="outline" className="w-full group-hover:border-primary/30 dark:group-hover:border-white/20">
               <Link href="/calendar">
                 Open Calendar
                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -585,7 +575,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-md hover:border-primary/20 transition-all duration-300 group">
+        <Card className="hover:shadow-md dark:hover:shadow-none hover:border-primary/20 dark:hover:border-white/20 transition-all duration-300 group">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Target className="h-5 w-5 text-primary" />
@@ -594,7 +584,7 @@ export default function DashboardPage() {
             <CardDescription className="text-sm">View your complete workout history</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button asChild variant="outline" className="w-full group-hover:border-primary/30">
+            <Button asChild variant="outline" className="w-full group-hover:border-primary/30 dark:group-hover:border-white/20">
               <Link href="/workouts">
                 View Workouts
                 <ArrowRight className="ml-2 h-4 w-4" />

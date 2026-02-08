@@ -27,7 +27,7 @@ function StudentCard({ student, index }: { student: StudentWithStats; index: num
   return (
     <div
       className={cn(
-        'p-4 rounded-xl border bg-card hover:shadow-md hover:border-primary/20 transition-all duration-300',
+        'p-4 rounded-xl border bg-card hover:shadow-md dark:hover:shadow-none hover:border-primary/20 dark:hover:border-white/20 transition-all duration-300',
         'animate-in fade-in slide-in-from-bottom-2 duration-500'
       )}
       style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}

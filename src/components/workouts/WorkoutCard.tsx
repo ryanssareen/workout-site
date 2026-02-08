@@ -12,18 +12,18 @@ import { CompletionDialog, UncompletionDialog } from './CompletionDialog';
 import { cn } from '@/lib/utils';
 
 const TAG_COLORS: Record<WorkoutTag, string> = {
-  easy: 'bg-green-500/10 text-green-600 border-green-500/20',
-  moderate: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
-  hard: 'bg-red-500/10 text-red-600 border-red-500/20',
-  recovery: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
-  speed: 'bg-orange-500/10 text-orange-600 border-orange-500/20',
-  endurance: 'bg-purple-500/10 text-purple-600 border-purple-500/20',
-  intervals: 'bg-pink-500/10 text-pink-600 border-pink-500/20',
-  tempo: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20',
-  long: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20',
-  strength: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
-  technique: 'bg-teal-500/10 text-teal-600 border-teal-500/20',
-  race: 'bg-rose-500/10 text-rose-600 border-rose-500/20',
+  easy: 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20',
+  moderate: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20',
+  hard: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20',
+  recovery: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+  speed: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20',
+  endurance: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
+  intervals: 'bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20',
+  tempo: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
+  long: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20',
+  strength: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+  technique: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20',
+  race: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
 };
 
 interface WorkoutCardProps {
@@ -108,17 +108,17 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
 
   const getTypeBadge = (type: string) => {
     const styles: Record<string, string> = {
-      swim: 'bg-blue-500/10 text-blue-600',
-      run: 'bg-green-500/10 text-green-600',
-      bike: 'bg-orange-500/10 text-orange-600',
-      strength: 'bg-purple-500/10 text-purple-600',
+      swim: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+      run: 'bg-green-500/10 text-green-600 dark:text-green-400',
+      bike: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
+      strength: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
     };
     return styles[type] || 'bg-muted text-muted-foreground';
   };
 
   return (
     <>
-      <Card className={cn('relative transition-all hover:shadow-md', getCardStyle())}>
+      <Card className={cn('relative transition-all hover:shadow-md dark:hover:shadow-none dark:hover:border-white/20', getCardStyle())}>
         {workout.completed && (
           <div className="absolute top-4 right-4">
             <CheckCircle2 className={cn('h-5 w-5', isCompletedLate ? 'text-orange-500' : 'text-green-500')} />
@@ -163,9 +163,9 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
           <div className="flex flex-wrap gap-1.5 mb-3">
             {workout.completed && !isCompletedLate && <Badge className="bg-green-500 hover:bg-green-600 text-xs"><CheckCircle2 className="h-3 w-3 mr-1" />Done</Badge>}
             {isCompletedLate && <Badge className="bg-orange-500 hover:bg-orange-600 text-xs"><CheckCircle2 className="h-3 w-3 mr-1" />Late</Badge>}
-            {isUpcoming && <Badge variant="outline" className="border-blue-500/50 text-blue-600 text-xs"><Clock className="h-3 w-3 mr-1" />Upcoming</Badge>}
+            {isUpcoming && <Badge variant="outline" className="border-blue-500/50 text-blue-600 dark:text-blue-400 text-xs"><Clock className="h-3 w-3 mr-1" />Upcoming</Badge>}
             {isMissed && <Badge variant="destructive" className="text-xs">Missed</Badge>}
-            {workout.completedBy === 'strava' && <Badge variant="outline" className="border-orange-500/50 text-orange-600 text-xs"><Activity className="h-3 w-3 mr-1" />Strava</Badge>}
+            {workout.completedBy === 'strava' && <Badge variant="outline" className="border-orange-500/50 text-orange-600 dark:text-orange-400 text-xs"><Activity className="h-3 w-3 mr-1" />Strava</Badge>}
             {commentCount > 0 && <Badge variant="secondary" className="text-xs"><MessageSquare className="h-3 w-3 mr-1" />{commentCount}</Badge>}
           </div>
 

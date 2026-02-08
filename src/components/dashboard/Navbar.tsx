@@ -34,7 +34,7 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/dashboard" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/20">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/20 dark:shadow-none">
               <Dumbbell className="h-4 w-4 text-primary-foreground" />
             </div>
             <span className="font-bold text-lg hidden sm:inline">CoachTrack</span>

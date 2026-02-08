@@ -20,14 +20,18 @@ export function StatCard({ title, value, description, icon: Icon, gradient, icon
   return (
     <Card
       className={cn(
-        'relative overflow-hidden p-5 hover:shadow-lg transition-all duration-300 group',
+        'relative overflow-hidden p-5 transition-all duration-300 group',
+        'hover:shadow-lg dark:hover:shadow-none dark:hover:border-white/20',
         'animate-in fade-in slide-in-from-bottom-4 duration-500',
         className
       )}
       style={{ animationDelay: `${delay}ms`, animationFillMode: 'backwards' }}
     >
-      <div className={cn('absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity', gradient)} />
-      
+      <div className={cn(
+        'absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity',
+        gradient
+      )} />
+
       <div className="relative">
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
@@ -39,7 +43,7 @@ export function StatCard({ title, value, description, icon: Icon, gradient, icon
         <div className="flex items-end gap-2">
           <p className="text-3xl font-bold tracking-tight">{value}</p>
           {trend && (
-            <span className={cn('text-sm font-medium mb-1', trend.isPositive ? 'text-green-600' : 'text-red-500')}>
+            <span className={cn('text-sm font-medium mb-1', trend.isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400')}>
               {trend.isPositive ? '+' : ''}{trend.value}%
             </span>
           )}

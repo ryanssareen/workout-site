@@ -273,7 +273,7 @@ export default function CalendarPage() {
 
       {/* Quick Stats */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <Card className="border-primary/20 bg-primary/5">
+        <Card className="border-primary/20 bg-primary/5 dark:bg-primary/10">
           <CardContent className="py-4">
             <p className="text-xs text-muted-foreground">This Month</p>
             <div className="text-2xl font-bold">{monthStats.total}</div>
@@ -419,7 +419,7 @@ export default function CalendarPage() {
                       isCurrentMonth && 'bg-background',
                       isSelected && 'border-primary bg-primary/10',
                       !isSelected && 'border-transparent hover:border-muted-foreground/20',
-                      isTodayDate && 'ring-2 ring-primary ring-offset-2',
+                      isTodayDate && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
                       allCompleted && !hasLateCompletion && isCurrentMonth && 'bg-green-50 dark:bg-green-950/30',
                       hasLateCompletion && isCurrentMonth && 'bg-orange-50 dark:bg-orange-950/30',
                       hasMissed && isCurrentMonth && 'bg-red-50 dark:bg-red-950/30',
@@ -475,10 +475,10 @@ export default function CalendarPage() {
                           variant="secondary"
                           className={cn(
                             'text-[10px] px-1 py-0 h-4',
-                            allCompleted && !hasLateCompletion && 'bg-green-100 text-green-700',
-                            hasLateCompletion && 'bg-orange-100 text-orange-700',
-                            hasMissed && 'bg-red-100 text-red-700',
-                            hasUpcoming && 'bg-blue-100 text-blue-700',
+                            allCompleted && !hasLateCompletion && 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300',
+                            hasLateCompletion && 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300',
+                            hasMissed && 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300',
+                            hasUpcoming && 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
                           )}
                         >
                           {dayWorkouts.length}
@@ -556,13 +556,13 @@ export default function CalendarPage() {
                         {/* Status badges */}
                         <div className="flex flex-wrap gap-2">
                           {workout.completed && (
-                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                            <Badge variant="outline" className="bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800">
                               <CheckCircle2 className="h-3 w-3 mr-1" />
                               Completed
                             </Badge>
                           )}
                           {workout.completedBy === 'strava' && (
-                            <Badge variant="outline" className="border-orange-500 text-orange-600">
+                            <Badge variant="outline" className="border-orange-500 text-orange-600 dark:text-orange-400">
                               <Activity className="h-3 w-3 mr-1" />
                               Strava
                             </Badge>
