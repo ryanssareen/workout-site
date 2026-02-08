@@ -214,7 +214,10 @@ export default function ReportsPage() {
             {EXAMPLE_REQUESTS.map((example, i) => (
               <button
                 key={i}
-                onClick={() => handleGenerateReport(example)}
+                onClick={() => {
+                  setInput(example);
+                  handleGenerateReport(example);
+                }}
                 disabled={generating}
                 className="text-left px-3 py-2 rounded-lg border hover:border-primary/50 hover:bg-muted/50 transition-colors text-sm disabled:opacity-50"
               >
