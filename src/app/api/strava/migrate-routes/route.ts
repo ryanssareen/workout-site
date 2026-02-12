@@ -1,9 +1,9 @@
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // Max for Vercel hobby
 
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 
-// Refresh Strava access token if expired
 async function refreshStravaToken(userId: string, refreshToken: string): Promise<string | null> {
   try {
     const response = await fetch('https://www.strava.com/oauth/token', {
@@ -29,7 +29,6 @@ async function refreshStravaToken(userId: string, refreshToken: string): Promise
 
     return data.access_token;
   } catch (error) {
-    console.error('Error refreshing token:', error);
     return null;
   }
 }
@@ -49,70 +48,83 @@ async function getValidToken(userData: any, userId: string): Promise<string | nu
 
 export async function POST(request: NextRequest) {
   try {
-    // Optional: pass a secret to prevent abuse
-    const { adminSecret } = await request.json().catch(() => ({}));
+    const { adminSecret, limit = 20 } = await request.json().catch(() => ({}));
     
-    // Simple protection - you can change this
     if (adminSecret !== process.env.ADMIN_SECRET && adminSecret !== 'migrate-all-routes') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    console.log('🗺️ Starting route migration for ALL users...');
+    console.log(`🗺️ Migrating routes (batch of ${limit})...`);
 
-    // Get all users with Strava connected
-    const usersSnapshot = await adminDb
-      .collection('users')
-      .where('stravaAccessToken', '!=', null)
+    // Get all Strava workouts WITHOUT routeData, limited
+    const workoutsSnapshot = await adminDb
+      .collection('workouts')
+      .where('source', '==', 'strava')
+      .limit(500) // Get more to filter
       .get();
 
-    console.log(`👥 Found ${usersSnapshot.size} users with Strava connected`);
+    // Filter to those missing polyline
+    const workoutsToUpdate = workoutsSnapshot.docs.filter(doc => {
+      const data = doc.data();
+      return data.stravaActivityId && !data.routeData?.polyline;
+    }).slice(0, limit); // Only process 'limit' at a time
 
-    const results: any[] = [];
-    let totalUpdated = 0;
-    let totalFailed = 0;
+    console.log(`📊 Processing ${workoutsToUpdate.length} workouts this batch`);
 
-    for (const userDoc of usersSnapshot.docs) {
-      const userId = userDoc.id;
-      const userData = userDoc.data();
-      
-      console.log(`\n👤 Processing user: ${userData.displayName || userId}`);
+    if (workoutsToUpdate.length === 0) {
+      return NextResponse.json({
+        success: true,
+        message: 'All workouts already have route data!',
+        remaining: 0,
+      });
+    }
 
-      const accessToken = await getValidToken(userData, userId);
-      if (!accessToken) {
-        console.log(`  ⚠️ Could not get valid token, skipping`);
-        results.push({ userId, status: 'token_error', updated: 0 });
+    // Group by user to reuse tokens
+    const byUser: Record<string, any[]> = {};
+    for (const doc of workoutsToUpdate) {
+      const data = doc.data();
+      const userId = data.assignedTo;
+      if (!byUser[userId]) byUser[userId] = [];
+      byUser[userId].push({ id: doc.id, ...data });
+    }
+
+    let updated = 0;
+    let failed = 0;
+    const errors: string[] = [];
+
+    for (const [userId, workouts] of Object.entries(byUser)) {
+      // Get user token
+      const userDoc = await adminDb.collection('users').doc(userId).get();
+      if (!userDoc.exists) {
+        failed += workouts.length;
         continue;
       }
 
-      // Find Strava workouts without route data
-      const workoutsSnapshot = await adminDb
-        .collection('workouts')
-        .where('assignedTo', '==', userId)
-        .where('source', '==', 'strava')
-        .get();
+      const userData = userDoc.data();
+      const accessToken = await getValidToken(userData, userId);
+      
+      if (!accessToken) {
+        errors.push(`No token for user ${userId}`);
+        failed += workouts.length;
+        continue;
+      }
 
-      const workoutsToUpdate = workoutsSnapshot.docs.filter(doc => {
-        const data = doc.data();
-        return data.stravaActivityId && !data.routeData?.polyline;
-      });
-
-      console.log(`  📊 ${workoutsToUpdate.length} workouts need route data`);
-
-      let userUpdated = 0;
-      let userFailed = 0;
-
-      for (const workoutDoc of workoutsToUpdate) {
-        const workout = workoutDoc.data();
-        const activityId = workout.stravaActivityId;
-
+      for (const workout of workouts) {
         try {
           const response = await fetch(
-            `https://www.strava.com/api/v3/activities/${activityId}`,
+            `https://www.strava.com/api/v3/activities/${workout.stravaActivityId}`,
             { headers: { Authorization: `Bearer ${accessToken}` } }
           );
 
           if (!response.ok) {
-            userFailed++;
+            const errText = await response.text();
+            if (errors.length < 5) errors.push(`${response.status}: ${errText.slice(0, 100)}`);
+            failed++;
+            
+            if (response.status === 429) {
+              errors.push('Rate limited! Wait and try again.');
+              break;
+            }
             continue;
           }
 
@@ -130,38 +142,48 @@ export async function POST(request: NextRequest) {
           }
 
           if (routeData.polyline) {
-            await adminDb.collection('workouts').doc(workoutDoc.id).update({ routeData });
-            userUpdated++;
-            console.log(`  ✅ ${workout.name}`);
+            await adminDb.collection('workouts').doc(workout.id).update({ routeData });
+            updated++;
+            console.log(`✅ ${workout.name}`);
+          } else {
+            // No GPS data for this activity
+            await adminDb.collection('workouts').doc(workout.id).update({ 
+              routeData: { noGPS: true } 
+            });
+            console.log(`⚠️ No GPS: ${workout.name}`);
           }
 
-          // Rate limit: 1 req/sec to stay under Strava limits
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Small delay to avoid rate limits
+          await new Promise(resolve => setTimeout(resolve, 500));
 
-        } catch (error) {
-          userFailed++;
+        } catch (error: any) {
+          if (errors.length < 5) errors.push(error.message);
+          failed++;
         }
       }
-
-      totalUpdated += userUpdated;
-      totalFailed += userFailed;
-      results.push({ 
-        userId, 
-        displayName: userData.displayName,
-        status: 'complete', 
-        updated: userUpdated, 
-        failed: userFailed 
-      });
     }
 
-    console.log(`\n🎉 Migration complete: ${totalUpdated} updated, ${totalFailed} failed`);
+    // Count remaining
+    const remainingSnapshot = await adminDb
+      .collection('workouts')
+      .where('source', '==', 'strava')
+      .limit(500)
+      .get();
+    
+    const remaining = remainingSnapshot.docs.filter(doc => {
+      const data = doc.data();
+      return data.stravaActivityId && !data.routeData;
+    }).length;
 
     return NextResponse.json({
       success: true,
-      totalUsers: usersSnapshot.size,
-      totalUpdated,
-      totalFailed,
-      results,
+      updated,
+      failed,
+      remaining,
+      errors: errors.slice(0, 5),
+      message: remaining > 0 
+        ? `Updated ${updated}. Run again for ${remaining} more.`
+        : `Done! Updated ${updated} workouts.`,
     });
 
   } catch (error: any) {
