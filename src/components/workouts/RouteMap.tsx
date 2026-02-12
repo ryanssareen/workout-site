@@ -1,29 +1,22 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Polyline, Marker, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Polyline, CircleMarker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { decodePolyline } from '@/lib/polyline';
 import 'leaflet/dist/leaflet.css';
 
-// Fix for default marker icons in Leaflet with webpack
-const startIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
-
-const endIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
+// Component to fit map bounds to the route
+function FitBounds({ positions }: { positions: [number, number][] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (positions.length > 0) {
+      const bounds = L.latLngBounds(positions);
+      map.fitBounds(bounds, { padding: [30, 30] });
+    }
+  }, [map, positions]);
+  return null;
+}
 
 interface RouteData {
   polyline?: string;
@@ -37,28 +30,13 @@ interface RouteMapProps {
   height?: number;
 }
 
-// Component to fit map bounds to the route
-function FitBounds({ positions }: { positions: [number, number][] }) {
-  const map = useMap();
-  
-  useEffect(() => {
-    if (positions.length > 0) {
-      const bounds = L.latLngBounds(positions);
-      map.fitBounds(bounds, { padding: [20, 20] });
-    }
-  }, [map, positions]);
-  
-  return null;
-}
-
 export function RouteMap({ routeData, className = '', height = 300 }: RouteMapProps) {
   const [positions, setPositions] = useState<[number, number][]>([]);
   const [isClient, setIsClient] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   useEffect(() => {
     setIsClient(true);
-    
     if (routeData.polyline) {
       try {
         const decoded = decodePolyline(routeData.polyline);
@@ -73,58 +51,67 @@ export function RouteMap({ routeData, className = '', height = 300 }: RouteMapPr
       }
     }
   }, [routeData.polyline]);
-  
-  // Don't render on server (SSR)
+
   if (!isClient) {
     return (
-      <div className={`bg-muted rounded-lg flex items-center justify-center ${className}`} style={{ height }}>
+      <div className={`bg-muted/50 rounded-xl flex items-center justify-center animate-pulse ${className}`} style={{ height }}>
         <p className="text-muted-foreground text-sm">Loading map...</p>
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className={`bg-muted rounded-lg flex items-center justify-center ${className}`} style={{ height }}>
-        <p className="text-muted-foreground text-sm">{error}</p>
-      </div>
-    );
-  }
-  
-  if (positions.length === 0) {
+  if (error || positions.length === 0) {
+    if (error) {
+      return (
+        <div className={`bg-muted/50 rounded-xl flex items-center justify-center ${className}`} style={{ height }}>
+          <p className="text-muted-foreground text-sm">{error}</p>
+        </div>
+      );
+    }
     return null;
   }
-  
+
   const center = positions[Math.floor(positions.length / 2)] || [0, 0];
   const startPos = positions[0];
   const endPos = positions[positions.length - 1];
-  
+
   return (
-    <div className={`rounded-lg overflow-hidden border ${className}`} style={{ height }}>
+    <div className={`rounded-xl overflow-hidden border shadow-sm ${className}`} style={{ height }}>
       <MapContainer
         center={center}
         zoom={13}
         style={{ height: '100%', width: '100%' }}
         scrollWheelZoom={false}
+        zoomControl={false}
+        attributionControl={false}
       >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        {/* Dark map tiles — CartoDB Positron for light mode compat, looks clean */}
+        <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+
+        {/* Route glow (wider, translucent behind) */}
         <Polyline
           positions={positions}
-          pathOptions={{
-            color: '#f97316',
-            weight: 4,
-            opacity: 0.8
-          }}
+          pathOptions={{ color: '#10b981', weight: 7, opacity: 0.2, lineCap: 'round', lineJoin: 'round' }}
         />
+        {/* Main route line */}
+        <Polyline
+          positions={positions}
+          pathOptions={{ color: '#10b981', weight: 3.5, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }}
+        />
+
+        {/* Start marker — green circle */}
         {startPos && (
-          <Marker position={startPos} icon={startIcon} />
+          <CircleMarker center={startPos} radius={6}
+            pathOptions={{ color: '#fff', weight: 2.5, fillColor: '#22c55e', fillOpacity: 1 }}
+          />
         )}
+        {/* End marker — red circle */}
         {endPos && startPos !== endPos && (
-          <Marker position={endPos} icon={endIcon} />
+          <CircleMarker center={endPos} radius={6}
+            pathOptions={{ color: '#fff', weight: 2.5, fillColor: '#ef4444', fillOpacity: 1 }}
+          />
         )}
+
         <FitBounds positions={positions} />
       </MapContainer>
     </div>

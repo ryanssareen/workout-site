@@ -21,7 +21,7 @@ export function MiniRoutePreview({
   className = '',
   width = 200,
   height = 80,
-  strokeColor = '#f97316',
+  strokeColor = '#10b981',
   strokeWidth = 2,
 }: MiniRoutePreviewProps) {
   const svgPath = useMemo(() => {
