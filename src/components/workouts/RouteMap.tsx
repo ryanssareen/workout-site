@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Polyline, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import polyline from 'polyline-encoded';
+import { decodePolyline } from '@/lib/polyline';
 import 'leaflet/dist/leaflet.css';
 
 // Fix for default marker icons in Leaflet with webpack
@@ -34,6 +34,7 @@ interface RouteData {
 interface RouteMapProps {
   routeData: RouteData;
   className?: string;
+  height?: number;
 }
 
 // Component to fit map bounds to the route
@@ -50,25 +51,42 @@ function FitBounds({ positions }: { positions: [number, number][] }) {
   return null;
 }
 
-export function RouteMap({ routeData, className = '' }: RouteMapProps) {
+export function RouteMap({ routeData, className = '', height = 300 }: RouteMapProps) {
   const [positions, setPositions] = useState<[number, number][]>([]);
   const [isClient, setIsClient] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
     setIsClient(true);
     
     if (routeData.polyline) {
-      // Decode the polyline into lat/lng pairs
-      const decoded = polyline.decode(routeData.polyline);
-      setPositions(decoded as [number, number][]);
+      try {
+        const decoded = decodePolyline(routeData.polyline);
+        if (decoded.length === 0) {
+          setError('No route points decoded');
+        } else {
+          setPositions(decoded);
+        }
+      } catch (err) {
+        console.error('Failed to decode polyline:', err);
+        setError('Failed to decode route data');
+      }
     }
   }, [routeData.polyline]);
   
   // Don't render on server (SSR)
   if (!isClient) {
     return (
-      <div className={`bg-muted rounded-lg flex items-center justify-center ${className}`} style={{ height: '300px' }}>
-        <p className="text-muted-foreground">Loading map...</p>
+      <div className={`bg-muted rounded-lg flex items-center justify-center ${className}`} style={{ height }}>
+        <p className="text-muted-foreground text-sm">Loading map...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={`bg-muted rounded-lg flex items-center justify-center ${className}`} style={{ height }}>
+        <p className="text-muted-foreground text-sm">{error}</p>
       </div>
     );
   }
@@ -82,7 +100,7 @@ export function RouteMap({ routeData, className = '' }: RouteMapProps) {
   const endPos = positions[positions.length - 1];
   
   return (
-    <div className={`rounded-lg overflow-hidden border ${className}`} style={{ height: '300px' }}>
+    <div className={`rounded-lg overflow-hidden border ${className}`} style={{ height }}>
       <MapContainer
         center={center}
         zoom={13}

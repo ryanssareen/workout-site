@@ -1,14 +1,16 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Workout } from '@/types';
 import { WorkoutTag, getWorkoutSummary } from '@/types/workout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
-import { Calendar, Clock, Edit, Trash2, CheckCircle2, Circle, Activity, MessageSquare } from 'lucide-react';
+import { Calendar, Clock, Edit, Trash2, CheckCircle2, Circle, Activity, MessageSquare, MapPin } from 'lucide-react';
 import { CompletionDialog, UncompletionDialog } from './CompletionDialog';
+import { MiniRoutePreview } from './MiniRoutePreview';
 import { cn } from '@/lib/utils';
 
 const TAG_COLORS: Record<WorkoutTag, string> = {
@@ -37,6 +39,7 @@ interface WorkoutCardProps {
 }
 
 export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onViewDetails, commentCount = 0, isCoach = false }: WorkoutCardProps) {
+  const router = useRouter();
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
   const [showUncompletionDialog, setShowUncompletionDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -48,8 +51,17 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
   const isCompletedLate = workout.completed && workout.completedLate;
   const tags = (workout as any).tags as WorkoutTag[] | undefined;
   const plannedSummary = getWorkoutSummary(workout);
+  const hasRoute = !!(workout.routeData?.polyline);
 
-  const handleCompletionClick = () => {
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't navigate if clicking a button or interactive element
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('[role="button"]')) return;
+    router.push(`/workouts/${workout.id}`);
+  };
+
+  const handleCompletionClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (isCoach) { alert('Workout is to be completed by the Student'); return; }
     const workoutDate = workout.date.toDate();
     const today = new Date();
@@ -118,7 +130,13 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
 
   return (
     <>
-      <Card className={cn('relative transition-all hover:shadow-md dark:hover:shadow-none dark:hover:border-white/20', getCardStyle())}>
+      <Card
+        className={cn(
+          'relative transition-all hover:shadow-md dark:hover:shadow-none dark:hover:border-white/20 cursor-pointer',
+          getCardStyle()
+        )}
+        onClick={handleCardClick}
+      >
         {workout.completed && (
           <div className="absolute top-4 right-4">
             <CheckCircle2 className={cn('h-5 w-5', isCompletedLate ? 'text-orange-500' : 'text-green-500')} />
@@ -166,6 +184,7 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
             {isUpcoming && <Badge variant="outline" className="border-blue-500/50 text-blue-600 dark:text-blue-400 text-xs"><Clock className="h-3 w-3 mr-1" />Upcoming</Badge>}
             {isMissed && <Badge variant="destructive" className="text-xs">Missed</Badge>}
             {workout.completedBy === 'strava' && <Badge variant="outline" className="border-orange-500/50 text-orange-600 dark:text-orange-400 text-xs"><Activity className="h-3 w-3 mr-1" />Strava</Badge>}
+            {hasRoute && <Badge variant="outline" className="border-emerald-500/50 text-emerald-600 dark:text-emerald-400 text-xs"><MapPin className="h-3 w-3 mr-1" />Route</Badge>}
             {commentCount > 0 && <Badge variant="secondary" className="text-xs"><MessageSquare className="h-3 w-3 mr-1" />{commentCount}</Badge>}
           </div>
 
@@ -179,6 +198,16 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
             </div>
           )}
 
+          {/* Mini route preview */}
+          {hasRoute && (
+            <MiniRoutePreview
+              polyline={workout.routeData!.polyline!}
+              className="mb-3"
+              width={280}
+              height={70}
+            />
+          )}
+
           {workout.completionNotes && <div className="text-sm bg-muted/50 rounded-lg p-2.5 italic text-muted-foreground mb-3">&quot;{workout.completionNotes}&quot;</div>}
 
           {hasActions && (
@@ -188,9 +217,8 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
                   {workout.completed ? <><Circle className="h-4 w-4 mr-1.5" />Undo</> : <><CheckCircle2 className="h-4 w-4 mr-1.5" />Complete</>}
                 </Button>
               )}
-              {onViewDetails && <Button variant="outline" size="sm" onClick={() => onViewDetails(workout.id)} className="h-9 w-9 p-0"><MessageSquare className="h-4 w-4" /></Button>}
-              {onEdit && <Button variant="outline" size="sm" onClick={() => onEdit(workout.id)} className="h-9 w-9 p-0"><Edit className="h-4 w-4" /></Button>}
-              {onDelete && <Button variant="outline" size="sm" onClick={() => onDelete(workout.id)} className="h-9 w-9 p-0 text-red-500 hover:text-red-600 hover:bg-red-500/10"><Trash2 className="h-4 w-4" /></Button>}
+              {onEdit && <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onEdit(workout.id); }} className="h-9 w-9 p-0"><Edit className="h-4 w-4" /></Button>}
+              {onDelete && <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onDelete(workout.id); }} className="h-9 w-9 p-0 text-red-500 hover:text-red-600 hover:bg-red-500/10"><Trash2 className="h-4 w-4" /></Button>}
             </div>
           )}
         </CardContent>
