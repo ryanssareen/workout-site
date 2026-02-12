@@ -532,6 +532,12 @@ export async function GET(request: NextRequest) {
       if (activity.max_speed) actualStats.maxSpeed = activity.max_speed;
       if (activity.total_elevation_gain) actualStats.elevationGain = activity.total_elevation_gain;
 
+      // Capture route/map data
+      const routeData: any = {};
+      if (activity.map?.summary_polyline) routeData.polyline = activity.map.summary_polyline;
+      if (activity.start_latlng) routeData.startLatLng = activity.start_latlng;
+      if (activity.end_latlng) routeData.endLatLng = activity.end_latlng;
+
       // Check if there's a decision for this activity
       const decision = decisions[stravaId];
 
@@ -569,7 +575,7 @@ export async function GET(request: NextRequest) {
           // Create new workout
           console.log(`  ➕ Creating: ${activity.name}`);
 
-          await adminDb.collection('workouts').add({
+          const newWorkoutData: any = {
             name: activity.name,
             type: workoutType,
             description: `Imported from Strava\nDistance: ${((activity.distance || 0) / 1000).toFixed(2)} km\nMoving time: ${Math.round((activity.moving_time || 0) / 60)} min`,
@@ -585,7 +591,14 @@ export async function GET(request: NextRequest) {
             source: 'strava',
             stravaActivityId: stravaId,
             actualStats,
-          });
+          };
+
+          // Add route data if available
+          if (Object.keys(routeData).length > 0) {
+            newWorkoutData.routeData = routeData;
+          }
+
+          await adminDb.collection('workouts').add(newWorkoutData);
           newWorkoutsCount++;
         }
       }

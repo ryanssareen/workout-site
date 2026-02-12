@@ -13,6 +13,13 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { CommentSection } from '@/components/workouts/comments';
+import dynamic from 'next/dynamic';
+
+// Dynamic import for map (no SSR)
+const RouteMap = dynamic(
+  () => import('@/components/workouts/RouteMap').then(mod => mod.RouteMap),
+  { ssr: false, loading: () => <div className="h-[300px] bg-muted rounded-lg animate-pulse" /> }
+);
 import { CompletionDialog, UncompletionDialog } from '@/components/workouts/CompletionDialog';
 import { WorkoutRecommendations } from '@/components/ai/WorkoutRecommendations';
 import { cn } from '@/lib/utils';
@@ -369,6 +376,17 @@ export default function WorkoutDetailPage() {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Route Map if available */}
+          {workout.routeData?.polyline && (
+            <div>
+              <h3 className="font-semibold mb-3 flex items-center gap-2">
+                <Activity className="h-4 w-4 text-orange-500" />
+                Route Map
+              </h3>
+              <RouteMap routeData={workout.routeData} />
             </div>
           )}
 

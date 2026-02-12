@@ -39,6 +39,12 @@ export interface StravaActivityStats {
   elevationGain?: number; // in meters
 }
 
+export interface RouteData {
+  polyline?: string; // Encoded polyline from Strava
+  startLatLng?: [number, number];
+  endLatLng?: [number, number];
+}
+
 export type WorkoutRating = 'too_easy' | 'just_right' | 'too_hard';
 
 export interface Workout {
@@ -76,6 +82,7 @@ export interface Workout {
   completedAt?: Timestamp;
   completionStatus?: 'pending' | 'completed' | 'skipped';
   actualStats?: StravaActivityStats;
+  routeData?: RouteData; // Map route from Strava
   // Manual completion fields
   completionNotes?: string;
   completedBy?: 'manual' | 'strava';
