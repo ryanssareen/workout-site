@@ -63,10 +63,11 @@ export async function POST(request: NextRequest) {
       .limit(500) // Get more to filter
       .get();
 
-    // Filter to those missing polyline
+    // Filter to those missing route data (not already processed)
     const workoutsToUpdate = workoutsSnapshot.docs.filter(doc => {
       const data = doc.data();
-      return data.stravaActivityId && !data.routeData?.polyline;
+      // Skip if no strava ID, or already has polyline, or already marked noGPS
+      return data.stravaActivityId && !data.routeData?.polyline && !data.routeData?.noGPS && !data.routeData?.failed;
     }).slice(0, limit); // Only process 'limit' at a time
 
     console.log(`📊 Processing ${workoutsToUpdate.length} workouts this batch`);
@@ -118,11 +119,20 @@ export async function POST(request: NextRequest) {
 
           if (!response.ok) {
             const errText = await response.text();
-            if (errors.length < 5) errors.push(`${response.status}: ${errText.slice(0, 100)}`);
+            console.log(`❌ ${workout.name}: ${response.status} - ${errText.slice(0, 200)}`);
+            errors.push(`${workout.name}: ${response.status}`);
+            
+            // Mark as failed so we don't retry forever (except rate limits)
+            if (response.status !== 429) {
+              await adminDb.collection('workouts').doc(workout.id).update({ 
+                routeData: { failed: true, error: response.status } 
+              });
+            }
+            
             failed++;
             
             if (response.status === 429) {
-              errors.push('Rate limited! Wait and try again.');
+              errors.push('Rate limited! Wait 15 min and try again.');
               break;
             }
             continue;
@@ -163,7 +173,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Count remaining
+    // Count remaining (exclude processed ones)
     const remainingSnapshot = await adminDb
       .collection('workouts')
       .where('source', '==', 'strava')
@@ -172,7 +182,7 @@ export async function POST(request: NextRequest) {
     
     const remaining = remainingSnapshot.docs.filter(doc => {
       const data = doc.data();
-      return data.stravaActivityId && !data.routeData;
+      return data.stravaActivityId && !data.routeData?.polyline && !data.routeData?.noGPS && !data.routeData?.failed;
     }).length;
 
     return NextResponse.json({

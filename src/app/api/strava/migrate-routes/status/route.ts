@@ -14,6 +14,7 @@ export async function GET() {
     const withRoute: string[] = [];
     const withoutRoute: string[] = [];
     const noGPS: string[] = [];
+    const failedList: string[] = [];
 
     workoutsSnapshot.docs.forEach(doc => {
       const data = doc.data();
@@ -23,6 +24,8 @@ export async function GET() {
         withRoute.push(name);
       } else if (data.routeData?.noGPS) {
         noGPS.push(name);
+      } else if (data.routeData?.failed) {
+        failedList.push(name);
       } else {
         withoutRoute.push(name);
       }
@@ -33,6 +36,7 @@ export async function GET() {
       withRouteData: withRoute.length,
       withoutRouteData: withoutRoute.length,
       noGPSData: noGPS.length,
+      failed: failedList.length,
       workoutsWithMaps: withRoute.slice(0, 20),
       workoutsMissing: withoutRoute.slice(0, 20),
     });
