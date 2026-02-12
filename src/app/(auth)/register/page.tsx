@@ -3,11 +3,12 @@ import { RegisterForm } from '@/components/auth/RegisterForm';
 export const dynamic = 'force-dynamic';
 
 interface RegisterPageProps {
-  searchParams?: { role?: string | string[] };
+  searchParams?: Promise<{ role?: string | string[] }>;
 }
 
-export default function RegisterPage({ searchParams }: RegisterPageProps) {
-  const preselectedRole = Array.isArray(searchParams?.role) ? searchParams?.role[0] : searchParams?.role;
+export default async function RegisterPage({ searchParams }: RegisterPageProps) {
+  const params = await searchParams;
+  const preselectedRole = Array.isArray(params?.role) ? params?.role[0] : params?.role;
 
   // Map 'athlete' to 'student' (internal role name)
   const initialRole = preselectedRole === 'coach' ? 'coach' : preselectedRole === 'athlete' ? 'student' : '';
