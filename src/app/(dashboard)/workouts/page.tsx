@@ -28,6 +28,7 @@ function WorkoutsContent() {
   const user = useAuthStore((state) => state.user);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ready, setReady] = useState(false);
 
   // Get category from URL params
   const selectedCategory = searchParams.get('category') as WorkoutType | null;
@@ -37,6 +38,7 @@ function WorkoutsContent() {
     const data = await getUserWorkouts(user.uid, user.role);
     setWorkouts(data);
     setLoading(false);
+    setTimeout(() => setReady(true), 120);
   }, [user]);
 
   useEffect(() => { loadWorkouts(); }, [loadWorkouts]);
@@ -79,7 +81,7 @@ function WorkoutsContent() {
 
   const canManageWorkouts = user?.role === 'coach' || ((user?.role === 'athlete' || user?.role === 'student') && !user?.coachId);
 
-  if (loading) {
+  if (loading || !ready) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="flex flex-col items-center gap-3">

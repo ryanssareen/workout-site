@@ -48,6 +48,15 @@ export default function DashboardPage() {
   const [coachStats, setCoachStats] = useState<CoachStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  // Time-based greeting
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }, []);
 
   useEffect(() => {
     async function loadData() {
@@ -62,6 +71,8 @@ export default function DashboardPage() {
       }
 
       setLoading(false);
+      // Small delay before revealing content for smooth entrance
+      setTimeout(() => setReady(true), 150);
     }
 
     loadData();
@@ -104,7 +115,7 @@ export default function DashboardPage() {
 
   const isConnected = !!user?.coachId;
 
-  if (loading) {
+  if (loading || !ready) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="flex flex-col items-center gap-4">
@@ -124,14 +135,14 @@ export default function DashboardPage() {
       <div className="space-y-8 pb-8">
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
-          <div className="space-y-1 animate-in fade-in slide-in-from-left-4 duration-500">
+          <div className="space-y-1 animate-in fade-in slide-in-from-left-4 duration-700">
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-              Welcome back, <span className="text-primary">{user?.displayName}</span>
+              {greeting}, <span className="text-primary">{user?.displayName?.split(' ')[0]}</span> 👋
             </h1>
             <p className="text-muted-foreground">Here&apos;s your coaching overview</p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 animate-in fade-in slide-in-from-right-4 duration-500">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 animate-in fade-in slide-in-from-right-4 duration-700" style={{ animationDelay: '200ms', animationFillMode: 'backwards' }}>
             {user?.coachCode && (
               <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-primary/20 dark:border-primary/30 bg-primary/5 dark:bg-primary/10">
                 <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Code</div>
@@ -163,7 +174,7 @@ export default function DashboardPage() {
               icon={Users}
               gradient="from-blue-500/5 to-cyan-500/5 dark:from-blue-500/15 dark:to-cyan-500/15"
               iconGradient="from-blue-500 to-cyan-500"
-              delay={0}
+              delay={250}
             />
             <StatCard
               title="Active This Week"
@@ -172,7 +183,7 @@ export default function DashboardPage() {
               icon={Activity}
               gradient="from-green-500/5 to-emerald-500/5 dark:from-green-500/15 dark:to-emerald-500/15"
               iconGradient="from-green-500 to-emerald-500"
-              delay={100}
+              delay={250}
             />
             <StatCard
               title="Avg Completion"
@@ -181,7 +192,7 @@ export default function DashboardPage() {
               icon={Target}
               gradient="from-violet-500/5 to-purple-500/5 dark:from-violet-500/15 dark:to-purple-500/15"
               iconGradient="from-violet-500 to-purple-500"
-              delay={200}
+              delay={700}
             />
           </div>
         </div>
@@ -199,7 +210,7 @@ export default function DashboardPage() {
               icon={Target}
               gradient="from-orange-500/5 to-amber-500/5 dark:from-orange-500/15 dark:to-amber-500/15"
               iconGradient="from-orange-500 to-amber-500"
-              delay={300}
+              delay={550}
             />
             <StatCard
               title="Completed"
@@ -208,7 +219,7 @@ export default function DashboardPage() {
               icon={CheckCircle2}
               gradient="from-green-500/5 to-emerald-500/5 dark:from-green-500/15 dark:to-emerald-500/15"
               iconGradient="from-green-500 to-emerald-500"
-              delay={400}
+              delay={700}
             />
             <StatCard
               title="Pending"
@@ -217,7 +228,7 @@ export default function DashboardPage() {
               icon={Clock}
               gradient="from-rose-500/5 to-pink-500/5 dark:from-rose-500/15 dark:to-pink-500/15"
               iconGradient="from-rose-500 to-pink-500"
-              delay={500}
+              delay={850}
             />
           </div>
         </div>
@@ -227,7 +238,7 @@ export default function DashboardPage() {
           <StudentOverview students={coachStats?.studentsWithStats ?? []} delay={600} />
 
           <Card
-            className="animate-in fade-in slide-in-from-bottom-4 duration-500"
+            className="animate-in fade-in slide-in-from-bottom-4 duration-700"
             style={{ animationDelay: '700ms', animationFillMode: 'backwards' }}
           >
             <CardHeader className="pb-3">
@@ -270,7 +281,7 @@ export default function DashboardPage() {
                       className={cn(
                         'flex items-center justify-between p-3 rounded-lg border',
                         'hover:border-primary/20 dark:hover:border-white/20 hover:bg-muted/50 dark:hover:bg-white/5 transition-all duration-200 group',
-                        'animate-in fade-in slide-in-from-right-2 duration-300'
+                        'animate-in fade-in slide-in-from-right-2 duration-500'
                       )}
                       style={{ animationDelay: `${800 + index * 50}ms`, animationFillMode: 'backwards' }}
                     >
@@ -303,10 +314,10 @@ export default function DashboardPage() {
 
         {/* Quick Actions */}
         <div
-          className="grid gap-4 sm:grid-cols-2 animate-in fade-in slide-in-from-bottom-4 duration-500"
+          className="grid gap-4 sm:grid-cols-2 animate-in fade-in slide-in-from-bottom-4 duration-700"
           style={{ animationDelay: '900ms', animationFillMode: 'backwards' }}
         >
-          <Card className="hover:shadow-md dark:hover:shadow-none hover:border-primary/20 dark:hover:border-white/20 transition-all duration-300 group">
+          <Card className="hover:shadow-md dark:hover:shadow-none hover:border-primary/20 dark:hover:border-white/20 transition-all duration-500 group">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-primary" />
@@ -324,7 +335,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-md dark:hover:shadow-none hover:border-primary/20 dark:hover:border-white/20 transition-all duration-300 group">
+          <Card className="hover:shadow-md dark:hover:shadow-none hover:border-primary/20 dark:hover:border-white/20 transition-all duration-500 group">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Target className="h-5 w-5 text-primary" />
@@ -351,14 +362,14 @@ export default function DashboardPage() {
     <div className="space-y-8 pb-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-        <div className="space-y-1 animate-in fade-in slide-in-from-left-4 duration-500">
+        <div className="space-y-1 animate-in fade-in slide-in-from-left-4 duration-700">
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-            Welcome back, <span className="text-primary">{user?.displayName}</span>
+            {greeting}, <span className="text-primary">{user?.displayName?.split(' ')[0]}</span> 👋
           </h1>
           <p className="text-muted-foreground">Track your training progress</p>
         </div>
 
-        <div className="flex items-center gap-4 animate-in fade-in slide-in-from-right-4 duration-500">
+        <div className="flex items-center gap-4 animate-in fade-in slide-in-from-right-4 duration-700" style={{ animationDelay: '200ms', animationFillMode: 'backwards' }}>
           {!isConnected && (
             <Button asChild size="lg" className="shadow-lg shadow-primary/20 dark:shadow-none">
               <Link href="/settings">
@@ -390,7 +401,7 @@ export default function DashboardPage() {
           icon={Target}
           gradient="from-blue-500/5 to-cyan-500/5 dark:from-blue-500/15 dark:to-cyan-500/15"
           iconGradient="from-blue-500 to-cyan-500"
-          delay={0}
+          delay={250}
         />
         <StatCard
           title="Completed"
@@ -399,7 +410,7 @@ export default function DashboardPage() {
           icon={CheckCircle2}
           gradient="from-green-500/5 to-emerald-500/5 dark:from-green-500/15 dark:to-emerald-500/15"
           iconGradient="from-green-500 to-emerald-500"
-          delay={100}
+          delay={250}
         />
         <StatCard
           title="Remaining"
@@ -408,13 +419,13 @@ export default function DashboardPage() {
           icon={TrendingUp}
           gradient="from-orange-500/5 to-amber-500/5 dark:from-orange-500/15 dark:to-amber-500/15"
           iconGradient="from-orange-500 to-amber-500"
-          delay={200}
+          delay={700}
         />
       </div>
 
       {/* Upcoming Workouts */}
       <Card
-        className="animate-in fade-in slide-in-from-bottom-4 duration-500"
+        className="animate-in fade-in slide-in-from-bottom-4 duration-700"
         style={{ animationDelay: '300ms', animationFillMode: 'backwards' }}
       >
         <CardHeader>
@@ -454,7 +465,7 @@ export default function DashboardPage() {
                   className={cn(
                     'flex items-center justify-between p-4 rounded-xl border',
                     'hover:border-primary/20 dark:hover:border-white/20 hover:bg-muted/50 dark:hover:bg-white/5 transition-all duration-200 group',
-                    'animate-in fade-in slide-in-from-right-4 duration-300'
+                    'animate-in fade-in slide-in-from-right-4 duration-500'
                   )}
                   style={{ animationDelay: `${400 + index * 100}ms`, animationFillMode: 'backwards' }}
                 >
@@ -496,7 +507,7 @@ export default function DashboardPage() {
 
       {/* Workout Distribution Chart */}
       <Card
-        className="animate-in fade-in slide-in-from-bottom-4 duration-500"
+        className="animate-in fade-in slide-in-from-bottom-4 duration-700"
         style={{ animationDelay: '600ms', animationFillMode: 'backwards' }}
       >
         <CardHeader>
@@ -554,10 +565,10 @@ export default function DashboardPage() {
 
       {/* Quick Actions */}
       <div
-        className="grid gap-4 sm:grid-cols-2 animate-in fade-in slide-in-from-bottom-4 duration-500"
+        className="grid gap-4 sm:grid-cols-2 animate-in fade-in slide-in-from-bottom-4 duration-700"
         style={{ animationDelay: '700ms', animationFillMode: 'backwards' }}
       >
-        <Card className="hover:shadow-md dark:hover:shadow-none hover:border-primary/20 dark:hover:border-white/20 transition-all duration-300 group">
+        <Card className="hover:shadow-md dark:hover:shadow-none hover:border-primary/20 dark:hover:border-white/20 transition-all duration-500 group">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Calendar className="h-5 w-5 text-primary" />
@@ -575,7 +586,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-md dark:hover:shadow-none hover:border-primary/20 dark:hover:border-white/20 transition-all duration-300 group">
+        <Card className="hover:shadow-md dark:hover:shadow-none hover:border-primary/20 dark:hover:border-white/20 transition-all duration-500 group">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Target className="h-5 w-5 text-primary" />

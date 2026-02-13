@@ -39,6 +39,7 @@ export default function ReportsPage() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loadingWorkouts, setLoadingWorkouts] = useState(true);
   const [showShare, setShowShare] = useState(false);
+  const [ready, setReady] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
   const fetchWorkouts = useCallback(async () => {
@@ -52,6 +53,7 @@ export default function ReportsPage() {
       console.error('Failed to fetch workouts:', err);
     } finally {
       setLoadingWorkouts(false);
+      setTimeout(() => setReady(true), 120);
     }
   }, [user]);
 
@@ -67,7 +69,7 @@ export default function ReportsPage() {
   if (!user) return null;
 
   const renderContent = () => {
-    if (loadingWorkouts) {
+    if (loadingWorkouts || !ready) {
       return (
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
