@@ -50,10 +50,10 @@ function ChartPanel({ emoji, title, subtitle, defaultRange = '6M', children }: {
 }) {
   const [range, setRange] = useState<TimeRange>(defaultRange);
   return (
-    <div className="rounded-xl border bg-card p-5">
+    <div className="rounded-xl border bg-card p-6">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <p className="text-base font-semibold">{emoji} {title}</p>
+          <p className="text-lg font-semibold">{emoji} {title}</p>
           <p className="text-xs text-muted-foreground">{subtitle}</p>
         </div>
         <ChartTimeFilter value={range} onChange={setRange} />
@@ -83,11 +83,11 @@ function StatCard({ icon, label, value, sub, color }: {
   icon: React.ReactNode; label: string; value: string; sub?: string; color?: string;
 }) {
   return (
-    <div className={cn('rounded-xl border bg-card p-5 text-center')}>
+    <div className={cn('rounded-xl border bg-card p-6 text-center')}>
       <div className={cn('mx-auto w-12 h-12 rounded-xl flex items-center justify-center mb-3', color || 'bg-primary/10')}>
         {icon}
       </div>
-      <p className="text-3xl font-bold leading-none">{value}</p>
+      <p className="text-4xl font-bold leading-none">{value}</p>
       <p className="text-sm text-muted-foreground mt-1.5">{label}</p>
       {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
     </div>
@@ -99,12 +99,12 @@ function InsightTile({ icon, label, value, sub }: {
   icon: React.ReactNode; label: string; value: string; sub?: string;
 }) {
   return (
-    <div className="bg-muted/30 rounded-xl p-5">
+    <div className="bg-muted/30 rounded-xl p-6">
       <div className="flex items-center gap-2 mb-3">
         {icon}
         <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">{label}</p>
       </div>
-      <p className="text-2xl font-bold">{value}</p>
+      <p className="text-3xl font-bold">{value}</p>
       {sub && <p className="text-sm text-muted-foreground mt-1">{sub}</p>}
     </div>
   );
@@ -172,12 +172,12 @@ export function DashboardOverview({ workouts }: SectionProps) {
       </div>
 
       {/* Quick snapshot charts — hours + workouts */}
-      <div className="grid md:grid-cols-2 gap-5">
+      <div className="grid md:grid-cols-2 gap-6">
         <ChartPanel emoji="⏱️" title="Hours Trained" subtitle="Duration over time">
           {(range) => {
             const data = computeTimeSeries(filterByTimeRange(workouts, range), range);
             return (
-              <ResponsiveContainer width="100%" height={260}>
+              <ResponsiveContainer width="100%" height={380}>
                 <AreaChart data={data}>
                   <defs>
                     <linearGradient id="gH" x1="0" y1="0" x2="0" y2="1">
@@ -198,7 +198,7 @@ export function DashboardOverview({ workouts }: SectionProps) {
           {(range) => {
             const data = computeTimeSeries(filterByTimeRange(workouts, range), range);
             return (
-              <ResponsiveContainer width="100%" height={260}>
+              <ResponsiveContainer width="100%" height={380}>
                 <BarChart data={data}>
                   <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                   <YAxis tick={{ fontSize: 10 }} width={25} allowDecimals={false} />
@@ -227,17 +227,17 @@ export function TrainingAnalysis({ workouts }: SectionProps) {
   if (workouts.length === 0) return <EmptyState message="Complete workouts to see training analysis." />;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold">Training Analysis</h2>
+        <h2 className="text-2xl font-bold">Training Analysis</h2>
         <p className="text-sm text-muted-foreground">Detailed breakdown of your training metrics over time</p>
       </div>
-      <div className="grid md:grid-cols-2 gap-5">
+      <div className="grid md:grid-cols-2 gap-6">
         <ChartPanel emoji="⏱️" title="Hours Trained" subtitle="Training duration over time">
           {(range) => {
             const data = computeTimeSeries(filterByTimeRange(workouts, range), range);
             return (
-              <ResponsiveContainer width="100%" height={280}>
+              <ResponsiveContainer width="100%" height={340}>
                 <AreaChart data={data}>
                   <defs>
                     <linearGradient id="gHr" x1="0" y1="0" x2="0" y2="1">
@@ -260,7 +260,7 @@ export function TrainingAnalysis({ workouts }: SectionProps) {
             {(range) => {
               const data = computeTimeSeries(filterByTimeRange(workouts, range), range);
               return (
-                <ResponsiveContainer width="100%" height={280}>
+                <ResponsiveContainer width="100%" height={340}>
                   <AreaChart data={data}>
                     <defs>
                       <linearGradient id="gV" x1="0" y1="0" x2="0" y2="1">
@@ -284,7 +284,7 @@ export function TrainingAnalysis({ workouts }: SectionProps) {
             {(range) => {
               const data = computeTimeSeries(filterByTimeRange(workouts, range), range);
               return (
-                <ResponsiveContainer width="100%" height={280}>
+                <ResponsiveContainer width="100%" height={340}>
                   <AreaChart data={data}>
                     <defs>
                       <linearGradient id="gD" x1="0" y1="0" x2="0" y2="1">
@@ -307,7 +307,7 @@ export function TrainingAnalysis({ workouts }: SectionProps) {
           {(range) => {
             const data = computeTimeSeries(filterByTimeRange(workouts, range), range);
             return (
-              <ResponsiveContainer width="100%" height={280}>
+              <ResponsiveContainer width="100%" height={340}>
                 <BarChart data={data}>
                   <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                   <YAxis tick={{ fontSize: 10 }} width={25} allowDecimals={false} />
@@ -324,7 +324,7 @@ export function TrainingAnalysis({ workouts }: SectionProps) {
             {(range) => {
               const data = computeTimeSeries(filterByTimeRange(workouts, range), range);
               return (
-                <ResponsiveContainer width="100%" height={280}>
+                <ResponsiveContainer width="100%" height={340}>
                   <BarChart data={data}>
                     <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                     <YAxis tick={{ fontSize: 10 }} width={35} />
@@ -344,7 +344,7 @@ export function TrainingAnalysis({ workouts }: SectionProps) {
             {(range) => {
               const data = computeTimeSeries(filterByTimeRange(workouts, range), range);
               return (
-                <ResponsiveContainer width="100%" height={280}>
+                <ResponsiveContainer width="100%" height={340}>
                   <BarChart data={data}>
                     <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                     <YAxis tick={{ fontSize: 10 }} width={40} />
@@ -362,7 +362,7 @@ export function TrainingAnalysis({ workouts }: SectionProps) {
             {(range) => {
               const data = computePRTimeline(workouts, range);
               return (
-                <ResponsiveContainer width="100%" height={280}>
+                <ResponsiveContainer width="100%" height={340}>
                   <BarChart data={data}>
                     <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                     <YAxis tick={{ fontSize: 10 }} width={25} allowDecimals={false} />
@@ -391,9 +391,9 @@ export function ExerciseInsights({ workouts }: SectionProps) {
   if (workouts.length === 0) return <EmptyState message="Complete workouts to see insights." />;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold">Exercise Insights</h2>
+        <h2 className="text-2xl font-bold">Exercise Insights</h2>
         <p className="text-sm text-muted-foreground">Key highlights from your training data</p>
       </div>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -497,17 +497,17 @@ export function CalendarViews({ workouts }: SectionProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold">Calendar Views</h2>
+        <h2 className="text-2xl font-bold">Calendar Views</h2>
         <p className="text-sm text-muted-foreground">Consistency and rhythm patterns</p>
       </div>
 
       {/* Weekly Activity — last 16 weeks */}
       <div className="rounded-xl border bg-card p-6">
         <div className="mb-4">
-          <p className="text-base font-semibold">📅 Weekly Activity</p>
+          <p className="text-lg font-semibold">📅 Weekly Activity</p>
           <p className="text-xs text-muted-foreground">Workouts per week over the last 16 weeks</p>
         </div>
-        <ResponsiveContainer width="100%" height={280}>
+        <ResponsiveContainer width="100%" height={340}>
           <BarChart data={weeklyActivity}>
             <XAxis dataKey="label" tick={{ fontSize: 10 }} interval={1} angle={-45} textAnchor="end" height={50} />
             <YAxis tick={{ fontSize: 10 }} width={25} allowDecimals={false} />
@@ -520,10 +520,10 @@ export function CalendarViews({ workouts }: SectionProps) {
       {/* Training Days — which days you train */}
       <div className="rounded-xl border bg-card p-6">
         <div className="mb-4">
-          <p className="text-base font-semibold">🔥 Training Days</p>
+          <p className="text-lg font-semibold">🔥 Training Days</p>
           <p className="text-xs text-muted-foreground">Which days of the week you train most</p>
         </div>
-        <ResponsiveContainer width="100%" height={280}>
+        <ResponsiveContainer width="100%" height={340}>
           <BarChart data={weeklyRhythm} layout="vertical">
             <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} />
             <YAxis dataKey="day" type="category" tick={{ fontSize: 13, fontWeight: 500 }} width={40} />
@@ -549,16 +549,16 @@ export function TypeDistribution({ workouts }: SectionProps) {
   if (workouts.length === 0) return <EmptyState message="Complete workouts to see distribution." />;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold">Workout Type Distribution</h2>
+        <h2 className="text-2xl font-bold">Workout Type Distribution</h2>
         <p className="text-sm text-muted-foreground">Breakdown by workout type</p>
       </div>
       <div className="rounded-xl border bg-card p-6">
         <div className="grid md:grid-cols-2 gap-6 items-center">
           {/* Donut */}
           <div className="flex items-center justify-center">
-            <ResponsiveContainer width="100%" height={320}>
+            <ResponsiveContainer width="100%" height={380}>
               <PieChart>
                 <Pie
                   data={typeDistro} cx="50%" cy="50%"

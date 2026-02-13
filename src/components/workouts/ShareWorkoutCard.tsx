@@ -1,71 +1,58 @@
 'use client';
 
 import { useRef, useState, useCallback } from 'react';
-import { Workout } from '@/types';
 import { toPng } from 'html-to-image';
 import { format } from 'date-fns';
-import {
-  Share2, Download, MessageCircle, Twitter, Send, Copy, Check, X,
-} from 'lucide-react';
+import { Share2, Download, Send, Copy, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
-interface ShareWorkoutCardProps {
-  workout: Workout;
+// ── Brand SVG Icons ──
+
+function WhatsAppIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+    </svg>
+  );
 }
 
-export function ShareWorkoutCard({ workout }: ShareWorkoutCardProps) {
-  const cardRef = useRef<HTMLDivElement>(null);
-  const [isOpen, setIsOpen] = useState(false);
+function XIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+}
+
+function IMessageIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2C6.477 2 2 5.813 2 10.5c0 2.54 1.33 4.826 3.444 6.385C5.18 18.18 4.544 20.2 2.5 21.5c2.534 0 4.845-1.3 6.137-2.452A11.5 11.5 0 0012 19.5c5.523 0 10-3.813 10-8.5S17.523 2 12 2z" />
+    </svg>
+  );
+}
+
+// ── Share Buttons Component (reusable) ──
+
+interface ShareButtonsProps {
+  title: string;
+  shareText: string;
+  shareUrl: string;
+  fileName: string;
+  cardRef: React.RefObject<HTMLDivElement | null>;
+  onClose: () => void;
+}
+
+function ShareButtons({ title, shareText, shareUrl, fileName, cardRef, onClose }: ShareButtonsProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
-
-  const workoutDate = workout.date?.toDate
-    ? format(workout.date.toDate(), 'MMM d, yyyy')
-    : '';
-
-  const distance = workout.actualStats?.distance
-    ? (workout.actualStats.distance / 1000).toFixed(1)
-    : workout.stravaData?.distance
-      ? (workout.stravaData.distance / 1000).toFixed(1)
-      : null;
-
-  const duration = workout.duration
-    || (workout.actualStats?.duration ? Math.round(workout.actualStats.duration / 60) : null);
-
-  const elevation = workout.actualStats?.elevationGain || workout.stravaData?.elevationGain;
-
-  // Compute pace from distance/duration (min/km)
-  const paceValue = (() => {
-    const dist = workout.actualStats?.distance || workout.stravaData?.distance;
-    const dur = workout.actualStats?.duration || (workout.duration ? workout.duration * 60 : null);
-    if (dist && dur && dist > 0) {
-      const minPerKm = (dur / 60) / (dist / 1000);
-      if (minPerKm > 0 && minPerKm < 30) {
-        return `${Math.floor(minPerKm)}:${String(Math.round((minPerKm % 1) * 60)).padStart(2, '0')}`;
-      }
-    }
-    return null;
-  })();
-
-  const aiComment = workout.routeData?.aiComment;
-
-  const shareUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/workouts/${workout.id}`
-    : '';
-
-  const shareText = `🏋️ ${workout.name}${distance ? ` • ${distance} km` : ''}${duration ? ` • ${duration} min` : ''}${aiComment ? `\n${aiComment}` : ''}\n\nTracked on CoachTrack`;
 
   const generateImage = useCallback(async (): Promise<string | null> => {
     if (!cardRef.current) return null;
     setIsGenerating(true);
     try {
-      const dataUrl = await toPng(cardRef.current, {
-        quality: 0.95,
-        pixelRatio: 2,
-        backgroundColor: '#0a0a0a',
-      });
-      return dataUrl;
+      return await toPng(cardRef.current, { quality: 0.95, pixelRatio: 2, backgroundColor: '#0a0a0a' });
     } catch (err) {
       console.error('Failed to generate image:', err);
       toast.error('Failed to generate share image');
@@ -73,13 +60,13 @@ export function ShareWorkoutCard({ workout }: ShareWorkoutCardProps) {
     } finally {
       setIsGenerating(false);
     }
-  }, []);
+  }, [cardRef]);
 
   const handleDownload = async () => {
     const dataUrl = await generateImage();
     if (!dataUrl) return;
     const link = document.createElement('a');
-    link.download = `${workout.name.replace(/\s+/g, '-').toLowerCase()}-${format(new Date(), 'yyyy-MM-dd')}.png`;
+    link.download = `${fileName}-${format(new Date(), 'yyyy-MM-dd')}.png`;
     link.href = dataUrl;
     link.click();
     toast.success('Image downloaded!');
@@ -109,29 +96,119 @@ export function ShareWorkoutCard({ workout }: ShareWorkoutCardProps) {
     if (navigator.share && dataUrl) {
       try {
         const blob = await (await fetch(dataUrl)).blob();
-        const file = new File([blob], 'workout.png', { type: 'image/png' });
-        await navigator.share({ title: workout.name, text: shareText, files: [file] });
+        const file = new File([blob], `${fileName}.png`, { type: 'image/png' });
+        await navigator.share({ title, text: shareText, files: [file] });
       } catch {
-        // User cancelled or not supported, fall back to link share
-        try {
-          await navigator.share({ title: workout.name, text: shareText, url: shareUrl });
-        } catch { /* cancelled */ }
+        try { await navigator.share({ title, text: shareText, url: shareUrl }); } catch { /* cancelled */ }
       }
     } else if (navigator.share) {
-      try {
-        await navigator.share({ title: workout.name, text: shareText, url: shareUrl });
-      } catch { /* cancelled */ }
+      try { await navigator.share({ title, text: shareText, url: shareUrl }); } catch { /* cancelled */ }
     }
   };
 
+  return (
+    <div className="rounded-xl border bg-card p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-semibold flex items-center gap-2">
+          <Share2 className="h-4 w-4 text-emerald-500" />
+          {title}
+        </h3>
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {/* Download */}
+        <Button size="sm" onClick={handleDownload} disabled={isGenerating}
+          className="gap-2 bg-zinc-800 hover:bg-zinc-700 text-white border-0">
+          <Download className="h-4 w-4" />
+          {isGenerating ? 'Generating...' : 'Save Image'}
+        </Button>
+        {/* WhatsApp */}
+        <Button size="sm" onClick={handleWhatsApp}
+          className="gap-2 bg-[#25D366] hover:bg-[#20BD5A] text-white border-0">
+          <WhatsAppIcon className="h-4 w-4" />
+          WhatsApp
+        </Button>
+        {/* X / Twitter */}
+        <Button size="sm" onClick={handleTwitter}
+          className="gap-2 bg-black hover:bg-zinc-800 text-white border-0">
+          <XIcon className="h-4 w-4" />
+          Post
+        </Button>
+        {/* iMessage */}
+        <Button size="sm" onClick={handleIMessage}
+          className="gap-2 bg-[#34C759] hover:bg-[#2DB84E] text-white border-0">
+          <IMessageIcon className="h-4 w-4" />
+          iMessage
+        </Button>
+        {/* Copy link */}
+        <Button variant="outline" size="sm" onClick={handleCopyLink} className="gap-2">
+          {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+          {copied ? 'Copied!' : 'Copy Link'}
+        </Button>
+        {/* Native share */}
+        {typeof navigator !== 'undefined' && 'share' in navigator && (
+          <Button variant="outline" size="sm" onClick={handleNativeShare} className="gap-2">
+            <Send className="h-4 w-4" />
+            More...
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export { ShareButtons };
+
+// ══════════════════════════════════════════
+// Workout Share Card
+// ══════════════════════════════════════════
+
+import { Workout } from '@/types';
+
+interface ShareWorkoutCardProps {
+  workout: Workout;
+}
+
+export function ShareWorkoutCard({ workout }: ShareWorkoutCardProps) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [isOpen, setIsOpen] = useState(false);
+
+  const workoutDate = workout.date?.toDate
+    ? format(workout.date.toDate(), 'MMM d, yyyy')
+    : '';
+
+  const distance = workout.actualStats?.distance
+    ? (workout.actualStats.distance / 1000).toFixed(1)
+    : workout.stravaData?.distance
+      ? (workout.stravaData.distance / 1000).toFixed(1)
+      : null;
+
+  const duration = workout.duration
+    || (workout.actualStats?.duration ? Math.round(workout.actualStats.duration / 60) : null);
+
+  const elevation = workout.actualStats?.elevationGain || workout.stravaData?.elevationGain;
+
+  const paceValue = (() => {
+    const dist = workout.actualStats?.distance || workout.stravaData?.distance;
+    const dur = workout.actualStats?.duration || (workout.duration ? workout.duration * 60 : null);
+    if (dist && dur && dist > 0) {
+      const minPerKm = (dur / 60) / (dist / 1000);
+      if (minPerKm > 0 && minPerKm < 30) {
+        return `${Math.floor(minPerKm)}:${String(Math.round((minPerKm % 1) * 60)).padStart(2, '0')}`;
+      }
+    }
+    return null;
+  })();
+
+  const aiComment = workout.routeData?.aiComment;
+  const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/workouts/${workout.id}` : '';
+  const shareText = `🏋️ ${workout.name}${distance ? ` • ${distance} km` : ''}${duration ? ` • ${duration} min` : ''}${aiComment ? `\n${aiComment}` : ''}\n\nTracked on CoachTrack`;
+
   if (!isOpen) {
     return (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setIsOpen(true)}
-        className="gap-2"
-      >
+      <Button variant="outline" size="sm" onClick={() => setIsOpen(true)} className="gap-2">
         <Share2 className="h-4 w-4" />
         Share Workout
       </Button>
@@ -140,56 +217,19 @@ export function ShareWorkoutCard({ workout }: ShareWorkoutCardProps) {
 
   return (
     <div className="space-y-4">
-      {/* Share button row */}
-      <div className="rounded-xl border bg-card p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold flex items-center gap-2">
-            <Share2 className="h-4 w-4 text-emerald-500" />
-            Share This Workout
-          </h3>
-          <button onClick={() => setIsOpen(false)} className="text-muted-foreground hover:text-foreground">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={handleDownload} disabled={isGenerating} className="gap-2">
-            <Download className="h-4 w-4" />
-            {isGenerating ? 'Generating...' : 'Save Image'}
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleWhatsApp} className="gap-2 hover:bg-green-500/10 hover:border-green-500/30">
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-            WhatsApp
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleTwitter} className="gap-2 hover:bg-sky-500/10 hover:border-sky-500/30">
-            <Twitter className="h-4 w-4" />
-            Twitter
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleIMessage} className="gap-2 hover:bg-blue-500/10 hover:border-blue-500/30">
-            <MessageCircle className="h-4 w-4" />
-            iMessage
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleCopyLink} className="gap-2">
-            {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-            {copied ? 'Copied!' : 'Copy Link'}
-          </Button>
-          {typeof navigator !== 'undefined' && 'share' in navigator && (
-            <Button variant="outline" size="sm" onClick={handleNativeShare} className="gap-2">
-              <Send className="h-4 w-4" />
-              More...
-            </Button>
-          )}
-        </div>
-      </div>
+      <ShareButtons
+        title="Share This Workout"
+        shareText={shareText}
+        shareUrl={shareUrl}
+        fileName={workout.name.replace(/\s+/g, '-').toLowerCase()}
+        cardRef={cardRef}
+        onClose={() => setIsOpen(false)}
+      />
 
-      {/* Preview card — this is what gets exported as image */}
+      {/* Preview card — exported as image */}
       <div className="rounded-xl border overflow-hidden">
         <p className="text-xs text-muted-foreground px-4 py-2 bg-muted/30">Preview — this is what your friends will see</p>
-        <div
-          ref={cardRef}
-          className="p-6 bg-gradient-to-br from-gray-950 via-gray-900 to-emerald-950"
-          style={{ width: '100%', minHeight: 200 }}
-        >
-          {/* Brand */}
+        <div ref={cardRef} className="p-6 bg-gradient-to-br from-gray-950 via-gray-900 to-emerald-950" style={{ width: '100%', minHeight: 200 }}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center">
@@ -200,7 +240,6 @@ export function ShareWorkoutCard({ workout }: ShareWorkoutCardProps) {
             <span className="text-gray-500 text-xs">{workoutDate}</span>
           </div>
 
-          {/* Workout name */}
           <h2 className="text-2xl font-bold text-white mb-1">{workout.name}</h2>
           <div className="flex items-center gap-2 mb-5">
             <span className="text-sm text-emerald-400 font-medium capitalize">{workout.type}</span>
@@ -209,7 +248,6 @@ export function ShareWorkoutCard({ workout }: ShareWorkoutCardProps) {
             )}
           </div>
 
-          {/* Stats row */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
             {distance && (
               <div>
@@ -237,7 +275,6 @@ export function ShareWorkoutCard({ workout }: ShareWorkoutCardProps) {
             )}
           </div>
 
-          {/* AI Comment */}
           {aiComment && (
             <div className="bg-white/5 rounded-lg px-4 py-3 border border-white/10">
               <p className="text-white/90 text-sm">🤖 {aiComment}</p>

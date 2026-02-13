@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   BarChart3, Loader2, LayoutDashboard, Copy, TrendingUp, Zap,
-  Calendar, PieChart, Activity,
+  Calendar, PieChart, Activity, Share2,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { DuplicateRemover } from '@/components/reports/dashboard/DuplicateRemover';
 import { getUserWorkouts } from '@/lib/firebase/firestore';
 import { Workout } from '@/types';
@@ -18,6 +19,7 @@ import {
   CalendarViews,
   TypeDistribution,
 } from '@/components/reports/dashboard/ReportsSections';
+import { ShareButtons } from '@/components/workouts/ShareWorkoutCard';
 
 type Section = 'dashboard' | 'training' | 'insights' | 'calendar' | 'distribution' | 'duplicates';
 
@@ -36,6 +38,8 @@ export default function ReportsPage() {
   const [section, setSection] = useState<Section>('dashboard');
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loadingWorkouts, setLoadingWorkouts] = useState(true);
+  const [showShare, setShowShare] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   const fetchWorkouts = useCallback(async () => {
     if (!user) return;
@@ -96,23 +100,47 @@ export default function ReportsPage() {
     }
   };
 
+  const sectionLabel = NAV_ITEMS.find(n => n.id === section)?.label || 'Reports';
+  const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/reports` : '';
+  const shareText = `📊 Check out my ${sectionLabel} on CoachTrack!\n${workouts.length} workouts tracked`;
+
   return (
     <div className="w-full">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-          <BarChart3 className="h-8 w-8 text-primary" />
-          Reports & Analytics
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Track your training performance and insights
-        </p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            <BarChart3 className="h-8 w-8 text-primary" />
+            Reports & Analytics
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Track your training performance and insights
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => setShowShare(!showShare)} className="gap-2 shrink-0">
+          <Share2 className="h-4 w-4" />
+          Share Reports
+        </Button>
       </div>
+
+      {/* Share panel */}
+      {showShare && (
+        <div className="mb-6">
+          <ShareButtons
+            title="Share Your Reports"
+            shareText={shareText}
+            shareUrl={shareUrl}
+            fileName={`coachtrack-${sectionLabel.toLowerCase().replace(/\s+/g, '-')}`}
+            cardRef={contentRef}
+            onClose={() => setShowShare(false)}
+          />
+        </div>
+      )}
 
       {/* Layout: Sidebar + Content */}
       <div className="flex gap-6">
         {/* Left Sidebar */}
-        <nav className="hidden md:flex flex-col w-48 shrink-0 sticky top-24 self-start">
+        <nav className="hidden md:flex flex-col w-56 shrink-0 sticky top-24 self-start">
           <div className="space-y-1">
             {NAV_ITEMS.map(item => (
               <button
@@ -152,7 +180,7 @@ export default function ReportsPage() {
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0" ref={contentRef}>
           {renderContent()}
         </div>
       </div>
