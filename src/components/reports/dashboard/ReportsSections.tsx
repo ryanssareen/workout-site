@@ -9,16 +9,15 @@ import {
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, PieChart, Pie, Cell, RadarChart, Radar, PolarGrid,
-  PolarAngleAxis, PolarRadiusAxis, Legend,
+  ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import {
   TimeRange, filterByTimeRange, computeSummary, computeTimeSeries,
-  computeTypeDistribution, computeWeeklyRhythm, computeCalendarData,
+  computeTypeDistribution, computeWeeklyRhythm,
   computeInsights, computePRTimeline,
 } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
-import { format, startOfMonth, getDay, getDaysInMonth, subMonths, eachMonthOfInterval } from 'date-fns';
+import { format, subWeeks, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 
 // ── Shared: Time filter pills ──
 const TIME_RANGES: TimeRange[] = ['ALL', '1Y', '6M', '3M', '1M', 'MO', 'WK'];
@@ -468,62 +467,32 @@ export function ExerciseInsights({ workouts }: SectionProps) {
 }
 
 // ════════════════════════════════════════════
-// 4. CALENDAR VIEWS — heatmap + weekly rhythm
+// 4. CALENDAR VIEWS — weekly activity + day breakdown
 // ════════════════════════════════════════════
-function MonthGrid({ month, data }: { month: Date; data: Map<string, number> }) {
-  const start = startOfMonth(month);
-  const firstDayOfWeek = getDay(start);
-  const daysInMonth = getDaysInMonth(month);
-  const cells: (number | null)[] = [];
-  for (let i = 0; i < firstDayOfWeek; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-
-  return (
-    <div className="text-center">
-      <p className="text-xs font-medium mb-1.5 text-muted-foreground">{format(month, 'MMM yyyy')}</p>
-      <div className="grid grid-cols-7 gap-[3px]">
-        {['S','M','T','W','T','F','S'].map((d, i) => (
-          <div key={`h${i}`} className="w-4 h-3 text-[8px] text-muted-foreground/60 font-medium">{d}</div>
-        ))}
-        {cells.map((day, i) => {
-          if (day === null) return <div key={`e${i}`} className="w-4 h-4" />;
-          const key = format(new Date(month.getFullYear(), month.getMonth(), day), 'yyyy-MM-dd');
-          const count = data.get(key) || 0;
-          return (
-            <div
-              key={key}
-              className={cn(
-                'w-4 h-4 rounded-sm transition-colors',
-                count === 0 && 'bg-muted/40',
-                count === 1 && 'bg-emerald-500/40',
-                count === 2 && 'bg-emerald-500/70',
-                count >= 3 && 'bg-emerald-500',
-              )}
-              title={`${format(new Date(month.getFullYear(), month.getMonth(), day), 'MMM d')}: ${count} workout${count !== 1 ? 's' : ''}`}
-            />
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 export function CalendarViews({ workouts }: SectionProps) {
   const weeklyRhythm = useMemo(() => computeWeeklyRhythm(workouts), [workouts]);
 
-  const calendarData = useMemo(() => {
-    const data = computeCalendarData(workouts, 12);
-    const map = new Map<string, number>();
-    for (const d of data) map.set(format(d.date, 'yyyy-MM-dd'), d.count);
-    return map;
+  // Workouts per week for last 16 weeks
+  const weeklyActivity = useMemo(() => {
+    const now = new Date();
+    const weeks: { label: string; workouts: number }[] = [];
+    for (let i = 15; i >= 0; i--) {
+      const weekStart = startOfWeek(subWeeks(now, i));
+      const weekEnd = endOfWeek(subWeeks(now, i));
+      const count = workouts.filter(w => {
+        const d = w.date?.toDate ? w.date.toDate() : new Date(w.date as any);
+        return isWithinInterval(d, { start: weekStart, end: weekEnd });
+      }).length;
+      weeks.push({ label: format(weekStart, 'MMM d'), workouts: count });
+    }
+    return weeks;
   }, [workouts]);
 
-  const calendarMonths = useMemo(() => {
-    const now = new Date();
-    return eachMonthOfInterval({ start: subMonths(now, 11), end: now });
-  }, []);
-
   if (workouts.length === 0) return <EmptyState message="Complete workouts to see calendar data." />;
+
+  // Colors for day-of-week bars
+  const dayColors = ['#f97316', '#10b981', '#10b981', '#10b981', '#10b981', '#10b981', '#3b82f6'];
 
   return (
     <div className="space-y-6">
@@ -532,42 +501,39 @@ export function CalendarViews({ workouts }: SectionProps) {
         <p className="text-sm text-muted-foreground">Consistency and rhythm patterns</p>
       </div>
 
-      {/* Heatmap */}
-      <div className="rounded-xl border bg-card p-6">
-        <div className="mb-5">
-          <p className="text-base font-semibold">📅 Workout Calendar</p>
-          <p className="text-xs text-muted-foreground">Last 12 months of training consistency</p>
-        </div>
-        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-5">
-          {calendarMonths.map(m => (
-            <MonthGrid key={format(m, 'yyyy-MM')} month={m} data={calendarData} />
-          ))}
-        </div>
-        <div className="flex items-center gap-2 mt-5 text-xs text-muted-foreground">
-          <span>Less</span>
-          <div className="flex gap-1">
-            <div className="w-4 h-4 rounded-sm bg-muted/40" />
-            <div className="w-4 h-4 rounded-sm bg-emerald-500/40" />
-            <div className="w-4 h-4 rounded-sm bg-emerald-500/70" />
-            <div className="w-4 h-4 rounded-sm bg-emerald-500" />
-          </div>
-          <span>More</span>
-        </div>
-      </div>
-
-      {/* Weekly Rhythm */}
+      {/* Weekly Activity — last 16 weeks */}
       <div className="rounded-xl border bg-card p-6">
         <div className="mb-4">
-          <p className="text-base font-semibold">🔥 Weekly Rhythm</p>
-          <p className="text-xs text-muted-foreground">Training frequency by day of the week</p>
+          <p className="text-base font-semibold">📅 Weekly Activity</p>
+          <p className="text-xs text-muted-foreground">Workouts per week over the last 16 weeks</p>
         </div>
-        <ResponsiveContainer width="100%" height={350}>
-          <RadarChart data={weeklyRhythm} outerRadius="70%">
-            <PolarGrid stroke="hsl(var(--border))" />
-            <PolarAngleAxis dataKey="day" tick={{ fontSize: 13 }} />
-            <PolarRadiusAxis tick={{ fontSize: 10 }} />
-            <Radar dataKey="count" name="Workouts" stroke="#10b981" fill="#10b981" fillOpacity={0.2} strokeWidth={2} />
-          </RadarChart>
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart data={weeklyActivity}>
+            <XAxis dataKey="label" tick={{ fontSize: 10 }} interval={1} angle={-45} textAnchor="end" height={50} />
+            <YAxis tick={{ fontSize: 10 }} width={25} allowDecimals={false} />
+            <Tooltip content={<ChartTooltip />} />
+            <Bar dataKey="workouts" name="Workouts" fill="#10b981" radius={[4, 4, 0, 0]} fillOpacity={0.8} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Training Days — which days you train */}
+      <div className="rounded-xl border bg-card p-6">
+        <div className="mb-4">
+          <p className="text-base font-semibold">🔥 Training Days</p>
+          <p className="text-xs text-muted-foreground">Which days of the week you train most</p>
+        </div>
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart data={weeklyRhythm} layout="vertical">
+            <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} />
+            <YAxis dataKey="day" type="category" tick={{ fontSize: 13, fontWeight: 500 }} width={40} />
+            <Tooltip content={<ChartTooltip />} />
+            <Bar dataKey="count" name="Workouts" radius={[0, 6, 6, 0]} fillOpacity={0.85}>
+              {weeklyRhythm.map((_, i) => (
+                <Cell key={i} fill={dayColors[i]} />
+              ))}
+            </Bar>
+          </BarChart>
         </ResponsiveContainer>
       </div>
     </div>

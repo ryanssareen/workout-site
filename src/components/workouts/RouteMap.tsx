@@ -29,12 +29,15 @@ interface RouteMapProps {
   routeData: RouteData;
   className?: string;
   height?: number;
+  workoutId?: string; // If provided, auto-generates AI comment for existing workouts
 }
 
-export function RouteMap({ routeData, className = '', height = 300 }: RouteMapProps) {
+export function RouteMap({ routeData, className = '', height = 300, workoutId }: RouteMapProps) {
   const [positions, setPositions] = useState<[number, number][]>([]);
   const [isClient, setIsClient] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aiComment, setAiComment] = useState<string | null>(routeData.aiComment || null);
+  const [loadingComment, setLoadingComment] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -52,6 +55,24 @@ export function RouteMap({ routeData, className = '', height = 300 }: RouteMapPr
       }
     }
   }, [routeData.polyline]);
+
+  // Auto-generate AI comment for existing workouts that don't have one
+  useEffect(() => {
+    if (workoutId && !aiComment && !loadingComment && isClient) {
+      setLoadingComment(true);
+      fetch('/api/ai/route-comment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workoutId }),
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.comment) setAiComment(data.comment);
+        })
+        .catch(() => {})
+        .finally(() => setLoadingComment(false));
+    }
+  }, [workoutId, aiComment, isClient, loadingComment]);
 
   if (!isClient) {
     return (
@@ -117,10 +138,14 @@ export function RouteMap({ routeData, className = '', height = 300 }: RouteMapPr
           <FitBounds positions={positions} />
         </MapContainer>
       </div>
-      {routeData.aiComment && (
+      {(aiComment || loadingComment) && (
         <div className="flex items-start gap-2 px-1">
           <span className="text-base leading-none mt-0.5">🤖</span>
-          <p className="text-sm text-muted-foreground italic">{routeData.aiComment}</p>
+          {loadingComment ? (
+            <p className="text-sm text-muted-foreground italic animate-pulse">Thinking of something witty...</p>
+          ) : (
+            <p className="text-sm text-muted-foreground italic">{aiComment}</p>
+          )}
         </div>
       )}
     </div>
