@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { CommentSection } from '@/components/workouts/comments';
+import { ShareWorkoutCard } from '@/components/workouts/ShareWorkoutCard';
 import dynamic from 'next/dynamic';
 
 // Dynamic import for map (no SSR)
@@ -389,6 +390,9 @@ export default function WorkoutDetailPage() {
               <RouteMap routeData={workout.routeData} height={450} workoutId={workout.id} />
             </div>
           )}
+
+          {/* Share */}
+          <ShareWorkoutCard workout={workout} />
 
           <div>
             <h3 className="font-semibold mb-2">Description</h3>

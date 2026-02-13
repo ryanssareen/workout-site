@@ -114,12 +114,12 @@ export function RouteMap({ routeData, className = '', height = 300, workoutId }:
           {/* Route glow (wider, translucent behind) */}
           <Polyline
             positions={positions}
-            pathOptions={{ color: '#10b981', weight: 7, opacity: 0.2, lineCap: 'round', lineJoin: 'round' }}
+            pathOptions={{ color: '#10b981', weight: 12, opacity: 0.15, lineCap: 'round', lineJoin: 'round' }}
           />
           {/* Main route line */}
           <Polyline
             positions={positions}
-            pathOptions={{ color: '#10b981', weight: 3.5, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }}
+            pathOptions={{ color: '#10b981', weight: 5, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }}
           />
 
           {/* Start marker — green circle */}
@@ -139,13 +139,15 @@ export function RouteMap({ routeData, className = '', height = 300, workoutId }:
         </MapContainer>
       </div>
       {(aiComment || loadingComment) && (
-        <div className="flex items-start gap-2 px-1">
-          <span className="text-base leading-none mt-0.5">🤖</span>
-          {loadingComment ? (
-            <p className="text-sm text-muted-foreground italic animate-pulse">Thinking of something witty...</p>
-          ) : (
-            <p className="text-sm text-muted-foreground italic">{aiComment}</p>
-          )}
+        <div className="rounded-lg bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 px-4 py-3">
+          <div className="flex items-start gap-3">
+            <span className="text-xl leading-none mt-0.5">🤖</span>
+            {loadingComment ? (
+              <p className="text-sm text-muted-foreground italic animate-pulse">Thinking of something witty...</p>
+            ) : (
+              <p className="text-base font-medium text-foreground">{aiComment}</p>
+            )}
+          </div>
         </div>
       )}
     </div>
