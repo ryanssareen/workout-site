@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -12,6 +12,7 @@ import { DuplicateRemover } from '@/components/reports/dashboard/DuplicateRemove
 import { getUserWorkouts } from '@/lib/firebase/firestore';
 import { Workout } from '@/types';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 import {
   DashboardOverview,
   TrainingAnalysis,
@@ -32,6 +33,19 @@ const NAV_ITEMS: { id: Section; label: string; icon: React.ReactNode }[] = [
   { id: 'duplicates', label: 'Duplicates', icon: <Copy className="h-4 w-4" /> },
 ];
 
+const getTimeGreeting = (date: Date) => {
+  const hour = date.getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  if (hour < 22) return 'Good evening';
+  return 'Good night';
+};
+
+const getTimeZoneAbbreviation = (date: Date) =>
+  new Intl.DateTimeFormat([], { timeZoneName: 'short' })
+    .formatToParts(date)
+    .find((part) => part.type === 'timeZoneName')?.value || '';
+
 export default function ReportsPage() {
   const user = useAuthStore((state) => state.user);
   const loading = useAuthStore((state) => state.loading);
@@ -41,6 +55,19 @@ export default function ReportsPage() {
   const [showShare, setShowShare] = useState(false);
   const [ready, setReady] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  // Time-aware greeting stamped once per page render to keep it consistent
+  const generatedAt = useMemo(() => new Date(), []);
+  const firstName = useMemo(
+    () => (user?.displayName ? user.displayName.split(' ')[0] || user.displayName : 'Athlete'),
+    [user?.displayName],
+  );
+  const greeting = useMemo(() => getTimeGreeting(generatedAt), [generatedAt]);
+  const timeZoneAbbr = useMemo(() => getTimeZoneAbbreviation(generatedAt), [generatedAt]);
+  const timeLabel = useMemo(
+    () => `${format(generatedAt, "EEEE, MMMM d, yyyy 'at' h:mm a")}${timeZoneAbbr ? ` ${timeZoneAbbr}` : ''}`,
+    [generatedAt, timeZoneAbbr],
+  );
 
   const fetchWorkouts = useCallback(async () => {
     if (!user) return;
@@ -118,6 +145,10 @@ export default function ReportsPage() {
           <p className="text-muted-foreground mt-1">
             Track your training performance and insights
           </p>
+          <div className="mt-2 text-sm text-muted-foreground">
+            <p className="font-medium text-foreground">Hi {firstName}, {greeting}.</p>
+            <p>{timeLabel}</p>
+          </div>
         </div>
         <Button variant="outline" size="sm" onClick={() => setShowShare(!showShare)} className="gap-2 shrink-0">
           <Share2 className="h-4 w-4" />
