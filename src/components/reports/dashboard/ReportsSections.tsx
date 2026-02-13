@@ -480,8 +480,11 @@ function MonthGrid({ month, data }: { month: Date; data: Map<string, number> }) 
 
   return (
     <div className="text-center">
-      <p className="text-xs font-medium mb-2 text-muted-foreground">{format(month, 'MMM yyyy')}</p>
+      <p className="text-xs font-medium mb-1.5 text-muted-foreground">{format(month, 'MMM yyyy')}</p>
       <div className="grid grid-cols-7 gap-[3px]">
+        {['S','M','T','W','T','F','S'].map((d, i) => (
+          <div key={`h${i}`} className="w-4 h-3 text-[8px] text-muted-foreground/60 font-medium">{d}</div>
+        ))}
         {cells.map((day, i) => {
           if (day === null) return <div key={`e${i}`} className="w-4 h-4" />;
           const key = format(new Date(month.getFullYear(), month.getMonth(), day), 'yyyy-MM-dd');
@@ -534,14 +537,6 @@ export function CalendarViews({ workouts }: SectionProps) {
         <div className="mb-5">
           <p className="text-base font-semibold">📅 Workout Calendar</p>
           <p className="text-xs text-muted-foreground">Last 12 months of training consistency</p>
-        </div>
-        {/* Day labels */}
-        <div className="mb-2 ml-1">
-          <div className="grid grid-cols-7 gap-[3px] max-w-[124px]">
-            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-              <div key={i} className="w-4 h-4 text-center text-[9px] text-muted-foreground font-medium">{d}</div>
-            ))}
-          </div>
         </div>
         <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-5">
           {calendarMonths.map(m => (
