@@ -12,7 +12,6 @@ import { DuplicateRemover } from '@/components/reports/dashboard/DuplicateRemove
 import { getUserWorkouts } from '@/lib/firebase/firestore';
 import { Workout } from '@/types';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
 import {
   DashboardOverview,
   TrainingAnalysis,
@@ -41,11 +40,6 @@ const getTimeGreeting = (date: Date) => {
   return 'Good night';
 };
 
-const getTimeZoneAbbreviation = (date: Date) =>
-  new Intl.DateTimeFormat([], { timeZoneName: 'short' })
-    .formatToParts(date)
-    .find((part) => part.type === 'timeZoneName')?.value || '';
-
 export default function ReportsPage() {
   const user = useAuthStore((state) => state.user);
   const loading = useAuthStore((state) => state.loading);
@@ -63,11 +57,6 @@ export default function ReportsPage() {
     [user?.displayName],
   );
   const greeting = useMemo(() => getTimeGreeting(generatedAt), [generatedAt]);
-  const timeZoneAbbr = useMemo(() => getTimeZoneAbbreviation(generatedAt), [generatedAt]);
-  const timeLabel = useMemo(
-    () => `${format(generatedAt, "EEEE, MMMM d, yyyy 'at' h:mm a")}${timeZoneAbbr ? ` ${timeZoneAbbr}` : ''}`,
-    [generatedAt, timeZoneAbbr],
-  );
 
   const fetchWorkouts = useCallback(async () => {
     if (!user) return;
@@ -147,7 +136,6 @@ export default function ReportsPage() {
           </p>
           <div className="mt-2 text-sm text-muted-foreground">
             <p className="font-medium text-foreground">Hi {firstName}, {greeting}.</p>
-            <p>{timeLabel}</p>
           </div>
         </div>
         <Button variant="outline" size="sm" onClick={() => setShowShare(!showShare)} className="gap-2 shrink-0">
