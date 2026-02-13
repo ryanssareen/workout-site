@@ -43,6 +43,7 @@ export interface RouteData {
   polyline?: string; // Encoded polyline from Strava
   startLatLng?: [number, number];
   endLatLng?: [number, number];
+  aiComment?: string; // Fun AI-generated location comment
 }
 
 export type WorkoutRating = 'too_easy' | 'just_right' | 'too_hard';

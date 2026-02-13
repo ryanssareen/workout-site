@@ -50,10 +50,10 @@ function getDayBounds(date: Date): { start: Date; end: Date } {
 }
 
 // AI-powered workout tagging using Groq
-async function generateWorkoutTags(activity: any): Promise<WorkoutTag[]> {
+async function generateWorkoutTags(activity: any): Promise<{ tags: WorkoutTag[]; aiComment?: string }> {
   if (!process.env.GROQ_API_KEY) {
     console.log('⚠️ GROQ_API_KEY not set, skipping AI tagging');
-    return [];
+    return { tags: [] };
   }
 
   try {
@@ -68,7 +68,18 @@ async function generateWorkoutTags(activity: any): Promise<WorkoutTag[]> {
       paceInfo = `Pace: ${paceMin}:${paceSec.toString().padStart(2, '0')}/km`;
     }
 
-    const prompt = `Analyze this workout and select 1-3 appropriate tags.
+    // Location context for fun comments
+    const locationCity = activity.location_city || '';
+    const locationState = activity.location_state || '';
+    const locationCountry = activity.location_country || '';
+    const hasLocation = locationCity || locationState || locationCountry;
+    const locationStr = [locationCity, locationState, locationCountry].filter(Boolean).join(', ');
+    const hasRoute = !!activity.map?.summary_polyline;
+    const terrainHint = activity.type === 'Run' && activity.name?.toLowerCase().includes('trail') ? 'trail' :
+                        activity.type === 'Run' && activity.name?.toLowerCase().includes('beach') ? 'beach' :
+                        activity.type === 'Ride' && activity.name?.toLowerCase().includes('mountain') ? 'mountain' : '';
+
+    const prompt = `Analyze this workout and select 1-3 appropriate tags.${hasLocation || hasRoute ? ' Also write a SHORT fun comment (1 sentence, max 15 words) about the route/location — be playful, like a hype coach reacting to where they trained. Examples: "Sandy beach vibes, perfect spot for a morning run! 🏖️", "Hill climbing beast mode in the mountains! 🏔️", "City streets at dawn — nothing beats that energy! 🌆"' : ''}
 
 Activity: ${activity.name}
 Type: ${activity.type}
@@ -78,6 +89,9 @@ ${paceInfo}
 Avg Heart Rate: ${activity.average_heartrate ? activity.average_heartrate + ' bpm' : 'N/A'}
 Max Heart Rate: ${activity.max_heartrate ? activity.max_heartrate + ' bpm' : 'N/A'}
 Elevation Gain: ${activity.total_elevation_gain ? activity.total_elevation_gain + ' m' : 'N/A'}
+${hasLocation ? `Location: ${locationStr}` : ''}
+${terrainHint ? `Terrain: ${terrainHint}` : ''}
+${hasRoute ? 'Has GPS route: Yes' : ''}
 
 Available tags: ${WORKOUT_TAGS.join(', ')}
 
@@ -89,15 +103,15 @@ Rules:
 - Use "recovery" for very easy efforts or active recovery
 - Use "race" only if the name suggests a race/competition
 
-Return ONLY a JSON object: {"tags": ["tag1", "tag2"]}`;
+Return ONLY a JSON object: {"tags": ["tag1", "tag2"]${hasLocation || hasRoute ? ', "comment": "your fun comment here"' : ''}}`;
 
     const completion = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages: [
-        { role: 'system', content: 'You are a fitness coach analyzing workout data. Return only valid JSON.' },
+        { role: 'system', content: 'You are a hype fitness coach analyzing workout data. Return only valid JSON. When writing comments, be fun and brief — react to the location/route like a friend would.' },
         { role: 'user', content: prompt }
       ],
-      temperature: 0.3,
+      temperature: 0.5,
       max_tokens: 100,
       response_format: { type: 'json_object' },
     });
@@ -110,11 +124,13 @@ Return ONLY a JSON object: {"tags": ["tag1", "tag2"]}`;
       .filter((tag: string) => WORKOUT_TAGS.includes(tag as WorkoutTag))
       .slice(0, 3) as WorkoutTag[];
 
-    console.log(`🏷️ AI generated tags for "${activity.name}": ${validTags.join(', ')}`);
-    return validTags;
+    const aiComment = parsed.comment && typeof parsed.comment === 'string' ? parsed.comment.slice(0, 100) : undefined;
+
+    console.log(`🏷️ AI generated tags for "${activity.name}": ${validTags.join(', ')}${aiComment ? ` | Comment: ${aiComment}` : ''}`);
+    return { tags: validTags, aiComment };
   } catch (error) {
     console.error('❌ AI tagging error:', error);
-    return [];
+    return { tags: [] };
   }
 }
 
@@ -575,6 +591,9 @@ export async function GET(request: NextRequest) {
           // Create new workout
           console.log(`  ➕ Creating: ${activity.name}`);
 
+          // Generate AI tags and fun route comment
+          const { tags: aiTags, aiComment } = await generateWorkoutTags(activity);
+
           const newWorkoutData: any = {
             name: activity.name,
             type: workoutType,
@@ -593,8 +612,14 @@ export async function GET(request: NextRequest) {
             actualStats,
           };
 
-          // Add route data if available
+          // Add AI-generated tags
+          if (aiTags.length > 0) {
+            newWorkoutData.tags = aiTags;
+          }
+
+          // Add route data if available (with AI comment)
           if (Object.keys(routeData).length > 0) {
+            if (aiComment) routeData.aiComment = aiComment;
             newWorkoutData.routeData = routeData;
           }
 

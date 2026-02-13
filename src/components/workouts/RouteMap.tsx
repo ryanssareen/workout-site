@@ -22,6 +22,7 @@ interface RouteData {
   polyline?: string;
   startLatLng?: [number, number];
   endLatLng?: [number, number];
+  aiComment?: string;
 }
 
 interface RouteMapProps {
@@ -76,44 +77,52 @@ export function RouteMap({ routeData, className = '', height = 300 }: RouteMapPr
   const endPos = positions[positions.length - 1];
 
   return (
-    <div className={`rounded-xl overflow-hidden border shadow-sm ${className}`} style={{ height }}>
-      <MapContainer
-        center={center}
-        zoom={13}
-        style={{ height: '100%', width: '100%' }}
-        scrollWheelZoom={false}
-        zoomControl={false}
-        attributionControl={false}
-      >
-        {/* Dark map tiles — CartoDB Positron for light mode compat, looks clean */}
-        <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+    <div className="space-y-2">
+      <div className={`rounded-xl overflow-hidden border shadow-sm ${className}`} style={{ height }}>
+        <MapContainer
+          center={center}
+          zoom={13}
+          style={{ height: '100%', width: '100%' }}
+          scrollWheelZoom={false}
+          zoomControl={false}
+          attributionControl={false}
+        >
+          {/* Dark map tiles — CartoDB Positron for light mode compat, looks clean */}
+          <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
 
-        {/* Route glow (wider, translucent behind) */}
-        <Polyline
-          positions={positions}
-          pathOptions={{ color: '#10b981', weight: 7, opacity: 0.2, lineCap: 'round', lineJoin: 'round' }}
-        />
-        {/* Main route line */}
-        <Polyline
-          positions={positions}
-          pathOptions={{ color: '#10b981', weight: 3.5, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }}
-        />
-
-        {/* Start marker — green circle */}
-        {startPos && (
-          <CircleMarker center={startPos} radius={6}
-            pathOptions={{ color: '#fff', weight: 2.5, fillColor: '#22c55e', fillOpacity: 1 }}
+          {/* Route glow (wider, translucent behind) */}
+          <Polyline
+            positions={positions}
+            pathOptions={{ color: '#10b981', weight: 7, opacity: 0.2, lineCap: 'round', lineJoin: 'round' }}
           />
-        )}
-        {/* End marker — red circle */}
-        {endPos && startPos !== endPos && (
-          <CircleMarker center={endPos} radius={6}
-            pathOptions={{ color: '#fff', weight: 2.5, fillColor: '#ef4444', fillOpacity: 1 }}
+          {/* Main route line */}
+          <Polyline
+            positions={positions}
+            pathOptions={{ color: '#10b981', weight: 3.5, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }}
           />
-        )}
 
-        <FitBounds positions={positions} />
-      </MapContainer>
+          {/* Start marker — green circle */}
+          {startPos && (
+            <CircleMarker center={startPos} radius={6}
+              pathOptions={{ color: '#fff', weight: 2.5, fillColor: '#22c55e', fillOpacity: 1 }}
+            />
+          )}
+          {/* End marker — red circle */}
+          {endPos && startPos !== endPos && (
+            <CircleMarker center={endPos} radius={6}
+              pathOptions={{ color: '#fff', weight: 2.5, fillColor: '#ef4444', fillOpacity: 1 }}
+            />
+          )}
+
+          <FitBounds positions={positions} />
+        </MapContainer>
+      </div>
+      {routeData.aiComment && (
+        <div className="flex items-start gap-2 px-1">
+          <span className="text-base leading-none mt-0.5">🤖</span>
+          <p className="text-sm text-muted-foreground italic">{routeData.aiComment}</p>
+        </div>
+      )}
     </div>
   );
 }

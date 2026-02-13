@@ -51,11 +51,11 @@ function ChartPanel({ emoji, title, subtitle, defaultRange = '6M', children }: {
 }) {
   const [range, setRange] = useState<TimeRange>(defaultRange);
   return (
-    <div className="rounded-xl border bg-card p-4">
-      <div className="flex items-center justify-between mb-3">
+    <div className="rounded-xl border bg-card p-5">
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <p className="text-sm font-semibold">{emoji} {title}</p>
-          <p className="text-[11px] text-muted-foreground">{subtitle}</p>
+          <p className="text-base font-semibold">{emoji} {title}</p>
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
         </div>
         <ChartTimeFilter value={range} onChange={setRange} />
       </div>
@@ -84,13 +84,13 @@ function StatCard({ icon, label, value, sub, color }: {
   icon: React.ReactNode; label: string; value: string; sub?: string; color?: string;
 }) {
   return (
-    <div className={cn('rounded-xl border bg-card p-4 text-center')}>
-      <div className={cn('mx-auto w-10 h-10 rounded-xl flex items-center justify-center mb-2', color || 'bg-primary/10')}>
+    <div className={cn('rounded-xl border bg-card p-5 text-center')}>
+      <div className={cn('mx-auto w-12 h-12 rounded-xl flex items-center justify-center mb-3', color || 'bg-primary/10')}>
         {icon}
       </div>
-      <p className="text-2xl font-bold leading-none">{value}</p>
-      <p className="text-xs text-muted-foreground mt-1">{label}</p>
-      {sub && <p className="text-[11px] text-muted-foreground">{sub}</p>}
+      <p className="text-3xl font-bold leading-none">{value}</p>
+      <p className="text-sm text-muted-foreground mt-1.5">{label}</p>
+      {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
     </div>
   );
 }
@@ -100,13 +100,13 @@ function InsightTile({ icon, label, value, sub }: {
   icon: React.ReactNode; label: string; value: string; sub?: string;
 }) {
   return (
-    <div className="bg-muted/30 rounded-xl p-4">
-      <div className="flex items-center gap-2 mb-2">
+    <div className="bg-muted/30 rounded-xl p-5">
+      <div className="flex items-center gap-2 mb-3">
         {icon}
         <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">{label}</p>
       </div>
-      <p className="text-xl font-bold">{value}</p>
-      {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+      <p className="text-2xl font-bold">{value}</p>
+      {sub && <p className="text-sm text-muted-foreground mt-1">{sub}</p>}
     </div>
   );
 }
@@ -135,9 +135,9 @@ export function DashboardOverview({ workouts }: SectionProps) {
   if (workouts.length === 0) return <EmptyState message="Complete some workouts to see your dashboard." />;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* Top stat cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard
           icon={<Trophy className="h-5 w-5 text-amber-500" />}
           label="Total Workouts" value={String(summary.totalWorkouts)}
@@ -173,12 +173,12 @@ export function DashboardOverview({ workouts }: SectionProps) {
       </div>
 
       {/* Quick snapshot charts — hours + workouts */}
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid md:grid-cols-2 gap-5">
         <ChartPanel emoji="⏱️" title="Hours Trained" subtitle="Duration over time">
           {(range) => {
             const data = computeTimeSeries(filterByTimeRange(workouts, range), range);
             return (
-              <ResponsiveContainer width="100%" height={200}>
+              <ResponsiveContainer width="100%" height={260}>
                 <AreaChart data={data}>
                   <defs>
                     <linearGradient id="gH" x1="0" y1="0" x2="0" y2="1">
@@ -199,7 +199,7 @@ export function DashboardOverview({ workouts }: SectionProps) {
           {(range) => {
             const data = computeTimeSeries(filterByTimeRange(workouts, range), range);
             return (
-              <ResponsiveContainer width="100%" height={200}>
+              <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={data}>
                   <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                   <YAxis tick={{ fontSize: 10 }} width={25} allowDecimals={false} />
@@ -228,17 +228,17 @@ export function TrainingAnalysis({ workouts }: SectionProps) {
   if (workouts.length === 0) return <EmptyState message="Complete workouts to see training analysis." />;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div>
         <h2 className="text-xl font-bold">Training Analysis</h2>
         <p className="text-sm text-muted-foreground">Detailed breakdown of your training metrics over time</p>
       </div>
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid md:grid-cols-2 gap-5">
         <ChartPanel emoji="⏱️" title="Hours Trained" subtitle="Training duration over time">
           {(range) => {
             const data = computeTimeSeries(filterByTimeRange(workouts, range), range);
             return (
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer width="100%" height={280}>
                 <AreaChart data={data}>
                   <defs>
                     <linearGradient id="gHr" x1="0" y1="0" x2="0" y2="1">
@@ -261,7 +261,7 @@ export function TrainingAnalysis({ workouts }: SectionProps) {
             {(range) => {
               const data = computeTimeSeries(filterByTimeRange(workouts, range), range);
               return (
-                <ResponsiveContainer width="100%" height={220}>
+                <ResponsiveContainer width="100%" height={280}>
                   <AreaChart data={data}>
                     <defs>
                       <linearGradient id="gV" x1="0" y1="0" x2="0" y2="1">
@@ -285,7 +285,7 @@ export function TrainingAnalysis({ workouts }: SectionProps) {
             {(range) => {
               const data = computeTimeSeries(filterByTimeRange(workouts, range), range);
               return (
-                <ResponsiveContainer width="100%" height={220}>
+                <ResponsiveContainer width="100%" height={280}>
                   <AreaChart data={data}>
                     <defs>
                       <linearGradient id="gD" x1="0" y1="0" x2="0" y2="1">
@@ -308,7 +308,7 @@ export function TrainingAnalysis({ workouts }: SectionProps) {
           {(range) => {
             const data = computeTimeSeries(filterByTimeRange(workouts, range), range);
             return (
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={data}>
                   <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                   <YAxis tick={{ fontSize: 10 }} width={25} allowDecimals={false} />
@@ -325,7 +325,7 @@ export function TrainingAnalysis({ workouts }: SectionProps) {
             {(range) => {
               const data = computeTimeSeries(filterByTimeRange(workouts, range), range);
               return (
-                <ResponsiveContainer width="100%" height={220}>
+                <ResponsiveContainer width="100%" height={280}>
                   <BarChart data={data}>
                     <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                     <YAxis tick={{ fontSize: 10 }} width={35} />
@@ -345,7 +345,7 @@ export function TrainingAnalysis({ workouts }: SectionProps) {
             {(range) => {
               const data = computeTimeSeries(filterByTimeRange(workouts, range), range);
               return (
-                <ResponsiveContainer width="100%" height={220}>
+                <ResponsiveContainer width="100%" height={280}>
                   <BarChart data={data}>
                     <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                     <YAxis tick={{ fontSize: 10 }} width={40} />
@@ -363,7 +363,7 @@ export function TrainingAnalysis({ workouts }: SectionProps) {
             {(range) => {
               const data = computePRTimeline(workouts, range);
               return (
-                <ResponsiveContainer width="100%" height={220}>
+                <ResponsiveContainer width="100%" height={280}>
                   <BarChart data={data}>
                     <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                     <YAxis tick={{ fontSize: 10 }} width={25} allowDecimals={false} />
@@ -480,17 +480,17 @@ function MonthGrid({ month, data }: { month: Date; data: Map<string, number> }) 
 
   return (
     <div className="text-center">
-      <p className="text-xs font-medium mb-1.5 text-muted-foreground">{format(month, 'MMM')}</p>
+      <p className="text-xs font-medium mb-2 text-muted-foreground">{format(month, 'MMM yyyy')}</p>
       <div className="grid grid-cols-7 gap-[3px]">
         {cells.map((day, i) => {
-          if (day === null) return <div key={`e${i}`} className="w-3.5 h-3.5" />;
+          if (day === null) return <div key={`e${i}`} className="w-4 h-4" />;
           const key = format(new Date(month.getFullYear(), month.getMonth(), day), 'yyyy-MM-dd');
           const count = data.get(key) || 0;
           return (
             <div
               key={key}
               className={cn(
-                'w-3.5 h-3.5 rounded-sm transition-colors',
+                'w-4 h-4 rounded-sm transition-colors',
                 count === 0 && 'bg-muted/40',
                 count === 1 && 'bg-emerald-500/40',
                 count === 2 && 'bg-emerald-500/70',
@@ -530,38 +530,46 @@ export function CalendarViews({ workouts }: SectionProps) {
       </div>
 
       {/* Heatmap */}
-      <div className="rounded-xl border bg-card p-5">
-        <div className="mb-4">
-          <p className="text-sm font-semibold">📅 Workout Calendar</p>
-          <p className="text-[11px] text-muted-foreground">Last 12 months of training consistency</p>
+      <div className="rounded-xl border bg-card p-6">
+        <div className="mb-5">
+          <p className="text-base font-semibold">📅 Workout Calendar</p>
+          <p className="text-xs text-muted-foreground">Last 12 months of training consistency</p>
         </div>
-        <div className="grid grid-cols-4 sm:grid-cols-6 gap-4">
+        {/* Day labels */}
+        <div className="mb-2 ml-1">
+          <div className="grid grid-cols-7 gap-[3px] max-w-[124px]">
+            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+              <div key={i} className="w-4 h-4 text-center text-[9px] text-muted-foreground font-medium">{d}</div>
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-5">
           {calendarMonths.map(m => (
             <MonthGrid key={format(m, 'yyyy-MM')} month={m} data={calendarData} />
           ))}
         </div>
-        <div className="flex items-center gap-2 mt-4 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 mt-5 text-xs text-muted-foreground">
           <span>Less</span>
           <div className="flex gap-1">
-            <div className="w-3.5 h-3.5 rounded-sm bg-muted/40" />
-            <div className="w-3.5 h-3.5 rounded-sm bg-emerald-500/40" />
-            <div className="w-3.5 h-3.5 rounded-sm bg-emerald-500/70" />
-            <div className="w-3.5 h-3.5 rounded-sm bg-emerald-500" />
+            <div className="w-4 h-4 rounded-sm bg-muted/40" />
+            <div className="w-4 h-4 rounded-sm bg-emerald-500/40" />
+            <div className="w-4 h-4 rounded-sm bg-emerald-500/70" />
+            <div className="w-4 h-4 rounded-sm bg-emerald-500" />
           </div>
           <span>More</span>
         </div>
       </div>
 
       {/* Weekly Rhythm */}
-      <div className="rounded-xl border bg-card p-5">
-        <div className="mb-3">
-          <p className="text-sm font-semibold">🔥 Weekly Rhythm</p>
-          <p className="text-[11px] text-muted-foreground">Training frequency by day of the week</p>
+      <div className="rounded-xl border bg-card p-6">
+        <div className="mb-4">
+          <p className="text-base font-semibold">🔥 Weekly Rhythm</p>
+          <p className="text-xs text-muted-foreground">Training frequency by day of the week</p>
         </div>
-        <ResponsiveContainer width="100%" height={300}>
+        <ResponsiveContainer width="100%" height={350}>
           <RadarChart data={weeklyRhythm} outerRadius="70%">
             <PolarGrid stroke="hsl(var(--border))" />
-            <PolarAngleAxis dataKey="day" tick={{ fontSize: 12 }} />
+            <PolarAngleAxis dataKey="day" tick={{ fontSize: 13 }} />
             <PolarRadiusAxis tick={{ fontSize: 10 }} />
             <Radar dataKey="count" name="Workouts" stroke="#10b981" fill="#10b981" fillOpacity={0.2} strokeWidth={2} />
           </RadarChart>
@@ -585,15 +593,15 @@ export function TypeDistribution({ workouts }: SectionProps) {
         <h2 className="text-xl font-bold">Workout Type Distribution</h2>
         <p className="text-sm text-muted-foreground">Breakdown by workout type</p>
       </div>
-      <div className="rounded-xl border bg-card p-5">
+      <div className="rounded-xl border bg-card p-6">
         <div className="grid md:grid-cols-2 gap-6 items-center">
           {/* Donut */}
           <div className="flex items-center justify-center">
-            <ResponsiveContainer width="100%" height={280}>
+            <ResponsiveContainer width="100%" height={320}>
               <PieChart>
                 <Pie
                   data={typeDistro} cx="50%" cy="50%"
-                  innerRadius={65} outerRadius={110}
+                  innerRadius={75} outerRadius={130}
                   dataKey="count" nameKey="type"
                   stroke="none" paddingAngle={2}
                 >
