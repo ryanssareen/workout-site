@@ -380,11 +380,12 @@ export default function CalendarPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-7 gap-1">
+            <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
               {/* Day headers */}
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                <div key={day} className="text-center text-sm font-semibold text-muted-foreground p-2">
-                  {day}
+              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
+                <div key={i} className="text-center text-xs sm:text-sm font-semibold text-muted-foreground p-1 sm:p-2">
+                  <span className="sm:hidden">{day}</span>
+                  <span className="hidden sm:inline">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i]}</span>
                 </div>
               ))}
 
@@ -413,7 +414,7 @@ export default function CalendarPage() {
                     key={index}
                     onClick={() => handleDateClick(date)}
                     className={cn(
-                      'min-h-[80px] p-2 rounded-lg border-2 transition-all relative',
+                      'min-h-[56px] sm:min-h-[80px] p-1 sm:p-2 rounded-lg border-2 transition-all relative',
                       'flex flex-col items-start',
                       !isCurrentMonth && 'bg-muted/30 opacity-50',
                       isCurrentMonth && 'bg-background',
@@ -426,7 +427,7 @@ export default function CalendarPage() {
                     )}
                   >
                     <span className={cn(
-                      'text-sm font-medium',
+                      'text-xs sm:text-sm font-medium',
                       !isCurrentMonth && 'text-muted-foreground',
                       isTodayDate && 'text-primary font-bold',
                     )}>

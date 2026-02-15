@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Workout } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -19,18 +19,36 @@ import {
 import { cn } from '@/lib/utils';
 import { format, subWeeks, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 
+// ── Responsive chart height hook ──
+function useChartHeight(desktopHeight: number) {
+  const [height, setHeight] = useState(desktopHeight);
+  useEffect(() => {
+    const update = () => setHeight(window.innerWidth < 640 ? Math.min(desktopHeight, 240) : desktopHeight);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, [desktopHeight]);
+  return height;
+}
+
+// ── Responsive chart container ──
+function RChart({ height, children }: { height: number; children: React.ReactNode }) {
+  const h = useChartHeight(height);
+  return <ResponsiveContainer width="100%" height={h}>{children}</ResponsiveContainer>;
+}
+
 // ── Shared: Time filter pills ──
 const TIME_RANGES: TimeRange[] = ['ALL', '1Y', '6M', '3M', '1M', 'MO', 'WK'];
 
 function ChartTimeFilter({ value, onChange }: { value: TimeRange; onChange: (v: TimeRange) => void }) {
   return (
-    <div className="flex gap-0.5">
+    <div className="flex gap-0.5 overflow-x-auto scrollbar-hide shrink-0">
       {TIME_RANGES.map(r => (
         <button
           key={r}
           onClick={() => onChange(r)}
           className={cn(
-            'px-2 py-0.5 rounded-full text-[11px] font-semibold transition-colors',
+            'px-2 py-0.5 rounded-full text-[11px] font-semibold transition-colors whitespace-nowrap shrink-0',
             value === r
               ? 'bg-emerald-500 text-white'
               : 'text-muted-foreground hover:text-foreground hover:bg-muted'
@@ -50,10 +68,10 @@ function ChartPanel({ emoji, title, subtitle, defaultRange = '6M', children }: {
 }) {
   const [range, setRange] = useState<TimeRange>(defaultRange);
   return (
-    <div className="rounded-xl border bg-card p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <p className="text-lg font-semibold">{emoji} {title}</p>
+    <div className="rounded-xl border bg-card p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+        <div className="min-w-0">
+          <p className="text-base sm:text-lg font-semibold truncate">{emoji} {title}</p>
           <p className="text-xs text-muted-foreground">{subtitle}</p>
         </div>
         <ChartTimeFilter value={range} onChange={setRange} />
@@ -83,13 +101,13 @@ function StatCard({ icon, label, value, sub, color }: {
   icon: React.ReactNode; label: string; value: string; sub?: string; color?: string;
 }) {
   return (
-    <div className={cn('rounded-xl border bg-card p-6 text-center')}>
-      <div className={cn('mx-auto w-12 h-12 rounded-xl flex items-center justify-center mb-3', color || 'bg-primary/10')}>
+    <div className={cn('rounded-xl border bg-card p-3 sm:p-6 text-center')}>
+      <div className={cn('mx-auto w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center mb-2 sm:mb-3', color || 'bg-primary/10')}>
         {icon}
       </div>
-      <p className="text-4xl font-bold leading-none">{value}</p>
-      <p className="text-sm text-muted-foreground mt-1.5">{label}</p>
-      {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
+      <p className="text-2xl sm:text-4xl font-bold leading-none">{value}</p>
+      <p className="text-xs sm:text-sm text-muted-foreground mt-1 sm:mt-1.5">{label}</p>
+      {sub && <p className="text-[10px] sm:text-xs text-muted-foreground">{sub}</p>}
     </div>
   );
 }
@@ -99,13 +117,13 @@ function InsightTile({ icon, label, value, sub }: {
   icon: React.ReactNode; label: string; value: string; sub?: string;
 }) {
   return (
-    <div className="bg-muted/30 rounded-xl p-6">
-      <div className="flex items-center gap-2 mb-3">
+    <div className="bg-muted/30 rounded-xl p-4 sm:p-6">
+      <div className="flex items-center gap-2 mb-2 sm:mb-3">
         {icon}
-        <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">{label}</p>
+        <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide font-medium">{label}</p>
       </div>
-      <p className="text-3xl font-bold">{value}</p>
-      {sub && <p className="text-sm text-muted-foreground mt-1">{sub}</p>}
+      <p className="text-2xl sm:text-3xl font-bold">{value}</p>
+      {sub && <p className="text-xs sm:text-sm text-muted-foreground mt-1">{sub}</p>}
     </div>
   );
 }
@@ -172,12 +190,12 @@ export function DashboardOverview({ workouts }: SectionProps) {
       </div>
 
       {/* Quick snapshot charts — hours + workouts */}
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         <ChartPanel emoji="⏱️" title="Hours Trained" subtitle="Duration over time">
           {(range) => {
             const data = computeTimeSeries(filterByTimeRange(workouts, range), range);
             return (
-              <ResponsiveContainer width="100%" height={380}>
+              <RChart height={380}>
                 <AreaChart data={data}>
                   <defs>
                     <linearGradient id="gH" x1="0" y1="0" x2="0" y2="1">
@@ -190,7 +208,7 @@ export function DashboardOverview({ workouts }: SectionProps) {
                   <Tooltip content={<ChartTooltip />} />
                   <Area type="monotone" dataKey="hours" name="Hours" stroke="#10b981" strokeWidth={2} fill="url(#gH)" dot={{ r: 2, fill: '#10b981' }} />
                 </AreaChart>
-              </ResponsiveContainer>
+              </RChart>
             );
           }}
         </ChartPanel>
@@ -198,14 +216,14 @@ export function DashboardOverview({ workouts }: SectionProps) {
           {(range) => {
             const data = computeTimeSeries(filterByTimeRange(workouts, range), range);
             return (
-              <ResponsiveContainer width="100%" height={380}>
+              <RChart height={380}>
                 <BarChart data={data}>
                   <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                   <YAxis tick={{ fontSize: 10 }} width={25} allowDecimals={false} />
                   <Tooltip content={<ChartTooltip />} />
                   <Bar dataKey="workoutCount" name="Workouts" fill="#10b981" radius={[4, 4, 0, 0]} fillOpacity={0.8} />
                 </BarChart>
-              </ResponsiveContainer>
+              </RChart>
             );
           }}
         </ChartPanel>
@@ -229,15 +247,15 @@ export function TrainingAnalysis({ workouts }: SectionProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Training Analysis</h2>
+        <h2 className="text-xl sm:text-2xl font-bold">Training Analysis</h2>
         <p className="text-sm text-muted-foreground">Detailed breakdown of your training metrics over time</p>
       </div>
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         <ChartPanel emoji="⏱️" title="Hours Trained" subtitle="Training duration over time">
           {(range) => {
             const data = computeTimeSeries(filterByTimeRange(workouts, range), range);
             return (
-              <ResponsiveContainer width="100%" height={340}>
+              <RChart height={340}>
                 <AreaChart data={data}>
                   <defs>
                     <linearGradient id="gHr" x1="0" y1="0" x2="0" y2="1">
@@ -250,7 +268,7 @@ export function TrainingAnalysis({ workouts }: SectionProps) {
                   <Tooltip content={<ChartTooltip />} />
                   <Area type="monotone" dataKey="hours" name="Hours" stroke="#10b981" strokeWidth={2} fill="url(#gHr)" dot={{ r: 2, fill: '#10b981' }} />
                 </AreaChart>
-              </ResponsiveContainer>
+              </RChart>
             );
           }}
         </ChartPanel>
@@ -260,7 +278,7 @@ export function TrainingAnalysis({ workouts }: SectionProps) {
             {(range) => {
               const data = computeTimeSeries(filterByTimeRange(workouts, range), range);
               return (
-                <ResponsiveContainer width="100%" height={340}>
+                <RChart height={340}>
                   <AreaChart data={data}>
                     <defs>
                       <linearGradient id="gV" x1="0" y1="0" x2="0" y2="1">
@@ -273,7 +291,7 @@ export function TrainingAnalysis({ workouts }: SectionProps) {
                     <Tooltip content={<ChartTooltip />} />
                     <Area type="monotone" dataKey="volumeKg" name="Volume (kg)" stroke="#a855f7" strokeWidth={2} fill="url(#gV)" dot={{ r: 2, fill: '#a855f7' }} />
                   </AreaChart>
-                </ResponsiveContainer>
+                </RChart>
               );
             }}
           </ChartPanel>
@@ -284,7 +302,7 @@ export function TrainingAnalysis({ workouts }: SectionProps) {
             {(range) => {
               const data = computeTimeSeries(filterByTimeRange(workouts, range), range);
               return (
-                <ResponsiveContainer width="100%" height={340}>
+                <RChart height={340}>
                   <AreaChart data={data}>
                     <defs>
                       <linearGradient id="gD" x1="0" y1="0" x2="0" y2="1">
@@ -297,7 +315,7 @@ export function TrainingAnalysis({ workouts }: SectionProps) {
                     <Tooltip content={<ChartTooltip />} />
                     <Area type="monotone" dataKey="distanceKm" name="Distance (km)" stroke="#3b82f6" strokeWidth={2} fill="url(#gD)" dot={{ r: 2, fill: '#3b82f6' }} />
                   </AreaChart>
-                </ResponsiveContainer>
+                </RChart>
               );
             }}
           </ChartPanel>
@@ -307,14 +325,14 @@ export function TrainingAnalysis({ workouts }: SectionProps) {
           {(range) => {
             const data = computeTimeSeries(filterByTimeRange(workouts, range), range);
             return (
-              <ResponsiveContainer width="100%" height={340}>
+              <RChart height={340}>
                 <BarChart data={data}>
                   <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                   <YAxis tick={{ fontSize: 10 }} width={25} allowDecimals={false} />
                   <Tooltip content={<ChartTooltip />} />
                   <Bar dataKey="workoutCount" name="Workouts" fill="#10b981" radius={[4, 4, 0, 0]} fillOpacity={0.8} />
                 </BarChart>
-              </ResponsiveContainer>
+              </RChart>
             );
           }}
         </ChartPanel>
@@ -324,7 +342,7 @@ export function TrainingAnalysis({ workouts }: SectionProps) {
             {(range) => {
               const data = computeTimeSeries(filterByTimeRange(workouts, range), range);
               return (
-                <ResponsiveContainer width="100%" height={340}>
+                <RChart height={340}>
                   <BarChart data={data}>
                     <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                     <YAxis tick={{ fontSize: 10 }} width={35} />
@@ -333,7 +351,7 @@ export function TrainingAnalysis({ workouts }: SectionProps) {
                     <Bar dataKey="totalReps" name="Reps" fill="#10b981" radius={[4, 4, 0, 0]} fillOpacity={0.7} />
                     <Bar dataKey="totalSets" name="Sets" fill="#06b6d4" radius={[4, 4, 0, 0]} fillOpacity={0.7} />
                   </BarChart>
-                </ResponsiveContainer>
+                </RChart>
               );
             }}
           </ChartPanel>
@@ -344,14 +362,14 @@ export function TrainingAnalysis({ workouts }: SectionProps) {
             {(range) => {
               const data = computeTimeSeries(filterByTimeRange(workouts, range), range);
               return (
-                <ResponsiveContainer width="100%" height={340}>
+                <RChart height={340}>
                   <BarChart data={data}>
                     <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                     <YAxis tick={{ fontSize: 10 }} width={40} />
                     <Tooltip content={<ChartTooltip />} />
                     <Bar dataKey="calories" name="Calories" fill="#f97316" radius={[4, 4, 0, 0]} fillOpacity={0.8} />
                   </BarChart>
-                </ResponsiveContainer>
+                </RChart>
               );
             }}
           </ChartPanel>
@@ -362,14 +380,14 @@ export function TrainingAnalysis({ workouts }: SectionProps) {
             {(range) => {
               const data = computePRTimeline(workouts, range);
               return (
-                <ResponsiveContainer width="100%" height={340}>
+                <RChart height={340}>
                   <BarChart data={data}>
                     <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                     <YAxis tick={{ fontSize: 10 }} width={25} allowDecimals={false} />
                     <Tooltip content={<ChartTooltip />} />
                     <Bar dataKey="count" name="PRs" fill="#eab308" radius={[4, 4, 0, 0]} fillOpacity={0.8} />
                   </BarChart>
-                </ResponsiveContainer>
+                </RChart>
               );
             }}
           </ChartPanel>
@@ -393,7 +411,7 @@ export function ExerciseInsights({ workouts }: SectionProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Exercise Insights</h2>
+        <h2 className="text-xl sm:text-2xl font-bold">Exercise Insights</h2>
         <p className="text-sm text-muted-foreground">Key highlights from your training data</p>
       </div>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -497,33 +515,33 @@ export function CalendarViews({ workouts }: SectionProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Calendar Views</h2>
+        <h2 className="text-xl sm:text-2xl font-bold">Calendar Views</h2>
         <p className="text-sm text-muted-foreground">Consistency and rhythm patterns</p>
       </div>
 
       {/* Weekly Activity — last 16 weeks */}
-      <div className="rounded-xl border bg-card p-6">
+      <div className="rounded-xl border bg-card p-4 sm:p-6">
         <div className="mb-4">
-          <p className="text-lg font-semibold">📅 Weekly Activity</p>
+          <p className="text-base sm:text-lg font-semibold">📅 Weekly Activity</p>
           <p className="text-xs text-muted-foreground">Workouts per week over the last 16 weeks</p>
         </div>
-        <ResponsiveContainer width="100%" height={340}>
+        <RChart height={340}>
           <BarChart data={weeklyActivity}>
             <XAxis dataKey="label" tick={{ fontSize: 10 }} interval={1} angle={-45} textAnchor="end" height={50} />
             <YAxis tick={{ fontSize: 10 }} width={25} allowDecimals={false} />
             <Tooltip content={<ChartTooltip />} />
             <Bar dataKey="workouts" name="Workouts" fill="#10b981" radius={[4, 4, 0, 0]} fillOpacity={0.8} />
           </BarChart>
-        </ResponsiveContainer>
+        </RChart>
       </div>
 
       {/* Training Days — which days you train */}
-      <div className="rounded-xl border bg-card p-6">
+      <div className="rounded-xl border bg-card p-4 sm:p-6">
         <div className="mb-4">
-          <p className="text-lg font-semibold">🔥 Training Days</p>
+          <p className="text-base sm:text-lg font-semibold">🔥 Training Days</p>
           <p className="text-xs text-muted-foreground">Which days of the week you train most</p>
         </div>
-        <ResponsiveContainer width="100%" height={340}>
+        <RChart height={340}>
           <BarChart data={weeklyRhythm} layout="vertical">
             <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} />
             <YAxis dataKey="day" type="category" tick={{ fontSize: 13, fontWeight: 500 }} width={40} />
@@ -534,7 +552,7 @@ export function CalendarViews({ workouts }: SectionProps) {
               ))}
             </Bar>
           </BarChart>
-        </ResponsiveContainer>
+        </RChart>
       </div>
     </div>
   );
@@ -551,18 +569,18 @@ export function TypeDistribution({ workouts }: SectionProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Workout Type Distribution</h2>
+        <h2 className="text-xl sm:text-2xl font-bold">Workout Type Distribution</h2>
         <p className="text-sm text-muted-foreground">Breakdown by workout type</p>
       </div>
-      <div className="rounded-xl border bg-card p-6">
-        <div className="grid md:grid-cols-2 gap-6 items-center">
+      <div className="rounded-xl border bg-card p-4 sm:p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
           {/* Donut */}
           <div className="flex items-center justify-center">
-            <ResponsiveContainer width="100%" height={380}>
+            <RChart height={380}>
               <PieChart>
                 <Pie
                   data={typeDistro} cx="50%" cy="50%"
-                  innerRadius={75} outerRadius={130}
+                  innerRadius="40%" outerRadius="70%"
                   dataKey="count" nameKey="type"
                   stroke="none" paddingAngle={2}
                 >
@@ -575,7 +593,7 @@ export function TypeDistribution({ workouts }: SectionProps) {
                   contentStyle={{ borderRadius: '8px', fontSize: '12px' }}
                 />
               </PieChart>
-            </ResponsiveContainer>
+            </RChart>
           </div>
           {/* Legend */}
           <div className="space-y-3">

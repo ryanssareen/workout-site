@@ -233,8 +233,8 @@ export default function WorkoutDetailPage() {
   const hasTemplate = !!(workout as any).templateId;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="max-w-3xl mx-auto space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <Button variant="ghost" asChild>
           <Link href="/workouts">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -243,7 +243,7 @@ export default function WorkoutDetailPage() {
         </Button>
 
         {canEdit && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button asChild>
               <Link href={`/workouts/${workout.id}/edit`}>
                 <Edit className="mr-2 h-4 w-4" />
@@ -285,7 +285,7 @@ export default function WorkoutDetailPage() {
         <CardHeader>
           <div className="flex items-start justify-between">
             <div className="space-y-2">
-              <CardTitle className="text-3xl">{workout.name}</CardTitle>
+              <CardTitle className="text-2xl sm:text-3xl">{workout.name}</CardTitle>
               <div className="flex gap-2 flex-wrap">
                 <Badge variant="outline" className="capitalize">
                   {workout.type}
