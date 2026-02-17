@@ -623,7 +623,7 @@ export async function GET(request: NextRequest) {
             newWorkoutData.routeData = routeData;
           }
 
-          await adminDb.collection('workouts').add(newWorkoutData);
+          await adminDb.collection('workouts').doc(`strava_${stravaId}`).set(newWorkoutData);
           newWorkoutsCount++;
         }
       }

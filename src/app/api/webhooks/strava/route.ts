@@ -236,8 +236,9 @@ async function processActivity(
     if (activity.end_latlng) routeData.endLatLng = activity.end_latlng;
 
     // CREATE NEW WORKOUT from Strava activity
-    const newWorkoutRef = adminDb.collection('workouts').doc();
-    const workoutId = newWorkoutRef.id;
+    // Use deterministic doc ID to prevent duplicates from concurrent webhook retries
+    const workoutId = `strava_${stravaActivityId}`;
+    const newWorkoutRef = adminDb.collection('workouts').doc(workoutId);
     
     const newWorkoutData: any = {
       name: activity.name,
