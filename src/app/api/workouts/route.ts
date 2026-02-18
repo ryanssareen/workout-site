@@ -1,29 +1,182 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
+import admin from 'firebase-admin';
+import { adminDb } from '@/lib/firebase/admin';
+
+type UserRole = 'coach' | 'athlete' | 'student';
+type WorkoutType = 'swim' | 'run' | 'bike' | 'strength' | 'other';
+
+interface CreateWorkoutBody extends Record<string, unknown> {
+  name?: unknown;
+  type?: unknown;
+  date?: unknown;
+  createdBy?: unknown;
+  assignedTo?: unknown;
+  description?: unknown;
+  duration?: unknown;
+  tags?: unknown;
+  source?: unknown;
+  swim?: unknown;
+  bike?: unknown;
+  run?: unknown;
+  strength?: unknown;
+  other?: unknown;
+}
+
+const WORKOUT_TYPES = new Set<WorkoutType>(['swim', 'run', 'bike', 'strength', 'other']);
+
+function isWorkoutType(value: unknown): value is WorkoutType {
+  return typeof value === 'string' && WORKOUT_TYPES.has(value as WorkoutType);
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function parseRole(role: string | null): UserRole | null {
+  if (role === 'coach' || role === 'athlete' || role === 'student') {
+    return role;
+  }
+  return null;
+}
+
+function toTimestamp(dateInput: unknown): admin.firestore.Timestamp | null {
+  if (dateInput instanceof Date && !Number.isNaN(dateInput.getTime())) {
+    return admin.firestore.Timestamp.fromDate(dateInput);
+  }
+
+  if (typeof dateInput === 'string' || typeof dateInput === 'number') {
+    const parsedDate = new Date(dateInput);
+    if (!Number.isNaN(parsedDate.getTime())) {
+      return admin.firestore.Timestamp.fromDate(parsedDate);
+    }
+  }
+
+  return null;
+}
+
+function toEpochMs(dateValue: unknown): number {
+  if (!dateValue || typeof dateValue !== 'object') {
+    return 0;
+  }
+
+  if ('toDate' in dateValue && typeof dateValue.toDate === 'function') {
+    const maybeDate = dateValue.toDate();
+    if (maybeDate instanceof Date) {
+      return maybeDate.getTime();
+    }
+  }
+
+  if ('seconds' in dateValue && typeof dateValue.seconds === 'number') {
+    return dateValue.seconds * 1000;
+  }
+
+  return 0;
+}
+
+async function getCoachStudentIds(coachId: string): Promise<string[]> {
+  const studentsSnapshot = await adminDb
+    .collection('users')
+    .where('coachId', '==', coachId)
+    .get();
+
+  return studentsSnapshot.docs.map((doc) => doc.id);
+}
+
+function normalizeTagList(tags: unknown): string[] {
+  if (!Array.isArray(tags)) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      tags
+        .filter((tag): tag is string => typeof tag === 'string')
+        .map((tag) => tag.trim())
+        .filter(Boolean)
+    )
+  ).slice(0, 5);
+}
 
 /**
  * GET /api/workouts
  * Fetch workouts for the current user
- * 
- * This is a placeholder - in production, you'd:
- * 1. Verify authentication token
- * 2. Query Firestore based on user ID and role
- * 3. Return filtered workouts
- * 
- * For now, client-side Firestore queries handle this
  */
 export async function GET(request: NextRequest) {
   try {
-    // In production, handle server-side queries here
-    // For this app, we use client-side Firestore queries
-    return NextResponse.json({ 
-      message: 'Use client-side Firestore queries',
-      workouts: [] 
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
+    const role = parseRole(searchParams.get('role'));
+
+    if (!userId) {
+      return NextResponse.json({ error: 'User ID required' }, { status: 400 });
+    }
+
+    const workoutsById = new Map<string, Record<string, unknown>>();
+
+    if (role === 'coach') {
+      const [coachCreatedSnapshot, studentIds] = await Promise.all([
+        adminDb.collection('workouts').where('createdBy', '==', userId).get(),
+        getCoachStudentIds(userId),
+      ]);
+
+      coachCreatedSnapshot.docs.forEach((doc) => {
+        workoutsById.set(doc.id, { id: doc.id, ...doc.data() });
+      });
+
+      if (studentIds.length > 0) {
+        for (let i = 0; i < studentIds.length; i += 10) {
+          const batch = studentIds.slice(i, i + 10);
+          const studentSnapshot = await adminDb
+            .collection('workouts')
+            .where('assignedTo', 'in', batch)
+            .get();
+
+          studentSnapshot.docs.forEach((doc) => {
+            const data = doc.data();
+            if (data.source === 'strava') {
+              workoutsById.set(doc.id, { id: doc.id, ...data });
+            }
+          });
+        }
+      }
+    } else if (role === 'athlete' || role === 'student') {
+      const athleteSnapshot = await adminDb
+        .collection('workouts')
+        .where('assignedTo', '==', userId)
+        .get();
+
+      athleteSnapshot.docs.forEach((doc) => {
+        workoutsById.set(doc.id, { id: doc.id, ...doc.data() });
+      });
+    } else {
+      const [createdSnapshot, assignedSnapshot] = await Promise.all([
+        adminDb.collection('workouts').where('createdBy', '==', userId).get(),
+        adminDb.collection('workouts').where('assignedTo', '==', userId).get(),
+      ]);
+
+      createdSnapshot.docs.forEach((doc) => {
+        workoutsById.set(doc.id, { id: doc.id, ...doc.data() });
+      });
+
+      assignedSnapshot.docs.forEach((doc) => {
+        workoutsById.set(doc.id, { id: doc.id, ...doc.data() });
+      });
+    }
+
+    const workouts = Array.from(workoutsById.values()).sort(
+      (a, b) => toEpochMs(b.date) - toEpochMs(a.date)
+    );
+
+    return NextResponse.json({
+      workouts,
+      total: workouts.length,
     });
-  } catch (error: any) {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to fetch workouts';
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch workouts' },
+      { error: message },
       { status: 500 }
     );
   }
@@ -32,27 +185,69 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/workouts
  * Create new workout
- * 
- * This is a placeholder - in production, you'd:
- * 1. Verify authentication token
- * 2. Validate request body
- * 3. Create workout in Firestore
- * 
- * For now, client-side Firestore operations handle this
  */
-export async function POST(request: NextRequest) {
+export async function POST(_: NextRequest) {
   try {
-    const body = await request.json();
-    
-    // In production, handle server-side creation here
-    // For this app, we use client-side Firestore operations
-    return NextResponse.json({
-      message: 'Use client-side Firestore operations',
-      success: true
+    const body = (await _.json()) as CreateWorkoutBody;
+
+    const name = typeof body.name === 'string' ? body.name.trim() : '';
+    const createdBy = typeof body.createdBy === 'string' ? body.createdBy.trim() : '';
+
+    if (!name || !isWorkoutType(body.type) || !createdBy) {
+      return NextResponse.json(
+        { error: 'name, type, and createdBy are required' },
+        { status: 400 }
+      );
+    }
+
+    const assignedTo =
+      typeof body.assignedTo === 'string' && body.assignedTo.trim()
+        ? body.assignedTo.trim()
+        : createdBy;
+
+    const workoutData: Record<string, unknown> = {
+      name,
+      type: body.type,
+      date: toTimestamp(body.date) ?? admin.firestore.Timestamp.fromDate(new Date()),
+      createdBy,
+      assignedTo,
+      completed: false,
+      source: typeof body.source === 'string' ? body.source : 'manual',
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    if (typeof body.description === 'string') {
+      workoutData.description = body.description;
+    }
+
+    if (typeof body.duration === 'number' && Number.isFinite(body.duration)) {
+      workoutData.duration = body.duration;
+    }
+
+    const tags = normalizeTagList(body.tags);
+    if (tags.length > 0) {
+      workoutData.tags = tags;
+    }
+
+    (['swim', 'bike', 'run', 'strength', 'other'] as const).forEach((key) => {
+      const value = body[key];
+      if (isPlainObject(value)) {
+        workoutData[key] = value;
+      }
     });
-  } catch (error: any) {
+
+    const createdRef = await adminDb.collection('workouts').add(workoutData);
+    const createdDoc = await createdRef.get();
+
+    return NextResponse.json({
+      id: createdRef.id,
+      ...createdDoc.data(),
+    }, { status: 201 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to create workout';
     return NextResponse.json(
-      { error: error.message || 'Failed to create workout' },
+      { error: message },
       { status: 500 }
     );
   }

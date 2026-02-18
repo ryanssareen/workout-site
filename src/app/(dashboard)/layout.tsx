@@ -13,10 +13,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const loading = useAuthStore((state) => state.loading);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (loading) return;
+
+    if (!user) {
       router.replace('/login');
+      return;
     }
-  }, [user, loading, router]);
+
+    const isOnboardingPage = pathname === '/onboarding';
+    if (user.onboardingCompleted === false && !isOnboardingPage) {
+      router.replace('/onboarding');
+      return;
+    }
+
+    if (user.onboardingCompleted !== false && isOnboardingPage) {
+      router.replace('/dashboard');
+    }
+  }, [user, loading, pathname, router]);
 
   if (loading) {
     return (
@@ -32,6 +45,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!user) return null;
 
   const isReports = pathname === '/reports';
+  const isOnboardingPage = pathname === '/onboarding';
+
+  if (isOnboardingPage) {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <div className="absolute inset-0 bg-energy -z-10 pointer-events-none" aria-hidden />
+        <main className="relative container mx-auto px-3 sm:px-4 py-6 sm:py-10 max-w-2xl">
+          {children}
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-background text-foreground">
