@@ -123,7 +123,7 @@ function analyzeTrainingData(recentWorkouts: any[]) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { userId, recentWorkouts, preferences } = body;
+    const { userId, recentWorkouts, preferences, athleteProfile } = body;
     const apiKey = process.env.GROQ_API_KEY;
 
     if (!apiKey) {
@@ -196,18 +196,22 @@ Training Analysis:
 
 User Profile:
 - Experience Level: ${preferences?.level || 'Intermediate'}
-- Preferred Sports: ${preferences?.sports || 'Multi-sport athlete'}
+- Preferred Sports: ${athleteProfile?.sportPreferences?.join(', ') || preferences?.sports || 'Multi-sport athlete'}
+- Fitness Goals: ${athleteProfile?.fitnessGoals?.join(', ') || 'General fitness'}
+${athleteProfile?.bio ? `- Bio: ${athleteProfile.bio}` : ''}
+${athleteProfile?.timezone ? `- Timezone: ${athleteProfile.timezone}` : ''}
 
 ## REQUIREMENTS
 
 Create 3 COMPREHENSIVE workout plans that:
-1. Fill training gaps (add variety if lacking, add volume if inconsistent)
-2. Follow progressive overload principles
-3. Balance intensity (include easy, moderate, and hard sessions)
-4. Include sport-specific and cross-training options
-5. Are realistic for the athlete's current level
-6. Have detailed structure with warmup, main set, cooldown
-7. Include clear rationale and expected benefits
+1. Prioritize the athlete's preferred sports and align with their fitness goals
+2. Fill training gaps (add variety if lacking, add volume if inconsistent)
+3. Follow progressive overload principles
+4. Balance intensity (include easy, moderate, and hard sessions)
+5. Include sport-specific and cross-training options
+6. Are realistic for the athlete's current level
+7. Have detailed structure with warmup, main set, cooldown
+8. Include clear rationale and expected benefits
 
 ## OUTPUT FORMAT
 

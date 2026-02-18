@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { workout, userContext } = await req.json();
+    const { workout, userContext, athleteProfile } = await req.json();
 
     if (!workout) {
       return NextResponse.json(
@@ -37,6 +37,8 @@ ${workout.completed ? `- Status: Completed${workout.completedLate ? ' (late)' : 
 ${workout.completionNotes ? `- Completion Notes: ${workout.completionNotes}` : ''}
 
 ${userContext ? `USER CONTEXT: ${userContext}` : ''}
+${athleteProfile?.sportPreferences?.length ? `PREFERRED SPORTS: ${athleteProfile.sportPreferences.join(', ')}` : ''}
+${athleteProfile?.fitnessGoals?.length ? `FITNESS GOALS: ${athleteProfile.fitnessGoals.join(', ')}` : ''}
 
 Provide 3-5 brief, specific recommendations in JSON format:
 {

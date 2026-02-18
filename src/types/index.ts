@@ -26,6 +26,18 @@ export interface User {
   stravaConnectedAt?: Timestamp;
   // Email summary tracking
   lastSummaryDate?: Timestamp;
+  // Profile & onboarding
+  bio?: string;
+  timezone?: string;
+  sportPreferences?: string[];
+  fitnessGoals?: string[];
+  notificationPreferences?: {
+    emailSummary: boolean;
+    workoutReminders: boolean;
+    coachMessages: boolean;
+  };
+  profileCompleted?: number;
+  onboardingCompleted?: boolean;
 }
 
 export interface StravaActivityStats {

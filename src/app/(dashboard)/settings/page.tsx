@@ -298,14 +298,15 @@ function SettingsContent() {
           </CardHeader>
           <CardContent>
             {user?.stravaId ? (
-              <div className="flex items-center justify-between p-4 rounded-xl bg-[#FC4C02]/10 border border-[#FC4C02]/20">
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="h-5 w-5 text-[#FC4C02]" />
-                  <div>
-                    <p className="font-medium">Connected</p>
-                    <p className="text-sm text-muted-foreground">Connected {user.stravaConnectedAt?.toDate?.()?.toLocaleDateString() || ''}</p>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-4 rounded-xl bg-[#FC4C02]/10 border border-[#FC4C02]/20">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="h-5 w-5 text-[#FC4C02]" />
+                    <div>
+                      <p className="font-medium">Connected</p>
+                      <p className="text-sm text-muted-foreground">Connected {user.stravaConnectedAt?.toDate?.()?.toLocaleDateString() || ''}</p>
+                    </div>
                   </div>
-                </div>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={() => handleSyncStrava()} disabled={isSyncingStrava}>
                     {isSyncingStrava ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Syncing...</> : 'Sync'}
@@ -314,6 +315,11 @@ function SettingsContent() {
                     {isDisconnectingStrava ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unlink className="h-4 w-4" />}
                   </Button>
                 </div>
+              </div>
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                <p className="text-sm text-muted-foreground">Auto-sync is active. New Strava activities will appear automatically.</p>
+              </div>
               </div>
             ) : (
               <div className="space-y-3">

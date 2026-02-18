@@ -17,6 +17,8 @@ import { toast } from 'sonner';
 import { StatCard } from '@/components/dashboard/stats/StatCard';
 import { ProgressRing } from '@/components/dashboard/stats/ProgressRing';
 import { StudentOverview } from '@/components/dashboard/StudentOverview';
+import { OnboardingModal } from '@/components/onboarding/OnboardingModal';
+import { ProfileCompletionBanner } from '@/components/dashboard/ProfileCompletionBanner';
 import { cn } from '@/lib/utils';
 import {
   PieChart,
@@ -133,6 +135,8 @@ export default function DashboardPage() {
   if (user?.role === 'coach') {
     return (
       <div className="space-y-8 pb-8">
+        <OnboardingModal />
+        <ProfileCompletionBanner />
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
           <div className="space-y-1 animate-in fade-in slide-in-from-left-4 duration-700">
@@ -360,6 +364,8 @@ export default function DashboardPage() {
   // ---------- Athlete Dashboard ----------
   return (
     <div className="space-y-8 pb-8">
+      <OnboardingModal />
+      <ProfileCompletionBanner />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
         <div className="space-y-1 animate-in fade-in slide-in-from-left-4 duration-700">

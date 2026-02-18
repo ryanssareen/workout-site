@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { messages, workoutData } = await req.json();
+    const { messages, workoutData, athleteProfile } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -58,22 +58,29 @@ export async function POST(req: NextRequest) {
     const lastMessage = messages[messages.length - 1];
     const justToggled = lastMessage?.content === UNLOCK_PASSPHRASE;
 
-    // Build context with workout data
+    // Build context with workout data and athlete profile
     let contextMessage = '';
-    if (workoutData && !isUnlocked) {
-      const { totalWorkouts, completedWorkouts, recentWorkouts, completionRate } = workoutData;
-      
-      contextMessage = `\n\nUSER'S WORKOUT CONTEXT:
+    if (!isUnlocked) {
+      if (athleteProfile) {
+        contextMessage += `\n\nATHLETE PROFILE:`;
+        if (athleteProfile.sportPreferences?.length) contextMessage += `\n- Preferred Sports: ${athleteProfile.sportPreferences.join(', ')}`;
+        if (athleteProfile.fitnessGoals?.length) contextMessage += `\n- Fitness Goals: ${athleteProfile.fitnessGoals.join(', ')}`;
+        if (athleteProfile.bio) contextMessage += `\n- Bio: ${athleteProfile.bio}`;
+        if (athleteProfile.timezone) contextMessage += `\n- Timezone: ${athleteProfile.timezone}`;
+      }
+      if (workoutData) {
+        const { totalWorkouts, completedWorkouts, recentWorkouts, completionRate } = workoutData;
+        contextMessage += `\n\nWORKOUT CONTEXT:
 - Total workouts assigned: ${totalWorkouts}
 - Completed: ${completedWorkouts} (${completionRate}% completion rate)
 - Recent activity: ${recentWorkouts.length} workouts in last 30 days
 
 Recent workouts:
-${recentWorkouts.map((w: any) => 
+${recentWorkouts.map((w: any) =>
   `- ${w.date}: ${w.name} (${w.type}) ${w.completed ? '✅ Completed' : '❌ Missed'}${w.completedLate ? ' (completed late)' : ''}`
-).join('\n')}
-
-Use this data to provide personalized advice.`;
+).join('\n')}`;
+      }
+      if (contextMessage) contextMessage += '\n\nUse this data to provide personalized advice.';
     }
 
     // Choose system prompt based on unlock status

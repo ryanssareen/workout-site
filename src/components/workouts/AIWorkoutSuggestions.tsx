@@ -85,12 +85,20 @@ interface WorkoutSuggestion {
   other?: any;
 }
 
+interface AthleteProfile {
+  sportPreferences?: string[];
+  fitnessGoals?: string[];
+  bio?: string;
+  timezone?: string;
+}
+
 interface AIWorkoutSuggestionsProps {
   userId: string;
   recentWorkouts?: any[];
+  athleteProfile?: AthleteProfile;
 }
 
-export function AIWorkoutSuggestions({ userId, recentWorkouts = [] }: AIWorkoutSuggestionsProps) {
+export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfile }: AIWorkoutSuggestionsProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<WorkoutSuggestion[]>([]);
@@ -156,9 +164,10 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [] }: AIWorkoutS
               })
             : [],
           preferences: {
-            sports: 'Various',
+            sports: athleteProfile?.sportPreferences?.join(', ') || 'Various',
             level: 'Intermediate',
           },
+          athleteProfile: athleteProfile || undefined,
         }),
       });
 

@@ -5,7 +5,7 @@ import { signOut } from '@/lib/firebase/auth';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
-import { Dumbbell, LogOut, LayoutDashboard, Calendar as CalendarIcon, ListChecks, Settings, Menu, X, BarChart3 } from 'lucide-react';
+import { Dumbbell, LogOut, LayoutDashboard, Calendar as CalendarIcon, ListChecks, Settings, Menu, X, BarChart3, UserCircle } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useState, useMemo } from 'react';
@@ -74,6 +74,11 @@ export function Navbar() {
                   <p className="text-sm font-medium leading-none">{user.displayName}</p>
                   <p className="text-xs text-muted-foreground capitalize">{user.role === 'student' ? 'athlete' : user.role}</p>
                 </div>
+                <Link href="/profile">
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <UserCircle className="h-4 w-4" />
+                  </Button>
+                </Link>
                 <Link href="/settings">
                   <Button variant="ghost" size="icon" className="h-8 w-8">
                     <Settings className="h-4 w-4" />
@@ -121,6 +126,11 @@ export function Navbar() {
               {user && (
                 <>
                   <div className="flex items-center gap-2">
+                    <Link href="/profile">
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <UserCircle className="h-4 w-4" />
+                      </Button>
+                    </Link>
                     <Link href="/settings">
                       <Button variant="ghost" size="icon" className="h-8 w-8">
                         <Settings className="h-4 w-4" />

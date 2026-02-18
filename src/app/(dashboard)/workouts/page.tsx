@@ -193,7 +193,18 @@ function WorkoutsContent() {
       </div>
 
       {/* AI Workout Suggestions */}
-      {user && <AIWorkoutSuggestions userId={user.uid} recentWorkouts={workouts} />}
+      {user && (
+        <AIWorkoutSuggestions
+          userId={user.uid}
+          recentWorkouts={workouts}
+          athleteProfile={{
+            sportPreferences: user.sportPreferences,
+            fitnessGoals: user.fitnessGoals,
+            bio: user.bio,
+            timezone: user.timezone,
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -229,6 +229,12 @@ export default function AICoachPage() {
             content: m.content,
           })),
           workoutData,
+          athleteProfile: user ? {
+            sportPreferences: user.sportPreferences,
+            fitnessGoals: user.fitnessGoals,
+            bio: user.bio,
+            timezone: user.timezone,
+          } : undefined,
         }),
       });
 

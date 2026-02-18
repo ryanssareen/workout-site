@@ -58,12 +58,13 @@ export async function createUser(
     }
     
     const userProfile: Omit<User, 'createdAt' | 'updatedAt'> & { createdAt: any; updatedAt: any; } = {
-      uid, 
-      email, 
-      displayName, 
+      uid,
+      email,
+      displayName,
       role,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
+      onboardingCompleted: true,
       ...(role === 'student' && coachId ? { coachId } : {}),
       ...(coachCode ? { coachCode } : {}),
     };
@@ -168,6 +169,7 @@ export async function signInWithGoogle(): Promise<User> {
       role: 'student',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
+      onboardingCompleted: false,
       ...(photoURL ? { photoURL } : {}),
     };
 
