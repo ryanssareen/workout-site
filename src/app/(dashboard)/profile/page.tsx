@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useForm } from 'react-hook-form';
@@ -36,13 +36,10 @@ import {
   Save,
   Pencil,
   Bell,
-  Camera,
   CheckCircle2,
   Dumbbell,
-  Target,
   Mail,
   Clock,
-  ImagePlus,
   Flag,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -71,15 +68,14 @@ function getDefaultValues(user: User | null): ProfileFormData {
   };
 }
 
-function calculateCompletion(data: ProfileFormData & { photoURL?: string }) {
+function calculateCompletion(data: ProfileFormData) {
   let score = 0;
   if (data.displayName) score += 20;
-  if (data.photoURL) score += 10;
-  if (data.bio) score += 15;
+  if (data.bio) score += 20;
   if (data.timezone) score += 15;
   if (data.sportPreferences && data.sportPreferences.length > 0) score += 15;
   if (data.trainingFor && data.trainingFor.length > 0) score += 15;
-  if (data.notificationPreferences) score += 10;
+  if (data.notificationPreferences) score += 15;
   return score;
 }
 
@@ -114,63 +110,6 @@ function ProgressRing({ percent, size = 120, stroke = 6 }: { percent: number; si
         </linearGradient>
       </defs>
     </svg>
-  );
-}
-
-/* ── Profile Pic Uploader ───────────────────────────────────────────── */
-function ProfilePicUploader({ currentPhotoURL, userId, onUploadComplete }: { currentPhotoURL?: string; userId: string; onUploadComplete: (url: string) => void }) {
-  const [uploading, setUploading] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
-  const [preview, setPreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleFile = useCallback(async (file: File) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    if (!allowedTypes.includes(file.type)) { toast.error('Please use a JPEG, PNG, WebP, or GIF image.'); return; }
-    if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5MB.'); return; }
-
-    const reader = new FileReader();
-    reader.onload = (e) => setPreview(e.target?.result as string);
-    reader.readAsDataURL(file);
-
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('uid', userId);
-      const res = await fetch('/api/upload-profile-pic', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Upload failed');
-      onUploadComplete(data.photoURL);
-      toast.success('Profile picture updated!');
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Upload failed');
-      setPreview(null);
-    } finally { setUploading(false); }
-  }, [userId, onUploadComplete]);
-
-  const handleDrop = useCallback((e: React.DragEvent) => { e.preventDefault(); setDragOver(false); const file = e.dataTransfer.files[0]; if (file) handleFile(file); }, [handleFile]);
-  const displayUrl = preview || currentPhotoURL;
-
-  return (
-    <div className="flex flex-col items-center gap-3">
-      <div className={cn('relative group cursor-pointer rounded-full transition-all duration-200', dragOver && 'ring-4 ring-primary/40 scale-105')} onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={handleDrop} onClick={() => fileInputRef.current?.click()}>
-        <Avatar className="w-28 h-28 border-4 border-background shadow-xl">
-          {displayUrl ? <AvatarImage src={displayUrl} alt="Profile" /> : null}
-          <AvatarFallback className="text-2xl font-bold bg-gradient-to-br from-primary/20 to-orange-500/20 text-primary"><ImagePlus className="w-8 h-8" /></AvatarFallback>
-        </Avatar>
-        <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-          {uploading ? <Loader2 className="w-6 h-6 text-white animate-spin" /> : <Camera className="w-6 h-6 text-white" />}
-        </div>
-        <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleFile(file); }} />
-      </div>
-      <div className="text-center">
-        <button type="button" onClick={() => fileInputRef.current?.click()} className="text-sm font-medium text-primary hover:text-primary/80 transition-colors" disabled={uploading}>
-          {uploading ? 'Uploading...' : displayUrl ? 'Change photo' : 'Upload photo'}
-        </button>
-        <p className="text-xs text-muted-foreground mt-0.5">JPG, PNG, WebP or GIF · Max 5MB</p>
-      </div>
-    </div>
   );
 }
 
@@ -225,7 +164,7 @@ export default function ProfilePage() {
 
     setSaving(true);
     try {
-      const profileCompleted = calculateCompletion({ ...data, photoURL: user.photoURL });
+      const profileCompleted = calculateCompletion(data);
       await updateDoc(doc(getDbInstance(), 'users', user.uid), {
         displayName: data.displayName,
         bio: data.bio || null,
@@ -254,16 +193,14 @@ export default function ProfilePage() {
     finally { setSaving(false); }
   };
 
-  const handleProfilePicUploaded = (photoURL: string) => { if (!user) return; setUser({ ...user, photoURL }); };
   const handleDialogOpenChange = (open: boolean) => { setEditOpen(open); if (!open) reset(getDefaultValues(user)); };
 
   if (!user) return null;
 
   const isLoading = saving || checkingName;
-  const profileCompletion = user.profileCompleted ?? calculateCompletion({ ...getDefaultValues(user), photoURL: user.photoURL });
+  const profileCompletion = user.profileCompleted ?? calculateCompletion(getDefaultValues(user));
   const completionItems = [
     { label: 'Name', done: !!user.displayName },
-    { label: 'Photo', done: !!user.photoURL },
     { label: 'Bio', done: !!user.bio },
     { label: 'Timezone', done: !!user.timezone },
     { label: 'Sports', done: (user.sportPreferences?.length ?? 0) > 0 },
@@ -393,10 +330,6 @@ export default function ProfilePage() {
           </DialogHeader>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <div className="flex justify-center pt-2">
-              <ProfilePicUploader currentPhotoURL={user.photoURL} userId={user.uid} onUploadComplete={handleProfilePicUploaded} />
-            </div>
-
             {/* Basic Info */}
             <Card>
               <CardHeader className="pb-3"><CardTitle className="text-base">Basic Info</CardTitle></CardHeader>
