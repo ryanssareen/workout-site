@@ -30,7 +30,8 @@ export interface User {
   bio?: string;
   timezone?: string;
   sportPreferences?: string[];
-  fitnessGoals?: string[];
+  fitnessGoals?: string[]; // legacy, use trainingFor
+  trainingFor?: string[];
   notificationPreferences?: {
     emailSummary: boolean;
     workoutReminders: boolean;

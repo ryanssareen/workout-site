@@ -5,23 +5,23 @@ export const SPORT_OPTIONS = [
   'Cycling',
   'Swimming',
   'Strength Training',
-  'Triathlon',
-  'CrossFit',
-  'Yoga',
-  'Hiking',
-  'Rowing',
-  'Other',
 ] as const;
 
-export const FITNESS_GOAL_OPTIONS = [
-  'Build Endurance',
-  'Lose Weight',
-  'Build Muscle',
-  'Improve Speed',
-  'Race Preparation',
+export const TRAINING_FOR_OPTIONS = [
+  'Hyrox',
+  'Ironman',
+  'Marathon',
+  'Half Marathon',
+  'Triathlon',
+  'Spartan Race',
+  'CrossFit Competition',
+  'Ultra Marathon',
+  '5K / 10K',
+  'Century Ride',
+  'Open Water Swim',
+  'Powerlifting Meet',
   'General Fitness',
-  'Injury Recovery',
-  'Flexibility',
+  'Other',
 ] as const;
 
 export const profileSchema = z.object({
@@ -29,7 +29,7 @@ export const profileSchema = z.object({
   bio: z.string().max(300, 'Bio must be under 300 characters').optional(),
   timezone: z.string().optional(),
   sportPreferences: z.array(z.string()).optional(),
-  fitnessGoals: z.array(z.string()).optional(),
+  trainingFor: z.array(z.string()).optional(),
   notificationPreferences: z.object({
     emailSummary: z.boolean(),
     workoutReminders: z.boolean(),

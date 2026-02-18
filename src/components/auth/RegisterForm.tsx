@@ -203,6 +203,7 @@ export function RegisterForm({ initialRole = '' }: RegisterFormProps) {
               >
                 <Target className={`h-6 w-6 ${formData.role === 'student' ? 'text-red-500' : ''}`} />
                 <span className="font-bold text-sm uppercase tracking-wider">Athlete</span>
+                <span className="text-xs opacity-60 font-normal normal-case tracking-normal">Track your training</span>
               </button>
             </div>
           </div>
