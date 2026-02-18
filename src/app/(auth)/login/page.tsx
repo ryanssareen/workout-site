@@ -12,7 +12,13 @@ export default function LoginPage() {
   const loading = useAuthStore((state) => state.loading);
 
   useEffect(() => {
-    if (!loading && user) router.replace('/dashboard');
+    if (!loading && user) {
+      if (user.onboardingCompleted === false) {
+        router.replace('/onboarding');
+      } else {
+        router.replace('/dashboard');
+      }
+    }
   }, [user, loading, router]);
 
   if (loading || user) {

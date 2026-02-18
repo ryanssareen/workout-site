@@ -22,7 +22,11 @@ export function LoginForm() {
 
   useEffect(() => {
     if (waitingForAuth && user) {
-      router.replace('/dashboard');
+      if (user.onboardingCompleted === false) {
+        router.replace('/onboarding');
+      } else {
+        router.replace('/dashboard');
+      }
     }
   }, [waitingForAuth, user, router]);
 
