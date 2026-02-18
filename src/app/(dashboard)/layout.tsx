@@ -62,7 +62,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen relative overflow-hidden bg-background text-foreground">
       <div className="absolute inset-0 bg-energy -z-10 pointer-events-none" aria-hidden />
       <Navbar />
-      <main className={`relative container mx-auto px-3 sm:px-4 py-4 sm:py-8 ${isReports ? 'max-w-[1600px]' : 'max-w-6xl'}`}>
+      <main className={`relative container mx-auto px-3 sm:px-4 py-4 sm:py-8 ${isReports ? 'max-w-[1920px]' : 'max-w-6xl'}`}>
         <div className={`panel-glow rounded-2xl sm:rounded-3xl ${isReports ? 'p-3 sm:p-4 md:p-6' : 'p-4 sm:p-6 md:p-8'}`}>
           {children}
         </div>
