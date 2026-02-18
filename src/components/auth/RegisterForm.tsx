@@ -50,8 +50,8 @@ export function RegisterForm({ initialRole = '' }: RegisterFormProps) {
     setGoogleLoading(true);
     try {
       await signInWithGoogle();
-      toast.success('Account created! You can update your role in Settings.');
-      router.push('/dashboard');
+      toast.success('Account created!');
+      router.push('/onboarding');
     } catch (error: any) {
       if (error.message !== 'Sign-in cancelled') {
         toast.error(error.message);
@@ -105,7 +105,7 @@ export function RegisterForm({ initialRole = '' }: RegisterFormProps) {
         toast.success('Account created successfully');
       }
 
-      router.push('/dashboard');
+      router.push('/onboarding');
     } catch (error: any) {
       toast.error(error.message);
     } finally {

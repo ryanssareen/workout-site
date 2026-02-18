@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useForm } from 'react-hook-form';
@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   Select,
   SelectContent,
@@ -30,7 +31,23 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, UserCircle, Save, Pencil, MapPin, Trophy, Bell } from 'lucide-react';
+import {
+  Loader2,
+  Save,
+  Pencil,
+  MapPin,
+  Trophy,
+  Bell,
+  Camera,
+  Upload,
+  X,
+  CheckCircle2,
+  Dumbbell,
+  Target,
+  Mail,
+  Clock,
+  ImagePlus,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -68,6 +85,179 @@ function formatTimezone(timezone?: string) {
   return timezone.replace(/_/g, ' ');
 }
 
+function getInitials(name: string) {
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+/* ── Circular progress ring ─────────────────────────────────────────── */
+function ProgressRing({ percent, size = 120, stroke = 6 }: { percent: number; size?: number; stroke?: number }) {
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (percent / 100) * circumference;
+
+  return (
+    <svg width={size} height={size} className="transform -rotate-90">
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={stroke}
+        className="text-muted/50"
+      />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        fill="none"
+        stroke="url(#progressGradient)"
+        strokeWidth={stroke}
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        strokeDashoffset={offset}
+        className="transition-all duration-1000 ease-out"
+      />
+      <defs>
+        <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="var(--primary)" />
+          <stop offset="100%" stopColor="#f97316" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+/* ── Profile Pic Uploader inside edit dialog ────────────────────────── */
+function ProfilePicUploader({
+  currentPhotoURL,
+  userId,
+  onUploadComplete,
+}: {
+  currentPhotoURL?: string;
+  userId: string;
+  onUploadComplete: (url: string) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = useCallback(async (file: File) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Please use a JPEG, PNG, WebP, or GIF image.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be under 5MB.');
+      return;
+    }
+
+    // Show preview immediately
+    const reader = new FileReader();
+    reader.onload = (e) => setPreview(e.target?.result as string);
+    reader.readAsDataURL(file);
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('uid', userId);
+
+      const res = await fetch('/api/upload-profile-pic', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
+
+      onUploadComplete(data.photoURL);
+      toast.success('Profile picture updated!');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Upload failed';
+      toast.error(msg);
+      setPreview(null);
+    } finally {
+      setUploading(false);
+    }
+  }, [userId, onUploadComplete]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  }, [handleFile]);
+
+  const displayUrl = preview || currentPhotoURL;
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div
+        className={cn(
+          'relative group cursor-pointer rounded-full transition-all duration-200',
+          dragOver && 'ring-4 ring-primary/40 scale-105'
+        )}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+        onClick={() => fileInputRef.current?.click()}
+      >
+        <Avatar className="w-28 h-28 border-4 border-background shadow-xl">
+          {displayUrl ? (
+            <AvatarImage src={displayUrl} alt="Profile" />
+          ) : null}
+          <AvatarFallback className="text-2xl font-bold bg-gradient-to-br from-primary/20 to-orange-500/20 text-primary">
+            <ImagePlus className="w-8 h-8" />
+          </AvatarFallback>
+        </Avatar>
+
+        {/* Hover overlay */}
+        <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+          {uploading ? (
+            <Loader2 className="w-6 h-6 text-white animate-spin" />
+          ) : (
+            <Camera className="w-6 h-6 text-white" />
+          )}
+        </div>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleFile(file);
+          }}
+        />
+      </div>
+
+      <div className="text-center">
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+          disabled={uploading}
+        >
+          {uploading ? 'Uploading...' : displayUrl ? 'Change photo' : 'Upload photo'}
+        </button>
+        <p className="text-xs text-muted-foreground mt-0.5">JPG, PNG, WebP or GIF · Max 5MB</p>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   MAIN PROFILE PAGE
+   ══════════════════════════════════════════════════════════════════════ */
 export default function ProfilePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -145,7 +335,7 @@ export default function ProfilePage() {
 
     setSaving(true);
     try {
-      const profileCompleted = calculateCompletion(data);
+      const profileCompleted = calculateCompletion({ ...data, photoURL: user.photoURL });
       await updateDoc(doc(getDbInstance(), 'users', user.uid), {
         displayName: data.displayName,
         bio: data.bio || null,
@@ -177,6 +367,11 @@ export default function ProfilePage() {
     }
   };
 
+  const handleProfilePicUploaded = (photoURL: string) => {
+    if (!user) return;
+    setUser({ ...user, photoURL });
+  };
+
   const handleDialogOpenChange = (open: boolean) => {
     setEditOpen(open);
     if (!open) {
@@ -189,122 +384,217 @@ export default function ProfilePage() {
   const isLoading = saving || checkingName;
   const profileCompletion =
     user.profileCompleted ?? calculateCompletion({ ...getDefaultValues(user), photoURL: user.photoURL });
+  const completionItems = [
+    { label: 'Name', done: !!user.displayName },
+    { label: 'Photo', done: !!user.photoURL },
+    { label: 'Bio', done: !!user.bio },
+    { label: 'Timezone', done: !!user.timezone },
+    { label: 'Sports', done: (user.sportPreferences?.length ?? 0) > 0 },
+    { label: 'Goals', done: (user.fitnessGoals?.length ?? 0) > 0 },
+  ];
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 pb-8">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary to-primary/80 shadow-lg shadow-primary/20">
-            <UserCircle className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">Profile</h1>
-            <p className="text-sm text-muted-foreground">Your saved details</p>
+    <div className="max-w-4xl mx-auto space-y-8 pb-8">
+      {/* ── HERO SECTION ────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/5 via-orange-500/5 to-rose-500/5 border border-border/50">
+        {/* Background pattern */}
+        <div className="absolute inset-0 opacity-[0.03]" style={{
+          backgroundImage: 'radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)',
+          backgroundSize: '24px 24px',
+        }} />
+
+        <div className="relative px-6 sm:px-8 py-8 sm:py-10">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-8">
+            {/* Avatar with progress ring */}
+            <div className="relative shrink-0">
+              <ProgressRing percent={profileCompletion} size={140} stroke={5} />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Avatar className="w-[116px] h-[116px] border-4 border-background shadow-xl">
+                  {user.photoURL ? (
+                    <AvatarImage src={user.photoURL} alt={user.displayName} />
+                  ) : null}
+                  <AvatarFallback className="text-3xl font-bold bg-gradient-to-br from-primary/20 to-orange-500/20 text-primary">
+                    {user.displayName ? getInitials(user.displayName) : '?'}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+              {/* Completion badge */}
+              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-card border border-border rounded-full px-3 py-1 shadow-md">
+                <span className="text-xs font-bold tabular-nums">{profileCompletion}%</span>
+              </div>
+            </div>
+
+            {/* Info */}
+            <div className="flex-1 text-center sm:text-left space-y-3 min-w-0">
+              <div>
+                <h1 className="text-3xl sm:text-4xl font-bold tracking-tight truncate">
+                  {user.displayName || 'Your Profile'}
+                </h1>
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">
+                  <span className="flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5" />
+                    {user.email}
+                  </span>
+                  {user.timezone && (
+                    <span className="flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5" />
+                      {formatTimezone(user.timezone)}
+                    </span>
+                  )}
+                  <Badge variant="secondary" className="capitalize text-xs">
+                    {user.role}
+                  </Badge>
+                </div>
+              </div>
+
+              {user.bio && (
+                <p className="text-muted-foreground text-sm max-w-lg whitespace-pre-wrap leading-relaxed">
+                  {user.bio}
+                </p>
+              )}
+
+              <Button onClick={() => setEditOpen(true)} size="sm" className="mt-2">
+                <Pencil className="mr-2 h-3.5 w-3.5" />
+                Edit Profile
+              </Button>
+            </div>
           </div>
         </div>
-        <Button onClick={() => setEditOpen(true)}>
-          <Pencil className="mr-2 h-4 w-4" />
-          Build / Edit Profile
-        </Button>
       </div>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Basic Info</CardTitle>
-          <CardDescription>{profileCompletion}% profile completion</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Display Name</p>
-            <p className="text-base font-medium">{user.displayName || 'Not set'}</p>
-          </div>
-          <div>
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Bio</p>
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{user.bio || 'No bio added yet.'}</p>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-            <span>{formatTimezone(user.timezone)}</span>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Sport Preferences</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {user.sportPreferences && user.sportPreferences.length > 0 ? (
+      {/* ── COMPLETION CHECKLIST (if < 100%) ─────────────────────────── */}
+      {profileCompletion < 100 && (
+        <Card className="border-dashed border-primary/30 bg-primary/[0.02]">
+          <CardContent className="py-4 px-6">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-medium">Complete your profile</p>
+              <button
+                onClick={() => setEditOpen(true)}
+                className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+              >
+                Fill in →
+              </button>
+            </div>
             <div className="flex flex-wrap gap-2">
-              {user.sportPreferences.map((sport) => (
-                <Badge key={sport}>{sport}</Badge>
+              {completionItems.map(({ label, done }) => (
+                <span
+                  key={label}
+                  className={cn(
+                    'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors',
+                    done
+                      ? 'bg-emerald-500/10 text-emerald-600'
+                      : 'bg-muted text-muted-foreground'
+                  )}
+                >
+                  {done ? <CheckCircle2 className="w-3 h-3" /> : <div className="w-3 h-3 rounded-full border-2 border-current opacity-40" />}
+                  {label}
+                </span>
               ))}
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No sports selected yet.</p>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Trophy className="h-4 w-4 text-primary" />
-            Fitness Goals
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {user.fitnessGoals && user.fitnessGoals.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {user.fitnessGoals.map((goal) => (
-                <Badge key={goal} variant="secondary">
-                  {goal}
-                </Badge>
+      {/* ── INFO CARDS GRID ──────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Sports */}
+        <Card className="group hover:shadow-md transition-shadow">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-blue-500/10">
+                <Dumbbell className="h-4 w-4 text-blue-500" />
+              </div>
+              Sports
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {user.sportPreferences && user.sportPreferences.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {user.sportPreferences.map((sport) => (
+                  <Badge key={sport} variant="secondary" className="font-normal">
+                    {sport}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">No sports selected</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Goals */}
+        <Card className="group hover:shadow-md transition-shadow">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-amber-500/10">
+                <Target className="h-4 w-4 text-amber-500" />
+              </div>
+              Goals
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {user.fitnessGoals && user.fitnessGoals.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {user.fitnessGoals.map((goal) => (
+                  <Badge key={goal} variant="secondary" className="font-normal">
+                    {goal}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">No goals set</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Notifications */}
+        <Card className="group hover:shadow-md transition-shadow md:col-span-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-violet-500/10">
+                <Bell className="h-4 w-4 text-violet-500" />
+              </div>
+              Notifications
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+              {[
+                { label: 'Weekly Summary', on: user.notificationPreferences?.emailSummary !== false },
+                { label: 'Workout Reminders', on: user.notificationPreferences?.workoutReminders !== false },
+                { label: 'Coach Messages', on: user.notificationPreferences?.coachMessages !== false },
+              ].map(({ label, on }) => (
+                <span key={label} className="flex items-center gap-1.5">
+                  <div className={cn('w-2 h-2 rounded-full', on ? 'bg-emerald-500' : 'bg-muted-foreground/30')} />
+                  <span className={cn(on ? 'text-foreground' : 'text-muted-foreground')}>{label}</span>
+                </span>
               ))}
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No goals set yet.</p>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Bell className="h-4 w-4 text-primary" />
-            Notifications
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <p>
-            Weekly Email Summary:{' '}
-            <span className="font-medium">
-              {user.notificationPreferences?.emailSummary !== false ? 'On' : 'Off'}
-            </span>
-          </p>
-          <p>
-            Workout Reminders:{' '}
-            <span className="font-medium">
-              {user.notificationPreferences?.workoutReminders !== false ? 'On' : 'Off'}
-            </span>
-          </p>
-          <p>
-            Coach Messages:{' '}
-            <span className="font-medium">
-              {user.notificationPreferences?.coachMessages !== false ? 'On' : 'Off'}
-            </span>
-          </p>
-        </CardContent>
-      </Card>
-
+      {/* ══════════════════════════════════════════════════════════════
+         EDIT PROFILE DIALOG
+         ══════════════════════════════════════════════════════════════ */}
       <Dialog open={editOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Build Your Profile</DialogTitle>
-            <DialogDescription>Update your profile details and preferences.</DialogDescription>
+            <DialogTitle className="text-xl">Build Your Profile</DialogTitle>
+            <DialogDescription>Add your details so your coach and teammates know who you are.</DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* Profile picture */}
+            <div className="flex justify-center pt-2">
+              <ProfilePicUploader
+                currentPhotoURL={user.photoURL}
+                userId={user.uid}
+                onUploadComplete={handleProfilePicUploaded}
+              />
+            </div>
+
+            {/* Basic Info */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Basic Info</CardTitle>
@@ -322,13 +612,18 @@ export default function ProfilePage() {
                   <Textarea
                     id="bio"
                     {...register('bio')}
-                    placeholder="Tell us about yourself..."
+                    placeholder="Tell us about yourself and your training..."
                     maxLength={300}
                     rows={3}
                   />
-                  {errors.bio && (
-                    <p className="text-sm text-destructive">{errors.bio.message}</p>
-                  )}
+                  <div className="flex justify-between">
+                    {errors.bio && (
+                      <p className="text-sm text-destructive">{errors.bio.message}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground ml-auto tabular-nums">
+                      {(watch('bio') || '').length}/300
+                    </p>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="timezone">Timezone</Label>
@@ -351,6 +646,7 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
 
+            {/* Sport Preferences */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Sport Preferences</CardTitle>
@@ -363,8 +659,10 @@ export default function ProfilePage() {
                       key={sport}
                       variant={sportPreferences.includes(sport) ? 'default' : 'outline'}
                       className={cn(
-                        'cursor-pointer transition-colors',
-                        sportPreferences.includes(sport) && 'bg-primary hover:bg-primary/90'
+                        'cursor-pointer transition-all duration-150 px-3 py-1.5',
+                        sportPreferences.includes(sport)
+                          ? 'bg-primary hover:bg-primary/90 shadow-sm'
+                          : 'hover:border-primary/50 hover:text-primary'
                       )}
                       onClick={() => toggleArrayItem('sportPreferences', sport)}
                     >
@@ -375,6 +673,7 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
 
+            {/* Fitness Goals */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Fitness Goals</CardTitle>
@@ -387,8 +686,10 @@ export default function ProfilePage() {
                       key={goal}
                       variant={fitnessGoals.includes(goal) ? 'default' : 'outline'}
                       className={cn(
-                        'cursor-pointer transition-colors',
-                        fitnessGoals.includes(goal) && 'bg-primary hover:bg-primary/90'
+                        'cursor-pointer transition-all duration-150 px-3 py-1.5',
+                        fitnessGoals.includes(goal)
+                          ? 'bg-primary hover:bg-primary/90 shadow-sm'
+                          : 'hover:border-primary/50 hover:text-primary'
                       )}
                       onClick={() => toggleArrayItem('fitnessGoals', goal)}
                     >
@@ -399,6 +700,7 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
 
+            {/* Notifications */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Notifications</CardTitle>

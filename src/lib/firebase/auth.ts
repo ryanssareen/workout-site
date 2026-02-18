@@ -64,7 +64,7 @@ export async function createUser(
       role,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-      onboardingCompleted: true,
+      onboardingCompleted: false,
       ...(role === 'student' && coachId ? { coachId } : {}),
       ...(coachCode ? { coachCode } : {}),
     };
