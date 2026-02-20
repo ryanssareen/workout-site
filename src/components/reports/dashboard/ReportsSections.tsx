@@ -42,15 +42,15 @@ const TIME_RANGES: TimeRange[] = ['ALL', '1Y', '6M', '3M', '1M', 'MO', 'WK'];
 
 function ChartTimeFilter({ value, onChange }: { value: TimeRange; onChange: (v: TimeRange) => void }) {
   return (
-    <div className="flex gap-0.5 overflow-x-auto scrollbar-hide shrink-0">
+    <div className="flex gap-0.5 sm:gap-1 overflow-x-auto scrollbar-hide shrink-0">
       {TIME_RANGES.map(r => (
         <button
           key={r}
           onClick={() => onChange(r)}
           className={cn(
-            'px-2 py-0.5 rounded-full text-[11px] font-semibold transition-colors whitespace-nowrap shrink-0',
+            'px-2.5 py-1 sm:px-2 sm:py-0.5 rounded-full text-xs sm:text-[11px] font-semibold transition-colors whitespace-nowrap shrink-0',
             value === r
-              ? 'bg-emerald-500 text-white'
+              ? 'bg-gradient-to-r from-red-500 to-emerald-500 text-white'
               : 'text-muted-foreground hover:text-foreground hover:bg-muted'
           )}
         >
@@ -527,7 +527,7 @@ export function CalendarViews({ workouts }: SectionProps) {
         </div>
         <RChart height={340}>
           <BarChart data={weeklyActivity}>
-            <XAxis dataKey="label" tick={{ fontSize: 10 }} interval={1} angle={-45} textAnchor="end" height={50} />
+            <XAxis dataKey="label" tick={{ fontSize: 9 }} interval="preserveStartEnd" angle={-45} textAnchor="end" height={50} />
             <YAxis tick={{ fontSize: 10 }} width={25} allowDecimals={false} />
             <Tooltip content={<ChartTooltip />} />
             <Bar dataKey="workouts" name="Workouts" fill="#10b981" radius={[4, 4, 0, 0]} fillOpacity={0.8} />

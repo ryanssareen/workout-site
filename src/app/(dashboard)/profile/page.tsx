@@ -210,7 +210,7 @@ export default function ProfilePage() {
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-8">
       {/* ── HERO SECTION ─────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/5 via-orange-500/5 to-rose-500/5 border border-border/50">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/5 via-emerald-500/5 to-rose-500/5 border border-border/50">
         <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)', backgroundSize: '24px 24px' }} />
         <div className="relative px-6 sm:px-8 py-8 sm:py-10">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-8">
@@ -219,7 +219,7 @@ export default function ProfilePage() {
               <div className="absolute inset-0 flex items-center justify-center">
                 <Avatar className="w-[116px] h-[116px] border-4 border-background shadow-xl">
                   {user.photoURL ? <AvatarImage src={user.photoURL} alt={user.displayName} /> : null}
-                  <AvatarFallback className="text-3xl font-bold bg-gradient-to-br from-primary/20 to-orange-500/20 text-primary">
+                  <AvatarFallback className="text-3xl font-bold bg-gradient-to-br from-primary/20 to-emerald-500/20 text-primary">
                     {user.displayName ? getInitials(user.displayName) : '?'}
                   </AvatarFallback>
                 </Avatar>
@@ -239,7 +239,7 @@ export default function ProfilePage() {
                 </div>
               </div>
               {user.bio && <p className="text-muted-foreground text-sm max-w-lg whitespace-pre-wrap leading-relaxed">{user.bio}</p>}
-              <Button onClick={() => setEditOpen(true)} size="sm" className="mt-2"><Pencil className="mr-2 h-3.5 w-3.5" />Edit Profile</Button>
+              <Button onClick={() => setEditOpen(true)} size="lg" className="mt-3 h-12 px-8 text-base font-bold shadow-lg shadow-primary/20"><Pencil className="mr-2 h-4 w-4" />Edit Profile</Button>
             </div>
           </div>
         </div>
@@ -307,7 +307,7 @@ export default function ProfilePage() {
               {[
                 { label: 'Weekly Summary', on: user.notificationPreferences?.emailSummary !== false },
                 { label: 'Workout Reminders', on: user.notificationPreferences?.workoutReminders !== false },
-                { label: 'Coach Messages', on: user.notificationPreferences?.coachMessages !== false },
+                { label: 'Activity Updates', on: user.notificationPreferences?.coachMessages !== false },
               ].map(({ label, on }) => (
                 <span key={label} className="flex items-center gap-1.5">
                   <div className={cn('w-2 h-2 rounded-full', on ? 'bg-emerald-500' : 'bg-muted-foreground/30')} />
@@ -326,7 +326,7 @@ export default function ProfilePage() {
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl">Build Your Profile</DialogTitle>
-            <DialogDescription>Add your details so your coach and teammates know who you are.</DialogDescription>
+            <DialogDescription>Personalize your athlete profile to get the most from your training.</DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -407,7 +407,7 @@ export default function ProfilePage() {
                 {([
                   { key: 'emailSummary' as const, label: 'Weekly Email Summary', desc: 'Receive a weekly recap of your training' },
                   { key: 'workoutReminders' as const, label: 'Workout Reminders', desc: 'Get reminded about upcoming workouts' },
-                  { key: 'coachMessages' as const, label: 'Coach Messages', desc: 'Notifications when your coach comments' },
+                  { key: 'coachMessages' as const, label: 'Activity Updates', desc: 'Notifications on workout comments and activity' },
                 ]).map(({ key, label, desc }) => (
                   <div key={key} className="flex items-center justify-between">
                     <div><p className="text-sm font-medium">{label}</p><p className="text-xs text-muted-foreground">{desc}</p></div>

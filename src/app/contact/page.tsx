@@ -9,15 +9,15 @@ export default function ContactPage() {
       <header className="border-b border-white/10 bg-black/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center shadow-lg shadow-red-600/30">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-600 to-emerald-500 flex items-center justify-center shadow-lg shadow-blue-600/30">
               <Dumbbell className="h-4 w-4 text-white" />
             </div>
-            <span className="font-bold text-lg">CoachTrack</span>
+            <span className="font-bold text-lg">The Daily Athlete</span>
           </Link>
           <div className="flex items-center gap-3">
             <Link href="/" className="text-sm text-white/40 hover:text-white/70 transition-colors">Home</Link>
             <Link href="/features" className="text-sm text-white/40 hover:text-white/70 transition-colors">Features</Link>
-            <Button size="sm" asChild className="bg-red-600 hover:bg-red-700 text-white border-0 ml-2">
+            <Button size="sm" asChild className="bg-blue-600 hover:bg-blue-700 text-white border-0 ml-2">
               <Link href="/register">Get Started</Link>
             </Button>
           </div>
@@ -26,13 +26,13 @@ export default function ContactPage() {
 
       <main className="relative">
         <div className="absolute inset-0 -z-10 overflow-hidden">
-          <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-red-600/8 rounded-full blur-[120px]" />
+          <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-blue-600/8 rounded-full blur-[120px]" />
         </div>
 
         <div className="container mx-auto px-4 py-20 md:py-28">
           <div className="max-w-2xl mx-auto text-center mb-16">
             <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tight mb-4">
-              Get in <span className="bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent">Touch</span>
+              Get in <span className="bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">Touch</span>
             </h1>
             <p className="text-lg text-white/40">
               Have questions, feedback, or want to collaborate? Reach out anytime.
@@ -40,38 +40,34 @@ export default function ContactPage() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-16">
-            {/* Email 1 */}
-            <a href="mailto:ryanssareen@gmail.com" className="group p-6 rounded-2xl border border-white/10 bg-white/[0.02] hover:border-red-500/40 transition-all duration-300 text-center">
-              <div className="p-3 rounded-xl bg-red-600/20 w-fit mx-auto mb-4">
-                <Mail className="h-6 w-6 text-red-500" />
+            <a href="mailto:ryanssareen@gmail.com" className="group p-6 rounded-2xl border border-white/10 bg-white/[0.02] hover:border-blue-500/40 transition-all duration-300 text-center">
+              <div className="p-3 rounded-xl bg-blue-600/20 w-fit mx-auto mb-4">
+                <Mail className="h-6 w-6 text-blue-400" />
               </div>
-              <h3 className="font-bold mb-1 group-hover:text-red-400 transition-colors">Primary Email</h3>
+              <h3 className="font-bold mb-1 group-hover:text-blue-400 transition-colors">Primary Email</h3>
               <p className="text-sm text-white/50 break-all">ryanssareen@gmail.com</p>
             </a>
 
-            {/* Email 2 */}
-            <a href="mailto:ryansareen6@gmail.com" className="group p-6 rounded-2xl border border-white/10 bg-white/[0.02] hover:border-red-500/40 transition-all duration-300 text-center">
-              <div className="p-3 rounded-xl bg-red-600/20 w-fit mx-auto mb-4">
-                <Mail className="h-6 w-6 text-red-500" />
+            <a href="mailto:ryansareen6@gmail.com" className="group p-6 rounded-2xl border border-white/10 bg-white/[0.02] hover:border-blue-500/40 transition-all duration-300 text-center">
+              <div className="p-3 rounded-xl bg-blue-600/20 w-fit mx-auto mb-4">
+                <Mail className="h-6 w-6 text-blue-400" />
               </div>
-              <h3 className="font-bold mb-1 group-hover:text-red-400 transition-colors">Secondary Email</h3>
+              <h3 className="font-bold mb-1 group-hover:text-blue-400 transition-colors">Secondary Email</h3>
               <p className="text-sm text-white/50 break-all">ryansareen6@gmail.com</p>
             </a>
 
-            {/* GitHub */}
-            <a href="https://github.com/ryanssareen" target="_blank" rel="noopener noreferrer" className="group p-6 rounded-2xl border border-white/10 bg-white/[0.02] hover:border-red-500/40 transition-all duration-300 text-center">
+            <a href="https://github.com/ryanssareen" target="_blank" rel="noopener noreferrer" className="group p-6 rounded-2xl border border-white/10 bg-white/[0.02] hover:border-blue-500/40 transition-all duration-300 text-center">
               <div className="p-3 rounded-xl bg-white/10 w-fit mx-auto mb-4">
                 <Github className="h-6 w-6 text-white" />
               </div>
-              <h3 className="font-bold mb-1 group-hover:text-red-400 transition-colors">GitHub</h3>
+              <h3 className="font-bold mb-1 group-hover:text-blue-400 transition-colors">GitHub</h3>
               <p className="text-sm text-white/50">@ryanssareen</p>
             </a>
           </div>
 
-          {/* CTA */}
           <div className="text-center space-y-6">
-            <p className="text-white/30">Want to start using CoachTrack?</p>
-            <Button asChild size="lg" className="h-12 px-8 bg-red-600 hover:bg-red-700 text-white border-0 font-bold shadow-xl shadow-red-600/25">
+            <p className="text-white/30">Want to start training with The Daily Athlete?</p>
+            <Button asChild size="lg" className="h-12 px-8 bg-blue-600 hover:bg-blue-700 text-white border-0 font-bold shadow-xl shadow-blue-600/25">
               <Link href="/register">
                 Create Free Account <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
@@ -80,18 +76,17 @@ export default function ContactPage() {
         </div>
       </main>
 
-      {/* Footer */}
       <footer className="border-t border-white/10 py-8 bg-black">
         <div className="container mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-emerald-500 flex items-center justify-center">
               <Dumbbell className="h-4 w-4 text-white" />
             </div>
-            <span className="font-bold">CoachTrack</span>
+            <span className="font-bold">The Daily Athlete</span>
           </div>
           <div className="flex items-center gap-4">
             <Link href="/features" className="text-sm text-white/30 hover:text-white/60 transition-colors">Features</Link>
-            <p className="text-sm text-white/30">&copy; {new Date().getFullYear()} CoachTrack</p>
+            <p className="text-sm text-white/30">&copy; {new Date().getFullYear()} The Daily Athlete</p>
           </div>
         </div>
       </footer>

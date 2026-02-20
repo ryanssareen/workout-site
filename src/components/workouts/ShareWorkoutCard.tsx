@@ -107,53 +107,68 @@ function ShareButtons({ title, shareText, shareUrl, fileName, cardRef, onClose }
   };
 
   return (
-    <div className="rounded-xl border bg-card p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold flex items-center gap-2">
-          <Share2 className="h-4 w-4 text-emerald-500" />
+    <div className="rounded-2xl border bg-card shadow-2xl shadow-black/40 overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b bg-muted/30">
+        <h3 className="font-bold text-lg flex items-center gap-2.5">
+          <div className="p-1.5 rounded-lg bg-emerald-500/15">
+            <Share2 className="h-4 w-4 text-emerald-500" />
+          </div>
           {title}
         </h3>
-        <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-          <X className="h-4 w-4" />
+        <button onClick={onClose} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+          <X className="h-5 w-5" />
         </button>
       </div>
-      <div className="flex flex-wrap gap-2">
-        {/* Download */}
-        <Button size="sm" onClick={handleDownload} disabled={isGenerating}
-          className="gap-2 bg-zinc-800 hover:bg-zinc-700 text-white border-0">
-          <Download className="h-4 w-4" />
-          {isGenerating ? 'Generating...' : 'Save Image'}
-        </Button>
-        {/* WhatsApp */}
-        <Button size="sm" onClick={handleWhatsApp}
-          className="gap-2 bg-[#25D366] hover:bg-[#20BD5A] text-white border-0">
-          <WhatsAppIcon className="h-4 w-4" />
-          WhatsApp
-        </Button>
-        {/* X / Twitter */}
-        <Button size="sm" onClick={handleTwitter}
-          className="gap-2 bg-black hover:bg-zinc-800 text-white border-0">
-          <XIcon className="h-4 w-4" />
-          Post
-        </Button>
-        {/* iMessage */}
-        <Button size="sm" onClick={handleIMessage}
-          className="gap-2 bg-[#34C759] hover:bg-[#2DB84E] text-white border-0">
-          <IMessageIcon className="h-4 w-4" />
-          iMessage
-        </Button>
-        {/* Copy link */}
-        <Button variant="outline" size="sm" onClick={handleCopyLink} className="gap-2">
-          {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-          {copied ? 'Copied!' : 'Copy Link'}
-        </Button>
-        {/* Native share */}
-        {typeof navigator !== 'undefined' && 'share' in navigator && (
-          <Button variant="outline" size="sm" onClick={handleNativeShare} className="gap-2">
-            <Send className="h-4 w-4" />
-            More...
+
+      {/* Share targets — big icon buttons */}
+      <div className="p-5 space-y-4">
+        <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Share to</p>
+        <div className="grid grid-cols-3 gap-3">
+          {/* WhatsApp */}
+          <button onClick={handleWhatsApp}
+            className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-[#25D366]/10 hover:bg-[#25D366]/20 border border-[#25D366]/20 transition-all group">
+            <div className="w-12 h-12 rounded-full bg-[#25D366] flex items-center justify-center shadow-lg shadow-[#25D366]/30 group-hover:scale-110 transition-transform">
+              <WhatsAppIcon className="h-6 w-6 text-white" />
+            </div>
+            <span className="text-xs font-medium">WhatsApp</span>
+          </button>
+          {/* X / Twitter */}
+          <button onClick={handleTwitter}
+            className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-foreground/5 hover:bg-foreground/10 border border-foreground/10 transition-all group">
+            <div className="w-12 h-12 rounded-full bg-foreground flex items-center justify-center shadow-lg shadow-foreground/20 group-hover:scale-110 transition-transform">
+              <XIcon className="h-5 w-5 text-background" />
+            </div>
+            <span className="text-xs font-medium">X / Twitter</span>
+          </button>
+          {/* iMessage */}
+          <button onClick={handleIMessage}
+            className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-[#34C759]/10 hover:bg-[#34C759]/20 border border-[#34C759]/20 transition-all group">
+            <div className="w-12 h-12 rounded-full bg-[#34C759] flex items-center justify-center shadow-lg shadow-[#34C759]/30 group-hover:scale-110 transition-transform">
+              <IMessageIcon className="h-6 w-6 text-white" />
+            </div>
+            <span className="text-xs font-medium">iMessage</span>
+          </button>
+        </div>
+
+        {/* Action buttons row */}
+        <div className="flex gap-2 pt-2">
+          <Button size="sm" onClick={handleDownload} disabled={isGenerating}
+            className="flex-1 gap-2 bg-zinc-800 hover:bg-zinc-700 text-white border-0">
+            <Download className="h-4 w-4" />
+            {isGenerating ? 'Generating...' : 'Save Image'}
           </Button>
-        )}
+          <Button variant="outline" size="sm" onClick={handleCopyLink} className="flex-1 gap-2">
+            {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+            {copied ? 'Copied!' : 'Copy Link'}
+          </Button>
+          {typeof navigator !== 'undefined' && 'share' in navigator && (
+            <Button variant="outline" size="sm" onClick={handleNativeShare} className="gap-2">
+              <Send className="h-4 w-4" />
+              More
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -20,7 +20,7 @@ export function StatCard({ title, value, description, icon: Icon, gradient, icon
   return (
     <Card
       className={cn(
-        'relative overflow-hidden p-5 transition-all duration-300 group',
+        'relative overflow-hidden p-4 sm:p-5 transition-all duration-300 group',
         'hover:shadow-lg dark:hover:shadow-none dark:hover:border-white/20',
         'animate-in fade-in slide-in-from-bottom-4 duration-500',
         className
@@ -41,7 +41,7 @@ export function StatCard({ title, value, description, icon: Icon, gradient, icon
         </div>
 
         <div className="flex items-end gap-2">
-          <p className="text-3xl font-bold tracking-tight">{value}</p>
+          <p className="text-2xl sm:text-3xl font-bold tracking-tight">{value}</p>
           {trend && (
             <span className={cn('text-sm font-medium mb-1', trend.isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400')}>
               {trend.isPositive ? '+' : ''}{trend.value}%

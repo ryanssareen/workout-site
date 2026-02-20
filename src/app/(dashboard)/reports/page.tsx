@@ -120,7 +120,7 @@ export default function ReportsPage() {
 
   const sectionLabel = NAV_ITEMS.find(n => n.id === section)?.label || 'Reports';
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/reports` : '';
-  const shareText = `📊 Check out my ${sectionLabel} on CoachTrack!\n${workouts.length} workouts tracked`;
+  const shareText = `📊 Check out my ${sectionLabel} on The Daily Athlete!\n${workouts.length} workouts tracked`;
 
   return (
     <div className="w-full">
@@ -144,17 +144,19 @@ export default function ReportsPage() {
         </Button>
       </div>
 
-      {/* Share panel */}
+      {/* Share modal overlay */}
       {showShare && (
-        <div className="mb-6">
-          <ShareButtons
-            title="Share Your Reports"
-            shareText={shareText}
-            shareUrl={shareUrl}
-            fileName={`coachtrack-${sectionLabel.toLowerCase().replace(/\s+/g, '-')}`}
-            cardRef={contentRef}
-            onClose={() => setShowShare(false)}
-          />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowShare(false)}>
+          <div className="w-full max-w-md animate-in zoom-in-95 slide-in-from-bottom-4 duration-300" onClick={(e) => e.stopPropagation()}>
+            <ShareButtons
+              title="Share Your Reports"
+              shareText={shareText}
+              shareUrl={shareUrl}
+              fileName={`daily-athlete-${sectionLabel.toLowerCase().replace(/\s+/g, '-')}`}
+              cardRef={contentRef}
+              onClose={() => setShowShare(false)}
+            />
+          </div>
         </div>
       )}
 
@@ -167,7 +169,7 @@ export default function ReportsPage() {
             className={cn(
               'flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all shrink-0',
               section === item.id
-                ? 'bg-primary text-primary-foreground shadow-sm'
+                ? 'bg-gradient-to-r from-primary to-emerald-600 text-white shadow-sm'
                 : 'bg-muted/60 text-muted-foreground active:bg-muted'
             )}
           >
@@ -189,7 +191,7 @@ export default function ReportsPage() {
                 className={cn(
                   'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all text-left',
                   section === item.id
-                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    ? 'bg-gradient-to-r from-primary/15 to-emerald-500/10 text-primary shadow-sm border border-primary/20'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                 )}
               >

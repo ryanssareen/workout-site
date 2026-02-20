@@ -588,8 +588,39 @@ export async function GET(request: NextRequest) {
           });
           mergedWorkoutsCount++;
         } else {
-          // Create new workout
-          console.log(`  ➕ Creating: ${activity.name}`);
+          // Before creating: proximity duplicate check (catches 4-min drift, GPS re-uploads, etc.)
+          const thirtyMinBefore = new Date(activityDate.getTime() - 30 * 60 * 1000);
+          const thirtyMinAfter = new Date(activityDate.getTime() + 30 * 60 * 1000);
+          const proximitySnap = await adminDb
+            .collection('workouts')
+            .where('assignedTo', '==', userId)
+            .where('type', '==', workoutType)
+            .where('source', '==', 'strava')
+            .where('date', '>=', admin.firestore.Timestamp.fromDate(thirtyMinBefore))
+            .where('date', '<=', admin.firestore.Timestamp.fromDate(thirtyMinAfter))
+            .get();
+          
+          let proximityDupe = false;
+          for (const pDoc of proximitySnap.docs) {
+            const pData = pDoc.data();
+            if (pData.stravaActivityId === stravaId) continue; // same activity, already handled
+            const eDur = pData.actualStats?.duration || (pData.duration || 0) * 60;
+            const nDur = activity.moving_time || 0;
+            const dClose = eDur > 0 && nDur > 0 && Math.abs(eDur - nDur) < 600;
+            const eDist = pData.actualStats?.distance || 0;
+            const nDist = activity.distance || 0;
+            const distClose = eDist > 0 && nDist > 0 && Math.abs(eDist - nDist) / Math.max(eDist, nDist) < 0.05;
+            if (dClose || distClose) {
+              console.log(`  🛑 Proximity duplicate: "${activity.name}" ~= "${pData.name}" (${pDoc.id}) — SKIPPING`);
+              proximityDupe = true;
+              skippedCount++;
+              break;
+            }
+          }
+          
+          if (!proximityDupe) {
+            // Create new workout
+            console.log(`  ➕ Creating: ${activity.name}`);
 
           // Generate AI tags and fun route comment
           const { tags: aiTags, aiComment } = await generateWorkoutTags(activity);
@@ -625,6 +656,7 @@ export async function GET(request: NextRequest) {
 
           await adminDb.collection('workouts').doc(`strava_${stravaId}`).set(newWorkoutData);
           newWorkoutsCount++;
+          }
         }
       }
 
@@ -667,10 +699,11 @@ export async function GET(request: NextRequest) {
       totalActivities: activities.length,
       message,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Strava sync error:', error);
+    const errMsg = error instanceof Error ? error.message : 'Failed to sync Strava activities';
     return NextResponse.json(
-      { error: error.message || 'Failed to sync Strava activities' },
+      { error: errMsg },
       { status: 500 }
     );
   }

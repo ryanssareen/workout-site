@@ -406,11 +406,49 @@ export function detectDuplicates(workouts: Workout[]): DuplicateGroup[] {
     }
   }
 
-  // 2. Manual + Strava overlap (same type, same day, similar duration)
+  // 2a. Strava-to-Strava fuzzy duplicates (different activity IDs, same workout)
+  // Catches re-synced activities with slightly different times/durations
   const remaining1 = workouts.filter(w => !used.has(w.id));
   const stravaWorkouts = remaining1.filter(w => w.source === 'strava');
   const manualWorkouts = remaining1.filter(w => w.source !== 'strava');
 
+  for (let i = 0; i < stravaWorkouts.length; i++) {
+    const a = stravaWorkouts[i];
+    if (used.has(a.id)) continue;
+    const matchGroup: Workout[] = [a];
+    for (let j = i + 1; j < stravaWorkouts.length; j++) {
+      const b = stravaWorkouts[j];
+      if (used.has(b.id)) continue;
+      if (a.type !== b.type || a.assignedTo !== b.assignedTo) continue;
+      const dateA = toDate(a);
+      const dateB = toDate(b);
+      const minsDiff = Math.abs(dateA.getTime() - dateB.getTime()) / (1000 * 60);
+      // Same type, same user, dates within 30 minutes
+      if (minsDiff > 30) continue;
+      // Check duration within 10 minutes (600 seconds)
+      const durA = a.actualStats?.duration || (a.duration || 0) * 60;
+      const durB = b.actualStats?.duration || (b.duration || 0) * 60;
+      const durationClose = durA > 0 && durB > 0 && Math.abs(durA - durB) < 600;
+      // Check distance within 5%
+      const distA = a.actualStats?.distance || 0;
+      const distB = b.actualStats?.distance || 0;
+      const distanceClose = distA > 0 && distB > 0 && Math.abs(distA - distB) / Math.max(distA, distB) < 0.05;
+      // Dates within 30 min is already suspicious; match if duration or distance also close,
+      // OR if both have no distance/duration data (strength workouts)
+      if (durationClose || distanceClose || (durA === 0 && durB === 0 && distA === 0 && distB === 0)) {
+        matchGroup.push(b);
+      }
+    }
+    if (matchGroup.length > 1) {
+      groups.push({
+        reason: `Strava duplicate: "${a.name}" on ${format(toDate(a), 'MMM d')} (${matchGroup.length} copies)`,
+        workouts: matchGroup,
+      });
+      matchGroup.forEach(w => used.add(w.id));
+    }
+  }
+
+  // 2b. Manual + Strava overlap (same type, same day — relaxed matching)
   for (const manual of manualWorkouts) {
     if (used.has(manual.id)) continue;
     for (const strava of stravaWorkouts) {
@@ -425,7 +463,9 @@ export function detectDuplicates(workouts: Workout[]): DuplicateGroup[] {
         const distM = manual.actualStats?.distance || 0;
         const distS = strava.actualStats?.distance || 0;
         const distanceClose = distM > 0 && distS > 0 && Math.abs(distM - distS) / Math.max(distM, distS) < 0.05;
-        if (durationClose || distanceClose) {
+        // If same type + same day: match on duration/distance, OR if the manual entry has no stats at all (coach-assigned, just marked done)
+        const manualNoStats = durM === 0 && distM === 0;
+        if (durationClose || distanceClose || manualNoStats) {
           groups.push({
             reason: `Manual + Strava overlap: "${manual.name}" on ${format(dateM, 'MMM d')}`,
             workouts: [strava, manual], // Keep Strava (richer data) first

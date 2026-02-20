@@ -84,9 +84,9 @@ export function generateSummaryEmail(data: SummaryData): string {
       <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #000000;">
         <div style="max-width: 600px; margin: 0 auto; background-color: #0a0a0a;">
           <!-- Header -->
-          <div style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); padding: 40px 30px; text-align: center;">
+          <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 40px 30px; text-align: center;">
             <div style="font-size: 32px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; margin: 0;">
-              COACHTRACK
+              THE DAILY ATHLETE
             </div>
             <div style="font-size: 14px; color: rgba(255,255,255,0.7); margin-top: 6px; text-transform: uppercase; letter-spacing: 3px;">
               ${data.periodDays}-Day Summary
@@ -146,7 +146,7 @@ export function generateSummaryEmail(data: SummaryData): string {
           <!-- Footer -->
           <div style="border-top: 1px solid rgba(255,255,255,0.08); padding: 25px 30px; text-align: center;">
             <p style="margin: 0; color: rgba(255,255,255,0.25); font-size: 12px;">
-              Sent from CoachTrack — Train Harder. Track Smarter.
+              Sent from The Daily Athlete — Train Smarter. Every Day.
             </p>
             <p style="margin: 5px 0 0 0; color: rgba(255,255,255,0.15); font-size: 11px;">
               You're receiving this because you have workouts assigned in the app.

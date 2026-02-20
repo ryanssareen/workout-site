@@ -1,4 +1,4 @@
-// Structured Report Types for CoachTrack
+// Structured Report Types for The Daily Athlete
 
 export type ReportType = 'progress' | 'comparison' | 'summary' | 'prs' | 'insight' | 'analysis';
 

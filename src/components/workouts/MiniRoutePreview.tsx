@@ -69,10 +69,11 @@ export function MiniRoutePreview({
   return (
     <div className={`rounded-md overflow-hidden bg-muted/30 ${className}`}>
       <svg
-        width={width}
+        width="100%"
         height={height}
         viewBox={`0 0 ${width} ${height}`}
-        className="block"
+        preserveAspectRatio="xMidYMid meet"
+        className="block w-full"
       >
         <path
           d={svgPath}

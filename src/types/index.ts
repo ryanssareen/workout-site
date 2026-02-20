@@ -32,6 +32,9 @@ export interface User {
   sportPreferences?: string[];
   fitnessGoals?: string[]; // legacy, use trainingFor
   trainingFor?: string[];
+  ageRange?: string;
+  experienceLevel?: string;
+  weeklyAvailability?: string;
   notificationPreferences?: {
     emailSummary: boolean;
     workoutReminders: boolean;

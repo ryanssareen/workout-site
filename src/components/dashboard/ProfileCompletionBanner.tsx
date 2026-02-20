@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { X, UserCircle } from 'lucide-react';
 import Link from 'next/link';
 
-function calculateCompletion(user: { displayName?: string; photoURL?: string; bio?: string; timezone?: string; sportPreferences?: string[]; fitnessGoals?: string[]; notificationPreferences?: { emailSummary: boolean; workoutReminders: boolean; coachMessages: boolean } | undefined }) {
+function calculateCompletion(user: { displayName?: string; photoURL?: string; bio?: string; timezone?: string; sportPreferences?: string[]; fitnessGoals?: string[]; notificationPreferences?: { emailSummary: boolean; workoutReminders: boolean; coachMessages: boolean; } | undefined }) {
   let score = 0;
   if (user.displayName) score += 20;
   if (user.photoURL) score += 10;

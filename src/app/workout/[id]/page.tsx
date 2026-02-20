@@ -55,21 +55,21 @@ export async function generateMetadata({ params }: WorkoutPageProps): Promise<Me
   const workout = await getWorkout(id);
 
   if (!workout) {
-    return { title: 'Workout Not Found | CoachTrack' };
+    return { title: 'Workout Not Found | The Daily Athlete' };
   }
 
   const description = workout.description
     ? workout.description.slice(0, 160)
-    : `${workout.type.charAt(0).toUpperCase() + workout.type.slice(1)} workout on CoachTrack`;
+    : `${workout.type.charAt(0).toUpperCase() + workout.type.slice(1)} workout on The Daily Athlete`;
 
   return {
-    title: `${workout.name} | CoachTrack`,
+    title: `${workout.name} | The Daily Athlete`,
     description,
     openGraph: {
       title: workout.name,
       description,
       type: 'article',
-      siteName: 'CoachTrack',
+      siteName: 'The Daily Athlete',
     },
     twitter: {
       card: 'summary',

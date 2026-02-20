@@ -3,14 +3,15 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { findCoachByCode } from '@/lib/firebase/auth';
-import { connectToCoach, disconnectFromCoach, getCoachInfo } from '@/lib/firebase/firestore';
+// Backend coach functions preserved for future use
+// import { findCoachByCode } from '@/lib/firebase/auth';
+// import { connectToCoach, disconnectFromCoach, getCoachInfo } from '@/lib/firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { User, Users, Link2, Unlink, Settings, LogOut, Key, CheckCircle2, XCircle, Loader2, ExternalLink, Copy, Check } from 'lucide-react';
+import { User, Unlink, Settings, LogOut, Key, CheckCircle2, Loader2, ExternalLink, Copy, Check } from 'lucide-react';
 import { signOut } from '@/lib/firebase/auth';
 import Link from 'next/link';
 import { StravaDuplicateDialog } from '@/components/strava/DuplicateDialog';
@@ -21,14 +22,9 @@ function SettingsContent() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
 
-  const [coachCode, setCoachCode] = useState('');
-  const [coachName, setCoachName] = useState<string | null>(null);
-  const [isConnectingCoach, setIsConnectingCoach] = useState(false);
-  const [isDisconnectingCoach, setIsDisconnectingCoach] = useState(false);
   const [isConnectingStrava, setIsConnectingStrava] = useState(false);
   const [isDisconnectingStrava, setIsDisconnectingStrava] = useState(false);
   const [isSyncingStrava, setIsSyncingStrava] = useState(false);
-  const [loadingCoachInfo, setLoadingCoachInfo] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const [stravaDuplicates, setStravaDuplicates] = useState<any[]>([]);
@@ -50,54 +46,6 @@ function SettingsContent() {
       router.replace('/settings');
     }
   }, [searchParams, router]);
-
-  useEffect(() => {
-    async function loadCoachInfo() {
-      if ((user?.role === 'athlete' || user?.role === 'student') && user.coachId) {
-        setLoadingCoachInfo(true);
-        try { const coach = await getCoachInfo(user.coachId); setCoachName(coach?.displayName || 'Unknown Coach'); }
-        catch (error) { console.error('Error loading coach info:', error); }
-        setLoadingCoachInfo(false);
-      }
-    }
-    loadCoachInfo();
-  }, [user]);
-
-  const handleCopyCode = () => {
-    if (user?.coachCode) {
-      navigator.clipboard.writeText(user.coachCode);
-      setCopied(true);
-      toast.success('Code copied!');
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const handleConnectCoach = async () => {
-    if (!coachCode.trim() || !user) return;
-    setIsConnectingCoach(true);
-    try {
-      const coach = await findCoachByCode(coachCode.toUpperCase());
-      if (!coach) { toast.error('Invalid coach code'); setIsConnectingCoach(false); return; }
-      await connectToCoach(user.uid, coach.uid);
-      setUser({ ...user, coachId: coach.uid });
-      setCoachName(coach.displayName);
-      setCoachCode('');
-      toast.success(`Connected to ${coach.displayName}!`);
-    } catch (error: any) { toast.error(error.message || 'Failed to connect'); }
-    setIsConnectingCoach(false);
-  };
-
-  const handleDisconnectCoach = async () => {
-    if (!user) return;
-    setIsDisconnectingCoach(true);
-    try {
-      await disconnectFromCoach(user.uid);
-      setUser({ ...user, coachId: undefined });
-      setCoachName(null);
-      toast.success('Disconnected from coach');
-    } catch (error: any) { toast.error(error.message || 'Failed to disconnect'); }
-    setIsDisconnectingCoach(false);
-  };
 
   const handleConnectStrava = () => { setIsConnectingStrava(true); window.location.href = `/api/auth/strava/authorize?userId=${user?.uid}`; };
 
@@ -233,58 +181,8 @@ function SettingsContent() {
             <p className="text-xs text-muted-foreground">Role</p>
             <Badge variant="secondary" className="capitalize">{user?.role}</Badge>
           </div>
-          {user?.role === 'coach' && user?.coachCode && (
-            <div className="flex items-center justify-between p-4 rounded-xl bg-primary/5 border border-primary/20">
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Your Coach Code</p>
-                <p className="text-2xl font-mono font-bold tracking-wider">{user.coachCode}</p>
-              </div>
-              <Button variant="outline" size="sm" onClick={handleCopyCode}>
-                {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-              </Button>
-            </div>
-          )}
         </CardContent>
       </Card>
-
-      {/* Coach Connection */}
-      {(user?.role === 'athlete' || user?.role === 'student') && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2"><Users className="h-4 w-4 text-primary" />Coach Connection</CardTitle>
-            <CardDescription>Connect with your coach</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {user.coachId ? (
-              <div className="flex items-center justify-between p-4 rounded-xl bg-green-500/10 border border-green-500/20">
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="h-5 w-5 text-green-500" />
-                  <div>
-                    <p className="font-medium">Connected</p>
-                    <p className="text-sm text-muted-foreground">{loadingCoachInfo ? 'Loading...' : coachName}</p>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm" onClick={handleDisconnectCoach} disabled={isDisconnectingCoach} className="text-red-500 hover:text-red-600 hover:bg-red-500/10">
-                  {isDisconnectingCoach ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Unlink className="h-4 w-4 mr-2" />Disconnect</>}
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                  <XCircle className="h-4 w-4 text-amber-500" />
-                  <p className="text-sm">Not connected to a coach</p>
-                </div>
-                <div className="flex gap-2">
-                  <Input placeholder="Enter code (e.g., ABCXYZ)" value={coachCode} onChange={(e) => setCoachCode(e.target.value.toUpperCase().slice(0, 6))} className="font-mono uppercase" maxLength={6} />
-                  <Button onClick={handleConnectCoach} disabled={coachCode.length !== 6 || isConnectingCoach}>
-                    {isConnectingCoach ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Link2 className="h-4 w-4 mr-2" />Connect</>}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
       {/* Strava */}
       {(user?.role === 'athlete' || user?.role === 'student') && (

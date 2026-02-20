@@ -149,7 +149,7 @@ export default function CalendarPage() {
     const icsLines = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//CoachTrack//EN',
+      'PRODID:-//TheDailyAthlete//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
     ];
@@ -244,35 +244,36 @@ export default function CalendarPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <CalendarIcon className="h-8 w-8" />
+          <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+            <CalendarIcon className="h-6 w-6 sm:h-8 sm:w-8" />
             Workout Calendar
           </h1>
-          <p className="text-muted-foreground mt-2">View and manage your workout schedule</p>
+          <p className="text-sm text-muted-foreground mt-1 sm:mt-2">View and manage your workout schedule</p>
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => setCurrentMonth(new Date())}>
-            <RefreshCcw className="h-4 w-4 mr-2" />
-            Today
+          <Button variant="outline" size="sm" onClick={() => setCurrentMonth(new Date())}>
+            <RefreshCcw className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Today</span>
           </Button>
-          <Button variant="outline" onClick={generateICS}>
-            <Download className="h-4 w-4 mr-2" />
-            Export
+          <Button variant="outline" size="sm" onClick={generateICS}>
+            <Download className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Export</span>
           </Button>
           <Button
+            size="sm"
             onClick={handleSendReport}
             disabled={sendingReport}
             className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
-            <Send className="h-4 w-4 mr-2" />
-            {sendingReport ? 'Sending...' : 'Email Report'}
+            <Send className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">{sendingReport ? 'Sending...' : 'Email Report'}</span>
           </Button>
         </div>
       </div>
 
       {/* Monthly Stats */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Card className="border-primary/20 bg-primary/5 dark:bg-primary/10">
           <CardContent className="py-4">
             <p className="text-xs text-muted-foreground font-medium">{format(currentMonth, 'MMMM')}</p>
@@ -354,11 +355,12 @@ export default function CalendarPage() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>{format(currentMonth, 'MMMM yyyy')}</CardTitle>
-              <div className="flex gap-2">
+              <CardTitle className="text-base sm:text-lg">{format(currentMonth, 'MMMM yyyy')}</CardTitle>
+              <div className="flex gap-1 sm:gap-2">
                 <Button
                   variant="outline"
                   size="icon"
+                  className="h-8 w-8 sm:h-9 sm:w-9"
                   onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -366,12 +368,15 @@ export default function CalendarPage() {
                 <Button
                   variant="outline"
                   size="icon"
+                  className="h-8 w-8 sm:h-9 sm:w-9"
                   onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="outline"
+                  size="sm"
+                  className="hidden sm:flex"
                   onClick={() => setCurrentMonth(new Date())}
                 >
                   Today
@@ -620,7 +625,7 @@ export default function CalendarPage() {
           <CardTitle className="text-sm">Legend</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-6 text-sm">
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs sm:text-sm">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-blue-500" />
               <span>Upcoming</span>

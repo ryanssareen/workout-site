@@ -6,8 +6,8 @@ import { ClientProviders } from '@/components/providers/ClientProviders';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'CoachTrack - Coach & Athlete Platform',
-  description: 'Manage and track workouts for coaches and athletes',
+  title: 'The Daily Athlete - Train Smarter. Every Day.',
+  description: 'Your personal training companion. Track workouts, build discipline, and crush your goals.',
   verification: {
     google: 'bBqx5L03X5a-nFB0y7-EXrcKf_znxlbfzlR5JunMQjg',
   },

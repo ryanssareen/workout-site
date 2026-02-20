@@ -213,7 +213,7 @@ export default function NewWorkoutPage() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">Create New Workout</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Create New Workout</h1>
           <p className="text-muted-foreground">
             {isCoach ? 'Design and assign workouts to your athletes' : 'Track your own training'}
           </p>

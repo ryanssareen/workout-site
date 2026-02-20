@@ -205,15 +205,36 @@ async function processActivity(
     
     console.log(`📅 Activity: ${activity.name} (${activity.type} → ${workoutType}) on ${activityDate.toISOString()}`);
 
-    // FINAL CHECK: Check for same name and date (catches rapid webhooks)
-    if (!recentWorkouts.empty) {
-      for (const doc of recentWorkouts.docs) {
+    // FINAL CHECK: Proximity-based duplicate detection
+    // Catches same workout synced with slightly different Strava activity IDs
+    // (e.g. re-uploads, GPS corrections creating new activity, or 4-min drift)
+    const thirtyMinBefore = new Date(activityDate.getTime() - 30 * 60 * 1000);
+    const thirtyMinAfter = new Date(activityDate.getTime() + 30 * 60 * 1000);
+    
+    const proximityCheck = await adminDb
+      .collection('workouts')
+      .where('assignedTo', '==', userId)
+      .where('type', '==', workoutType)
+      .where('source', '==', 'strava')
+      .where('date', '>=', admin.firestore.Timestamp.fromDate(thirtyMinBefore))
+      .where('date', '<=', admin.firestore.Timestamp.fromDate(thirtyMinAfter))
+      .get();
+
+    if (!proximityCheck.empty) {
+      for (const doc of proximityCheck.docs) {
         const data = doc.data();
-        const existingDate = data.date?.toDate?.();
-        if (data.name === activity.name && existingDate && 
-            Math.abs(existingDate.getTime() - activityDate.getTime()) < 60000) {
-          console.log(`🛑 DUPLICATE DETECTED: Same workout "${data.name}" created ${Math.round((Date.now() - data.createdAt.toMillis()) / 1000)}s ago - SKIPPING`);
-          return { success: true, message: 'Duplicate prevented (recent webhook)' };
+        // Check duration proximity (within 10 minutes / 600 seconds)
+        const existingDur = data.actualStats?.duration || (data.duration || 0) * 60;
+        const newDur = activity.moving_time || 0;
+        const durationClose = existingDur > 0 && newDur > 0 && Math.abs(existingDur - newDur) < 600;
+        // Check distance proximity (within 5%)
+        const existingDist = data.actualStats?.distance || 0;
+        const newDist = activity.distance || 0;
+        const distanceClose = existingDist > 0 && newDist > 0 && Math.abs(existingDist - newDist) / Math.max(existingDist, newDist) < 0.05;
+        
+        if (durationClose || distanceClose) {
+          console.log(`🛑 PROXIMITY DUPLICATE: "${activity.name}" ~= "${data.name}" (${doc.id}) — dur diff: ${Math.abs(existingDur - newDur)}s, dist diff: ${Math.abs(existingDist - newDist)}m — SKIPPING`);
+          return { success: true, message: 'Duplicate prevented (proximity match)' };
         }
       }
     }
@@ -342,29 +363,30 @@ export async function POST(request: NextRequest) {
     const body = await request.text();
     const event = JSON.parse(body);
 
-    console.log('Strava webhook event received:', event);
-
-    // Strava sends these event types:
-    // - activity: create, update, delete
-    // - athlete: update, deauthorize
+    console.log('📨 Strava webhook event received:', JSON.stringify(event));
 
     const { object_type, aspect_type, object_id, owner_id } = event;
 
     // We only care about new activities
     if (object_type !== 'activity' || aspect_type !== 'create') {
-      console.log(`Ignoring event: ${object_type}.${aspect_type}`);
+      console.log(`⏭️ Ignoring event: ${object_type}.${aspect_type}`);
       return NextResponse.json({ status: 'ignored' });
     }
 
-    // Process the activity asynchronously
-    // Return 200 immediately to acknowledge receipt (Strava expects quick response)
-    const result = await processActivity(String(owner_id), String(object_id));
+    // CRITICAL: Return 200 immediately so Strava doesn't timeout and kill the subscription.
+    // Vercel keeps the serverless function alive until all promises settle,
+    // so we fire off processing without awaiting it.
+    const processingPromise = processActivity(String(owner_id), String(object_id))
+      .then(result => console.log('✅ Webhook processing result:', JSON.stringify(result)))
+      .catch(err => console.error('❌ Webhook processing error:', err));
 
-    console.log('Activity processing result:', result);
+    // Don't await — return immediately
+    // The function will stay alive on Vercel until processingPromise resolves
+    void processingPromise;
 
-    return NextResponse.json({ status: 'processed', ...result });
+    return NextResponse.json({ status: 'accepted', message: 'Processing in background' });
   } catch (error: any) {
-    console.error('Webhook error:', error);
+    console.error('❌ Webhook parse error:', error);
     // Still return 200 to prevent Strava from retrying
     return NextResponse.json({ status: 'error', message: error.message });
   }

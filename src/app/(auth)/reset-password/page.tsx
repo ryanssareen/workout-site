@@ -44,7 +44,8 @@ export default function ResetPasswordPage() {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-black relative overflow-hidden">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-red-600/10 rounded-full blur-[120px]" />
+          <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px]" />
+          <div className="absolute bottom-1/3 -left-20 w-[300px] h-[300px] bg-emerald-500/8 rounded-full blur-[90px]" />
         </div>
         <div className="w-full max-w-md relative z-10">
           <div className="text-center mb-8">
@@ -58,7 +59,7 @@ export default function ResetPasswordPage() {
           </div>
           <div className="bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl space-y-4">
             <p className="text-sm text-white/40 text-center">Click the link in the email to reset your password. Check your spam folder if you don&apos;t see it.</p>
-            <Button asChild className="w-full h-11 bg-red-600 hover:bg-red-700 text-white border-0 font-bold">
+            <Button asChild className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white border-0 font-bold">
               <Link href="/login">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Login
@@ -73,12 +74,12 @@ export default function ResetPasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-black relative overflow-hidden">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-red-600/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 -left-40 w-[400px] h-[400px] bg-red-900/15 rounded-full blur-[100px]" />
+        <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 -left-40 w-[400px] h-[400px] bg-emerald-600/10 rounded-full blur-[100px]" />
       </div>
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-red-600 to-red-800 shadow-xl shadow-red-600/25 mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-emerald-500 shadow-xl shadow-blue-600/25 mb-4">
             <Dumbbell className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-black text-white uppercase tracking-tight">Reset Password</h1>
@@ -99,12 +100,12 @@ export default function ResetPasswordPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   autoComplete="email"
-                  className="pl-10 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-red-500 focus:ring-red-500/20 transition-colors"
+                  className="pl-10 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
                 />
               </div>
             </div>
 
-            <Button type="submit" className="w-full h-11 bg-red-600 hover:bg-red-700 text-white border-0 font-bold shadow-lg shadow-red-600/25" disabled={loading}>
+            <Button type="submit" className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white border-0 font-bold shadow-lg shadow-blue-600/25" disabled={loading}>
               {loading ? 'Sending...' : 'Send Reset Link'}
             </Button>
 

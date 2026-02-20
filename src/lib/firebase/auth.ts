@@ -161,12 +161,12 @@ export async function signInWithGoogle(): Promise<User> {
       return existingUser;
     }
 
-    // New user - create profile with default role "student"
+    // New user - create profile with default role "athlete"
     const userProfile: Omit<User, 'createdAt' | 'updatedAt'> & { createdAt: any; updatedAt: any; photoURL?: string } = {
       uid,
       email,
       displayName: displayName || email.split('@')[0],
-      role: 'student',
+      role: 'athlete',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       onboardingCompleted: false,

@@ -2,24 +2,15 @@ import { RegisterForm } from '@/components/auth/RegisterForm';
 
 export const dynamic = 'force-dynamic';
 
-interface RegisterPageProps {
-  searchParams?: Promise<{ role?: string | string[] }>;
-}
-
-export default async function RegisterPage({ searchParams }: RegisterPageProps) {
-  const params = await searchParams;
-  const preselectedRole = Array.isArray(params?.role) ? params?.role[0] : params?.role;
-
-  // Map 'athlete' to 'student' (internal role name)
-  const initialRole = preselectedRole === 'coach' ? 'coach' : preselectedRole === 'athlete' ? 'student' : '';
-
+export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-black relative overflow-hidden">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -left-40 w-[500px] h-[500px] bg-red-600/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-red-900/15 rounded-full blur-[100px]" />
+        <div className="absolute -top-40 -left-40 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-emerald-600/10 rounded-full blur-[100px]" />
+        <div className="absolute top-1/3 right-1/4 w-[300px] h-[300px] bg-emerald-500/8 rounded-full blur-[90px]" />
       </div>
-      <RegisterForm initialRole={initialRole} />
+      <RegisterForm />
     </div>
   );
 }

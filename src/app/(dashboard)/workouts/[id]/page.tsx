@@ -285,7 +285,7 @@ export default function WorkoutDetailPage() {
         <CardHeader>
           <div className="flex items-start justify-between">
             <div className="space-y-2">
-              <CardTitle className="text-2xl sm:text-3xl">{workout.name}</CardTitle>
+              <CardTitle className="text-xl sm:text-2xl md:text-3xl">{workout.name}</CardTitle>
               <div className="flex gap-2 flex-wrap">
                 <Badge variant="outline" className="capitalize">
                   {workout.type}
