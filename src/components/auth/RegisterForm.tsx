@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Dumbbell, Loader2, User, Mail, Lock, ArrowRight } from 'lucide-react';
+import { Dumbbell, Loader2, User, Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 
 export function RegisterForm() {
@@ -18,6 +18,7 @@ export function RegisterForm() {
   });
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [nameError, setNameError] = useState('');
   const router = useRouter();
 
   const handleGoogleSignUp = async () => {
@@ -34,15 +35,48 @@ export function RegisterForm() {
     }
   };
 
+  const checkName = async (name: string): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/ai/profanity-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: name }),
+      });
+      const data = await res.json();
+      if (!data.isClean) {
+        setNameError(data.reason || 'Please choose an appropriate name.');
+        return false;
+      }
+      return true;
+    } catch {
+      // Allow through if check fails
+      return true;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setNameError('');
     setLoading(true);
+
+    const trimmedName = formData.displayName.trim();
+    if (trimmedName.length < 2) {
+      setNameError('Name must be at least 2 characters.');
+      setLoading(false);
+      return;
+    }
+
+    const isClean = await checkName(trimmedName);
+    if (!isClean) {
+      setLoading(false);
+      return;
+    }
 
     try {
       await createUser(
         formData.email,
         formData.password,
-        formData.displayName,
+        trimmedName,
         'athlete'
       );
 
@@ -71,8 +105,14 @@ export function RegisterForm() {
             <Label htmlFor="displayName" className="text-sm font-medium text-white/70">Full Name</Label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-              <Input id="displayName" type="text" placeholder="John Doe" value={formData.displayName} onChange={(e) => setFormData({ ...formData, displayName: e.target.value })} required className="pl-10 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-red-500 focus:ring-red-500/20 transition-colors" />
+              <Input id="displayName" type="text" placeholder="John Doe" value={formData.displayName} onChange={(e) => { setFormData({ ...formData, displayName: e.target.value }); setNameError(''); }} required maxLength={50} className={`pl-10 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-red-500 focus:ring-red-500/20 transition-colors ${nameError ? 'border-red-500' : ''}`} />
             </div>
+            {nameError && (
+              <div className="flex items-center gap-1.5 text-red-400 text-sm animate-in fade-in slide-in-from-top-1 duration-200">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{nameError}</span>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -91,7 +131,7 @@ export function RegisterForm() {
             </div>
           </div>
 
-          <Button type="submit" className="w-full h-11 font-bold bg-red-600 hover:bg-blue-700 text-white shadow-lg shadow-red-600/25 border-0 transition-all" disabled={loading || googleLoading}>
+          <Button type="submit" className="w-full h-11 font-bold bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/25 border-0 transition-all" disabled={loading || googleLoading}>
             {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating account...</> : <>Create Account<ArrowRight className="w-4 h-4 ml-2" /></>}
           </Button>
 

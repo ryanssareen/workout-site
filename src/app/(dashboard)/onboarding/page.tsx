@@ -1,15 +1,15 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { getDbInstance } from '@/lib/firebase/config';
-import { Loader2, Sparkles, ArrowRight, ArrowLeft, AlertCircle, Check } from 'lucide-react';
+import { Loader2, Sparkles, ArrowRight, ArrowLeft, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-const STEPS = ['intro', 'name', 'gender', 'age', 'sport', 'event', 'goals', 'experience', 'availability', 'preview'] as const;
+const STEPS = ['intro', 'gender', 'age', 'sport', 'event', 'goals', 'experience', 'availability', 'preview'] as const;
 type Step = typeof STEPS[number];
 
 const GENDERS = ['Male', 'Female', 'Non-binary', 'Prefer not to say'];
@@ -58,10 +58,8 @@ export default function OnboardingPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState<Step>('intro');
-  const [name, setName] = useState(user?.displayName || '');
   const [gender, setGender] = useState('');
   const [ageRange, setAgeRange] = useState('');
   const [sport, setSport] = useState('');
@@ -69,20 +67,12 @@ export default function OnboardingPage() {
   const [goals, setGoals] = useState<string[]>([]);
   const [experience, setExperience] = useState('');
   const [availability, setAvailability] = useState('');
-  const [checking, setChecking] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
 
   useEffect(() => { if (!user) return; if (user.onboardingCompleted !== false) router.replace('/dashboard'); }, [user, router]);
-  useEffect(() => { setName(user?.displayName || ''); }, [user?.displayName]);
-  useEffect(() => { if (step === 'name') setTimeout(() => inputRef.current?.focus(), 400); }, [step]);
-
-  const stepIndex = STEPS.indexOf(step);
-  const isLoading = checking || saving;
 
   const goNext = () => {
     const i = STEPS.indexOf(step);
-    // Skip goals step if not training for an event
     if (step === 'event' && trainingForEvent === false) {
       setGoals([]);
       setStep('experience');
@@ -92,7 +82,6 @@ export default function OnboardingPage() {
   };
   const goBack = () => {
     const i = STEPS.indexOf(step);
-    // Skip goals step going back if not training for an event
     if (step === 'experience' && trainingForEvent === false) {
       setStep('event');
       return;
@@ -104,28 +93,12 @@ export default function OnboardingPage() {
     setGoals((prev) => prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]);
   };
 
-  const handleNameSubmit = async () => {
-    setError('');
-    const trimmed = name.trim();
-    if (trimmed.length < 2) { setError('Name must be at least 2 characters'); return; }
-
-    setChecking(true);
-    try {
-      const res = await fetch('/api/ai/profanity-check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: trimmed }) });
-      const data = await res.json();
-      if (!data.isClean) { setError(data.reason || 'That name contains inappropriate language. Please choose a different name.'); setChecking(false); return; }
-    } catch { /* allow through */ }
-    setChecking(false);
-    goNext();
-  };
-
   const handleFinish = async () => {
     if (!user) return;
     setSaving(true);
     try {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
       await updateDoc(doc(getDbInstance(), 'users', user.uid), {
-        displayName: name.trim(),
         gender: gender || null,
         ageRange,
         sportPreferences: [sport],
@@ -136,8 +109,8 @@ export default function OnboardingPage() {
         onboardingCompleted: true,
         updatedAt: serverTimestamp(),
       });
-      setUser({ ...user, displayName: name.trim(), gender: gender || undefined, ageRange, sportPreferences: [sport], trainingFor: goals.length > 0 ? goals : undefined, experienceLevel: experience || undefined, weeklyAvailability: availability || undefined, timezone: tz, onboardingCompleted: true });
-      toast.success(`Welcome, ${name.trim()}!`);
+      setUser({ ...user, gender: gender || undefined, ageRange, sportPreferences: [sport], trainingFor: goals.length > 0 ? goals : undefined, experienceLevel: experience || undefined, weeklyAvailability: availability || undefined, timezone: tz, onboardingCompleted: true });
+      toast.success(`Welcome, ${user.displayName || 'Athlete'}!`);
       router.replace('/dashboard');
     } catch { toast.error('Failed to save — try again'); }
     finally { setSaving(false); }
@@ -145,14 +118,15 @@ export default function OnboardingPage() {
 
   if (!user || user.onboardingCompleted !== false) return null;
 
-  // Calculate visible step count (skip goals if no event)
-  const visibleStepCount = trainingForEvent === false ? 8 : 9;
-  const getVisibleIndex = () => {
+  const visibleStepCount = trainingForEvent === false ? 7 : 8;
+  const getVisibleStep = () => {
     const i = STEPS.indexOf(step);
-    if (i <= 0) return 0; // intro
-    if (trainingForEvent === false && i >= 7) return i - 1; // shift down after skipping goals
+    if (i <= 0) return 0;
+    if (trainingForEvent === false && i >= 6) return i - 1;
     return i;
   };
+
+  const displayName = user.displayName || 'Athlete';
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4">
@@ -174,10 +148,9 @@ export default function OnboardingPage() {
             </div>
             <div className="space-y-3">
               <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">
-                Welcome to{' '}
-                <span className="bg-gradient-to-r from-red-500 via-red-600 to-green-500 bg-clip-text text-transparent">The Daily Athlete</span>
+                Welcome, <span className="bg-gradient-to-r from-red-500 via-red-600 to-green-500 bg-clip-text text-transparent">{displayName}</span>
               </h1>
-              <p className="text-muted-foreground text-lg max-w-md mx-auto">Your personal training companion. Let&apos;s build your athlete profile in under a minute.</p>
+              <p className="text-muted-foreground text-lg max-w-md mx-auto">Let&apos;s build your athlete profile in under a minute.</p>
             </div>
             <button onClick={goNext} className={cn('group inline-flex items-center gap-3 px-8 py-4 rounded-2xl', 'bg-gradient-to-r from-red-600 to-green-600', 'text-white font-semibold text-lg', 'shadow-xl shadow-red-600/25', 'hover:shadow-2xl hover:scale-[1.02]', 'transition-all duration-300')}>
               Get Started <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -185,34 +158,10 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* NAME */}
-        {step === 'name' && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <StepDots current={1} total={visibleStepCount} />
-            <div className="text-center space-y-2">
-              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">What&apos;s your name?</h2>
-              <p className="text-muted-foreground">This is how you&apos;ll appear in the app.</p>
-            </div>
-            <div className="space-y-4">
-              <div className="relative">
-                <input ref={inputRef} type="text" value={name} onChange={(e) => { setName(e.target.value); setError(''); }} maxLength={50} placeholder="Type your name..." onKeyDown={(e) => { if (e.key === 'Enter' && !isLoading) handleNameSubmit(); }} className={cn('w-full px-6 py-5 text-xl sm:text-2xl font-medium rounded-2xl bg-card border-2 transition-all duration-200 placeholder:text-muted-foreground/40 focus:outline-none focus:ring-0', error ? 'border-destructive' : 'border-border focus:border-red-500')} />
-                {name.length > 0 && <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-muted-foreground tabular-nums">{name.length}/50</span>}
-              </div>
-              {error && <div className="flex items-start gap-2 px-1 animate-in fade-in slide-in-from-top-2 duration-300"><AlertCircle className="w-4 h-4 text-destructive mt-0.5 shrink-0" /><p className="text-sm text-destructive">{error}</p></div>}
-              <div className="flex gap-3">
-                <button onClick={goBack} className="px-6 py-4 rounded-2xl border-2 border-border text-muted-foreground hover:text-foreground transition-colors"><ArrowLeft className="w-5 h-5" /></button>
-                <button onClick={handleNameSubmit} disabled={isLoading || name.trim().length < 2} className={cn('flex-1 flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300', name.trim().length >= 2 && !isLoading ? 'bg-red-600 text-white shadow-xl shadow-red-600/25 hover:shadow-2xl hover:scale-[1.01]' : 'bg-muted text-muted-foreground cursor-not-allowed')}>
-                  {isLoading ? <><Loader2 className="w-5 h-5 animate-spin" />{checking ? 'Checking...' : 'Saving...'}</> : <>Continue <ArrowRight className="w-5 h-5" /></>}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* GENDER */}
         {step === 'gender' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <StepDots current={2} total={visibleStepCount} />
+            <StepDots current={1} total={visibleStepCount} />
             <div className="text-center space-y-2">
               <h2 className="text-3xl font-bold tracking-tight">What&apos;s your gender?</h2>
               <p className="text-muted-foreground">Optional — helps personalize your experience.</p>
@@ -230,7 +179,7 @@ export default function OnboardingPage() {
         {/* AGE RANGE */}
         {step === 'age' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <StepDots current={3} total={visibleStepCount} />
+            <StepDots current={2} total={visibleStepCount} />
             <div className="text-center space-y-2">
               <h2 className="text-3xl font-bold tracking-tight">What&apos;s your age range?</h2>
               <p className="text-muted-foreground">Helps us tailor training recommendations.</p>
@@ -246,7 +195,7 @@ export default function OnboardingPage() {
         {/* SPORT */}
         {step === 'sport' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <StepDots current={4} total={visibleStepCount} />
+            <StepDots current={3} total={visibleStepCount} />
             <div className="text-center space-y-2">
               <h2 className="text-3xl font-bold tracking-tight">Pick your sport</h2>
               <p className="text-muted-foreground">Pick all that apply.</p>
@@ -262,7 +211,7 @@ export default function OnboardingPage() {
         {/* EVENT GATE */}
         {step === 'event' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <StepDots current={5} total={visibleStepCount} />
+            <StepDots current={4} total={visibleStepCount} />
             <div className="text-center space-y-2">
               <h2 className="text-3xl font-bold tracking-tight">Training for an event?</h2>
               <p className="text-muted-foreground">Are you working towards a specific race or goal?</p>
@@ -287,10 +236,10 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* GOALS (multi-select, only if training for event) */}
+        {/* GOALS (multi-select) */}
         {step === 'goals' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <StepDots current={6} total={visibleStepCount} />
+            <StepDots current={5} total={visibleStepCount} />
             <div className="text-center space-y-2">
               <h2 className="text-3xl font-bold tracking-tight">What are you training for?</h2>
               <p className="text-muted-foreground">Pick all that apply.</p>
@@ -306,7 +255,7 @@ export default function OnboardingPage() {
         {/* EXPERIENCE (optional) */}
         {step === 'experience' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <StepDots current={trainingForEvent === false ? 6 : 7} total={visibleStepCount} />
+            <StepDots current={trainingForEvent === false ? 5 : 6} total={visibleStepCount} />
             <div className="text-center space-y-2">
               <h2 className="text-3xl font-bold tracking-tight">Experience level</h2>
               <p className="text-muted-foreground">Optional — helps personalize your plan.</p>
@@ -324,7 +273,7 @@ export default function OnboardingPage() {
         {/* AVAILABILITY (optional) */}
         {step === 'availability' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <StepDots current={trainingForEvent === false ? 7 : 8} total={visibleStepCount} />
+            <StepDots current={trainingForEvent === false ? 6 : 7} total={visibleStepCount} />
             <div className="text-center space-y-2">
               <h2 className="text-3xl font-bold tracking-tight">Weekly availability</h2>
               <p className="text-muted-foreground">Optional — how many days can you train?</p>
@@ -339,7 +288,7 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* PREVIEW / SUMMARY */}
+        {/* PREVIEW */}
         {step === 'preview' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <StepDots current={visibleStepCount} total={visibleStepCount} />
@@ -350,9 +299,9 @@ export default function OnboardingPage() {
 
             <div className="rounded-2xl border-2 border-red-500/20 bg-card p-6 space-y-5">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-red-600 to-green-500 flex items-center justify-center text-white font-black text-xl shadow-lg">{name.trim()[0]?.toUpperCase()}</div>
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-red-600 to-green-500 flex items-center justify-center text-white font-black text-xl shadow-lg">{displayName[0]?.toUpperCase()}</div>
                 <div>
-                  <p className="font-bold text-lg">{name.trim()}</p>
+                  <p className="font-bold text-lg">{displayName}</p>
                   <p className="text-sm text-muted-foreground">{sport}{goals.length > 0 ? ` · ${goals.join(', ')}` : ''}</p>
                 </div>
               </div>
@@ -373,14 +322,12 @@ export default function OnboardingPage() {
 
               <div className="rounded-xl bg-red-500/5 border border-red-500/20 p-4 space-y-2">
                 <p className="text-xs font-bold uppercase tracking-wider text-red-500">Suggested Week 1</p>
-                {(GOAL_MAP[sport] || []).length > 0 && (
-                  <ul className="space-y-1.5 text-sm text-muted-foreground">
-                    <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-green-500" />Easy {sport.toLowerCase()} — build base</li>
-                    <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-red-500" />Interval session — build speed</li>
-                    <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-green-500" />Long {sport.toLowerCase()} — build endurance</li>
-                    <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-amber-500" />Recovery / cross-training</li>
-                  </ul>
-                )}
+                <ul className="space-y-1.5 text-sm text-muted-foreground">
+                  <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-green-500" />Easy {sport.toLowerCase()} — build base</li>
+                  <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-red-500" />Interval session — build speed</li>
+                  <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-green-500" />Long {sport.toLowerCase()} — build endurance</li>
+                  <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-amber-500" />Recovery / cross-training</li>
+                </ul>
               </div>
             </div>
 
