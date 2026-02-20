@@ -62,7 +62,7 @@ export default function OnboardingPage() {
   const [step, setStep] = useState<Step>('intro');
   const [gender, setGender] = useState('');
   const [ageRange, setAgeRange] = useState('');
-  const [sport, setSport] = useState('');
+  const [sports, setSports] = useState<string[]>([]);
   const [trainingForEvent, setTrainingForEvent] = useState<boolean | null>(null);
   const [goals, setGoals] = useState<string[]>([]);
   const [experience, setExperience] = useState('');
@@ -89,8 +89,37 @@ export default function OnboardingPage() {
     if (i > 0) setStep(STEPS[i - 1]);
   };
 
+  const toggleSport = (s: string) => {
+    setSports((prev) => {
+      const next = prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s];
+      // Remove goals that no longer belong to any selected sport
+      const validGoals = next.flatMap((sp) => GOAL_MAP[sp] || []);
+      setGoals((g) => g.filter((goal) => validGoals.includes(goal)));
+      return next;
+    });
+  };
+
   const toggleGoal = (g: string) => {
     setGoals((prev) => prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]);
+  };
+
+  // All goals for selected sports combined
+  const availableGoals = sports.flatMap((s) => GOAL_MAP[s] || []);
+
+  const handleSkip = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      await updateDoc(doc(getDbInstance(), 'users', user.uid), {
+        timezone: tz,
+        onboardingCompleted: true,
+        updatedAt: serverTimestamp(),
+      });
+      setUser({ ...user, timezone: tz, onboardingCompleted: true });
+      router.replace('/dashboard');
+    } catch { toast.error('Failed to skip — try again'); }
+    finally { setSaving(false); }
   };
 
   const handleFinish = async () => {
@@ -101,7 +130,7 @@ export default function OnboardingPage() {
       await updateDoc(doc(getDbInstance(), 'users', user.uid), {
         gender: gender || null,
         ageRange,
-        sportPreferences: [sport],
+        sportPreferences: sports,
         trainingFor: goals.length > 0 ? goals : null,
         experienceLevel: experience || null,
         weeklyAvailability: availability || null,
@@ -109,7 +138,7 @@ export default function OnboardingPage() {
         onboardingCompleted: true,
         updatedAt: serverTimestamp(),
       });
-      setUser({ ...user, gender: gender || undefined, ageRange, sportPreferences: [sport], trainingFor: goals.length > 0 ? goals : undefined, experienceLevel: experience || undefined, weeklyAvailability: availability || undefined, timezone: tz, onboardingCompleted: true });
+      setUser({ ...user, gender: gender || undefined, ageRange, sportPreferences: sports, trainingFor: goals.length > 0 ? goals : undefined, experienceLevel: experience || undefined, weeklyAvailability: availability || undefined, timezone: tz, onboardingCompleted: true });
       toast.success(`Welcome, ${user.displayName || 'Athlete'}!`);
       router.replace('/dashboard');
     } catch { toast.error('Failed to save — try again'); }
@@ -119,13 +148,6 @@ export default function OnboardingPage() {
   if (!user || user.onboardingCompleted !== false) return null;
 
   const visibleStepCount = trainingForEvent === false ? 7 : 8;
-  const getVisibleStep = () => {
-    const i = STEPS.indexOf(step);
-    if (i <= 0) return 0;
-    if (trainingForEvent === false && i >= 6) return i - 1;
-    return i;
-  };
-
   const displayName = user.displayName || 'Athlete';
 
   return (
@@ -134,6 +156,15 @@ export default function OnboardingPage() {
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none -z-10 overflow-hidden">
           <div className="w-[500px] h-[500px] rounded-full bg-gradient-to-br from-red-600/20 via-green-500/10 to-red-500/15 blur-3xl animate-pulse" />
         </div>
+
+        {/* Skip button — always visible except on intro */}
+        {step !== 'intro' && (
+          <div className="text-center mb-6 animate-in fade-in duration-300">
+            <button onClick={handleSkip} disabled={saving} className="text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4 decoration-muted-foreground/30 hover:decoration-foreground/50">
+              Skip onboarding, I&apos;ll do this later
+            </button>
+          </div>
+        )}
 
         {/* INTRO */}
         {step === 'intro' && (
@@ -152,9 +183,16 @@ export default function OnboardingPage() {
               </h1>
               <p className="text-muted-foreground text-lg max-w-md mx-auto">Let&apos;s build your athlete profile in under a minute.</p>
             </div>
-            <button onClick={goNext} className={cn('group inline-flex items-center gap-3 px-8 py-4 rounded-2xl', 'bg-gradient-to-r from-red-600 to-green-600', 'text-white font-semibold text-lg', 'shadow-xl shadow-red-600/25', 'hover:shadow-2xl hover:scale-[1.02]', 'transition-all duration-300')}>
-              Get Started <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
+            <div className="space-y-3">
+              <button onClick={goNext} className={cn('group inline-flex items-center gap-3 px-8 py-4 rounded-2xl', 'bg-gradient-to-r from-red-600 to-green-600', 'text-white font-semibold text-lg', 'shadow-xl shadow-red-600/25', 'hover:shadow-2xl hover:scale-[1.02]', 'transition-all duration-300')}>
+                Get Started <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </button>
+              <div>
+                <button onClick={handleSkip} disabled={saving} className="text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4 decoration-muted-foreground/30 hover:decoration-foreground/50">
+                  Skip for now
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -192,18 +230,18 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* SPORT */}
+        {/* SPORT (multi-select) */}
         {step === 'sport' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <StepDots current={3} total={visibleStepCount} />
             <div className="text-center space-y-2">
-              <h2 className="text-3xl font-bold tracking-tight">Pick your sport</h2>
+              <h2 className="text-3xl font-bold tracking-tight">Pick your sports</h2>
               <p className="text-muted-foreground">Pick all that apply.</p>
             </div>
-            <OptionGrid options={[...SPORTS]} selected={sport} onSelect={(s) => { setSport(s); setGoals([]); setTrainingForEvent(null); }} />
+            <OptionGrid options={[...SPORTS]} selected={sports} onSelect={toggleSport} multi />
             <div className="flex gap-3">
               <button onClick={goBack} className="px-6 py-4 rounded-2xl border-2 border-border text-muted-foreground hover:text-foreground transition-colors"><ArrowLeft className="w-5 h-5" /></button>
-              <button onClick={goNext} disabled={!sport} className={cn('flex-1 flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300', sport ? 'bg-red-600 text-white shadow-xl shadow-red-600/25 hover:shadow-2xl' : 'bg-muted text-muted-foreground cursor-not-allowed')}>Continue <ArrowRight className="w-5 h-5" /></button>
+              <button onClick={goNext} disabled={sports.length === 0} className={cn('flex-1 flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300', sports.length > 0 ? 'bg-red-600 text-white shadow-xl shadow-red-600/25 hover:shadow-2xl' : 'bg-muted text-muted-foreground cursor-not-allowed')}>Continue <ArrowRight className="w-5 h-5" /></button>
             </div>
           </div>
         )}
@@ -236,7 +274,7 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* GOALS (multi-select) */}
+        {/* GOALS (multi-select, combined from all selected sports) */}
         {step === 'goals' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <StepDots current={5} total={visibleStepCount} />
@@ -244,7 +282,7 @@ export default function OnboardingPage() {
               <h2 className="text-3xl font-bold tracking-tight">What are you training for?</h2>
               <p className="text-muted-foreground">Pick all that apply.</p>
             </div>
-            <OptionGrid options={GOAL_MAP[sport] || []} selected={goals} onSelect={toggleGoal} multi />
+            <OptionGrid options={availableGoals} selected={goals} onSelect={toggleGoal} multi />
             <div className="flex gap-3">
               <button onClick={goBack} className="px-6 py-4 rounded-2xl border-2 border-border text-muted-foreground hover:text-foreground transition-colors"><ArrowLeft className="w-5 h-5" /></button>
               <button onClick={goNext} disabled={goals.length === 0} className={cn('flex-1 flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300', goals.length > 0 ? 'bg-red-600 text-white shadow-xl shadow-red-600/25 hover:shadow-2xl' : 'bg-muted text-muted-foreground cursor-not-allowed')}>Continue <ArrowRight className="w-5 h-5" /></button>
@@ -302,13 +340,13 @@ export default function OnboardingPage() {
                 <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-red-600 to-green-500 flex items-center justify-center text-white font-black text-xl shadow-lg">{displayName[0]?.toUpperCase()}</div>
                 <div>
                   <p className="font-bold text-lg">{displayName}</p>
-                  <p className="text-sm text-muted-foreground">{sport}{goals.length > 0 ? ` · ${goals.join(', ')}` : ''}</p>
+                  <p className="text-sm text-muted-foreground">{sports.join(', ')}{goals.length > 0 ? ` · ${goals.join(', ')}` : ''}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl bg-muted/50 p-3"><p className="text-xs text-muted-foreground uppercase tracking-wider">Age</p><p className="font-bold">{ageRange}</p></div>
-                <div className="rounded-xl bg-muted/50 p-3"><p className="text-xs text-muted-foreground uppercase tracking-wider">Sport</p><p className="font-bold">{sport}</p></div>
+                <div className="rounded-xl bg-muted/50 p-3"><p className="text-xs text-muted-foreground uppercase tracking-wider">Sports</p><p className="font-bold">{sports.join(', ')}</p></div>
                 {goals.length > 0 && <div className="rounded-xl bg-muted/50 p-3 col-span-2"><p className="text-xs text-muted-foreground uppercase tracking-wider">Events</p><p className="font-bold">{goals.join(', ')}</p></div>}
                 {gender && <div className="rounded-xl bg-muted/50 p-3"><p className="text-xs text-muted-foreground uppercase tracking-wider">Gender</p><p className="font-bold">{gender}</p></div>}
                 <div className="rounded-xl bg-muted/50 p-3"><p className="text-xs text-muted-foreground uppercase tracking-wider">Level</p><p className="font-bold">{experience || 'Not set'}</p></div>
@@ -323,9 +361,9 @@ export default function OnboardingPage() {
               <div className="rounded-xl bg-red-500/5 border border-red-500/20 p-4 space-y-2">
                 <p className="text-xs font-bold uppercase tracking-wider text-red-500">Suggested Week 1</p>
                 <ul className="space-y-1.5 text-sm text-muted-foreground">
-                  <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-green-500" />Easy {sport.toLowerCase()} — build base</li>
+                  <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-green-500" />Easy session — build base</li>
                   <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-red-500" />Interval session — build speed</li>
-                  <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-green-500" />Long {sport.toLowerCase()} — build endurance</li>
+                  <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-green-500" />Long session — build endurance</li>
                   <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-amber-500" />Recovery / cross-training</li>
                 </ul>
               </div>
