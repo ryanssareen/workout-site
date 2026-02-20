@@ -95,11 +95,11 @@ export default function DashboardPage() {
     <div className="space-y-8 pb-8">
       {/* ── PROFILE COMPLETION CTA ──────────────────────────────── */}
       {showProfileCTA && (
-        <div className="relative overflow-hidden rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-blue-500/5 to-emerald-500/5 p-6 sm:p-8 animate-in fade-in slide-in-from-top-4 duration-700">
+        <div className="relative overflow-hidden rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-red-500/5 to-green-500/5 p-6 sm:p-8 animate-in fade-in slide-in-from-top-4 duration-700">
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
           <div className="relative flex flex-col sm:flex-row items-center gap-6">
             <div className="shrink-0">
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-600 to-emerald-500 flex items-center justify-center shadow-xl shadow-blue-600/20">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-red-600 to-green-500 flex items-center justify-center shadow-xl shadow-red-600/20">
                 <UserCircle className="w-10 h-10 text-white" />
               </div>
             </div>
@@ -108,7 +108,7 @@ export default function DashboardPage() {
               <p className="text-muted-foreground max-w-md">Complete your athlete profile to get personalized workouts and track your progress. It only takes a minute.</p>
               <div className="flex items-center gap-3 justify-center sm:justify-start">
                 <div className="flex-1 max-w-xs h-2.5 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-emerald-500 transition-all duration-500" style={{ width: `${profileCompletion}%` }} />
+                  <div className="h-full rounded-full bg-gradient-to-r from-red-600 to-green-500 transition-all duration-500" style={{ width: `${profileCompletion}%` }} />
                 </div>
                 <span className="text-sm font-bold tabular-nums">{profileCompletion}%</span>
               </div>
@@ -147,8 +147,8 @@ export default function DashboardPage() {
 
       {/* ── STATS ───────────────────────────────────────────────── */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard title="All Time" value={workouts.length} description="Total workouts" icon={Target} gradient="from-blue-500/5 to-cyan-500/5 dark:from-blue-500/15 dark:to-cyan-500/15" iconGradient="from-blue-500 to-cyan-500" delay={250} />
-        <StatCard title="Completed" value={completedCount} description={`${completionRate}% completion rate`} icon={CheckCircle2} gradient="from-green-500/5 to-emerald-500/5 dark:from-green-500/15 dark:to-emerald-500/15" iconGradient="from-green-500 to-emerald-500" delay={250} />
+        <StatCard title="All Time" value={workouts.length} description="Total workouts" icon={Target} gradient="from-red-500/5 to-cyan-500/5 dark:from-red-500/15 dark:to-cyan-500/15" iconGradient="from-red-500 to-cyan-500" delay={250} />
+        <StatCard title="Completed" value={completedCount} description={`${completionRate}% completion rate`} icon={CheckCircle2} gradient="from-green-500/5 to-green-500/5 dark:from-green-500/15 dark:to-green-500/15" iconGradient="from-green-500 to-green-500" delay={250} />
         <StatCard title="Remaining" value={workouts.length - completedCount} description="Still to complete" icon={TrendingUp} gradient="from-red-500/5 to-amber-500/5 dark:from-red-500/15 dark:to-amber-500/15" iconGradient="from-red-500 to-amber-500" delay={700} />
       </div>
 

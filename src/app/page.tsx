@@ -20,9 +20,9 @@ export default function Home() {
   ];
 
   const sports = [
-    { icon: Waves, name: 'Swimming', color: 'bg-blue-600' },
-    { icon: Activity, name: 'Running', color: 'bg-blue-700' },
-    { icon: Bike, name: 'Cycling', color: 'bg-emerald-600' },
+    { icon: Waves, name: 'Swimming', color: 'bg-red-600' },
+    { icon: Activity, name: 'Running', color: 'bg-red-700' },
+    { icon: Bike, name: 'Cycling', color: 'bg-green-600' },
     { icon: Dumbbell, name: 'Ironman', color: 'bg-red-600' },
   ];
 
@@ -39,7 +39,7 @@ export default function Home() {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-black/80 backdrop-blur-xl">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-600 to-emerald-500 flex items-center justify-center shadow-lg shadow-blue-600/30">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-red-600 to-green-500 flex items-center justify-center shadow-lg shadow-red-600/30">
               <Dumbbell className="h-4 w-4 text-white" />
             </div>
             <span className="font-bold text-lg text-white">The Daily Athlete</span>
@@ -54,7 +54,7 @@ export default function Home() {
             <Button variant="ghost" size="sm" asChild className="text-white/70 hover:text-white hover:bg-white/10">
               <Link href="/login">Sign In</Link>
             </Button>
-            <Button size="sm" asChild className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/30 border-0">
+            <Button size="sm" asChild className="bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/30 border-0">
               <Link href="/register">Get Started</Link>
             </Button>
           </div>
@@ -65,29 +65,29 @@ export default function Home() {
         {/* Hero Section */}
         <section className="relative overflow-hidden">
           <div className="absolute inset-0 -z-10">
-            <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-blue-600/15 rounded-full blur-[120px]" />
-            <div className="absolute top-1/2 -left-40 w-[400px] h-[400px] bg-emerald-600/10 rounded-full blur-[100px]" />
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-blue-600/5 rounded-full blur-[80px]" />
+            <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-red-600/15 rounded-full blur-[120px]" />
+            <div className="absolute top-1/2 -left-40 w-[400px] h-[400px] bg-green-600/10 rounded-full blur-[100px]" />
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-red-600/5 rounded-full blur-[80px]" />
           </div>
           <div className="absolute inset-0 -z-10 opacity-[0.03]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'1\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }} />
 
           <div className="container mx-auto px-4 py-20 md:py-32">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               <div className="space-y-8">
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-600/10 border border-blue-600/20 text-blue-400 text-sm font-medium">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-600/10 border border-red-600/20 text-red-400 text-sm font-medium">
                   <Flame className="h-3.5 w-3.5" />
                   Free During Early Access
                 </div>
                 <h1 className="text-5xl sm:text-6xl md:text-7xl font-black tracking-tight leading-[0.9]">
                   OWN
-                  <span className="block bg-gradient-to-r from-blue-400 via-blue-500 to-emerald-400 bg-clip-text text-transparent">YOUR DAY.</span>
+                  <span className="block bg-gradient-to-r from-red-400 via-red-500 to-green-400 bg-clip-text text-transparent">YOUR DAY.</span>
                   <span className="block text-white/40 text-4xl sm:text-5xl md:text-6xl mt-2">EVERY DAY.</span>
                 </h1>
                 <p className="text-lg md:text-xl text-white/50 max-w-lg">
                   The training app for self-disciplined athletes. Track workouts, build streaks, sync with Strava, and stay accountable to yourself.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <Button asChild size="lg" className="h-13 px-8 bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-600/25 border-0 font-bold text-base">
+                  <Button asChild size="lg" className="h-13 px-8 bg-red-600 hover:bg-red-700 text-white shadow-xl shadow-red-600/25 border-0 font-bold text-base">
                     <Link href="/register">
                       START TRAINING
                       <ArrowRight className="ml-2 h-4 w-4" />
@@ -108,19 +108,19 @@ export default function Home() {
                   </div>
                   <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                     <p className="text-xs text-white/40 uppercase tracking-wider">Price</p>
-                    <p className="text-2xl font-black text-blue-400">$0</p>
+                    <p className="text-2xl font-black text-red-400">$0</p>
                   </div>
                 </div>
               </div>
 
               {/* Hero visual - workout card stack (desktop) */}
               <div className="relative hidden lg:block">
-                <div className="absolute -inset-8 bg-gradient-to-br from-blue-600/10 via-transparent to-emerald-600/10 blur-3xl rounded-3xl" />
+                <div className="absolute -inset-8 bg-gradient-to-br from-red-600/10 via-transparent to-green-600/10 blur-3xl rounded-3xl" />
                 <div className="relative space-y-4">
                   {[
-                    { type: 'RUN', name: 'Morning 5K', stat: '5.0 km · 24:30', icon: Activity, accent: 'bg-blue-500' },
-                    { type: 'SWIM', name: 'Endurance Set', stat: '2000m · 35:00', icon: Waves, accent: 'bg-blue-600' },
-                    { type: 'BIKE', name: 'Hill Intervals', stat: '30 km · 55:00', icon: Bike, accent: 'bg-emerald-600' },
+                    { type: 'RUN', name: 'Morning 5K', stat: '5.0 km · 24:30', icon: Activity, accent: 'bg-red-500' },
+                    { type: 'SWIM', name: 'Endurance Set', stat: '2000m · 35:00', icon: Waves, accent: 'bg-red-600' },
+                    { type: 'BIKE', name: 'Hill Intervals', stat: '30 km · 55:00', icon: Bike, accent: 'bg-green-600' },
                     { type: 'STRENGTH', name: 'Upper Body', stat: '45 min · 6 sets', icon: Dumbbell, accent: 'bg-red-600' },
                   ].map((workout, i) => (
                     <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-white shadow-lg shadow-black/10 transition-all duration-300" style={{ transform: `translateX(${i * 12}px)` }}>
@@ -128,7 +128,7 @@ export default function Home() {
                         <workout.icon className="h-5 w-5 text-white" />
                       </div>
                       <div className="flex-1">
-                        <span className="text-[10px] font-bold tracking-widest text-blue-600">{workout.type}</span>
+                        <span className="text-[10px] font-bold tracking-widest text-red-600">{workout.type}</span>
                         <p className="font-semibold text-gray-900">{workout.name}</p>
                         <p className="text-sm text-gray-400">{workout.stat}</p>
                       </div>
@@ -142,9 +142,9 @@ export default function Home() {
               <div className="lg:hidden -mx-4 px-4 overflow-x-auto scrollbar-hide">
                 <div className="flex gap-3 pb-2" style={{ width: 'max-content' }}>
                   {[
-                    { type: 'RUN', name: 'Morning 5K', stat: '5.0 km · 24:30', icon: Activity, accent: 'bg-blue-500' },
-                    { type: 'SWIM', name: 'Endurance Set', stat: '2000m · 35:00', icon: Waves, accent: 'bg-blue-600' },
-                    { type: 'BIKE', name: 'Hill Intervals', stat: '30 km · 55:00', icon: Bike, accent: 'bg-emerald-600' },
+                    { type: 'RUN', name: 'Morning 5K', stat: '5.0 km · 24:30', icon: Activity, accent: 'bg-red-500' },
+                    { type: 'SWIM', name: 'Endurance Set', stat: '2000m · 35:00', icon: Waves, accent: 'bg-red-600' },
+                    { type: 'BIKE', name: 'Hill Intervals', stat: '30 km · 55:00', icon: Bike, accent: 'bg-green-600' },
                     { type: 'STRENGTH', name: 'Upper Body', stat: '45 min · 6 sets', icon: Dumbbell, accent: 'bg-red-600' },
                   ].map((workout, i) => (
                     <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm min-w-[200px]">
@@ -152,7 +152,7 @@ export default function Home() {
                         <workout.icon className="h-4 w-4 text-white" />
                       </div>
                       <div className="min-w-0">
-                        <span className="text-[9px] font-bold tracking-widest text-blue-400">{workout.type}</span>
+                        <span className="text-[9px] font-bold tracking-widest text-red-400">{workout.type}</span>
                         <p className="font-semibold text-sm text-white">{workout.name}</p>
                         <p className="text-xs text-white/40">{workout.stat}</p>
                       </div>
@@ -185,7 +185,7 @@ export default function Home() {
         {/* Why Athletes Use It */}
         <section className="py-20 md:py-28 relative">
           <div className="absolute inset-0 -z-10">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-blue-600/5 rounded-full blur-[120px]" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-red-600/5 rounded-full blur-[120px]" />
           </div>
           <div className="container mx-auto px-4">
             <div className="text-center mb-14">
@@ -196,16 +196,16 @@ export default function Home() {
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
               {benefits.map((item, i) => (
-                <div key={i} className="flex items-start gap-3 p-5 rounded-2xl border border-white/10 bg-white/[0.02] hover:border-blue-500/30 transition-all duration-300">
-                  <div className="p-2 rounded-lg bg-blue-600/10 mt-0.5">
-                    <item.icon className="h-4 w-4 text-blue-400" />
+                <div key={i} className="flex items-start gap-3 p-5 rounded-2xl border border-white/10 bg-white/[0.02] hover:border-red-500/30 transition-all duration-300">
+                  <div className="p-2 rounded-lg bg-red-600/10 mt-0.5">
+                    <item.icon className="h-4 w-4 text-red-400" />
                   </div>
                   <span className="text-sm text-white/70">{item.text}</span>
                 </div>
               ))}
             </div>
             <div className="text-center mt-10">
-              <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700 text-white border-0 font-bold shadow-lg shadow-blue-600/25">
+              <Button asChild size="lg" className="bg-red-600 hover:bg-red-700 text-white border-0 font-bold shadow-lg shadow-red-600/25">
                 <Link href="/register">Start Training Free <ArrowRight className="ml-2 h-4 w-4" /></Link>
               </Button>
             </div>
@@ -226,7 +226,7 @@ export default function Home() {
                 { step: '03', title: 'Train & Track', desc: 'Log sessions, build streaks, and watch your progress grow.' },
               ].map((item) => (
                 <div key={item.step} className="text-center group">
-                  <div className="text-5xl font-black text-blue-600/20 group-hover:text-blue-600/40 transition-colors mb-4">{item.step}</div>
+                  <div className="text-5xl font-black text-red-600/20 group-hover:text-red-600/40 transition-colors mb-4">{item.step}</div>
                   <h3 className="font-bold text-lg mb-2 text-white">{item.title}</h3>
                   <p className="text-sm text-white/40">{item.desc}</p>
                 </div>
@@ -238,11 +238,11 @@ export default function Home() {
         {/* Features */}
         <section className="py-20 md:py-24 relative">
           <div className="absolute inset-0 -z-10">
-            <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-blue-600/5 rounded-full blur-[100px]" />
+            <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-red-600/5 rounded-full blur-[100px]" />
           </div>
           <div className="container mx-auto px-4">
             <div className="text-center mb-14">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-600/10 border border-blue-600/20 text-blue-400 text-sm font-medium mb-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/10 border border-red-600/20 text-red-400 text-sm font-medium mb-4">
                 <Zap className="h-3.5 w-3.5" />
                 Features
               </div>
@@ -250,9 +250,9 @@ export default function Home() {
             </div>
             <div className="grid sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
               {features.map((feature, i) => (
-                <div key={i} className="p-6 rounded-2xl border border-white/10 bg-white/[0.02] hover:border-blue-500/30 transition-all duration-300">
+                <div key={i} className="p-6 rounded-2xl border border-white/10 bg-white/[0.02] hover:border-red-500/30 transition-all duration-300">
                   <div className="flex items-start gap-4">
-                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-600 to-emerald-500 text-white shadow-lg shadow-blue-600/20 flex-shrink-0">
+                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-red-600 to-green-500 text-white shadow-lg shadow-red-600/20 flex-shrink-0">
                       <feature.icon className="h-5 w-5" />
                     </div>
                     <div>
@@ -290,9 +290,9 @@ export default function Home() {
               </div>
               <div className="flex items-center justify-center">
                 <div className="relative w-48 h-48">
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-emerald-600/20 rounded-full animate-pulse" />
-                  <div className="absolute inset-6 bg-gradient-to-br from-blue-600/30 to-emerald-600/30 rounded-full" />
-                  <div className="absolute inset-12 bg-gradient-to-br from-blue-600 to-emerald-500 rounded-full flex items-center justify-center shadow-2xl shadow-blue-600/40">
+                  <div className="absolute inset-0 bg-gradient-to-br from-red-600/20 to-green-600/20 rounded-full animate-pulse" />
+                  <div className="absolute inset-6 bg-gradient-to-br from-red-600/30 to-green-600/30 rounded-full" />
+                  <div className="absolute inset-12 bg-gradient-to-br from-red-600 to-green-500 rounded-full flex items-center justify-center shadow-2xl shadow-red-600/40">
                     <Activity className="h-12 w-12 text-white" />
                   </div>
                 </div>
@@ -305,7 +305,7 @@ export default function Home() {
         <section className="py-20 md:py-24 relative">
           <div className="container mx-auto px-4">
             <div className="text-center mb-14">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-600/10 border border-blue-600/20 text-blue-400 text-sm font-medium mb-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/10 border border-red-600/20 text-red-400 text-sm font-medium mb-4">
                 <HelpCircle className="h-3.5 w-3.5" />
                 FAQ
               </div>
@@ -325,19 +325,19 @@ export default function Home() {
         {/* Final CTA */}
         <section className="py-20 md:py-28 relative overflow-hidden">
           <div className="absolute inset-0 -z-10">
-            <div className="absolute inset-0 bg-gradient-to-t from-blue-600/10 via-transparent to-transparent" />
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-blue-600/10 rounded-full blur-[100px]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-red-600/10 via-transparent to-transparent" />
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-red-600/10 rounded-full blur-[100px]" />
           </div>
           <div className="container mx-auto px-4 max-w-2xl text-center space-y-8">
-            <Flame className="h-12 w-12 text-blue-400 mx-auto" />
+            <Flame className="h-12 w-12 text-red-400 mx-auto" />
             <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight">
               No Excuses.<br />
-              <span className="bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">Just Results.</span>
+              <span className="bg-gradient-to-r from-red-400 to-green-400 bg-clip-text text-transparent">Just Results.</span>
             </h2>
             <p className="text-white/40 text-lg">
               Join athletes who train with purpose. Track every session. Build the habit. Become the athlete you want to be.
             </p>
-            <Button asChild size="lg" className="h-14 px-10 bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-600/30 border-0 font-bold text-lg">
+            <Button asChild size="lg" className="h-14 px-10 bg-red-600 hover:bg-red-700 text-white shadow-xl shadow-red-600/30 border-0 font-bold text-lg">
               <Link href="/register">
                 Get Started Free
                 <ArrowRight className="ml-2 h-5 w-5" />
@@ -354,7 +354,7 @@ export default function Home() {
       <footer className="border-t border-white/10 py-8 bg-black">
         <div className="container mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-emerald-500 flex items-center justify-center">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-red-600 to-green-500 flex items-center justify-center">
               <Dumbbell className="h-4 w-4 text-white" />
             </div>
             <span className="font-bold text-white">The Daily Athlete</span>

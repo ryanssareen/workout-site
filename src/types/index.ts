@@ -32,6 +32,7 @@ export interface User {
   sportPreferences?: string[];
   fitnessGoals?: string[]; // legacy, use trainingFor
   trainingFor?: string[];
+  gender?: string;
   ageRange?: string;
   experienceLevel?: string;
   weeklyAvailability?: string;

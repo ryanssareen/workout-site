@@ -30,7 +30,7 @@ export function Navbar() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <Link href="/dashboard" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-600 to-emerald-500 flex items-center justify-center shadow-lg shadow-blue-600/30">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-red-600 to-green-500 flex items-center justify-center shadow-lg shadow-red-600/30">
               <Dumbbell className="h-4 w-4 text-white drop-shadow" />
             </div>
             <span className="font-bold text-lg hidden sm:inline">The Daily Athlete</span>

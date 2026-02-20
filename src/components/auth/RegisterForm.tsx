@@ -58,7 +58,7 @@ export function RegisterForm() {
   return (
     <div className="w-full max-w-md relative z-10">
       <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-emerald-500 shadow-xl shadow-blue-600/25 mb-4">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-red-600 to-green-500 shadow-xl shadow-red-600/25 mb-4">
           <Dumbbell className="w-8 h-8 text-white" />
         </div>
         <h1 className="text-2xl font-black text-white uppercase tracking-tight">Join The Daily Athlete</h1>
@@ -71,7 +71,7 @@ export function RegisterForm() {
             <Label htmlFor="displayName" className="text-sm font-medium text-white/70">Full Name</Label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-              <Input id="displayName" type="text" placeholder="John Doe" value={formData.displayName} onChange={(e) => setFormData({ ...formData, displayName: e.target.value })} required className="pl-10 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-blue-500 focus:ring-blue-500/20 transition-colors" />
+              <Input id="displayName" type="text" placeholder="John Doe" value={formData.displayName} onChange={(e) => setFormData({ ...formData, displayName: e.target.value })} required className="pl-10 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-red-500 focus:ring-red-500/20 transition-colors" />
             </div>
           </div>
 
@@ -79,7 +79,7 @@ export function RegisterForm() {
             <Label htmlFor="email" className="text-sm font-medium text-white/70">Email</Label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-              <Input id="email" type="email" placeholder="john@example.com" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required className="pl-10 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-blue-500 focus:ring-blue-500/20 transition-colors" />
+              <Input id="email" type="email" placeholder="john@example.com" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required className="pl-10 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-red-500 focus:ring-red-500/20 transition-colors" />
             </div>
           </div>
 
@@ -87,11 +87,11 @@ export function RegisterForm() {
             <Label htmlFor="password" className="text-sm font-medium text-white/70">Password</Label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-              <Input id="password" type="password" placeholder="Min 6 characters" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} required minLength={6} className="pl-10 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-blue-500 focus:ring-blue-500/20 transition-colors" />
+              <Input id="password" type="password" placeholder="Min 6 characters" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} required minLength={6} className="pl-10 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-red-500 focus:ring-red-500/20 transition-colors" />
             </div>
           </div>
 
-          <Button type="submit" className="w-full h-11 font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/25 border-0 transition-all" disabled={loading || googleLoading}>
+          <Button type="submit" className="w-full h-11 font-bold bg-red-600 hover:bg-blue-700 text-white shadow-lg shadow-red-600/25 border-0 transition-all" disabled={loading || googleLoading}>
             {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating account...</> : <>Create Account<ArrowRight className="w-4 h-4 ml-2" /></>}
           </Button>
 
@@ -114,7 +114,7 @@ export function RegisterForm() {
         </form>
 
         <div className="mt-6 text-center">
-          <p className="text-sm text-white/30">Already have an account?{' '}<Link href="/login" className="text-blue-400 hover:text-blue-300 font-medium transition-colors">Sign in</Link></p>
+          <p className="text-sm text-white/30">Already have an account?{' '}<Link href="/login" className="text-red-400 hover:text-red-300 font-medium transition-colors">Sign in</Link></p>
         </div>
       </div>
 

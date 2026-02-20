@@ -61,7 +61,7 @@ export function LoginForm() {
     <div className="w-full max-w-md">
       {/* Logo */}
       <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-emerald-500 shadow-xl shadow-blue-600/25 mb-4">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-red-600 to-green-500 shadow-xl shadow-red-600/25 mb-4">
           <Dumbbell className="w-8 h-8 text-white" />
         </div>
         <h1 className="text-2xl font-black text-white uppercase tracking-tight">Welcome Back</h1>
@@ -82,7 +82,7 @@ export function LoginForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="pl-10 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
+                className="pl-10 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-red-500 focus:ring-red-500/20 transition-colors"
               />
             </div>
           </div>
@@ -90,7 +90,7 @@ export function LoginForm() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="password" className="text-sm font-medium text-white/70">Password</Label>
-              <Link href="/reset-password" className="text-xs text-white/30 hover:text-blue-400 transition-colors">
+              <Link href="/reset-password" className="text-xs text-white/30 hover:text-red-400 transition-colors">
                 Forgot password?
               </Link>
             </div>
@@ -103,12 +103,12 @@ export function LoginForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="pl-10 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-blue-500 focus:ring-blue-500/20 transition-colors"
+                className="pl-10 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-red-500 focus:ring-red-500/20 transition-colors"
               />
             </div>
           </div>
 
-          <Button type="submit" className="w-full h-11 font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/25 border-0 transition-all" disabled={loading || waitingForAuth || googleLoading}>
+          <Button type="submit" className="w-full h-11 font-bold bg-red-600 hover:bg-blue-700 text-white shadow-lg shadow-red-600/25 border-0 transition-all" disabled={loading || waitingForAuth || googleLoading}>
             {waitingForAuth ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Redirecting...</>
               : loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Signing in...</>
               : <>Sign In<ArrowRight className="w-4 h-4 ml-2" /></>}
@@ -147,7 +147,7 @@ export function LoginForm() {
         <div className="mt-6 text-center">
           <p className="text-sm text-white/30">
             Don&apos;t have an account?{' '}
-            <Link href="/register" className="text-blue-400 hover:text-blue-300 font-medium transition-colors">Sign up free</Link>
+            <Link href="/register" className="text-red-400 hover:text-red-300 font-medium transition-colors">Sign up free</Link>
           </p>
         </div>
       </div>
