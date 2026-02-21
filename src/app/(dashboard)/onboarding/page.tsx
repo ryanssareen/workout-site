@@ -69,7 +69,7 @@ export default function OnboardingPage() {
   const [availability, setAvailability] = useState('');
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { if (!user) return; if (user.onboardingCompleted !== false) router.replace('/dashboard'); }, [user, router]);
+  useEffect(() => { if (!user) return; if (user.onboardingCompleted && !user.onboardingSkipped) router.replace('/dashboard'); }, [user, router]);
 
   const goNext = () => {
     const i = STEPS.indexOf(step);
@@ -114,9 +114,10 @@ export default function OnboardingPage() {
       await updateDoc(doc(getDbInstance(), 'users', user.uid), {
         timezone: tz,
         onboardingCompleted: true,
+        onboardingSkipped: true,
         updatedAt: serverTimestamp(),
       });
-      setUser({ ...user, timezone: tz, onboardingCompleted: true });
+      setUser({ ...user, timezone: tz, onboardingCompleted: true, onboardingSkipped: true });
       router.replace('/dashboard');
     } catch { toast.error('Failed to skip — try again'); }
     finally { setSaving(false); }
@@ -136,16 +137,18 @@ export default function OnboardingPage() {
         weeklyAvailability: availability || null,
         timezone: tz,
         onboardingCompleted: true,
+        onboardingSkipped: false,
         updatedAt: serverTimestamp(),
       });
-      setUser({ ...user, gender: gender || undefined, ageRange, sportPreferences: sports, trainingFor: goals.length > 0 ? goals : undefined, experienceLevel: experience || undefined, weeklyAvailability: availability || undefined, timezone: tz, onboardingCompleted: true });
+      setUser({ ...user, gender: gender || undefined, ageRange, sportPreferences: sports, trainingFor: goals.length > 0 ? goals : undefined, experienceLevel: experience || undefined, weeklyAvailability: availability || undefined, timezone: tz, onboardingCompleted: true, onboardingSkipped: false });
       toast.success(`Welcome, ${user.displayName || 'Athlete'}!`);
       router.replace('/dashboard');
     } catch { toast.error('Failed to save — try again'); }
     finally { setSaving(false); }
   };
 
-  if (!user || user.onboardingCompleted !== false) return null;
+  if (!user) return null;
+  if (user.onboardingCompleted && !user.onboardingSkipped) return null;
 
   const visibleStepCount = trainingForEvent === false ? 7 : 8;
   const displayName = user.displayName || 'Athlete';

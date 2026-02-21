@@ -43,6 +43,7 @@ export interface User {
   };
   profileCompleted?: number;
   onboardingCompleted?: boolean;
+  onboardingSkipped?: boolean;
 }
 
 export interface StravaActivityStats {

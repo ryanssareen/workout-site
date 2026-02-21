@@ -89,6 +89,7 @@ export default function DashboardPage() {
   }
 
   const profileCompletion = user ? calculateProfileCompletion(user) : 100;
+  const skippedOnboarding = user?.onboardingSkipped === true;
   const showProfileCTA = profileCompletion < 100;
 
   return (
@@ -104,8 +105,8 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="flex-1 text-center sm:text-left space-y-2">
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Build Your Profile</h2>
-              <p className="text-muted-foreground max-w-md">Complete your athlete profile to get personalized workouts and track your progress. It only takes a minute.</p>
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">{skippedOnboarding ? 'Finish Your Setup' : 'Build Your Profile'}</h2>
+              <p className="text-muted-foreground max-w-md">{skippedOnboarding ? 'Pick up where you left off — it only takes a minute.' : 'Complete your athlete profile to get personalized workouts and track your progress. It only takes a minute.'}</p>
               <div className="flex items-center gap-3 justify-center sm:justify-start">
                 <div className="flex-1 max-w-xs h-2.5 rounded-full bg-muted overflow-hidden">
                   <div className="h-full rounded-full bg-gradient-to-r from-red-600 to-green-500 transition-all duration-500" style={{ width: `${profileCompletion}%` }} />
@@ -115,7 +116,7 @@ export default function DashboardPage() {
             </div>
             <div className="flex flex-col items-center gap-2 shrink-0">
               <Button asChild size="lg" className="h-12 px-8 font-bold shadow-lg shadow-primary/20 text-base">
-                <Link href="/profile?edit=1">Complete Profile <ArrowRight className="ml-2 h-5 w-5" /></Link>
+                <Link href={skippedOnboarding ? '/onboarding' : '/profile?edit=1'}>{skippedOnboarding ? 'Continue Setup' : 'Complete Profile'} <ArrowRight className="ml-2 h-5 w-5" /></Link>
               </Button>
               <button onClick={() => sessionStorage.setItem('profile-cta-dismissed', 'true')} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
                 Do this later
