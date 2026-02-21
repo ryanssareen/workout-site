@@ -69,7 +69,9 @@ export default function OnboardingPage() {
   const [availability, setAvailability] = useState('');
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { if (!user) return; if (user.onboardingCompleted && !user.onboardingSkipped) router.replace('/dashboard'); }, [user, router]);
+  // Allow entry if: never completed, explicitly skipped, OR missing core onboarding data
+  const needsOnboarding = !user?.sportPreferences?.length || !user?.ageRange;
+  useEffect(() => { if (!user) return; if (user.onboardingCompleted && !user.onboardingSkipped && !needsOnboarding) router.replace('/dashboard'); }, [user, router, needsOnboarding]);
 
   const goNext = () => {
     const i = STEPS.indexOf(step);
@@ -148,7 +150,7 @@ export default function OnboardingPage() {
   };
 
   if (!user) return null;
-  if (user.onboardingCompleted && !user.onboardingSkipped) return null;
+  if (user.onboardingCompleted && !user.onboardingSkipped && !needsOnboarding) return null;
 
   const visibleStepCount = trainingForEvent === false ? 7 : 8;
   const displayName = user.displayName || 'Athlete';
