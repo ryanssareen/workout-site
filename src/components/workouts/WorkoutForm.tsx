@@ -186,7 +186,7 @@ export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAt
       <div className="space-y-2">
         <Label htmlFor="type">Workout Type *</Label>
         <Select 
-          value={selectedType || 'run'} 
+          value={selectedType ?? ''} 
           onValueChange={(value: any) => {
             setValue('type', value);
             // Clear type-specific data when changing types

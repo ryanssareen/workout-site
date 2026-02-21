@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { createWorkout, getCoachStudents } from '@/lib/firebase/firestore';
@@ -205,6 +205,27 @@ export default function NewWorkoutPage() {
     return isCoach ? 'Fill in the details for the new workout' : 'Create a workout to track your training';
   };
 
+  const formDefaultValues = useMemo(() => {
+    if (templateData) {
+      return {
+        name: templateData.name,
+        type: templateData.type,
+        date: templateData.date ? new Date(templateData.date + 'T00:00:00') : new Date(),
+        description: templateData.description
+          || [templateData.warmup, templateData.mainSet, templateData.cooldown].filter(Boolean).join('\n\n')
+          || '',
+        tags: Array.isArray(templateData.tags) ? templateData.tags : undefined,
+        assignedTo: isUnconnectedAthlete ? user?.uid : students[0]?.uid || '',
+        ...(templateData.run && { run: templateData.run }),
+        ...(templateData.swim && { swim: templateData.swim }),
+        ...(templateData.bike && { bike: templateData.bike }),
+        ...(templateData.strength && { strength: templateData.strength }),
+        ...(templateData.other && { other: templateData.other }),
+      };
+    }
+    return isUnconnectedAthlete ? { assignedTo: user?.uid } : undefined;
+  }, [templateData, isUnconnectedAthlete, user?.uid, students]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -232,21 +253,7 @@ export default function NewWorkoutPage() {
             athletes={students}
             loading={loading || loadingTemplate}
             hideAthleteSelector={isUnconnectedAthlete}
-            defaultValues={templateData ? {
-              name: templateData.name,
-              type: templateData.type,
-              date: templateData.date ? new Date(templateData.date + 'T00:00:00') : new Date(),
-              description: templateData.description
-                || [templateData.warmup, templateData.mainSet, templateData.cooldown].filter(Boolean).join('\n\n')
-                || '',
-              tags: Array.isArray(templateData.tags) ? templateData.tags : undefined,
-              assignedTo: isUnconnectedAthlete ? user?.uid : students[0]?.uid || '',
-              ...(templateData.run && { run: templateData.run }),
-              ...(templateData.swim && { swim: templateData.swim }),
-              ...(templateData.bike && { bike: templateData.bike }),
-              ...(templateData.strength && { strength: templateData.strength }),
-              ...(templateData.other && { other: templateData.other }),
-            } : (isUnconnectedAthlete ? { assignedTo: user?.uid } : undefined)}
+            defaultValues={formDefaultValues}
           />
         </CardContent>
       </Card>
