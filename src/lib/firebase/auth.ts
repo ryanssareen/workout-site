@@ -6,6 +6,9 @@ import {
   User as FirebaseUser,
   GoogleAuthProvider,
   signInWithPopup,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { getAuthInstance, getDbInstance } from './config';
@@ -76,9 +79,11 @@ export async function createUser(
   }
 }
 
-export async function signIn(email: string, password: string): Promise<FirebaseUser> {
+export async function signIn(email: string, password: string, rememberMe: boolean = true): Promise<FirebaseUser> {
   try {
-    const userCredential = await signInWithEmailAndPassword(getAuthInstance(), email, password);
+    const auth = getAuthInstance();
+    await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
     return userCredential.user;
   } catch (error: any) {
     throw new Error(error.message || 'Failed to sign in');

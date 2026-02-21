@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Dumbbell, Calendar, TrendingUp, ArrowRight, Activity, CheckCircle2, Target, Bike, Waves, Zap, Shield, Clock, Smartphone, HelpCircle, Flame } from 'lucide-react';
+import { AuthRedirect } from '@/components/auth/AuthRedirect';
 
 export default function Home() {
   const benefits = [
@@ -35,11 +36,12 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-black text-white">
+      <AuthRedirect />
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-black/80 backdrop-blur-xl">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-red-600 to-red-900 flex items-center justify-center shadow-lg shadow-red-600/30">
+            <div className="h-9 w-9 rounded-xl bg-black border border-white/20 flex items-center justify-center">
               <Dumbbell className="h-4 w-4 text-white" />
             </div>
             <span className="font-bold text-lg text-white">The Daily Athlete</span>
@@ -354,7 +356,7 @@ export default function Home() {
       <footer className="border-t border-white/10 py-8 bg-black">
         <div className="container mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-red-600 to-red-900 flex items-center justify-center">
+            <div className="h-8 w-8 rounded-lg bg-black border border-white/20 flex items-center justify-center">
               <Dumbbell className="h-4 w-4 text-white" />
             </div>
             <span className="font-bold text-white">The Daily Athlete</span>

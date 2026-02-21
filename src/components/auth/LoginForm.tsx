@@ -14,6 +14,7 @@ import { Dumbbell, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [waitingForAuth, setWaitingForAuth] = useState(false);
@@ -34,7 +35,7 @@ export function LoginForm() {
     e.preventDefault();
     setLoading(true);
     try {
-      await signIn(email, password);
+      await signIn(email, password, rememberMe);
       toast.success('Welcome back!');
       setWaitingForAuth(true);
     } catch (error: any) {
@@ -108,7 +109,18 @@ export function LoginForm() {
             </div>
           </div>
 
-          <Button type="submit" className="w-full h-11 font-bold bg-red-600 hover:bg-blue-700 text-white shadow-lg shadow-red-600/25 border-0 transition-all" disabled={loading || waitingForAuth || googleLoading}>
+          <div className="flex items-center gap-2">
+            <input
+              id="rememberMe"
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="h-4 w-4 rounded border-white/20 bg-white/5 text-red-600 focus:ring-red-500/20 accent-red-600"
+            />
+            <Label htmlFor="rememberMe" className="text-sm text-white/50 cursor-pointer select-none">Remember me</Label>
+          </div>
+
+          <Button type="submit" className="w-full h-11 font-bold bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/25 border-0 transition-all" disabled={loading || waitingForAuth || googleLoading}>
             {waitingForAuth ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Redirecting...</>
               : loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Signing in...</>
               : <>Sign In<ArrowRight className="w-4 h-4 ml-2" /></>}
