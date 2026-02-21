@@ -1,490 +1,604 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 
-// Helper to analyze training patterns
-function analyzeTrainingData(recentWorkouts: any[]) {
-  if (!recentWorkouts || recentWorkouts.length === 0) {
-    return {
-      totalWorkouts: 0,
-      workoutsByType: {},
-      dominantType: 'none',
-      averageFrequency: 0,
-      hasConsistency: false,
-      needsVariety: true,
-      lastWorkoutDaysAgo: null,
-      longestGapDays: null,
-      totalDurationMinutes: 0,
-      averageDurationMinutes: 0,
-      completedRate: 0,
-      distanceByType: {},
-      tagCounts: {},
-    };
-  }
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOGIC ENGINE — deterministic training plan generation
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-  const workoutsByType: Record<string, number> = {};
-  const distanceByType: Record<string, Record<string, number>> = {};
-  const tagCounts: Record<string, number> = {};
-  const dates: Date[] = [];
-  let totalDurationMinutes = 0;
-  let durationSamples = 0;
+interface AthleteProfile {
+  sportPreferences?: string[];
+  fitnessGoals?: string[];
+  trainingFor?: string[];
+  experienceLevel?: string;
+  ageRange?: string;
+  eventDate?: string;
+  weeklyAvailability?: string;
+  bio?: string;
+  timezone?: string;
+}
+
+interface LogicPlan {
+  type: 'run' | 'swim' | 'bike' | 'strength' | 'other';
+  date: string;
+  intensity: 'easy' | 'moderate' | 'hard';
+  focus: string;
+  durationMin: number;
+  specs: Record<string, any>;
+}
+
+/* ── Constants ────────────────────────────────────────────────────────── */
+
+const EXPERIENCE_MULTIPLIER: Record<string, number> = {
+  Beginner: 0.6,
+  Intermediate: 1.0,
+  Advanced: 1.4,
+};
+
+const AVAILABILITY_DAYS: Record<string, number> = {
+  '1–2 days': 2,
+  '3–4 days': 3,
+  '5–6 days': 5,
+  '7 days': 6,
+};
+
+const VALID_TAGS = new Set([
+  'easy', 'moderate', 'hard', 'recovery', 'speed', 'endurance',
+  'intervals', 'tempo', 'long', 'strength', 'technique', 'race',
+]);
+
+/* ── Helpers ──────────────────────────────────────────────────────────── */
+
+function parseAvailability(avail?: string): number {
+  return AVAILABILITY_DAYS[avail || ''] || 3;
+}
+
+function getExpMultiplier(level?: string): number {
+  return EXPERIENCE_MULTIPLIER[level || ''] || 1.0;
+}
+
+function sportToType(sport: string): 'run' | 'swim' | 'bike' | 'strength' | 'other' {
+  const l = sport.toLowerCase();
+  if (l.includes('run')) return 'run';
+  if (l.includes('swim')) return 'swim';
+  if (l.includes('bik') || l.includes('cycl')) return 'bike';
+  if (l.includes('ironman') || l.includes('triath')) return 'run';
+  if (l.includes('strength')) return 'strength';
+  return 'other';
+}
+
+/* ── History Analysis (recency-weighted) ──────────────────────────────── */
+
+function analyzeHistory(workouts: any[]) {
+  const typeCounts: Record<string, number> = {};
+  const weightedDurations: number[] = [];
+  const weightedDistances: Record<string, number[]> = {};
+  const pacesByType: Record<string, number[]> = {}; // min/km or min/100m
   let completedCount = 0;
+  let totalLoad = 0;        // fatigue: Σ(duration × intensity)
+  let recentWeekLoad = 0;   // last 7 days only
+  const dates: Date[] = [];
+  const now = Date.now();
+  const sevenDaysAgo = now - 7 * 86400000;
 
-  const addDistance = (type: string, distance?: number, unit?: string) => {
-    if (!distance || !unit) return;
-    if (!distanceByType[type]) distanceByType[type] = {};
-    distanceByType[type][unit] = (distanceByType[type][unit] || 0) + distance;
-  };
+  const INTENSITY_LOAD: Record<string, number> = { easy: 0.6, moderate: 1.0, hard: 1.5 };
 
-  recentWorkouts.forEach((w: any) => {
+  (workouts || []).forEach((w: any, idx: number) => {
     if (!w) return;
+    // Recency weight: most recent gets 1.0, oldest gets 0.4
+    const total = (workouts || []).length;
+    const recencyWeight = 0.4 + 0.6 * ((total - idx) / total);
 
-    if (w.type) {
-      workoutsByType[w.type] = (workoutsByType[w.type] || 0) + 1;
+    typeCounts[w.type] = (typeCounts[w.type] || 0) + 1;
+    if (w.completed) completedCount++;
+
+    const dur = w.duration ?? w.run?.time ?? w.bike?.time ?? w.swim?.time ?? w.strength?.totalTime ?? w.other?.duration;
+    if (typeof dur === 'number') weightedDurations.push(dur * recencyWeight);
+
+    // Distances (recency-weighted)
+    if (w.type === 'run' && w.run?.distance) {
+      (weightedDistances['run'] = weightedDistances['run'] || []).push(w.run.distance * recencyWeight);
+      if (w.run.time && w.run.distance > 0) {
+        (pacesByType['run'] = pacesByType['run'] || []).push(w.run.time / w.run.distance);
+      }
+    }
+    if (w.type === 'bike' && w.bike?.distance) {
+      (weightedDistances['bike'] = weightedDistances['bike'] || []).push(w.bike.distance * recencyWeight);
+      if (w.bike.time && w.bike.distance > 0) {
+        (pacesByType['bike'] = pacesByType['bike'] || []).push(w.bike.time / w.bike.distance);
+      }
+    }
+    if (w.type === 'swim' && w.swim?.distance) {
+      (weightedDistances['swim'] = weightedDistances['swim'] || []).push(w.swim.distance * recencyWeight);
+      if (w.swim.time && w.swim.distance > 0) {
+        (pacesByType['swim'] = pacesByType['swim'] || []).push(w.swim.time / w.swim.distance);
+      }
     }
 
-    if (Array.isArray(w.tags)) {
-      w.tags.forEach((tag: string) => {
-        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-      });
+    // Fatigue load
+    const tags = Array.isArray(w.tags) ? w.tags : [];
+    const intensityTag = tags.find((t: string) => INTENSITY_LOAD[t]) || 'moderate';
+    const loadMult = INTENSITY_LOAD[intensityTag] || 1.0;
+    const sessionLoad = (typeof dur === 'number' ? dur : 30) * loadMult;
+    totalLoad += sessionLoad;
+
+    const d = w.date ? new Date(w.date) : null;
+    if (d && !isNaN(d.getTime())) {
+      dates.push(d);
+      if (d.getTime() >= sevenDaysAgo) recentWeekLoad += sessionLoad;
     }
-
-    if (w.completed) completedCount += 1;
-
-    const parsedDate = w.date ? new Date(w.date) : null;
-    if (parsedDate && !Number.isNaN(parsedDate.getTime())) {
-      dates.push(parsedDate);
-    }
-
-    const sessionMinutes =
-      w.duration ??
-      w.run?.time ??
-      w.bike?.time ??
-      w.swim?.time ??
-      w.strength?.totalTime ??
-      w.other?.duration;
-
-    if (typeof sessionMinutes === 'number' && !Number.isNaN(sessionMinutes)) {
-      totalDurationMinutes += sessionMinutes;
-      durationSamples += 1;
-    }
-
-    if (w.type === 'run' && w.run) addDistance('run', w.run.distance, w.run.distanceUnit);
-    if (w.type === 'bike' && w.bike) addDistance('bike', w.bike.distance, w.bike.distanceUnit);
-    if (w.type === 'swim' && w.swim) addDistance('swim', w.swim.distance, w.swim.distanceUnit);
   });
 
-  const dominantType = Object.entries(workoutsByType).sort((a, b) => b[1] - a[1])[0]?.[0] || 'none';
-  const averageDurationMinutes = durationSamples > 0 ? totalDurationMinutes / durationSamples : 0;
-  const completedRate = recentWorkouts.length > 0
-    ? Math.round((completedCount / recentWorkouts.length) * 100)
-    : 0;
+  // Weighted averages
+  const avgDuration = weightedDurations.length > 0
+    ? Math.round(weightedDurations.reduce((a, b) => a + b, 0) / weightedDurations.length)
+    : 45;
 
-  let averageFrequency = recentWorkouts.length / 4; // Fallback to 4-week assumption
-  let lastWorkoutDaysAgo: number | null = null;
-  let longestGapDays: number | null = null;
-
-  if (dates.length > 0) {
-    const sortedDates = [...dates].sort((a, b) => a.getTime() - b.getTime());
-    const first = sortedDates[0];
-    const last = sortedDates[sortedDates.length - 1];
-    const spanDays = Math.max(7, (last.getTime() - first.getTime()) / (1000 * 60 * 60 * 24));
-    averageFrequency = recentWorkouts.length / (spanDays / 7);
-    lastWorkoutDaysAgo = Math.round((Date.now() - last.getTime()) / (1000 * 60 * 60 * 24));
-
-    if (sortedDates.length > 1) {
-      let maxGap = 0;
-      for (let i = 1; i < sortedDates.length; i += 1) {
-        const gap = (sortedDates[i].getTime() - sortedDates[i - 1].getTime()) / (1000 * 60 * 60 * 24);
-        if (gap > maxGap) maxGap = gap;
-      }
-      longestGapDays = Math.round(maxGap);
-    } else {
-      longestGapDays = 0;
-    }
+  const avgDistances: Record<string, number> = {};
+  for (const [type, dists] of Object.entries(weightedDistances)) {
+    avgDistances[type] = dists.reduce((a, b) => a + b, 0) / dists.length;
   }
 
+  const avgPaces: Record<string, number> = {};
+  for (const [type, paces] of Object.entries(pacesByType)) {
+    avgPaces[type] = paces.reduce((a, b) => a + b, 0) / paces.length;
+  }
+
+  const sortedDates = dates.sort((a, b) => b.getTime() - a.getTime());
+  const lastWorkoutDate = sortedDates[0] || null;
+  const daysSinceLast = lastWorkoutDate ? Math.round((now - lastWorkoutDate.getTime()) / 86400000) : 14;
+
+  const completionRate = workouts?.length > 0 ? Math.round((completedCount / workouts.length) * 100) : 0;
+
   return {
-    totalWorkouts: recentWorkouts.length,
-    workoutsByType,
-    dominantType,
-    averageFrequency,
-    hasConsistency: recentWorkouts.length >= 8,
-    needsVariety: Object.keys(workoutsByType).length < 2,
-    lastWorkoutDaysAgo,
-    longestGapDays,
-    totalDurationMinutes,
-    averageDurationMinutes,
-    completedRate,
-    distanceByType,
-    tagCounts,
+    typeCounts,
+    totalWorkouts: (workouts || []).length,
+    completedCount,
+    completionRate,
+    avgDuration,
+    avgDistances,
+    avgPaces,
+    daysSinceLast,
+    lastWorkoutDate,
+    totalLoad,
+    recentWeekLoad,
   };
 }
+
+/* ── Event Periodization ──────────────────────────────────────────────── */
+
+type TrainingPhase = 'base' | 'build' | 'peak' | 'taper' | 'recovery' | 'general';
+
+function getTrainingPhase(eventDate?: string): { phase: TrainingPhase; weeksOut: number | null } {
+  if (!eventDate) return { phase: 'general', weeksOut: null };
+  const event = new Date(eventDate);
+  if (isNaN(event.getTime())) return { phase: 'general', weeksOut: null };
+
+  const weeksOut = Math.round((event.getTime() - Date.now()) / (7 * 86400000));
+  if (weeksOut <= 0) return { phase: 'recovery', weeksOut: 0 };
+  if (weeksOut <= 2) return { phase: 'taper', weeksOut };
+  if (weeksOut <= 5) return { phase: 'peak', weeksOut };
+  if (weeksOut <= 10) return { phase: 'build', weeksOut };
+  return { phase: 'base', weeksOut };
+}
+
+function phaseIntensityBias(phase: TrainingPhase): { volumeMult: number; intensityBias: 'easy' | 'moderate' | 'hard' } {
+  switch (phase) {
+    case 'taper': return { volumeMult: 0.6, intensityBias: 'easy' };
+    case 'recovery': return { volumeMult: 0.5, intensityBias: 'easy' };
+    case 'base': return { volumeMult: 0.85, intensityBias: 'moderate' };
+    case 'build': return { volumeMult: 1.0, intensityBias: 'moderate' };
+    case 'peak': return { volumeMult: 1.1, intensityBias: 'hard' };
+    default: return { volumeMult: 1.0, intensityBias: 'moderate' };
+  }
+}
+
+/* ── Progressive Overload with Guardrails ─────────────────────────────── */
+
+function getProgressionRate(completionRate: number, phase: TrainingPhase): number {
+  // Cap progression if completion is low
+  if (completionRate < 60) return 0.95; // reduce load
+  if (completionRate < 80) return 1.0;  // maintain
+  // Phase-aware progression
+  if (phase === 'taper' || phase === 'recovery') return 0.9;
+  if (phase === 'base') return 1.05;
+  if (phase === 'peak') return 1.08;
+  return 1.06; // default ~6% build
+}
+
+function shouldDeload(totalWorkouts: number): boolean {
+  // Every 4th week = deload
+  // Approximate: if recent history shows 12+ workouts (3 weeks × 4/week), trigger deload
+  return totalWorkouts > 0 && totalWorkouts % 12 < 3;
+}
+
+/* ── Schedule Dates ───────────────────────────────────────────────────── */
+
+function getNextDates(count: number, availDays: number): string[] {
+  const dates: string[] = [];
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  const gap = Math.max(1, Math.round(7 / availDays));
+  for (let i = 0; i < count; i++) {
+    dates.push(d.toISOString().slice(0, 10));
+    d.setDate(d.getDate() + gap);
+  }
+  return dates;
+}
+
+/* ── Type Selection ───────────────────────────────────────────────────── */
+
+function pickTypes(
+  sports: string[],
+  history: ReturnType<typeof analyzeHistory>,
+  count: number
+): ('run' | 'swim' | 'bike' | 'strength' | 'other')[] {
+  let pool: ('run' | 'swim' | 'bike' | 'strength' | 'other')[] = [];
+  for (const s of sports) {
+    const l = s.toLowerCase();
+    if (l.includes('ironman') || l.includes('triath')) {
+      pool.push('run', 'swim', 'bike');
+    } else {
+      pool.push(sportToType(s));
+    }
+  }
+  pool = [...new Set(pool)];
+  if (pool.length === 1) pool.push('strength');
+
+  // Prioritize underrepresented types
+  const sorted = pool.sort((a, b) => (history.typeCounts[a] || 0) - (history.typeCounts[b] || 0));
+  const result: typeof pool = [];
+  for (let i = 0; i < count; i++) {
+    result.push(sorted[i % sorted.length]);
+  }
+  return result;
+}
+
+/* ── Intensity Selection ──────────────────────────────────────────────── */
+
+function pickIntensities(
+  count: number,
+  daysSinceLast: number,
+  phase: TrainingPhase,
+  recentWeekLoad: number,
+  avgDuration: number
+): ('easy' | 'moderate' | 'hard')[] {
+  // Fatigue guard: if recent load is high, force easier
+  const highLoadThreshold = avgDuration * 5; // rough: 5 sessions worth
+  const fatigued = recentWeekLoad > highLoadThreshold;
+
+  if (fatigued || daysSinceLast >= 7) {
+    const base: ('easy' | 'moderate' | 'hard')[] = ['easy', 'moderate', 'easy'];
+    return base.slice(0, count);
+  }
+
+  // Phase-based patterns
+  const patterns: Record<TrainingPhase, ('easy' | 'moderate' | 'hard')[]> = {
+    taper: ['easy', 'moderate', 'easy'],
+    recovery: ['easy', 'easy', 'moderate'],
+    base: ['moderate', 'easy', 'moderate'],
+    build: ['moderate', 'hard', 'easy'],
+    peak: ['hard', 'moderate', 'hard'],
+    general: ['moderate', 'hard', 'easy'],
+  };
+
+  const pattern = patterns[phase] || patterns.general;
+  return pattern.slice(0, count);
+}
+
+/* ── Spec Builder (pace-consistent) ───────────────────────────────────── */
+
+function buildSpecs(
+  type: string,
+  intensity: 'easy' | 'moderate' | 'hard',
+  exp: number,
+  avgDist: Record<string, number>,
+  avgPaces: Record<string, number>,
+  avgDur: number,
+  progressionRate: number,
+  volumeMult: number,
+  deload: boolean
+): { durationMin: number; specs: Record<string, any> } {
+  const deloadMult = deload ? 0.7 : 1.0;
+  const intensityMult = intensity === 'easy' ? 0.8 : intensity === 'hard' ? 1.2 : 1.0;
+  const totalMult = progressionRate * volumeMult * deloadMult;
+
+  switch (type) {
+    case 'run': {
+      const baseDist = (avgDist['run'] || 5) * totalMult;
+      const dist = Math.round(baseDist * intensityMult * 10) / 10;
+      // Pace-consistent: derive time from distance × avg pace
+      const pace = avgPaces['run'] || 6; // min/km default
+      const time = Math.round(dist * pace * (intensity === 'easy' ? 1.1 : intensity === 'hard' ? 0.95 : 1.0));
+      return {
+        durationMin: time || 45,
+        specs: {
+          run: {
+            distance: dist,
+            distanceUnit: 'km',
+            time: time || 45,
+            terrain: intensity === 'hard' ? 'track' : 'road',
+            elevationGain: intensity === 'hard' ? Math.round(100 * exp) : 0,
+          },
+        },
+      };
+    }
+    case 'swim': {
+      const baseDist = (avgDist['swim'] || 1500) * totalMult;
+      const dist = Math.round(baseDist * intensityMult);
+      const pace = avgPaces['swim'] || 0.025; // min/m default ~2:30/100m
+      const time = Math.round(dist * pace * (intensity === 'easy' ? 1.1 : 1.0));
+      return {
+        durationMin: time || 40,
+        specs: {
+          swim: {
+            distance: dist,
+            distanceUnit: 'meters',
+            time: time || 40,
+            strokeType: 'freestyle',
+            poolLength: 25,
+          },
+        },
+      };
+    }
+    case 'bike': {
+      const baseDist = (avgDist['bike'] || 25) * totalMult;
+      const dist = Math.round(baseDist * intensityMult * 10) / 10;
+      const pace = avgPaces['bike'] || 2.4; // min/km default ~25km/h
+      const time = Math.round(dist * pace * (intensity === 'easy' ? 1.1 : intensity === 'hard' ? 0.95 : 1.0));
+      return {
+        durationMin: time || 60,
+        specs: {
+          bike: {
+            distance: dist,
+            distanceUnit: 'km',
+            time: time || 60,
+            avgCadence: intensity === 'hard' ? 90 : 80,
+            elevationGain: intensity === 'hard' ? Math.round(400 * exp) : Math.round(100 * exp),
+          },
+        },
+      };
+    }
+    case 'strength': {
+      const time = Math.round(45 * exp * intensityMult * deloadMult);
+      return {
+        durationMin: time || 45,
+        specs: {
+          strength: {
+            totalTime: time || 45,
+            rpe: intensity === 'easy' ? 5 : intensity === 'hard' ? 8 : 6,
+            exercises: [],
+          },
+        },
+      };
+    }
+    default: {
+      return {
+        durationMin: Math.round(40 * exp * deloadMult),
+        specs: {
+          other: {
+            duration: Math.round(40 * exp * deloadMult),
+            description: '',
+          },
+        },
+      };
+    }
+  }
+}
+
+/* ── Core Logic Engine ────────────────────────────────────────────────── */
+
+function generateLogicPlans(profile: AthleteProfile, workouts: any[]): LogicPlan[] {
+  const history = analyzeHistory(workouts);
+  const exp = getExpMultiplier(profile.experienceLevel);
+  const availDays = parseAvailability(profile.weeklyAvailability);
+  const sports = profile.sportPreferences || ['Running'];
+  const count = 3;
+
+  const { phase } = getTrainingPhase(profile.eventDate);
+  const { volumeMult } = phaseIntensityBias(phase);
+  const progressionRate = getProgressionRate(history.completionRate, phase);
+  const deload = shouldDeload(history.totalWorkouts);
+
+  const dates = getNextDates(count, availDays);
+  const types = pickTypes(sports, history, count);
+  const intensities = pickIntensities(count, history.daysSinceLast, phase, history.recentWeekLoad, history.avgDuration);
+
+  const focusMap: Record<string, Record<string, string>> = {
+    easy: { run: 'recovery / base building', swim: 'technique / easy aerobic', bike: 'easy spin / active recovery', strength: 'mobility / activation', other: 'cross-training' },
+    moderate: { run: 'tempo / threshold', swim: 'aerobic endurance', bike: 'endurance / tempo', strength: 'hypertrophy / strength', other: 'moderate effort' },
+    hard: { run: 'intervals / VO2max', swim: 'sprint sets / race pace', bike: 'hill repeats / power intervals', strength: 'max effort / heavy lifts', other: 'high intensity' },
+  };
+
+  const plans: LogicPlan[] = [];
+  for (let i = 0; i < count; i++) {
+    const { durationMin, specs } = buildSpecs(
+      types[i], intensities[i], exp,
+      history.avgDistances, history.avgPaces, history.avgDuration,
+      progressionRate, volumeMult, deload
+    );
+
+    plans.push({
+      type: types[i],
+      date: dates[i],
+      intensity: intensities[i],
+      focus: focusMap[intensities[i]]?.[types[i]] || 'general fitness',
+      durationMin,
+      specs,
+    });
+  }
+  return plans;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   API ROUTE
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { userId, recentWorkouts, preferences, athleteProfile } = body;
+    const { recentWorkouts, athleteProfile } = body;
     const apiKey = process.env.GROQ_API_KEY;
 
+    // ── Step 1: Logic engine ──
+    const logicPlans = generateLogicPlans(athleteProfile || {}, recentWorkouts || []);
+    const history = analyzeHistory(recentWorkouts || []);
+    const { phase, weeksOut } = getTrainingPhase(athleteProfile?.eventDate);
+    const deload = shouldDeload(history.totalWorkouts);
+
+    const analysis = {
+      totalWorkouts: history.totalWorkouts,
+      workoutsByType: history.typeCounts,
+      completedRate: history.completionRate,
+      avgDuration: history.avgDuration,
+      daysSinceLast: history.daysSinceLast,
+      phase,
+      weeksOut,
+      deload,
+    };
+
+    // No API key → logic-only fallback
     if (!apiKey) {
-      return NextResponse.json(
-        { error: 'GROQ_API_KEY is not configured. Please add it to the environment.' },
-        { status: 503 },
-      );
+      const fallback = logicPlans.map((p) => ({
+        name: `${p.intensity.charAt(0).toUpperCase() + p.intensity.slice(1)} ${p.type.charAt(0).toUpperCase() + p.type.slice(1)} Session`,
+        type: p.type,
+        date: p.date,
+        difficulty: p.intensity,
+        estimatedDuration: p.durationMin,
+        description: `${deload ? '[DELOAD] ' : ''}A ${p.intensity} ${p.type} session focused on ${p.focus}.${phase !== 'general' ? ` (${phase} phase${weeksOut ? `, ${weeksOut}w to event` : ''})` : ''}`,
+        sessionType: p.focus,
+        tags: [p.intensity],
+        ...p.specs,
+      }));
+      return NextResponse.json({ suggestions: fallback, analysis, success: true });
     }
 
+    // ── Step 2: AI enhancement ──
     const groq = new Groq({ apiKey });
 
-    // Analyze training patterns
-    const analysis = analyzeTrainingData(recentWorkouts);
+    const profileSummary = [
+      `Experience: ${athleteProfile?.experienceLevel || 'Intermediate'}`,
+      `Sports: ${athleteProfile?.sportPreferences?.join(', ') || 'Multi-sport'}`,
+      `Goals: ${athleteProfile?.trainingFor?.join(', ') || athleteProfile?.fitnessGoals?.join(', ') || 'General fitness'}`,
+      athleteProfile?.eventDate ? `Event date: ${athleteProfile.eventDate} (${weeksOut}w out, ${phase} phase)` : null,
+      athleteProfile?.ageRange ? `Age: ${athleteProfile.ageRange}` : null,
+      athleteProfile?.weeklyAvailability ? `Availability: ${athleteProfile.weeklyAvailability}` : null,
+      deload ? '⚠️ DELOAD WEEK — reduce volume ~30%, keep intensity moderate-low' : null,
+      phase === 'taper' ? '⚠️ TAPER PHASE — reduce volume, maintain sharpness with short quality efforts' : null,
+    ].filter(Boolean).join('\n');
 
-    const distanceSummary = Object.entries(analysis.distanceByType || {})
-      .map(([type, units]) => {
-        const unitSummary = Object.entries(units || {})
-          .map(([unit, value]) => `${value.toFixed(1)} ${unit}`)
-          .join(', ');
-        return unitSummary ? `${type}: ${unitSummary}` : '';
-      })
-      .filter(Boolean)
-      .join(' • ') || 'None';
+    const recentHistory = (recentWorkouts || []).slice(0, 8).map((w: any) => {
+      const d = w.date ? new Date(w.date) : null;
+      const dateStr = d && !isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : 'Recent';
+      const dur = w.duration ?? w.run?.time ?? w.bike?.time ?? w.swim?.time ?? w.strength?.totalTime ?? 0;
+      const dist = w.run?.distance ? `${w.run.distance}${w.run.distanceUnit}` : w.bike?.distance ? `${w.bike.distance}${w.bike.distanceUnit}` : w.swim?.distance ? `${w.swim.distance}${w.swim.distanceUnit}` : '';
+      return `- ${(w.type || 'other').toUpperCase()}: ${w.name || 'Unnamed'} (${dateStr}) ${w.completed ? '✅' : '❌'} ${dur}min ${dist}`.trim();
+    }).join('\n') || 'No recent workouts';
 
-    const tagSummary = Object.entries(analysis.tagCounts || {})
-      .sort((a, b) => b[1] - a[1])
-      .map(([tag, count]) => `${tag}: ${count}`)
-      .join(', ') || 'None';
+    const planSummary = logicPlans.map((p, i) => {
+      const typeData = p.specs[p.type] || {};
+      return `Workout ${i + 1}: ${p.type.toUpperCase()} on ${p.date}, ${p.intensity}, ~${p.durationMin}min, focus: ${p.focus}. Specs: ${JSON.stringify(typeData)}`;
+    }).join('\n');
 
-    const recentHistory = recentWorkouts && recentWorkouts.length > 0
-      ? recentWorkouts.map((w: any) => {
-          const parsedDate = w.date ? new Date(w.date) : null;
-          const dateLabel = parsedDate && !Number.isNaN(parsedDate.getTime())
-            ? parsedDate.toISOString().slice(0, 10)
-            : (typeof w.date === 'string' ? w.date : 'Recent');
-          const duration = w.duration ?? w.run?.time ?? w.bike?.time ?? w.swim?.time ?? w.strength?.totalTime ?? w.other?.duration;
-          const distance = w.run?.distance
-            ? `${w.run.distance}${w.run.distanceUnit}`
-            : w.bike?.distance
-              ? `${w.bike.distance}${w.bike.distanceUnit}`
-              : w.swim?.distance
-                ? `${w.swim.distance}${w.swim.distanceUnit}`
-                : null;
-          const tagList = Array.isArray(w.tags) && w.tags.length > 0 ? ` | tags: ${w.tags.join(', ')}` : '';
-          const status = w.completed ? 'completed' : 'planned';
-          return `- ${(w.type || 'workout').toUpperCase()}: ${w.name || 'Unnamed'} (${dateLabel}) | ${status}${duration ? ` | ${duration} min` : ''}${distance ? ` | ${distance}` : ''}${tagList}`;
-        }).join('\n')
-      : 'No recent workouts - New athlete or returning from break';
+    const prompt = `You are an expert endurance coach. I have computed a structured training plan using an algorithm. Enhance each workout with creative names, descriptions, warmup/mainSet/cooldown, and coaching rationale.
 
-    const prompt = `You are an experienced endurance sports coach and exercise physiologist. Analyze the athlete's training history and create 3 comprehensive, progressive workout plans.
+## ATHLETE
+${profileSummary}
 
-## ATHLETE PROFILE
-
-Recent Training History (Last 30 days):
+## RECENT HISTORY (${history.completionRate}% completion rate, ${history.daysSinceLast}d since last)
 ${recentHistory}
 
-Training Analysis:
-- Total Workouts: ${analysis.totalWorkouts}
-- Workout Distribution: ${Object.entries(analysis.workoutsByType).map(([type, count]) => `${type}: ${count}`).join(', ') || 'None'}
-- Dominant Sport: ${analysis.dominantType}
-- Training Frequency: ${analysis.averageFrequency.toFixed(1)} sessions/week
-- Consistency: ${analysis.hasConsistency ? 'Good' : 'Needs Improvement'}
-- Variety: ${analysis.needsVariety ? 'Needs More Cross-Training' : 'Well-Balanced'}
-- Completion Rate: ${analysis.completedRate}%
-- Total Training Time: ${analysis.totalDurationMinutes.toFixed(0)} min (avg ${analysis.averageDurationMinutes.toFixed(0)} min/session)
-- Distance Totals: ${distanceSummary}
-- Last Workout: ${analysis.lastWorkoutDaysAgo ?? 'Unknown'} day(s) ago
-- Longest Gap: ${analysis.longestGapDays ?? 'Unknown'} day(s)
-- Tag Summary: ${tagSummary}
+## LOGIC-GENERATED PLAN (enhance these, do NOT change type/date/specs)
+${planSummary}
 
-User Profile:
-- Experience Level: ${preferences?.level || 'Intermediate'}
-- Preferred Sports: ${athleteProfile?.sportPreferences?.join(', ') || preferences?.sports || 'Multi-sport athlete'}
-- Fitness Goals: ${athleteProfile?.fitnessGoals?.join(', ') || 'General fitness'}
-${athleteProfile?.bio ? `- Bio: ${athleteProfile.bio}` : ''}
-${athleteProfile?.timezone ? `- Timezone: ${athleteProfile.timezone}` : ''}
-
-## REQUIREMENTS
-
-Create 3 COMPREHENSIVE workout plans that:
-1. Prioritize the athlete's preferred sports and align with their fitness goals
-2. Fill training gaps (add variety if lacking, add volume if inconsistent)
-3. Follow progressive overload principles
-4. Balance intensity (include easy, moderate, and hard sessions)
-5. Include sport-specific and cross-training options
-6. Are realistic for the athlete's current level
-7. Have detailed structure with warmup, main set, cooldown
-8. Include clear rationale and expected benefits
-
-## OUTPUT FORMAT
-
-Respond ONLY with valid JSON - NO markdown, NO preamble, NO explanation outside JSON.
-
-Return a JSON object with key "workouts" containing an array of 3 workouts in this EXACT structure:
-
+Return ONLY valid JSON:
 {
   "workouts": [
     {
-      "name": "Progressive Tempo Run",
+      "name": "Creative workout name",
       "type": "run",
+      "date": "2026-02-22",
       "difficulty": "moderate",
-      "estimatedDuration": 60,
-      "objective": "Improve lactate threshold and pacing control",
+      "estimatedDuration": 45,
+      "description": "One-line summary",
       "sessionType": "tempo / threshold",
-      "description": "Build aerobic endurance with sustained tempo effort",
-      "rationale": "Your recent running has been mostly easy pace. This workout develops lactate threshold and race pace sustainment, crucial for improving performance without excessive fatigue.",
-      "benefits": ["Improves lactate threshold", "Builds aerobic capacity", "Enhances pacing discipline", "Prepares for race efforts"],
-      "energySystems": ["aerobic", "threshold"],
-      "rpe": 7,
-      "warmup": "10 min easy jog, 5 min dynamic stretches (leg swings, lunges, high knees)",
-      "mainSet": "3x 10 minutes at tempo pace (comfortably hard, conversational but challenging) with 3 min easy jog recovery between intervals",
-      "cooldown": "10 min easy jog, 5 min static stretching focusing on hamstrings, calves, hip flexors",
-      "targetPace": "15-20 seconds slower than 5K race pace",
-      "intensityZones": "Zone 3-4 (75-85% max HR)",
-      "zoneDistribution": "Z1 10m, Z2 15m, Z3 25m, Z4 10m",
-      "keyFocus": ["Consistent pace", "Controlled breathing", "Relaxed shoulders", "Mid-foot strike"],
-      "techniqueCues": ["Tall posture", "Quick cadence", "Soft landing", "Relaxed jaw"],
-      "commonMistakes": ["Starting too fast", "Overstriding", "Holding breath"],
-      "run": {
-        "distance": 12,
-        "distanceUnit": "km",
-        "time": 60,
-        "terrain": "road",
-        "elevationGain": 100,
-        "intervals": "3x10min tempo @ 4:30/km, 3min recovery"
-      },
-      "segments": [
-        { "name": "Warmup", "duration": 15, "intensity": "Z1-2", "notes": "Easy jog + dynamic drills" },
-        { "name": "Main Set", "duration": 30, "intensity": "Z3-4", "notes": "3x10 min tempo, 3 min easy jog" },
-        { "name": "Cooldown", "duration": 10, "intensity": "Z1", "notes": "Easy jog + mobility" }
-      ],
-      "equipment": ["Running shoes", "Watch or timer"],
-      "environment": "Road or treadmill",
-      "nutrition": {
-        "pre": "Light carb snack 60-90 min before",
-        "during": "Water; electrolytes if hot",
-        "post": "Carbs + protein within 60 min"
-      },
-      "recoveryTips": ["5-10 min easy walk", "Foam roll calves and quads", "Prioritize sleep tonight"],
-      "timeCrunchedOption": "2x10 min tempo with 2 min recovery",
-      "lowImpactAlternative": "Elliptical tempo intervals at same RPE",
-      "progression": "Add 1-2 min to each tempo rep next time",
-      "safetyNotes": ["Stop if sharp pain", "Adjust pace if HR drifts excessively"]
-    },
-    {
-      "name": "Pyramid Swim Endurance",
-      "type": "swim",
-      "difficulty": "moderate",
-      "estimatedDuration": 55,
-      "objective": "Build aerobic endurance and stroke efficiency",
-      "sessionType": "aerobic endurance",
-      "description": "Build swimming endurance with progressive distance pyramid",
-      "rationale": "Swimming provides excellent cross-training and recovery while building cardiovascular fitness. The pyramid structure keeps the session engaging while building aerobic capacity.",
-      "benefits": ["Low-impact cardio", "Full-body conditioning", "Improved swim efficiency", "Active recovery for running legs"],
-      "energySystems": ["aerobic"],
-      "rpe": 6,
-      "warmup": "400m easy mixed stroke (200 free, 100 back, 100 choice), 4x50m drill (catch-up, fingertip drag)",
-      "mainSet": "Pyramid: 100-200-300-400-300-200-100m freestyle with 30-45 sec rest between each. Maintain consistent pace throughout.",
-      "cooldown": "200m easy backstroke, 100m choice stroke focusing on long, smooth strokes",
-      "targetPace": "Sustainable aerobic pace - able to complete full pyramid",
-      "intensityZones": "Zone 2-3 (65-80% max HR)",
-      "zoneDistribution": "Z1 10m, Z2 30m, Z3 15m",
-      "keyFocus": ["High elbow catch", "Bilateral breathing", "Strong kick", "Streamlined body position"],
-      "techniqueCues": ["Long strokes", "Early vertical forearm", "Stable head"],
-      "commonMistakes": ["Overkicking early", "Crossing midline", "Holding breath"],
-      "swim": {
-        "distance": 2500,
-        "distanceUnit": "meters",
-        "laps": 100,
-        "stroke": "freestyle",
-        "pool": "25m",
-        "sets": "400m warmup + 1600m main (pyramid) + 300m cooldown"
-      },
-      "segments": [
-        { "name": "Warmup", "duration": 12, "intensity": "Easy", "notes": "Mixed strokes + drills" },
-        { "name": "Main Set", "duration": 33, "intensity": "Steady", "notes": "Pyramid 100-200-300-400-300-200-100" },
-        { "name": "Cooldown", "duration": 10, "intensity": "Easy", "notes": "Backstroke + choice stroke" }
-      ],
-      "equipment": ["Goggles", "Pull buoy (optional)"],
-      "environment": "Pool (25m or 25y)",
-      "nutrition": {
-        "pre": "Small carb snack 30-60 min before",
-        "during": "Water on deck",
-        "post": "Protein + carbs"
-      },
-      "recoveryTips": ["Light shoulder mobility", "Hydrate post-session"],
-      "timeCrunchedOption": "100-200-300-200-100 pyramid",
-      "lowImpactAlternative": "Easy spin on bike at Z2 for 40 min",
-      "progression": "Add 50m to the peak of the pyramid",
-      "safetyNotes": ["Stop if shoulder pain increases"]
-    },
-    {
-      "name": "Hill Power Intervals - Bike",
-      "type": "bike",
-      "difficulty": "hard",
-      "estimatedDuration": 75,
-      "objective": "Develop climbing power and muscular endurance",
-      "sessionType": "hill intervals",
-      "description": "Develop climbing power and leg strength through hill repeats",
-      "rationale": "Hill intervals build muscular endurance, power output, and mental toughness. They're crucial for developing the strength needed for racing and challenging terrain.",
-      "benefits": ["Increases power output", "Strengthens climbing muscles", "Improves lactate clearance", "Builds mental resilience"],
-      "energySystems": ["threshold", "VO2"],
-      "rpe": 8,
-      "warmup": "20 min easy spinning on flat terrain, gradually building from Z1 to Z2, include 3x 30sec spin-ups (high cadence)",
-      "mainSet": "6x 4-minute hill intervals at hard effort (85-90% max HR), maintaining cadence 70-80 RPM. Descend easy for full recovery (4-5 min)",
-      "cooldown": "15 min easy spinning on flat, gradually reducing intensity, finish with light stretching on bike",
-      "targetPace": "Sustainable hard effort - should finish each interval strong",
-      "intensityZones": "Intervals: Zone 4-5 (85-95% max HR), Recovery: Zone 1-2",
-      "zoneDistribution": "Z1 20m, Z2 15m, Z4-5 24m",
-      "keyFocus": ["Steady power output", "Maintain cadence on climbs", "Stay seated for first 3 intervals", "Use standing for last 3 intervals"],
-      "techniqueCues": ["Smooth torque", "Stable core", "Relaxed upper body"],
-      "commonMistakes": ["Grinding too low cadence", "Skipping full recovery", "Overpacing early"],
-      "bike": {
-        "distance": 38,
-        "distanceUnit": "km",
-        "time": 75,
-        "terrain": "hills",
-        "elevationGain": 650,
-        "power": 240,
-        "cadence": 75,
-        "intervals": "6x4min hill repeats @ 240W, 4-5min recovery"
-      },
-      "segments": [
-        { "name": "Warmup", "duration": 20, "intensity": "Z1-2", "notes": "Include 3x30s spin-ups" },
-        { "name": "Main Set", "duration": 30, "intensity": "Z4-5", "notes": "6x4 min hill repeats" },
-        { "name": "Cooldown", "duration": 15, "intensity": "Z1", "notes": "Easy spin + stretch" }
-      ],
-      "equipment": ["Bike", "Helmet", "HR monitor or power meter"],
-      "environment": "Hilly route or indoor trainer",
-      "nutrition": {
-        "pre": "Carb-rich meal 2-3 hours before",
-        "during": "30-45g carbs/hour + electrolytes",
-        "post": "20-30g protein + carbs"
-      },
-      "recoveryTips": ["Easy spin later in day", "Legs up for 10 min"],
-      "timeCrunchedOption": "4x4 min hill repeats with 3 min recovery",
-      "lowImpactAlternative": "Seated high-resistance intervals on trainer",
-      "progression": "Add 1 interval or increase power by 5-10W",
-      "safetyNotes": ["Use controlled descents", "Avoid slick roads"]
+      "rationale": "Why this workout now",
+      "benefits": ["benefit1", "benefit2"],
+      "tags": ["tempo", "endurance"],
+      "warmup": "Detailed warmup",
+      "mainSet": "Specific main set with intervals/distances/paces",
+      "cooldown": "Detailed cooldown",
+      "run": { "distance": 8, "distanceUnit": "km", "time": 45, "terrain": "road", "elevationGain": 0 }
     }
   ]
 }
 
-CRITICAL RULES:
-- Must include all fields shown in the example
-- All 3 workouts must have DIFFERENT types
-- If athlete lacks variety, prioritize cross-training options
-- Scale difficulty appropriately to athlete's recent training
-- mainSet should be specific and detailed with exact intervals/sets
-- rationale must explain WHY this workout NOW based on their training
-- benefits must be a JSON array of strings
-- keyFocus must be a JSON array of 3-4 technique points
-- objective and sessionType must be specific and concise
-- techniqueCues must be a JSON array of 3-5 items
-- commonMistakes must be a JSON array of 2-4 items
-- energySystems must be a JSON array
-- rpe must be a number from 1-10
-- segments must be an array of objects with name, duration (minutes), intensity, notes
-- nutrition must include pre, during, post fields
-- recoveryTips and safetyNotes must be JSON arrays
-- timeCrunchedOption, lowImpactAlternative, progression must be specific and actionable`;
-
-    console.log('🤖 Generating comprehensive AI workout suggestions...');
-    console.log('📊 Training analysis:', analysis);
+RULES:
+- Keep EXACT type, date, and numeric specs
+- mainSet must be very specific
+- rationale must reference athlete's history/level/phase
+- tags from: easy, moderate, hard, recovery, speed, endurance, intervals, tempo, long, strength, technique, race
+- Return exactly 3 workouts`;
 
     const completion = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages: [
-        {
-          role: 'system',
-          content: 'You are an experienced endurance sports coach and exercise physiologist. You create detailed, evidence-based workout plans with comprehensive structure including warmup, main sets, cooldown, segments, technique cues, fueling, recovery, and expected benefits. Always respond with properly formatted JSON.'
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
+        { role: 'system', content: 'You are an expert endurance sports coach. Enhance structured workout plans with creative details. Always respond with valid JSON only.' },
+        { role: 'user', content: prompt },
       ],
-      temperature: 0.8, // Slightly higher for more creative workout variations
-      max_tokens: 4000, // Increased for comprehensive responses
+      temperature: 0.7,
+      max_tokens: 3000,
       response_format: { type: 'json_object' },
     });
 
     const responseText = completion.choices[0]?.message?.content || '{}';
-    console.log('✅ AI response received, parsing...');
-
-    // Parse the JSON response
     let suggestions;
+
     try {
       const parsed = JSON.parse(responseText);
+      const aiWorkouts = parsed.workouts || parsed.suggestions || [];
 
-      // Extract workouts array from the response
-      suggestions = parsed.workouts || parsed.suggestions || [];
+      if (!Array.isArray(aiWorkouts) || aiWorkouts.length === 0) throw new Error('Empty AI response');
 
-      if (!Array.isArray(suggestions) || suggestions.length === 0) {
-        console.error('Invalid response structure:', parsed);
-        throw new Error('AI did not return valid workout suggestions');
-      }
+      // ── Step 3: Merge with validation ──
+      suggestions = aiWorkouts.map((ai: any, i: number) => {
+        const logic = logicPlans[i] || logicPlans[0];
+        // Validate tags
+        const validTags = Array.isArray(ai.tags)
+          ? ai.tags.filter((t: string) => VALID_TAGS.has(t)).slice(0, 5)
+          : [logic.intensity];
 
-      // Validate each suggestion has required fields
-      suggestions = suggestions.map((workout: any, index: number) => {
-        if (!workout.name || !workout.type) {
-          console.warn(`Workout ${index} missing required fields, skipping`);
-          return null;
-        }
-
-        // Ensure all expected fields exist with defaults
         return {
-          ...workout,
-          difficulty: workout.difficulty || 'moderate',
-          estimatedDuration: workout.estimatedDuration || 60,
-          objective: workout.objective || '',
-          sessionType: workout.sessionType || '',
-          description: workout.description || '',
-          rationale: workout.rationale || 'Recommended based on your training history',
-          benefits: Array.isArray(workout.benefits) ? workout.benefits : [],
-          energySystems: Array.isArray(workout.energySystems) ? workout.energySystems : [],
-          rpe: typeof workout.rpe === 'number' ? workout.rpe : undefined,
-          warmup: workout.warmup || 'Standard warmup routine',
-          mainSet: workout.mainSet || 'Main workout set',
-          cooldown: workout.cooldown || 'Standard cooldown routine',
-          zoneDistribution: workout.zoneDistribution || '',
-          keyFocus: Array.isArray(workout.keyFocus) ? workout.keyFocus : [],
-          techniqueCues: Array.isArray(workout.techniqueCues) ? workout.techniqueCues : [],
-          commonMistakes: Array.isArray(workout.commonMistakes) ? workout.commonMistakes : [],
-          segments: Array.isArray(workout.segments) ? workout.segments : [],
-          equipment: Array.isArray(workout.equipment) ? workout.equipment : [],
-          environment: workout.environment || '',
-          nutrition: {
-            pre: workout.nutrition?.pre || '',
-            during: workout.nutrition?.during || '',
-            post: workout.nutrition?.post || '',
-          },
-          recoveryTips: Array.isArray(workout.recoveryTips) ? workout.recoveryTips : [],
-          timeCrunchedOption: workout.timeCrunchedOption || '',
-          lowImpactAlternative: workout.lowImpactAlternative || '',
-          progression: workout.progression || '',
-          safetyNotes: Array.isArray(workout.safetyNotes) ? workout.safetyNotes : [],
+          name: typeof ai.name === 'string' && ai.name.length < 80 ? ai.name : `${logic.intensity} ${logic.type} Session`,
+          description: typeof ai.description === 'string' && ai.description.length < 300 ? ai.description : '',
+          rationale: typeof ai.rationale === 'string' && ai.rationale.length < 500 ? ai.rationale : '',
+          benefits: Array.isArray(ai.benefits) ? ai.benefits.slice(0, 5) : [],
+          tags: validTags,
+          warmup: typeof ai.warmup === 'string' && ai.warmup.length < 500 ? ai.warmup : '',
+          mainSet: typeof ai.mainSet === 'string' && ai.mainSet.length < 500 ? ai.mainSet : '',
+          cooldown: typeof ai.cooldown === 'string' && ai.cooldown.length < 500 ? ai.cooldown : '',
+          sessionType: typeof ai.sessionType === 'string' ? ai.sessionType : logic.focus,
+          // Logic-enforced
+          type: logic.type,
+          date: logic.date,
+          difficulty: logic.intensity,
+          estimatedDuration: logic.durationMin,
+          ...logic.specs,
         };
-      }).filter(Boolean); // Remove any null entries
-
-      console.log(`✅ Successfully parsed ${suggestions.length} comprehensive workouts`);
+      });
     } catch (parseError) {
-      console.error('Failed to parse Groq response:', responseText);
-      console.error('Parse error:', parseError);
-      throw new Error('Failed to parse AI suggestions - invalid JSON format');
+      console.error('AI parse failed, logic-only fallback:', parseError);
+      suggestions = logicPlans.map((p) => ({
+        name: `${p.intensity.charAt(0).toUpperCase() + p.intensity.slice(1)} ${p.type.charAt(0).toUpperCase() + p.type.slice(1)} Session`,
+        type: p.type, date: p.date, difficulty: p.intensity, estimatedDuration: p.durationMin,
+        description: `A ${p.intensity} ${p.type} session focused on ${p.focus}.`,
+        sessionType: p.focus, tags: [p.intensity],
+        ...p.specs,
+      }));
     }
 
-    return NextResponse.json({
-      suggestions,
-      analysis, // Include training analysis in response
-      success: true,
-    });
+    return NextResponse.json({ suggestions, analysis, success: true });
   } catch (error: any) {
-    console.error('❌ AI workout suggestions error:', error);
-    return NextResponse.json(
-      {
-        error: error.message || 'Failed to generate suggestions',
-        success: false,
-        details: error.toString()
-      },
-      { status: 500 }
-    );
+    console.error('❌ Workout suggestions error:', error);
+    return NextResponse.json({ error: error.message || 'Failed to generate suggestions', success: false }, { status: 500 });
   }
 }

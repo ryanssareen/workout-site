@@ -5,79 +5,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  Sparkles,
-  Loader2,
-  Clock,
-  ChevronRight,
-  Target,
-  TrendingUp,
-  Zap,
-  Info,
-  CheckCircle2,
-  ChevronDown,
-  ChevronUp,
+  Sparkles, Loader2, Clock, ChevronRight, Target, TrendingUp, Zap,
+  Info, CheckCircle2, ChevronDown, ChevronUp, Calendar,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-
-interface NutritionPlan {
-  pre?: string;
-  during?: string;
-  post?: string;
-}
-
-interface WorkoutSegment {
-  name?: string;
-  duration?: number;
-  intensity?: string;
-  notes?: string;
-}
-
-interface TrainingAnalysis {
-  totalWorkouts: number;
-  workoutsByType?: Record<string, number>;
-  dominantType?: string;
-  averageFrequency?: number;
-  hasConsistency?: boolean;
-  needsVariety?: boolean;
-  lastWorkoutDaysAgo?: number | null;
-  longestGapDays?: number | null;
-  totalDurationMinutes?: number;
-  averageDurationMinutes?: number;
-  completedRate?: number;
-  distanceByType?: Record<string, Record<string, number>>;
-  tagCounts?: Record<string, number>;
-}
+import { format, parseISO } from 'date-fns';
 
 interface WorkoutSuggestion {
   name: string;
   type: 'run' | 'swim' | 'bike' | 'strength' | 'other';
+  date?: string;
   difficulty?: string;
   estimatedDuration?: number;
-  objective?: string;
   sessionType?: string;
   description?: string;
   rationale?: string;
   benefits?: string[];
-  energySystems?: string[];
-  rpe?: number;
+  tags?: string[];
   warmup?: string;
   mainSet?: string;
   cooldown?: string;
-  targetPace?: string;
-  intensityZones?: string;
-  zoneDistribution?: string;
-  keyFocus?: string[];
-  techniqueCues?: string[];
-  commonMistakes?: string[];
-  segments?: WorkoutSegment[];
-  equipment?: string[];
-  environment?: string;
-  nutrition?: NutritionPlan;
-  recoveryTips?: string[];
-  timeCrunchedOption?: string;
-  lowImpactAlternative?: string;
-  progression?: string;
-  safetyNotes?: string[];
   run?: any;
   swim?: any;
   bike?: any;
@@ -85,9 +32,25 @@ interface WorkoutSuggestion {
   other?: any;
 }
 
+interface TrainingAnalysis {
+  totalWorkouts: number;
+  workoutsByType?: Record<string, number>;
+  completedRate?: number;
+  avgDuration?: number;
+  daysSinceLast?: number;
+  phase?: string;
+  weeksOut?: number | null;
+  deload?: boolean;
+}
+
 interface AthleteProfile {
   sportPreferences?: string[];
   fitnessGoals?: string[];
+  trainingFor?: string[];
+  experienceLevel?: string;
+  ageRange?: string;
+  eventDate?: string;
+  weeklyAvailability?: string;
   bio?: string;
   timezone?: string;
 }
@@ -117,621 +80,213 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
         body: JSON.stringify({
           userId,
           recentWorkouts: Array.isArray(recentWorkouts)
-            ? recentWorkouts.slice(0, 8).map((w) => {
+            ? recentWorkouts.slice(0, 10).map((w) => {
                 const workoutDate = w.date?.toDate?.() ?? w.date;
                 const dateValue = workoutDate instanceof Date ? workoutDate.toISOString() : workoutDate;
                 return {
-                  type: w.type,
-                  name: w.name,
-                  date: dateValue || 'Recent',
-                  duration: w.duration,
-                  description: w.description,
-                  tags: w.tags,
-                  completed: w.completed,
-                  run: w.run ? {
-                    distance: w.run.distance,
-                    distanceUnit: w.run.distanceUnit,
-                    time: w.run.time,
-                    pace: w.run.pace,
-                    terrain: w.run.terrain,
-                    elevationGain: w.run.elevationGain,
-                  } : undefined,
-                  bike: w.bike ? {
-                    distance: w.bike.distance,
-                    distanceUnit: w.bike.distanceUnit,
-                    time: w.bike.time,
-                    avgPower: w.bike.avgPower,
-                    avgCadence: w.bike.avgCadence,
-                    elevationGain: w.bike.elevationGain,
-                  } : undefined,
-                  swim: w.swim ? {
-                    distance: w.swim.distance,
-                    distanceUnit: w.swim.distanceUnit,
-                    time: w.swim.time,
-                    strokeType: w.swim.strokeType,
-                    poolLength: w.swim.poolLength,
-                  } : undefined,
-                  strength: w.strength ? {
-                    totalTime: w.strength.totalTime,
-                    rpe: w.strength.rpe,
-                    exerciseCount: w.strength.exercises?.length || 0,
-                  } : undefined,
-                  other: w.other ? {
-                    duration: w.other.duration,
-                    description: w.other.description,
-                  } : undefined,
+                  type: w.type, name: w.name, date: dateValue || 'Recent',
+                  duration: w.duration, description: w.description, tags: w.tags, completed: w.completed,
+                  run: w.run, bike: w.bike, swim: w.swim,
+                  strength: w.strength ? { totalTime: w.strength.totalTime, rpe: w.strength.rpe, exerciseCount: w.strength.exercises?.length || 0 } : undefined,
+                  other: w.other,
                 };
               })
             : [],
           preferences: {
             sports: athleteProfile?.sportPreferences?.join(', ') || 'Various',
-            level: 'Intermediate',
+            level: athleteProfile?.experienceLevel || 'Intermediate',
           },
           athleteProfile: athleteProfile || undefined,
         }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to load suggestions');
-      }
+      if (!response.ok) throw new Error('Failed to load suggestions');
 
       const data = await response.json();
-      console.log('📊 Received AI response:', data);
       setAnalysis(data.analysis || null);
 
-      // Normalize suggestions to ensure arrays are properly formatted
       const rawSuggestions = data.suggestions;
-
-      // Ensure suggestions is an array
-      if (!Array.isArray(rawSuggestions)) {
-        console.error('❌ Suggestions is not an array:', typeof rawSuggestions, rawSuggestions);
-        setError('Invalid response format from AI');
-        setSuggestions([]);
-        setAnalysis(null);
+      if (!Array.isArray(rawSuggestions) || rawSuggestions.length === 0) {
+        setError('No suggestions returned');
         return;
       }
 
-      console.log(`✅ Processing ${rawSuggestions.length} suggestions`);
-
-      const normalizedSuggestions = rawSuggestions.map((suggestion: any) => ({
-        ...suggestion,
-        benefits: Array.isArray(suggestion.benefits) ? suggestion.benefits : [],
-        keyFocus: Array.isArray(suggestion.keyFocus) ? suggestion.keyFocus : [],
-        energySystems: Array.isArray(suggestion.energySystems) ? suggestion.energySystems : [],
-        techniqueCues: Array.isArray(suggestion.techniqueCues) ? suggestion.techniqueCues : [],
-        commonMistakes: Array.isArray(suggestion.commonMistakes) ? suggestion.commonMistakes : [],
-        segments: Array.isArray(suggestion.segments) ? suggestion.segments : [],
-        equipment: Array.isArray(suggestion.equipment) ? suggestion.equipment : [],
-        recoveryTips: Array.isArray(suggestion.recoveryTips) ? suggestion.recoveryTips : [],
-        safetyNotes: Array.isArray(suggestion.safetyNotes) ? suggestion.safetyNotes : [],
-        nutrition: {
-          pre: suggestion.nutrition?.pre || '',
-          during: suggestion.nutrition?.during || '',
-          post: suggestion.nutrition?.post || '',
-        },
-      }));
-
-      setSuggestions(normalizedSuggestions);
-      console.log('✅ Suggestions set successfully');
+      setSuggestions(rawSuggestions.map((s: any) => ({
+        ...s,
+        benefits: Array.isArray(s.benefits) ? s.benefits : [],
+        tags: Array.isArray(s.tags) ? s.tags : [],
+      })));
     } catch (err: any) {
-      console.error('Suggestions error:', err);
       setError(err.message || 'Failed to load suggestions');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleViewSuggestion = (suggestion: WorkoutSuggestion) => {
-    // Store the full structured workout in sessionStorage
+  const handleUseWorkout = (suggestion: WorkoutSuggestion) => {
     sessionStorage.setItem('aiWorkoutData', JSON.stringify(suggestion));
-    
-    // Navigate to workout creation page
     router.push('/workouts/new?aiGenerated=true');
   };
 
-  const getTypeBadgeVariant = (type: string) => {
+  const getTypeColor = (type: string) => {
     switch (type) {
-      case 'swim': return 'default';
-      case 'run': return 'secondary';
-      case 'bike': return 'outline';
-      case 'strength': return 'destructive';
-      default: return 'default';
+      case 'run': return 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30';
+      case 'swim': return 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border-cyan-500/30';
+      case 'bike': return 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30';
+      case 'strength': return 'bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/30';
+      default: return 'bg-gray-500/10 text-gray-700 dark:text-gray-400 border-gray-500/30';
     }
   };
 
-  const getSummary = (suggestion: WorkoutSuggestion) => {
-    const type = suggestion.type;
-    const data = suggestion[type];
-    
-    if (!data) return '';
-    
-    switch (type) {
-      case 'run':
-        return `${data.distance} ${data.distanceUnit} • ${data.time} min • ${data.terrain}`;
-      case 'swim':
-        return `${data.distance} ${data.distanceUnit} • ${data.laps} laps • ${data.stroke}`;
-      case 'bike':
-        return `${data.distance} ${data.distanceUnit} • ${data.time} min`;
-      case 'strength':
-        return `${data.sets} sets × ${data.reps} reps • ${data.exercises?.length || 0} exercises`;
-      case 'other':
-        return `${data.duration} min`;
-      default:
-        return '';
+  const getDifficultyColor = (d?: string) => {
+    switch (d) {
+      case 'easy': return 'bg-green-500/10 text-green-700 dark:text-green-400';
+      case 'hard': return 'bg-red-500/10 text-red-700 dark:text-red-400';
+      default: return 'bg-amber-500/10 text-amber-700 dark:text-amber-400';
     }
   };
 
-  const formatDistanceSummary = (distanceByType?: Record<string, Record<string, number>>) => {
-    if (!distanceByType || Object.keys(distanceByType).length === 0) return 'None';
-    return Object.entries(distanceByType)
-      .map(([type, units]) => {
-        const unitSummary = Object.entries(units || {})
-          .map(([unit, value]) => `${value.toFixed(1)} ${unit}`)
-          .join(', ');
-        return unitSummary ? `${type}: ${unitSummary}` : null;
-      })
-      .filter(Boolean)
-      .join(' • ');
-  };
-
-  const formatTagSummary = (tagCounts?: Record<string, number>) => {
-    if (!tagCounts || Object.keys(tagCounts).length === 0) return 'None';
-    return Object.entries(tagCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([tag, count]) => `${tag} (${count})`)
-      .join(', ');
+  const getSpecsSummary = (s: WorkoutSuggestion) => {
+    if (s.run) return `${s.run.distance} ${s.run.distanceUnit} · ${s.run.time} min${s.run.terrain ? ` · ${s.run.terrain}` : ''}`;
+    if (s.swim) return `${s.swim.distance} ${s.swim.distanceUnit} · ${s.swim.time} min${s.swim.strokeType ? ` · ${s.swim.strokeType}` : ''}`;
+    if (s.bike) return `${s.bike.distance} ${s.bike.distanceUnit} · ${s.bike.time} min${s.bike.elevationGain ? ` · ${s.bike.elevationGain}m↑` : ''}`;
+    if (s.strength) return `${s.strength.totalTime} min · RPE ${s.strength.rpe || '?'}/10`;
+    if (s.other) return `${s.other.duration} min`;
+    return `${s.estimatedDuration || '?'} min`;
   };
 
   return (
-    <Card className="border-purple-200 dark:border-purple-900 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20">
+    <Card className="border-red-200 dark:border-red-900 bg-gradient-to-br from-red-50 to-green-50 dark:from-red-950/20 dark:to-green-950/20">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-purple-600" />
+            <Sparkles className="h-5 w-5 text-red-600" />
             <CardTitle className="text-lg">AI Workout Suggestions</CardTitle>
           </div>
           {suggestions.length === 0 && (
-            <Button
-              onClick={loadSuggestions}
-              disabled={loading}
-              size="sm"
-              className="bg-purple-600 hover:bg-purple-700"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Get Suggestions
-                </>
-              )}
+            <Button onClick={loadSuggestions} disabled={loading} size="sm" className="bg-red-600 hover:bg-red-700">
+              {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Generating...</> : <><Sparkles className="h-4 w-4 mr-2" />Get Suggestions</>}
             </Button>
           )}
         </div>
-        <CardDescription>
-          AI-powered workout ideas tailored to your training
-        </CardDescription>
+        <CardDescription>Personalized workouts based on your history, level, and goals</CardDescription>
       </CardHeader>
 
       {error && (
         <CardContent>
-          <div className="text-sm text-red-600 dark:text-red-400">
-            {error}
-          </div>
+          <div className="text-sm text-red-600 dark:text-red-400">{error}</div>
         </CardContent>
       )}
 
-      {Array.isArray(suggestions) && suggestions.length > 0 && (
+      {suggestions.length > 0 && (
         <CardContent className="space-y-3">
+          {/* Training Snapshot */}
           {analysis && (
-            <div className="rounded-lg border border-purple-200 dark:border-purple-800 bg-white/70 dark:bg-purple-950/20 p-3 space-y-2">
-              <div className="flex items-center gap-2 text-sm font-semibold text-purple-700 dark:text-purple-400">
-                <Info className="h-4 w-4" />
-                Training Snapshot
+            <div className="rounded-lg border border-red-200 dark:border-red-800 bg-white/70 dark:bg-red-950/20 p-3 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-semibold text-red-700 dark:text-red-400">
+                <Info className="h-4 w-4" />Training Snapshot
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs text-muted-foreground">
-                <div><span className="font-medium text-foreground">Total:</span> {analysis.totalWorkouts}</div>
-                <div><span className="font-medium text-foreground">Avg/Week:</span> {analysis.averageFrequency ? analysis.averageFrequency.toFixed(1) : '0.0'}</div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-muted-foreground">
+                <div><span className="font-medium text-foreground">Workouts:</span> {analysis.totalWorkouts}</div>
                 <div><span className="font-medium text-foreground">Completion:</span> {analysis.completedRate ?? 0}%</div>
-                <div><span className="font-medium text-foreground">Total Time:</span> {analysis.totalDurationMinutes?.toFixed(0) ?? 0} min</div>
-                <div><span className="font-medium text-foreground">Avg Session:</span> {analysis.averageDurationMinutes?.toFixed(0) ?? 0} min</div>
-                <div>
-                  <span className="font-medium text-foreground">Last Workout:</span>{' '}
-                  {typeof analysis.lastWorkoutDaysAgo === 'number' ? `${analysis.lastWorkoutDaysAgo}d` : 'Unknown'}
-                </div>
-                <div>
-                  <span className="font-medium text-foreground">Longest Gap:</span>{' '}
-                  {typeof analysis.longestGapDays === 'number' ? `${analysis.longestGapDays}d` : 'Unknown'}
-                </div>
-                <div className="col-span-2 sm:col-span-3">
-                  <span className="font-medium text-foreground">Distribution:</span>{' '}
-                  {analysis.workoutsByType
-                    ? Object.entries(analysis.workoutsByType).map(([type, count]) => `${type}: ${count}`).join(', ')
-                    : 'None'}
-                </div>
-                <div className="col-span-2 sm:col-span-3">
-                  <span className="font-medium text-foreground">Distance Totals:</span> {formatDistanceSummary(analysis.distanceByType)}
-                </div>
-                <div className="col-span-2 sm:col-span-3">
-                  <span className="font-medium text-foreground">Top Tags:</span> {formatTagSummary(analysis.tagCounts)}
-                </div>
+                <div><span className="font-medium text-foreground">Avg Session:</span> {analysis.avgDuration ?? 0} min</div>
+                <div><span className="font-medium text-foreground">Last:</span> {typeof analysis.daysSinceLast === 'number' ? `${analysis.daysSinceLast}d ago` : 'Unknown'}</div>
+                {analysis.phase && analysis.phase !== 'general' && (
+                  <div className="col-span-2 sm:col-span-4">
+                    <span className="font-medium text-foreground">Phase:</span>{' '}
+                    <Badge variant="outline" className="text-xs ml-1">{analysis.phase}{analysis.weeksOut ? ` (${analysis.weeksOut}w to event)` : ''}</Badge>
+                    {analysis.deload && <Badge variant="outline" className="text-xs ml-1 border-amber-500 text-amber-600">Deload Week</Badge>}
+                  </div>
+                )}
               </div>
             </div>
           )}
-          {suggestions.map((suggestion, index) => {
+
+          {/* Workout Cards */}
+          {suggestions.map((s, index) => {
             const isExpanded = expandedIndex === index;
             return (
-              <Card
-                key={index}
-                className="border-purple-200 hover:border-purple-400 dark:border-purple-800 dark:hover:border-purple-600 transition-all hover:shadow-md"
-              >
+              <Card key={index} className="border-red-200 hover:border-red-400 dark:border-red-800 dark:hover:border-red-600 transition-all hover:shadow-md">
                 <CardContent className="p-4 space-y-3">
-                  {/* Header Section */}
-                  <div className="flex items-start justify-between gap-4">
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className="font-semibold text-base">{suggestion.name}</h4>
-                        <Badge
-                          variant={getTypeBadgeVariant(suggestion.type)}
-                          className="capitalize"
-                        >
-                          {suggestion.type}
-                        </Badge>
-                        {suggestion.difficulty && (
-                          <Badge variant="outline" className="text-xs">
-                            {suggestion.difficulty}
-                          </Badge>
-                        )}
-                        {suggestion.estimatedDuration && (
-                          <Badge variant="secondary" className="text-xs">
-                            <Clock className="h-3 w-3 mr-1" />
-                            {suggestion.estimatedDuration} min
-                          </Badge>
-                        )}
+                        <h4 className="font-semibold text-base">{s.name}</h4>
+                        <Badge className={`capitalize border ${getTypeColor(s.type)}`}>{s.type}</Badge>
+                        {s.difficulty && <Badge className={`text-xs ${getDifficultyColor(s.difficulty)}`}>{s.difficulty}</Badge>}
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {suggestion.description || suggestion.objective || getSummary(suggestion)}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="shrink-0"
-                        onClick={() => setExpandedIndex(isExpanded ? null : index)}
-                      >
-                        {isExpanded ? (
-                          <>
-                            Less
-                            <ChevronUp className="h-4 w-4 ml-1" />
-                          </>
-                        ) : (
-                          <>
-                            Details
-                            <ChevronDown className="h-4 w-4 ml-1" />
-                          </>
+                      {/* Date + Specs line */}
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
+                        {s.date && (
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3.5 w-3.5" />
+                            {format(parseISO(s.date), 'EEE, MMM d')}
+                          </span>
                         )}
-                      </Button>
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5" />
+                          {getSpecsSummary(s)}
+                        </span>
+                      </div>
+                      {s.description && <p className="text-sm text-muted-foreground">{s.description}</p>}
                     </div>
+                    <Button variant="ghost" size="sm" className="shrink-0" onClick={() => setExpandedIndex(isExpanded ? null : index)}>
+                      {isExpanded ? <>Less <ChevronUp className="h-4 w-4 ml-1" /></> : <>Details <ChevronDown className="h-4 w-4 ml-1" /></>}
+                    </Button>
                   </div>
 
-                  {/* Expanded Details Section */}
-                  {isExpanded && (
-                    <div className="space-y-4 pt-3 border-t border-purple-200 dark:border-purple-800">
-                      {/* Rationale */}
-                      {suggestion.rationale && (
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-sm font-semibold text-purple-700 dark:text-purple-400">
-                            <Target className="h-4 w-4" />
-                            Why This Workout?
-                          </div>
-                          <p className="text-sm text-muted-foreground pl-6">
-                            {suggestion.rationale}
-                          </p>
-                        </div>
-                      )}
+                  {/* Tags */}
+                  {s.tags && s.tags.length > 0 && (
+                    <div className="flex gap-1.5 flex-wrap">
+                      {s.tags.map((tag, i) => <Badge key={i} variant="outline" className="text-xs">{tag}</Badge>)}
+                    </div>
+                  )}
 
-                      {/* Session Snapshot */}
-                      {(suggestion.objective || suggestion.sessionType || (suggestion.energySystems && suggestion.energySystems.length > 0) || typeof suggestion.rpe === 'number') && (
+                  {/* Expanded */}
+                  {isExpanded && (
+                    <div className="space-y-4 pt-3 border-t">
+                      {/* Rationale */}
+                      {s.rationale && (
                         <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-sm font-semibold text-indigo-700 dark:text-indigo-400">
-                            <Info className="h-4 w-4" />
-                            Session Snapshot
-                          </div>
-                          <div className="text-sm text-muted-foreground pl-6 space-y-1">
-                            {suggestion.objective && (
-                              <p><span className="font-medium">Objective:</span> {suggestion.objective}</p>
-                            )}
-                            {suggestion.sessionType && (
-                              <p><span className="font-medium">Session Type:</span> {suggestion.sessionType}</p>
-                            )}
-                            {suggestion.energySystems && suggestion.energySystems.length > 0 && (
-                              <p><span className="font-medium">Energy Systems:</span> {suggestion.energySystems.join(', ')}</p>
-                            )}
-                            {typeof suggestion.rpe === 'number' && (
-                              <p><span className="font-medium">RPE:</span> {suggestion.rpe}/10</p>
-                            )}
-                          </div>
+                          <div className="flex items-center gap-2 text-sm font-semibold text-red-700 dark:text-red-400"><Target className="h-4 w-4" />Why This Workout?</div>
+                          <p className="text-sm text-muted-foreground pl-6">{s.rationale}</p>
                         </div>
                       )}
 
                       {/* Benefits */}
-                      {suggestion.benefits && Array.isArray(suggestion.benefits) && suggestion.benefits.length > 0 && (
+                      {s.benefits && s.benefits.length > 0 && (
                         <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-sm font-semibold text-green-700 dark:text-green-400">
-                            <TrendingUp className="h-4 w-4" />
-                            Expected Benefits
-                          </div>
+                          <div className="flex items-center gap-2 text-sm font-semibold text-green-700 dark:text-green-400"><TrendingUp className="h-4 w-4" />Benefits</div>
                           <ul className="text-sm text-muted-foreground space-y-1 pl-6">
-                            {suggestion.benefits.map((benefit, i) => (
-                              <li key={i} className="flex items-start gap-2">
-                                <CheckCircle2 className="h-3 w-3 mt-0.5 text-green-600 shrink-0" />
-                                <span>{benefit}</span>
-                              </li>
-                            ))}
+                            {s.benefits.map((b, i) => <li key={i} className="flex items-start gap-2"><CheckCircle2 className="h-3 w-3 mt-0.5 text-green-600 shrink-0" />{b}</li>)}
                           </ul>
                         </div>
                       )}
 
-                      {/* Workout Structure */}
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm font-semibold text-blue-700 dark:text-blue-400">
-                          <Zap className="h-4 w-4" />
-                          Workout Structure
-                        </div>
-                        <div className="space-y-2 pl-6 text-sm">
-                          {suggestion.warmup && (
-                            <div>
-                              <span className="font-medium">Warmup:</span>
-                              <p className="text-muted-foreground">{suggestion.warmup}</p>
-                            </div>
-                          )}
-                          {suggestion.mainSet && (
-                            <div>
-                              <span className="font-medium">Main Set:</span>
-                              <p className="text-muted-foreground">{suggestion.mainSet}</p>
-                            </div>
-                          )}
-                          {suggestion.cooldown && (
-                            <div>
-                              <span className="font-medium">Cooldown:</span>
-                              <p className="text-muted-foreground">{suggestion.cooldown}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Session Segments */}
-                      {suggestion.segments && suggestion.segments.length > 0 && (
+                      {/* Structure */}
+                      {(s.warmup || s.mainSet || s.cooldown) && (
                         <div className="space-y-2">
-                          <div className="flex items-center gap-2 text-sm font-semibold text-blue-700 dark:text-blue-400">
-                            <Zap className="h-4 w-4" />
-                            Session Segments
-                          </div>
+                          <div className="flex items-center gap-2 text-sm font-semibold text-blue-700 dark:text-blue-400"><Zap className="h-4 w-4" />Workout Structure</div>
                           <div className="space-y-2 pl-6 text-sm">
-                            {suggestion.segments.map((segment, i) => (
-                              <div key={i} className="rounded-md border border-purple-200/60 dark:border-purple-800/60 p-2 space-y-1">
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className="font-medium">{segment.name || `Segment ${i + 1}`}</span>
-                                  {segment.duration !== undefined && (
-                                    <span className="text-xs text-muted-foreground">{segment.duration} min</span>
-                                  )}
-                                </div>
-                                {segment.intensity && (
-                                  <p className="text-muted-foreground"><span className="font-medium">Intensity:</span> {segment.intensity}</p>
-                                )}
-                                {segment.notes && (
-                                  <p className="text-muted-foreground">{segment.notes}</p>
-                                )}
-                              </div>
-                            ))}
+                            {s.warmup && <div><span className="font-medium">Warmup:</span><p className="text-muted-foreground">{s.warmup}</p></div>}
+                            {s.mainSet && <div><span className="font-medium">Main Set:</span><p className="text-muted-foreground">{s.mainSet}</p></div>}
+                            {s.cooldown && <div><span className="font-medium">Cooldown:</span><p className="text-muted-foreground">{s.cooldown}</p></div>}
                           </div>
                         </div>
                       )}
 
-                      {/* Target Zones */}
-                      {(suggestion.targetPace || suggestion.intensityZones || suggestion.zoneDistribution) && (
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-sm font-semibold">
-                            <Info className="h-4 w-4" />
-                            Target Zones
-                          </div>
-                          <div className="text-sm text-muted-foreground pl-6 space-y-1">
-                            {suggestion.targetPace && (
-                              <p><span className="font-medium">Pace:</span> {suggestion.targetPace}</p>
-                            )}
-                            {suggestion.intensityZones && (
-                              <p><span className="font-medium">Intensity:</span> {suggestion.intensityZones}</p>
-                            )}
-                            {suggestion.zoneDistribution && (
-                              <p><span className="font-medium">Zone Split:</span> {suggestion.zoneDistribution}</p>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Key Focus Points */}
-                      {suggestion.keyFocus && Array.isArray(suggestion.keyFocus) && suggestion.keyFocus.length > 0 && (
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-sm font-semibold">
-                            <Target className="h-4 w-4" />
-                            Key Focus Points
-                          </div>
-                          <ul className="text-sm text-muted-foreground space-y-1 pl-6">
-                            {suggestion.keyFocus.map((focus, i) => (
-                              <li key={i} className="flex items-start gap-2">
-                                <span className="text-purple-600 dark:text-purple-400">•</span>
-                                <span>{focus}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* Technique & Mistakes */}
-                      {((suggestion.techniqueCues && suggestion.techniqueCues.length > 0) || (suggestion.commonMistakes && suggestion.commonMistakes.length > 0)) && (
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 text-sm font-semibold">
-                            <Target className="h-4 w-4" />
-                            Technique & Mistakes
-                          </div>
-                          <div className="space-y-2 pl-6 text-sm text-muted-foreground">
-                            {suggestion.techniqueCues && suggestion.techniqueCues.length > 0 && (
-                              <div>
-                                <div className="font-medium text-foreground">Technique Cues</div>
-                                <ul className="space-y-1">
-                                  {suggestion.techniqueCues.map((cue, i) => (
-                                    <li key={i} className="flex items-start gap-2">
-                                      <span className="text-purple-600 dark:text-purple-400">•</span>
-                                      <span>{cue}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                            {suggestion.commonMistakes && suggestion.commonMistakes.length > 0 && (
-                              <div>
-                                <div className="font-medium text-foreground">Mistakes to Avoid</div>
-                                <ul className="space-y-1">
-                                  {suggestion.commonMistakes.map((mistake, i) => (
-                                    <li key={i} className="flex items-start gap-2">
-                                      <span className="text-red-500">•</span>
-                                      <span>{mistake}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Equipment & Environment */}
-                      {(suggestion.environment || (suggestion.equipment && suggestion.equipment.length > 0)) && (
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-sm font-semibold">
-                            <Info className="h-4 w-4" />
-                            Equipment & Setup
-                          </div>
-                          <div className="text-sm text-muted-foreground pl-6 space-y-1">
-                            {suggestion.environment && (
-                              <p><span className="font-medium">Environment:</span> {suggestion.environment}</p>
-                            )}
-                            {suggestion.equipment && suggestion.equipment.length > 0 && (
-                              <div>
-                                <div className="font-medium text-foreground">Equipment</div>
-                                <ul className="space-y-1">
-                                  {suggestion.equipment.map((item, i) => (
-                                    <li key={i} className="flex items-start gap-2">
-                                      <span className="text-purple-600 dark:text-purple-400">•</span>
-                                      <span>{item}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Fueling & Recovery */}
-                      {(suggestion.nutrition?.pre || suggestion.nutrition?.during || suggestion.nutrition?.post || (suggestion.recoveryTips && suggestion.recoveryTips.length > 0)) && (
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-sm font-semibold">
-                            <TrendingUp className="h-4 w-4" />
-                            Fueling & Recovery
-                          </div>
-                          <div className="text-sm text-muted-foreground pl-6 space-y-1">
-                            {suggestion.nutrition?.pre && (
-                              <p><span className="font-medium">Pre:</span> {suggestion.nutrition.pre}</p>
-                            )}
-                            {suggestion.nutrition?.during && (
-                              <p><span className="font-medium">During:</span> {suggestion.nutrition.during}</p>
-                            )}
-                            {suggestion.nutrition?.post && (
-                              <p><span className="font-medium">Post:</span> {suggestion.nutrition.post}</p>
-                            )}
-                            {suggestion.recoveryTips && suggestion.recoveryTips.length > 0 && (
-                              <div>
-                                <div className="font-medium text-foreground">Recovery Tips</div>
-                                <ul className="space-y-1">
-                                  {suggestion.recoveryTips.map((tip, i) => (
-                                    <li key={i} className="flex items-start gap-2">
-                                      <span className="text-green-600">•</span>
-                                      <span>{tip}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Alternatives & Progression */}
-                      {(suggestion.timeCrunchedOption || suggestion.lowImpactAlternative || suggestion.progression) && (
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-sm font-semibold">
-                            <TrendingUp className="h-4 w-4" />
-                            Alternatives & Progression
-                          </div>
-                          <div className="text-sm text-muted-foreground pl-6 space-y-1">
-                            {suggestion.timeCrunchedOption && (
-                              <p><span className="font-medium">Time-crunched:</span> {suggestion.timeCrunchedOption}</p>
-                            )}
-                            {suggestion.lowImpactAlternative && (
-                              <p><span className="font-medium">Low-impact:</span> {suggestion.lowImpactAlternative}</p>
-                            )}
-                            {suggestion.progression && (
-                              <p><span className="font-medium">Progression:</span> {suggestion.progression}</p>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Safety Notes */}
-                      {suggestion.safetyNotes && suggestion.safetyNotes.length > 0 && (
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-sm font-semibold">
-                            <Info className="h-4 w-4" />
-                            Safety Notes
-                          </div>
-                          <ul className="text-sm text-muted-foreground space-y-1 pl-6">
-                            {suggestion.safetyNotes.map((note, i) => (
-                              <li key={i} className="flex items-start gap-2">
-                                <span className="text-red-500">•</span>
-                                <span>{note}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* Use Template Button */}
-                      <Button
-                        onClick={() => handleViewSuggestion(suggestion)}
-                        className="w-full bg-purple-600 hover:bg-purple-700"
-                      >
-                        Use This Workout Template
-                        <ChevronRight className="h-4 w-4 ml-1" />
+                      {/* Use Button */}
+                      <Button onClick={() => handleUseWorkout(s)} className="w-full bg-red-600 hover:bg-red-700">
+                        Use This Workout <ChevronRight className="h-4 w-4 ml-1" />
                       </Button>
                     </div>
                   )}
 
-                  {/* Quick Action Button (when collapsed) */}
+                  {/* Quick Use (collapsed) */}
                   {!isExpanded && (
-                    <Button
-                      onClick={() => handleViewSuggestion(suggestion)}
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                    >
-                      Use Template
-                      <ChevronRight className="h-4 w-4 ml-1" />
+                    <Button onClick={() => handleUseWorkout(s)} variant="outline" size="sm" className="w-full">
+                      Use Workout <ChevronRight className="h-4 w-4 ml-1" />
                     </Button>
                   )}
                 </CardContent>
@@ -739,21 +294,8 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
             );
           })}
 
-          <Button
-            onClick={loadSuggestions}
-            disabled={loading}
-            variant="outline"
-            size="sm"
-            className="w-full mt-2"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Regenerating...
-              </>
-            ) : (
-              'Get New Suggestions'
-            )}
+          <Button onClick={loadSuggestions} disabled={loading} variant="outline" size="sm" className="w-full mt-2">
+            {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Regenerating...</> : 'Get New Suggestions'}
           </Button>
         </CardContent>
       )}

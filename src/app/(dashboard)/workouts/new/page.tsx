@@ -174,7 +174,7 @@ export default function NewWorkoutPage() {
     if (aiGenerated) {
       return (
         <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-purple-600" />
+          <Sparkles className="h-5 w-5 text-red-600" />
           AI-Generated Workout Template
         </div>
       );
@@ -220,7 +220,7 @@ export default function NewWorkoutPage() {
         </div>
       </div>
 
-      <Card className={aiGenerated ? 'border-purple-200 dark:border-purple-900' : ''}>
+      <Card className={aiGenerated ? 'border-red-200 dark:border-red-900' : ''}>
         <CardHeader>
           <CardTitle>{getHeaderTitle()}</CardTitle>
           <CardDescription>{getHeaderDescription()}</CardDescription>
@@ -234,12 +234,12 @@ export default function NewWorkoutPage() {
             defaultValues={templateData ? {
               name: templateData.name,
               type: templateData.type,
-              date: new Date(),
-              description: templateData.description,
+              date: templateData.date ? new Date(templateData.date + 'T00:00:00') : new Date(),
+              description: templateData.description
+                || [templateData.warmup, templateData.mainSet, templateData.cooldown].filter(Boolean).join('\n\n')
+                || '',
+              tags: Array.isArray(templateData.tags) ? templateData.tags : undefined,
               assignedTo: isUnconnectedAthlete ? user?.uid : students[0]?.uid || '',
-              // Pass the type-specific nested data
-              // AI generates: { name, type: "run", run: { distance, time, ... } }
-              // WorkoutForm expects exactly this structure
               ...(templateData.run && { run: templateData.run }),
               ...(templateData.swim && { swim: templateData.swim }),
               ...(templateData.bike && { bike: templateData.bike }),

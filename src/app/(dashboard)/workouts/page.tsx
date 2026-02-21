@@ -200,6 +200,11 @@ function WorkoutsContent() {
           athleteProfile={{
             sportPreferences: user.sportPreferences,
             fitnessGoals: user.fitnessGoals,
+            trainingFor: user.trainingFor,
+            experienceLevel: user.experienceLevel,
+            ageRange: user.ageRange,
+            eventDate: user.eventDate,
+            weeklyAvailability: user.weeklyAvailability,
             bio: user.bio,
             timezone: user.timezone,
           }}
