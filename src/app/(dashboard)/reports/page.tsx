@@ -169,7 +169,7 @@ export default function ReportsPage() {
             className={cn(
               'flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all shrink-0',
               section === item.id
-                ? 'bg-gradient-to-r from-primary to-emerald-600 text-white shadow-sm'
+                ? 'bg-red-600 text-white shadow-sm'
                 : 'bg-muted/60 text-muted-foreground active:bg-muted'
             )}
           >
@@ -191,7 +191,7 @@ export default function ReportsPage() {
                 className={cn(
                   'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all text-left',
                   section === item.id
-                    ? 'bg-gradient-to-r from-primary/15 to-emerald-500/10 text-primary shadow-sm border border-primary/20'
+                    ? 'bg-red-500/15 text-red-500 shadow-sm border border-red-500/20'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                 )}
               >

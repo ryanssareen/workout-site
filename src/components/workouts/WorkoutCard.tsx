@@ -184,7 +184,7 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
             {isUpcoming && <Badge variant="outline" className="border-blue-500/50 text-blue-600 dark:text-blue-400 text-xs"><Clock className="h-3 w-3 mr-1" />Upcoming</Badge>}
             {isMissed && <Badge variant="destructive" className="text-xs">Missed</Badge>}
             {workout.completedBy === 'strava' && <Badge variant="outline" className="border-orange-500/50 text-orange-600 dark:text-orange-400 text-xs"><Activity className="h-3 w-3 mr-1" />Strava</Badge>}
-            {hasRoute && <Badge variant="outline" className="border-emerald-500/50 text-emerald-600 dark:text-emerald-400 text-xs"><MapPin className="h-3 w-3 mr-1" />Route</Badge>}
+            {hasRoute && <Badge variant="outline" className="border-green-500/50 text-green-600 dark:text-green-400 text-xs"><MapPin className="h-3 w-3 mr-1" />Route</Badge>}
             {commentCount > 0 && <Badge variant="secondary" className="text-xs"><MessageSquare className="h-3 w-3 mr-1" />{commentCount}</Badge>}
           </div>
 

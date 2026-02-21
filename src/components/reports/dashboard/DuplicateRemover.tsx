@@ -64,7 +64,7 @@ export function DuplicateRemover({ workouts, onWorkoutsChanged }: DuplicateRemov
   if (groups.length === 0) {
     return (
       <div className="text-center py-16 text-muted-foreground">
-        <Check className="h-12 w-12 mx-auto mb-4 text-emerald-500" />
+        <Check className="h-12 w-12 mx-auto mb-4 text-green-500" />
         <p className="text-lg font-medium text-foreground">No duplicates detected</p>
         <p className="text-sm mt-1">All your workouts look unique. Nice and clean!</p>
       </div>
@@ -129,7 +129,7 @@ export function DuplicateRemover({ workouts, onWorkoutsChanged }: DuplicateRemov
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       {i === 0 && (
-                        <Badge variant="outline" className="text-emerald-600 border-emerald-600 shrink-0">
+                        <Badge variant="outline" className="text-green-600 border-green-600 shrink-0">
                           KEEP
                         </Badge>
                       )}

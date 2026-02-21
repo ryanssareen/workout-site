@@ -34,7 +34,7 @@ function ChartTimeFilter({ value, onChange }: { value: TimeRange; onChange: (v: 
           className={cn(
             'px-2 py-0.5 rounded-full text-[11px] font-semibold transition-colors',
             value === r
-              ? 'bg-emerald-500 text-white'
+              ? 'bg-green-500 text-white'
               : 'text-muted-foreground hover:text-foreground hover:bg-muted'
           )}
         >
@@ -109,9 +109,9 @@ function MonthGrid({ month, data }: { month: Date; data: Map<string, number> }) 
               className={cn(
                 'w-3 h-3 rounded-[2px] transition-colors',
                 count === 0 && 'bg-muted/40',
-                count === 1 && 'bg-emerald-500/50',
-                count === 2 && 'bg-emerald-500/75',
-                count >= 3 && 'bg-emerald-500',
+                count === 1 && 'bg-green-500/50',
+                count === 2 && 'bg-green-500/75',
+                count >= 3 && 'bg-green-500',
               )}
               title={`${format(new Date(month.getFullYear(), month.getMonth(), day), 'MMM d')}: ${count} workout${count !== 1 ? 's' : ''}`}
             />
@@ -225,10 +225,10 @@ export function ReportsDashboard({ workouts, athleteName }: ReportsDashboardProp
           />
         )}
         <StatCard
-          icon={<Timer className="h-5 w-5 text-emerald-500" />}
+          icon={<Timer className="h-5 w-5 text-green-500" />}
           label="Total Hours Trained"
           value={summary.totalHours.toFixed(1)}
-          color="bg-emerald-500/10"
+          color="bg-green-500/10"
         />
         <StatCard
           icon={<Clock className="h-5 w-5 text-blue-500" />}
@@ -455,7 +455,7 @@ export function ReportsDashboard({ workouts, athleteName }: ReportsDashboardProp
           {insights.totalElevationGain > 0 && (
             <div className="bg-muted/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Mountain className="h-5 w-5 text-emerald-500" />
+                <Mountain className="h-5 w-5 text-green-500" />
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Elevation</p>
               </div>
               <p className="text-lg font-bold">{Math.round(insights.totalElevationGain)}m</p>
@@ -487,7 +487,7 @@ export function ReportsDashboard({ workouts, athleteName }: ReportsDashboardProp
 
       {/* ── Calendar Views ── */}
       <CollapsibleSection
-        icon={<CalIcon className="h-5 w-5 text-emerald-500" />}
+        icon={<CalIcon className="h-5 w-5 text-green-500" />}
         title="Calendar Views"
       >
         <div className="grid lg:grid-cols-2 gap-6 mt-2">
@@ -506,9 +506,9 @@ export function ReportsDashboard({ workouts, athleteName }: ReportsDashboardProp
               <span>Less</span>
               <div className="flex gap-1">
                 <div className="w-3 h-3 rounded-[2px] bg-muted/40" />
-                <div className="w-3 h-3 rounded-[2px] bg-emerald-500/50" />
-                <div className="w-3 h-3 rounded-[2px] bg-emerald-500/75" />
-                <div className="w-3 h-3 rounded-[2px] bg-emerald-500" />
+                <div className="w-3 h-3 rounded-[2px] bg-green-500/50" />
+                <div className="w-3 h-3 rounded-[2px] bg-green-500/75" />
+                <div className="w-3 h-3 rounded-[2px] bg-green-500" />
               </div>
               <span>More</span>
             </div>

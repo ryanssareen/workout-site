@@ -57,7 +57,7 @@ export default function CalendarPage() {
   const typeColors: Record<Workout['type'], string> = {
     swim: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-100',
     bike: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-100',
-    run: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-100',
+    run: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-100',
     strength: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-100',
     other: 'bg-gray-100 text-gray-800 dark:bg-gray-800/60 dark:text-gray-100',
   };

@@ -37,7 +37,7 @@ function StudentCard({ student, index }: { student: StudentWithStats; index: num
         <div className={cn(
           'w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm',
           student.isActive
-            ? 'bg-gradient-to-br from-green-500 to-emerald-500 text-white'
+            ? 'bg-gradient-to-br from-green-500 to-green-600 text-white'
             : 'bg-muted text-muted-foreground'
         )}>
           {getInitials(student.displayName)}

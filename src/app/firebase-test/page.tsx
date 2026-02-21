@@ -139,7 +139,7 @@ export default function FirebaseTestPage() {
       case 'error':
         return <XCircle className="h-5 w-5 text-red-500" />;
       case 'running':
-        return <Loader2 className="h-5 w-5 animate-spin text-blue-500" />;
+        return <Loader2 className="h-5 w-5 animate-spin text-red-500" />;
       default:
         return <div className="h-5 w-5 rounded-full border-2 border-muted" />;
     }

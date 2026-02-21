@@ -169,7 +169,7 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'run': return 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30';
+      case 'run': return 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/30';
       case 'swim': return 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border-cyan-500/30';
       case 'bike': return 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30';
       case 'strength': return 'bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/30';
@@ -265,7 +265,7 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
                         <h4 className="font-semibold text-base">{s.name}</h4>
                         <Badge className={`capitalize border ${getTypeColor(s.type)}`}>{s.type}</Badge>
                         {s.intensity && <Badge className={`text-xs ${getIntensityColor(s.intensity)}`}>{s.intensity}</Badge>}
-                        {s.aiModified && <Badge variant="outline" className="text-xs border-blue-400 text-blue-600">AI-adjusted</Badge>}
+                        {s.aiModified && <Badge variant="outline" className="text-xs border-red-400 text-red-600">AI-adjusted</Badge>}
                       </div>
                       {/* Date + Specs line */}
                       <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
@@ -318,7 +318,7 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
                       {/* Structure */}
                       {(s.warmup || s.mainSet || s.cooldown) && (
                         <div className="space-y-2">
-                          <div className="flex items-center gap-2 text-sm font-semibold text-blue-700 dark:text-blue-400"><Zap className="h-4 w-4" />Workout Structure</div>
+                          <div className="flex items-center gap-2 text-sm font-semibold text-red-700 dark:text-red-400"><Zap className="h-4 w-4" />Workout Structure</div>
                           <div className="space-y-2 pl-6 text-sm">
                             {s.warmup && <div><span className="font-medium">Warmup:</span><p className="text-muted-foreground">{s.warmup}</p></div>}
                             {s.mainSet && <div><span className="font-medium">Main Set:</span><p className="text-muted-foreground">{s.mainSet}</p></div>}

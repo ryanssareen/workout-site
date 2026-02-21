@@ -139,7 +139,7 @@ export function RouteMap({ routeData, className = '', height = 300, workoutId }:
         </MapContainer>
       </div>
       {(aiComment || loadingComment) && (
-        <div className="rounded-lg bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 px-4 py-3">
+        <div className="rounded-lg bg-gradient-to-r from-green-500/10 to-teal-500/10 border border-green-500/20 px-4 py-3">
           <div className="flex items-start gap-3">
             <span className="text-xl leading-none mt-0.5">🤖</span>
             {loadingComment ? (

@@ -24,7 +24,7 @@ export default function LoginPage() {
   if (loading || user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-red-500" />
       </div>
     );
   }
@@ -32,10 +32,10 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-black relative overflow-hidden">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px]" />
-        <div className="absolute top-1/2 -left-40 w-[400px] h-[400px] bg-emerald-600/10 rounded-full blur-[100px]" />
-        <div className="absolute -bottom-40 right-1/3 w-80 h-80 bg-blue-600/5 rounded-full blur-[80px]" />
-        <div className="absolute top-1/4 right-1/4 w-[350px] h-[350px] bg-emerald-500/8 rounded-full blur-[110px]" />
+        <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-red-600/10 rounded-full blur-[120px]" />
+        <div className="absolute top-1/2 -left-40 w-[400px] h-[400px] bg-red-900/10 rounded-full blur-[100px]" />
+        <div className="absolute -bottom-40 right-1/3 w-80 h-80 bg-red-600/5 rounded-full blur-[80px]" />
+        <div className="absolute top-1/4 right-1/4 w-[350px] h-[350px] bg-red-800/8 rounded-full blur-[110px]" />
       </div>
       <LoginForm />
     </div>

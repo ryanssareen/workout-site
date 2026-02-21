@@ -210,7 +210,7 @@ export default function ProfilePage() {
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-8">
       {/* ── HERO SECTION ─────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/5 via-emerald-500/5 to-rose-500/5 border border-border/50">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-500/5 via-neutral-500/5 to-neutral-900/5 border border-border/50">
         <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)', backgroundSize: '24px 24px' }} />
         <div className="relative px-6 sm:px-8 py-8 sm:py-10">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-8">
@@ -219,7 +219,7 @@ export default function ProfilePage() {
               <div className="absolute inset-0 flex items-center justify-center">
                 <Avatar className="w-[116px] h-[116px] border-4 border-background shadow-xl">
                   {user.photoURL ? <AvatarImage src={user.photoURL} alt={user.displayName} /> : null}
-                  <AvatarFallback className="text-3xl font-bold bg-gradient-to-br from-primary/20 to-emerald-500/20 text-primary">
+                  <AvatarFallback className="text-3xl font-bold bg-gradient-to-br from-red-500/20 to-red-800/20 text-red-500">
                     {user.displayName ? getInitials(user.displayName) : '?'}
                   </AvatarFallback>
                 </Avatar>
@@ -255,7 +255,7 @@ export default function ProfilePage() {
             </div>
             <div className="flex flex-wrap gap-2">
               {completionItems.map(({ label, done }) => (
-                <span key={label} className={cn('inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors', done ? 'bg-emerald-500/10 text-emerald-600' : 'bg-muted text-muted-foreground')}>
+                <span key={label} className={cn('inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors', done ? 'bg-green-500/10 text-green-600' : 'bg-muted text-muted-foreground')}>
                   {done ? <CheckCircle2 className="w-3 h-3" /> : <div className="w-3 h-3 rounded-full border-2 border-current opacity-40" />}
                   {label}
                 </span>
@@ -270,7 +270,7 @@ export default function ProfilePage() {
         <Card className="group hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-blue-500/10"><Dumbbell className="h-4 w-4 text-blue-500" /></div>
+              <div className="p-1.5 rounded-lg bg-red-500/10"><Dumbbell className="h-4 w-4 text-red-500" /></div>
               Sports
             </CardTitle>
           </CardHeader>
@@ -310,7 +310,7 @@ export default function ProfilePage() {
                 { label: 'Activity Updates', on: user.notificationPreferences?.coachMessages !== false },
               ].map(({ label, on }) => (
                 <span key={label} className="flex items-center gap-1.5">
-                  <div className={cn('w-2 h-2 rounded-full', on ? 'bg-emerald-500' : 'bg-muted-foreground/30')} />
+                  <div className={cn('w-2 h-2 rounded-full', on ? 'bg-green-500' : 'bg-muted-foreground/30')} />
                   <span className={cn(on ? 'text-foreground' : 'text-muted-foreground')}>{label}</span>
                 </span>
               ))}

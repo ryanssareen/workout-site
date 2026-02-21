@@ -111,8 +111,8 @@ function ShareButtons({ title, shareText, shareUrl, fileName, cardRef, onClose }
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b bg-muted/30">
         <h3 className="font-bold text-lg flex items-center gap-2.5">
-          <div className="p-1.5 rounded-lg bg-emerald-500/15">
-            <Share2 className="h-4 w-4 text-emerald-500" />
+          <div className="p-1.5 rounded-lg bg-red-500/15">
+            <Share2 className="h-4 w-4 text-red-500" />
           </div>
           {title}
         </h3>
@@ -159,7 +159,7 @@ function ShareButtons({ title, shareText, shareUrl, fileName, cardRef, onClose }
             {isGenerating ? 'Generating...' : 'Save Image'}
           </Button>
           <Button variant="outline" size="sm" onClick={handleCopyLink} className="flex-1 gap-2">
-            {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+            {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
             {copied ? 'Copied!' : 'Copy Link'}
           </Button>
           {typeof navigator !== 'undefined' && 'share' in navigator && (
@@ -244,10 +244,10 @@ export function ShareWorkoutCard({ workout }: ShareWorkoutCardProps) {
       {/* Preview card — exported as image */}
       <div className="rounded-xl border overflow-hidden">
         <p className="text-xs text-muted-foreground px-4 py-2 bg-muted/30">Preview — this is what your friends will see</p>
-        <div ref={cardRef} className="p-6 bg-gradient-to-br from-gray-950 via-gray-900 to-emerald-950" style={{ width: '100%', minHeight: 200 }}>
+        <div ref={cardRef} className="p-6 bg-gradient-to-br from-gray-950 via-gray-900 to-red-950" style={{ width: '100%', minHeight: 200 }}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center">
                 <span className="text-white font-bold text-sm">CT</span>
               </div>
               <span className="text-gray-400 text-sm font-medium">CoachTrack</span>
@@ -257,9 +257,9 @@ export function ShareWorkoutCard({ workout }: ShareWorkoutCardProps) {
 
           <h2 className="text-2xl font-bold text-white mb-1">{workout.name}</h2>
           <div className="flex items-center gap-2 mb-5">
-            <span className="text-sm text-emerald-400 font-medium capitalize">{workout.type}</span>
+            <span className="text-sm text-red-400 font-medium capitalize">{workout.type}</span>
             {workout.completed && (
-              <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">✓ Completed</span>
+              <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full">✓ Completed</span>
             )}
           </div>
 

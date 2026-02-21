@@ -50,7 +50,7 @@ function ChartTimeFilter({ value, onChange }: { value: TimeRange; onChange: (v: 
           className={cn(
             'px-2.5 py-1 sm:px-2 sm:py-0.5 rounded-full text-xs sm:text-[11px] font-semibold transition-colors whitespace-nowrap shrink-0',
             value === r
-              ? 'bg-gradient-to-r from-red-500 to-emerald-500 text-white'
+              ? 'bg-red-600 text-white'
               : 'text-muted-foreground hover:text-foreground hover:bg-muted'
           )}
         >
@@ -175,8 +175,8 @@ export function DashboardOverview({ workouts }: SectionProps) {
           />
         )}
         <StatCard
-          icon={<Timer className="h-5 w-5 text-emerald-500" />}
-          label="Total Hours" value={summary.totalHours.toFixed(1)} color="bg-emerald-500/10"
+          icon={<Timer className="h-5 w-5 text-green-500" />}
+          label="Total Hours" value={summary.totalHours.toFixed(1)} color="bg-green-500/10"
         />
         <StatCard
           icon={<Clock className="h-5 w-5 text-blue-500" />}
@@ -451,7 +451,7 @@ export function ExerciseInsights({ workouts }: SectionProps) {
         )}
         {insights.totalElevationGain > 0 && (
           <InsightTile
-            icon={<Mountain className="h-5 w-5 text-emerald-500" />}
+            icon={<Mountain className="h-5 w-5 text-green-500" />}
             label="Total Elevation"
             value={`${Math.round(insights.totalElevationGain)}m`}
             sub="elevation gain"
