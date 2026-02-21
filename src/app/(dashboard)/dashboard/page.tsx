@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { getUserWorkouts } from '@/lib/firebase/firestore';
 import { Workout } from '@/types';
@@ -16,6 +16,7 @@ import { format, startOfWeek, endOfWeek, isWithinInterval, differenceInDays, isS
 import { Badge } from '@/components/ui/badge';
 import { ProgressRing } from '@/components/dashboard/stats/ProgressRing';
 import { cn } from '@/lib/utils';
+import { useStravaAutoSync } from '@/hooks/useStravaAutoSync';
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell,
 } from 'recharts';
@@ -81,6 +82,16 @@ export default function DashboardPage() {
     if (hour < 17) return 'Good afternoon';
     return 'Good evening';
   }, []);
+
+  // Refresh workouts from Firestore (used by auto-sync callback)
+  const refreshWorkouts = useCallback(async () => {
+    if (!user) return;
+    const workoutData = await getUserWorkouts(user.uid, user.role);
+    setWorkouts(workoutData);
+  }, [user]);
+
+  // Auto-sync Strava in background on login
+  useStravaAutoSync(user, refreshWorkouts);
 
   useEffect(() => {
     async function loadData() {
