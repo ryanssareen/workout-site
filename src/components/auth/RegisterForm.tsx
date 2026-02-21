@@ -92,7 +92,7 @@ export function RegisterForm() {
   return (
     <div className="w-full max-w-md relative z-10">
       <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-red-600 to-green-500 shadow-xl shadow-red-600/25 mb-4">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-black shadow-xl shadow-black/25 mb-4">
           <Dumbbell className="w-8 h-8 text-white" />
         </div>
         <h1 className="text-2xl font-black text-white uppercase tracking-tight">Join The Daily Athlete</h1>

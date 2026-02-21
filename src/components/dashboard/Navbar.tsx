@@ -26,11 +26,11 @@ export function Navbar() {
   ], []);
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-border/60 bg-card/80 backdrop-blur-xl shadow-[0_10px_50px_-30px_rgba(59,130,246,0.35),0_14px_40px_-30px_rgba(16,185,129,0.15)]">
+    <nav className="sticky top-0 z-50 border-b border-border/60 bg-card/80 backdrop-blur-xl shadow-lg">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <Link href="/dashboard" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-red-600 to-green-500 flex items-center justify-center shadow-lg shadow-red-600/30">
+            <div className="h-9 w-9 rounded-xl bg-black flex items-center justify-center shadow-lg shadow-black/30">
               <Dumbbell className="h-4 w-4 text-white drop-shadow" />
             </div>
             <span className="font-bold text-lg hidden sm:inline">The Daily Athlete</span>
@@ -42,7 +42,7 @@ export function Navbar() {
               const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
               return (
                 <Link key={item.href} href={item.href}>
-                  <Button variant="ghost" size="sm" className={cn('gap-2 h-9 rounded-lg transition-all text-sm', isActive ? 'bg-primary/15 text-primary border border-primary/40 shadow-[0_10px_30px_-20px_rgba(59,130,246,0.5)]' : 'text-foreground hover:bg-muted/80')}>
+                  <Button variant="ghost" size="sm" className={cn('gap-2 h-9 rounded-lg transition-all text-sm', isActive ? 'bg-primary/15 text-primary border border-primary/40 shadow-sm' : 'text-foreground hover:bg-muted/80')}>
                     <Icon className="h-4 w-4" /><span className="text-sm">{item.label}</span>
                   </Button>
                 </Link>
