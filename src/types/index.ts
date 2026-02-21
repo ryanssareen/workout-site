@@ -35,6 +35,7 @@ export interface User {
   gender?: string;
   ageRange?: string;
   eventDate?: string;
+  events?: Array<{ goal: string; eventName: string; eventDate?: string }>;
   experienceLevel?: string;
   weeklyAvailability?: string;
   notificationPreferences?: {

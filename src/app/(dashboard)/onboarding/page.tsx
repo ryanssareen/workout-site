@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { getDbInstance } from '@/lib/firebase/config';
-import { Loader2, Sparkles, ArrowRight, ArrowLeft, Check, CalendarIcon } from 'lucide-react';
+import { Loader2, Sparkles, ArrowRight, ArrowLeft, Check, CalendarIcon, X, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
@@ -28,6 +28,12 @@ const GOAL_MAP: Record<string, string[]> = {
   Ironman: ['Sprint Triathlon', 'Olympic Triathlon', 'Half Ironman 70.3', 'Full Ironman'],
 };
 
+interface GoalEvent {
+  goal: string;
+  eventName: string;
+  eventDate?: string;
+}
+
 function StepDots({ current, total }: { current: number; total: number }) {
   return (
     <div className="flex items-center gap-2 justify-center">
@@ -49,13 +55,119 @@ function OptionGrid({ options, selected, onSelect, multi = false }: { options: s
             ? 'border-red-500 bg-red-500/10 text-foreground shadow-lg shadow-red-500/10'
             : 'border-border hover:border-red-500/40 text-muted-foreground hover:text-foreground'
         )}>
-          {isSelected(opt) && <Check className="absolute top-2.5 right-2.5 w-4 h-4 text-green-500" />}
+          {isSelected(opt) && <Check className="absolute top-2.5 right-2.5 w-4 h-4 text-red-500" />}
           {opt}
         </button>
       ))}
     </div>
   );
 }
+
+/* ── Goal Detail Popup ──────────────────────────────────────────────── */
+
+function GoalDetailPopup({
+  goal,
+  event,
+  onSave,
+  onClose,
+}: {
+  goal: string;
+  event?: GoalEvent;
+  onSave: (e: GoalEvent) => void;
+  onClose: () => void;
+}) {
+  const [eventName, setEventName] = useState(event?.eventName || '');
+  const [eventDate, setEventDate] = useState<Date | undefined>(
+    event?.eventDate ? new Date(event.eventDate) : undefined
+  );
+
+  const handleSave = () => {
+    onSave({
+      goal,
+      eventName: eventName.trim(),
+      eventDate: eventDate ? eventDate.toISOString().slice(0, 10) : undefined,
+    });
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
+      <div
+        className="w-full max-w-md mx-4 rounded-2xl border-2 border-red-500/20 bg-card p-6 space-y-5 shadow-2xl shadow-red-600/10 animate-in zoom-in-95 slide-in-from-bottom-4 duration-300"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-bold">{goal}</h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+            <X className="w-5 h-5 text-muted-foreground" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          {/* Left: Event Name */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-muted-foreground">Event Name</label>
+            <input
+              type="text"
+              value={eventName}
+              onChange={(e) => setEventName(e.target.value)}
+              placeholder={`e.g. City ${goal}`}
+              className="w-full px-3 py-3 rounded-xl border-2 border-border bg-background text-sm font-medium placeholder:text-muted-foreground/50 focus:border-red-500 focus:outline-none transition-colors"
+              autoFocus
+            />
+          </div>
+
+          {/* Right: Event Date */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-muted-foreground">Event Date</label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    'w-full flex items-center gap-2 px-3 py-3 rounded-xl border-2 text-sm font-medium transition-colors',
+                    eventDate
+                      ? 'border-red-500 bg-red-500/5 text-foreground'
+                      : 'border-border text-muted-foreground hover:border-red-500/40'
+                  )}
+                >
+                  <CalendarIcon className="w-4 h-4 shrink-0" />
+                  <span className="truncate">{eventDate ? format(eventDate, 'MMM d, yyyy') : 'Pick date'}</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="center">
+                <Calendar
+                  mode="single"
+                  selected={eventDate}
+                  onSelect={setEventDate}
+                  disabled={(date) => date < new Date()}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
+
+        {eventDate && (
+          <button type="button" onClick={() => setEventDate(undefined)} className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2">
+            Clear date
+          </button>
+        )}
+
+        <div className="flex gap-3 pt-1">
+          <button onClick={onClose} className="px-5 py-3 rounded-xl border-2 border-border text-muted-foreground hover:text-foreground transition-colors text-sm font-medium">
+            Cancel
+          </button>
+          <button onClick={handleSave} className="flex-1 px-5 py-3 rounded-xl bg-red-600 text-white font-semibold text-sm shadow-lg shadow-red-600/25 hover:shadow-xl transition-all">
+            {eventName || eventDate ? 'Save Details' : 'Add Without Details'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Main Onboarding ────────────────────────────────────────────────── */
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -67,17 +179,19 @@ export default function OnboardingPage() {
   const [ageRange, setAgeRange] = useState('');
   const [sports, setSports] = useState<string[]>([]);
   const [trainingForEvent, setTrainingForEvent] = useState<boolean | null>(null);
-  const [goals, setGoals] = useState<string[]>([]);
-  const [eventDate, setEventDate] = useState<Date | undefined>(undefined);
+  const [goalEvents, setGoalEvents] = useState<GoalEvent[]>([]);
   const [experience, setExperience] = useState('');
   const [availability, setAvailability] = useState('');
   const [saving, setSaving] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<string | null>(null);
+
+  const goals = goalEvents.map((e) => e.goal);
+  const firstEventDate = goalEvents.find((e) => e.eventDate)?.eventDate;
 
   const goNext = () => {
     const i = STEPS.indexOf(step);
     if (step === 'event' && trainingForEvent === false) {
-      setGoals([]);
-      setEventDate(undefined);
+      setGoalEvents([]);
       setStep('experience');
       return;
     }
@@ -96,13 +210,30 @@ export default function OnboardingPage() {
     setSports((prev) => {
       const next = prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s];
       const validGoals = next.flatMap((sp) => GOAL_MAP[sp] || []);
-      setGoals((g) => g.filter((goal) => validGoals.includes(goal)));
+      setGoalEvents((ge) => ge.filter((e) => validGoals.includes(e.goal)));
       return next;
     });
   };
 
-  const toggleGoal = (g: string) => {
-    setGoals((prev) => prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]);
+  const handleGoalClick = (goal: string) => {
+    // If already selected, open edit popup
+    if (goals.includes(goal)) {
+      setEditingGoal(goal);
+    } else {
+      // New selection: open popup
+      setEditingGoal(goal);
+    }
+  };
+
+  const handleGoalSave = (event: GoalEvent) => {
+    setGoalEvents((prev) => {
+      const without = prev.filter((e) => e.goal !== event.goal);
+      return [...without, event];
+    });
+  };
+
+  const handleGoalRemove = (goal: string) => {
+    setGoalEvents((prev) => prev.filter((e) => e.goal !== goal));
   };
 
   const availableGoals = sports.flatMap((s) => GOAL_MAP[s] || []);
@@ -129,20 +260,35 @@ export default function OnboardingPage() {
     setSaving(true);
     try {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      await updateDoc(doc(getDbInstance(), 'users', user.uid), {
+      const data: Record<string, any> = {
         gender: gender || null,
         ageRange,
         sportPreferences: sports,
         trainingFor: goals.length > 0 ? goals : null,
-        eventDate: eventDate ? eventDate.toISOString() : null,
+        events: goalEvents.length > 0 ? goalEvents : null,
+        eventDate: firstEventDate || null,
         experienceLevel: experience || null,
         weeklyAvailability: availability || null,
         timezone: tz,
         onboardingCompleted: true,
         onboardingSkipped: false,
         updatedAt: serverTimestamp(),
+      };
+      await updateDoc(doc(getDbInstance(), 'users', user.uid), data);
+      setUser({
+        ...user,
+        gender: gender || undefined,
+        ageRange,
+        sportPreferences: sports,
+        trainingFor: goals.length > 0 ? goals : undefined,
+        events: goalEvents.length > 0 ? goalEvents : undefined,
+        eventDate: firstEventDate || undefined,
+        experienceLevel: experience || undefined,
+        weeklyAvailability: availability || undefined,
+        timezone: tz,
+        onboardingCompleted: true,
+        onboardingSkipped: false,
       });
-      setUser({ ...user, gender: gender || undefined, ageRange, sportPreferences: sports, trainingFor: goals.length > 0 ? goals : undefined, eventDate: eventDate ? eventDate.toISOString() : undefined, experienceLevel: experience || undefined, weeklyAvailability: availability || undefined, timezone: tz, onboardingCompleted: true, onboardingSkipped: false });
       toast.success(`Welcome, ${user.displayName || 'Athlete'}!`);
       router.replace('/dashboard');
     } catch { toast.error('Failed to save — try again'); }
@@ -158,8 +304,18 @@ export default function OnboardingPage() {
     <div className="min-h-[80vh] flex items-center justify-center px-4">
       <div className="w-full max-w-lg">
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none -z-10 overflow-hidden">
-          <div className="w-[500px] h-[500px] rounded-full bg-gradient-to-br from-red-600/20 via-green-500/10 to-red-500/15 blur-3xl animate-pulse" />
+          <div className="w-[500px] h-[500px] rounded-full bg-gradient-to-br from-red-600/20 via-red-900/10 to-red-500/15 blur-3xl animate-pulse" />
         </div>
+
+        {/* Goal detail popup */}
+        {editingGoal && (
+          <GoalDetailPopup
+            goal={editingGoal}
+            event={goalEvents.find((e) => e.goal === editingGoal)}
+            onSave={handleGoalSave}
+            onClose={() => setEditingGoal(null)}
+          />
+        )}
 
         {/* Skip button */}
         {step !== 'intro' && (
@@ -175,20 +331,20 @@ export default function OnboardingPage() {
           <div className="text-center space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="flex justify-center">
               <div className="relative">
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-red-600 to-green-500 flex items-center justify-center shadow-2xl shadow-red-600/30">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-red-600 to-red-900 flex items-center justify-center shadow-2xl shadow-red-600/30">
                   <Sparkles className="w-10 h-10 text-white" />
                 </div>
-                <div className="absolute -inset-1 rounded-2xl bg-gradient-to-br from-red-600 to-green-500 opacity-20 blur-lg" />
+                <div className="absolute -inset-1 rounded-2xl bg-gradient-to-br from-red-600 to-red-900 opacity-20 blur-lg" />
               </div>
             </div>
             <div className="space-y-3">
               <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">
-                Welcome, <span className="bg-gradient-to-r from-red-500 via-red-600 to-green-500 bg-clip-text text-transparent">{displayName}</span>
+                Welcome, <span className="bg-gradient-to-r from-red-500 to-red-400 bg-clip-text text-transparent">{displayName}</span>
               </h1>
               <p className="text-muted-foreground text-lg max-w-md mx-auto">Let&apos;s build your athlete profile in under a minute.</p>
             </div>
             <div className="space-y-3">
-              <button onClick={goNext} className={cn('group inline-flex items-center gap-3 px-8 py-4 rounded-2xl', 'bg-gradient-to-r from-red-600 to-green-600', 'text-white font-semibold text-lg', 'shadow-xl shadow-red-600/25', 'hover:shadow-2xl hover:scale-[1.02]', 'transition-all duration-300')}>
+              <button onClick={goNext} className={cn('group inline-flex items-center gap-3 px-8 py-4 rounded-2xl', 'bg-gradient-to-r from-red-600 to-red-800', 'text-white font-semibold text-lg', 'shadow-xl shadow-red-600/25', 'hover:shadow-2xl hover:scale-[1.02]', 'transition-all duration-300')}>
                 Get Started <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
               <div>
@@ -266,7 +422,7 @@ export default function OnboardingPage() {
                     ? 'border-red-500 bg-red-500/10 text-foreground shadow-lg shadow-red-500/10'
                     : 'border-border hover:border-red-500/40 text-muted-foreground hover:text-foreground'
                 )}>
-                  {trainingForEvent === val && <Check className="absolute top-3 right-3 w-5 h-5 text-green-500" />}
+                  {trainingForEvent === val && <Check className="absolute top-3 right-3 w-5 h-5 text-red-500" />}
                   {val ? 'Yes' : 'No, just training'}
                 </button>
               ))}
@@ -278,49 +434,57 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* GOALS (multi-select + event date) */}
+        {/* GOALS — tap to open detail popup */}
         {step === 'goals' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <StepDots current={5} total={visibleStepCount} />
             <div className="text-center space-y-2">
               <h2 className="text-3xl font-bold tracking-tight">What are you training for?</h2>
-              <p className="text-muted-foreground">Pick all that apply.</p>
+              <p className="text-muted-foreground">Tap a goal to add event details.</p>
             </div>
-            <OptionGrid options={availableGoals} selected={goals} onSelect={toggleGoal} multi />
 
-            {/* Event Date Picker */}
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-center text-muted-foreground">When is your event?</p>
-              <div className="flex justify-center">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button type="button" className={cn(
-                      'inline-flex items-center gap-3 px-6 py-4 rounded-xl border-2 text-left font-medium transition-all duration-200 min-w-[240px]',
-                      eventDate
-                        ? 'border-red-500 bg-red-500/10 text-foreground shadow-lg shadow-red-500/10'
-                        : 'border-border hover:border-red-500/40 text-muted-foreground hover:text-foreground'
-                    )}>
-                      <CalendarIcon className="w-5 h-5 shrink-0" />
-                      {eventDate ? format(eventDate, 'MMMM d, yyyy') : 'Pick a date (optional)'}
-                      {eventDate && <Check className="w-4 h-4 text-green-500 ml-auto" />}
+            <div className="grid grid-cols-2 gap-3">
+              {availableGoals.map((goal) => {
+                const selected = goals.includes(goal);
+                const event = goalEvents.find((e) => e.goal === goal);
+                return (
+                  <div key={goal} className="relative">
+                    <button
+                      type="button"
+                      onClick={() => handleGoalClick(goal)}
+                      className={cn(
+                        'w-full px-4 py-4 rounded-xl border-2 text-left font-medium transition-all duration-200',
+                        selected
+                          ? 'border-red-500 bg-red-500/10 text-foreground shadow-lg shadow-red-500/10'
+                          : 'border-border hover:border-red-500/40 text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span>{goal}</span>
+                        {selected && <Check className="w-4 h-4 text-red-500 shrink-0" />}
+                      </div>
+                      {/* Show event details below goal name */}
+                      {event && (event.eventName || event.eventDate) && (
+                        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                          {event.eventName && <span className="truncate">{event.eventName}</span>}
+                          {event.eventName && event.eventDate && <span>·</span>}
+                          {event.eventDate && <span className="shrink-0">{format(new Date(event.eventDate), 'MMM d')}</span>}
+                        </div>
+                      )}
                     </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="center">
-                    <Calendar
-                      mode="single"
-                      selected={eventDate}
-                      onSelect={setEventDate}
-                      disabled={(date) => date < new Date()}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              {eventDate && (
-                <button type="button" onClick={() => setEventDate(undefined)} className="block mx-auto text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2">
-                  Clear date
-                </button>
-              )}
+                    {/* Remove button */}
+                    {selected && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleGoalRemove(goal); }}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors shadow-sm"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             <div className="flex gap-3">
@@ -330,7 +494,7 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* EXPERIENCE (optional) */}
+        {/* EXPERIENCE */}
         {step === 'experience' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <StepDots current={trainingForEvent === false ? 5 : 6} total={visibleStepCount} />
@@ -348,7 +512,7 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* AVAILABILITY (optional) */}
+        {/* AVAILABILITY */}
         {step === 'availability' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <StepDots current={trainingForEvent === false ? 6 : 7} total={visibleStepCount} />
@@ -377,7 +541,7 @@ export default function OnboardingPage() {
 
             <div className="rounded-2xl border-2 border-red-500/20 bg-card p-6 space-y-5">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-red-600 to-green-500 flex items-center justify-center text-white font-black text-xl shadow-lg">{displayName[0]?.toUpperCase()}</div>
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-red-600 to-red-900 flex items-center justify-center text-white font-black text-xl shadow-lg">{displayName[0]?.toUpperCase()}</div>
                 <div>
                   <p className="font-bold text-lg">{displayName}</p>
                   <p className="text-sm text-muted-foreground">{sports.join(', ')}{goals.length > 0 ? ` · ${goals.join(', ')}` : ''}</p>
@@ -387,24 +551,33 @@ export default function OnboardingPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl bg-muted/50 p-3"><p className="text-xs text-muted-foreground uppercase tracking-wider">Age</p><p className="font-bold">{ageRange}</p></div>
                 <div className="rounded-xl bg-muted/50 p-3"><p className="text-xs text-muted-foreground uppercase tracking-wider">Sports</p><p className="font-bold">{sports.join(', ')}</p></div>
-                {goals.length > 0 && <div className="rounded-xl bg-muted/50 p-3 col-span-2"><p className="text-xs text-muted-foreground uppercase tracking-wider">Events</p><p className="font-bold">{goals.join(', ')}</p></div>}
-                {eventDate && <div className="rounded-xl bg-muted/50 p-3 col-span-2"><p className="text-xs text-muted-foreground uppercase tracking-wider">Event Date</p><p className="font-bold">{format(eventDate, 'MMMM d, yyyy')}</p></div>}
+                {goalEvents.length > 0 && (
+                  <div className="rounded-xl bg-muted/50 p-3 col-span-2 space-y-1.5">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Events</p>
+                    {goalEvents.map((e) => (
+                      <div key={e.goal} className="flex items-center justify-between">
+                        <p className="font-bold text-sm">{e.eventName || e.goal}</p>
+                        {e.eventDate && <p className="text-xs text-muted-foreground">{format(new Date(e.eventDate), 'MMM d, yyyy')}</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {gender && <div className="rounded-xl bg-muted/50 p-3"><p className="text-xs text-muted-foreground uppercase tracking-wider">Gender</p><p className="font-bold">{gender}</p></div>}
                 <div className="rounded-xl bg-muted/50 p-3"><p className="text-xs text-muted-foreground uppercase tracking-wider">Level</p><p className="font-bold">{experience || 'Not set'}</p></div>
               </div>
 
               {availability && (
-                <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-3 text-center">
-                  <p className="text-sm font-medium text-green-600 dark:text-green-400">Training {availability}/week</p>
+                <div className="rounded-xl bg-red-500/5 border border-red-500/20 p-3 text-center">
+                  <p className="text-sm font-medium text-red-600 dark:text-red-400">Training {availability}/week</p>
                 </div>
               )}
 
               <div className="rounded-xl bg-red-500/5 border border-red-500/20 p-4 space-y-2">
                 <p className="text-xs font-bold uppercase tracking-wider text-red-500">Suggested Week 1</p>
                 <ul className="space-y-1.5 text-sm text-muted-foreground">
-                  <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-green-500" />Easy session — build base</li>
+                  <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-neutral-400" />Easy session — build base</li>
                   <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-red-500" />Interval session — build speed</li>
-                  <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-green-500" />Long session — build endurance</li>
+                  <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-neutral-400" />Long session — build endurance</li>
                   <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-amber-500" />Recovery / cross-training</li>
                 </ul>
               </div>
@@ -412,7 +585,7 @@ export default function OnboardingPage() {
 
             <div className="flex gap-3">
               <button onClick={goBack} className="px-6 py-4 rounded-2xl border-2 border-border text-muted-foreground hover:text-foreground transition-colors"><ArrowLeft className="w-5 h-5" /></button>
-              <button onClick={handleFinish} disabled={saving} className="flex-1 flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-semibold text-lg bg-gradient-to-r from-red-600 to-green-600 text-white shadow-xl shadow-red-600/25 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300">
+              <button onClick={handleFinish} disabled={saving} className="flex-1 flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-semibold text-lg bg-gradient-to-r from-red-600 to-red-800 text-white shadow-xl shadow-red-600/25 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300">
                 {saving ? <><Loader2 className="w-5 h-5 animate-spin" />Setting up...</> : <>Let&apos;s Go <ArrowRight className="w-5 h-5" /></>}
               </button>
             </div>
