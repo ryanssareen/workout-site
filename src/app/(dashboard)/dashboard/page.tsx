@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import {
   Calendar, TrendingUp, Target, Zap, ArrowRight,
-  Activity, CheckCircle2, Clock, UserCircle
+  CheckCircle2, Clock, UserCircle, Flame, BarChart3,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -23,7 +23,7 @@ import {
 interface TypeData { name: string; value: number; color: string; [key: string]: string | number; }
 
 const TYPE_COLORS: Record<string, string> = {
-  run: '#3b82f6', bike: '#22c55e', swim: '#06b6d4', strength: '#a855f7', other: '#6b7280',
+  run: '#3b82f6', bike: '#f59e0b', swim: '#06b6d4', strength: '#a855f7', other: '#6b7280',
 };
 
 function calculateProfileCompletion(user: any): number {
@@ -80,7 +80,7 @@ export default function DashboardPage() {
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <div className="h-12 w-12 rounded-full border-4 border-muted" />
-            <div className="absolute inset-0 h-12 w-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+            <div className="absolute inset-0 h-12 w-12 rounded-full border-4 border-red-500 border-t-transparent animate-spin" />
           </div>
           <p className="text-muted-foreground animate-pulse">Loading your dashboard...</p>
         </div>
@@ -89,38 +89,37 @@ export default function DashboardPage() {
   }
 
   const profileCompletion = user ? calculateProfileCompletion(user) : 100;
-  // Route to onboarding if core fields are missing (works for skipped AND pre-existing accounts)
   const needsOnboarding = !user?.sportPreferences?.length || !user?.ageRange;
   const showProfileCTA = profileCompletion < 100;
 
   return (
-    <div className="space-y-8 pb-8">
+    <div className="space-y-6 pb-8">
       {/* ── PROFILE COMPLETION CTA ──────────────────────────────── */}
       {showProfileCTA && (
-        <div className="relative overflow-hidden rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-red-500/5 to-green-500/5 p-6 sm:p-8 animate-in fade-in slide-in-from-top-4 duration-700">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-          <div className="relative flex flex-col sm:flex-row items-center gap-6">
+        <div className="relative overflow-hidden rounded-2xl border border-red-500/20 bg-gradient-to-br from-red-500/5 via-transparent to-neutral-900/5 dark:to-neutral-100/5 p-6 animate-in fade-in slide-in-from-top-4 duration-700">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-red-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+          <div className="relative flex flex-col sm:flex-row items-center gap-5">
             <div className="shrink-0">
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-red-600 to-green-500 flex items-center justify-center shadow-xl shadow-red-600/20">
-                <UserCircle className="w-10 h-10 text-white" />
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-600 to-red-900 flex items-center justify-center shadow-lg shadow-red-600/20">
+                <UserCircle className="w-8 h-8 text-white" />
               </div>
             </div>
             <div className="flex-1 text-center sm:text-left space-y-2">
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">{needsOnboarding ? 'Finish Your Setup' : 'Build Your Profile'}</h2>
-              <p className="text-muted-foreground max-w-md">{needsOnboarding ? 'Pick up where you left off — it only takes a minute.' : 'Complete your athlete profile to get personalized workouts and track your progress. It only takes a minute.'}</p>
+              <h2 className="text-xl sm:text-2xl font-bold tracking-tight">{needsOnboarding ? 'Finish Your Setup' : 'Complete Your Profile'}</h2>
+              <p className="text-sm text-muted-foreground max-w-md">{needsOnboarding ? 'Pick up where you left off — it only takes a minute.' : 'Get personalized workouts and better tracking.'}</p>
               <div className="flex items-center gap-3 justify-center sm:justify-start">
-                <div className="flex-1 max-w-xs h-2.5 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full rounded-full bg-gradient-to-r from-red-600 to-green-500 transition-all duration-500" style={{ width: `${profileCompletion}%` }} />
+                <div className="flex-1 max-w-xs h-2 rounded-full bg-muted overflow-hidden">
+                  <div className="h-full rounded-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-500" style={{ width: `${profileCompletion}%` }} />
                 </div>
-                <span className="text-sm font-bold tabular-nums">{profileCompletion}%</span>
+                <span className="text-sm font-bold tabular-nums text-red-500">{profileCompletion}%</span>
               </div>
             </div>
-            <div className="flex flex-col items-center gap-2 shrink-0">
-              <Button asChild size="lg" className="h-12 px-8 font-bold shadow-lg shadow-primary/20 text-base">
-                <Link href={needsOnboarding ? '/onboarding' : '/profile?edit=1'}>{needsOnboarding ? 'Continue Setup' : 'Complete Profile'} <ArrowRight className="ml-2 h-5 w-5" /></Link>
+            <div className="flex flex-col items-center gap-1.5 shrink-0">
+              <Button asChild size="lg" className="h-11 px-6 font-semibold shadow-lg shadow-red-600/20">
+                <Link href={needsOnboarding ? '/onboarding' : '/profile?edit=1'}>{needsOnboarding ? 'Continue Setup' : 'Complete Profile'} <ArrowRight className="ml-2 h-4 w-4" /></Link>
               </Button>
               <button onClick={() => sessionStorage.setItem('profile-cta-dismissed', 'true')} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-                Do this later
+                Later
               </button>
             </div>
           </div>
@@ -128,20 +127,19 @@ export default function DashboardPage() {
       )}
 
       {/* ── HEADER ──────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div className="space-y-1 animate-in fade-in slide-in-from-left-4 duration-700">
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-            {greeting}, <span className="text-primary">{user?.displayName?.split(' ')[0]}</span>
+            {greeting}, <span className="text-red-500">{user?.displayName?.split(' ')[0]}</span>
           </h1>
-          <p className="text-muted-foreground">Track your training progress</p>
+          <p className="text-muted-foreground text-sm">Here&apos;s your training overview</p>
         </div>
         {workouts.length > 0 && (
-          <div className="flex items-center gap-4 p-4 rounded-2xl border border-green-500/20 bg-green-500/5 animate-in fade-in slide-in-from-right-4 duration-700" style={{ animationDelay: '200ms', animationFillMode: 'backwards' }}>
-            <ProgressRing progress={completionRate} size="lg" color="stroke-green-500" />
+          <div className="flex items-center gap-4 p-3.5 rounded-xl border bg-card animate-in fade-in slide-in-from-right-4 duration-700" style={{ animationDelay: '200ms', animationFillMode: 'backwards' }}>
+            <ProgressRing progress={completionRate} size="lg" />
             <div>
-              <p className="text-sm text-muted-foreground">Overall Progress</p>
-              <p className="text-2xl font-bold">{completedCount}/{workouts.length}</p>
-              <p className="text-xs text-muted-foreground">workouts completed</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Completion</p>
+              <p className="text-2xl font-bold">{completedCount}<span className="text-base text-muted-foreground font-normal">/{workouts.length}</span></p>
             </div>
           </div>
         )}
@@ -149,47 +147,44 @@ export default function DashboardPage() {
 
       {/* ── STATS ───────────────────────────────────────────────── */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard title="All Time" value={workouts.length} description="Total workouts" icon={Target} gradient="from-red-500/5 to-cyan-500/5 dark:from-red-500/15 dark:to-cyan-500/15" iconGradient="from-red-500 to-cyan-500" delay={250} />
-        <StatCard title="Completed" value={completedCount} description={`${completionRate}% completion rate`} icon={CheckCircle2} gradient="from-green-500/5 to-green-500/5 dark:from-green-500/15 dark:to-green-500/15" iconGradient="from-green-500 to-green-500" delay={250} />
-        <StatCard title="Remaining" value={workouts.length - completedCount} description="Still to complete" icon={TrendingUp} gradient="from-red-500/5 to-amber-500/5 dark:from-red-500/15 dark:to-amber-500/15" iconGradient="from-red-500 to-amber-500" delay={700} />
+        <StatCard title="Total" value={workouts.length} description="All-time workouts" icon={Target} gradient="from-red-500/5 to-transparent" iconGradient="from-red-600 to-red-800" delay={200} />
+        <StatCard title="Completed" value={completedCount} description={`${completionRate}% rate`} icon={CheckCircle2} gradient="from-red-500/5 to-transparent" iconGradient="from-red-500 to-red-700" delay={350} />
+        <StatCard title="Remaining" value={workouts.length - completedCount} description="Left to finish" icon={Flame} gradient="from-red-500/5 to-transparent" iconGradient="from-red-500 to-neutral-800" delay={500} />
       </div>
 
       {/* ── UPCOMING WORKOUTS ───────────────────────────────────── */}
       <Card className="animate-in fade-in slide-in-from-bottom-4 duration-700" style={{ animationDelay: '300ms', animationFillMode: 'backwards' }}>
-        <CardHeader>
+        <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <CardTitle className="text-xl flex items-center gap-2"><Zap className="h-5 w-5 text-primary" />Upcoming Workouts</CardTitle>
-              <CardDescription>Ready to tackle these sessions</CardDescription>
+            <div className="space-y-0.5">
+              <CardTitle className="text-lg flex items-center gap-2"><Zap className="h-5 w-5 text-red-500" />Upcoming</CardTitle>
+              <CardDescription className="text-xs">Your next sessions</CardDescription>
             </div>
-            <Button variant="outline" asChild className="group"><Link href="/workouts">View All<ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" /></Link></Button>
+            <Button variant="ghost" size="sm" asChild className="text-xs"><Link href="/workouts">View all<ArrowRight className="ml-1.5 h-3.5 w-3.5" /></Link></Button>
           </div>
         </CardHeader>
         <CardContent>
           {upcomingWorkouts.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10 mb-4"><CheckCircle2 className="h-8 w-8 text-green-500" /></div>
-              <h3 className="text-lg font-semibold mb-2">All caught up!</h3>
-              <p className="text-muted-foreground max-w-sm mx-auto">You&apos;ve completed all your workouts. Check back later for new sessions.</p>
+            <div className="text-center py-10">
+              <div className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-red-500/10 mb-3"><CheckCircle2 className="h-7 w-7 text-red-500" /></div>
+              <h3 className="text-base font-semibold mb-1">All caught up!</h3>
+              <p className="text-sm text-muted-foreground max-w-xs mx-auto">You&apos;ve completed all workouts. Check back soon.</p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {upcomingWorkouts.map((workout, index) => (
-                <Link key={workout.id} href={`/workouts/${workout.id}`} className={cn('flex items-center justify-between p-4 rounded-xl border hover:border-primary/20 hover:bg-muted/50 transition-all duration-200 group animate-in fade-in slide-in-from-right-4 duration-500')} style={{ animationDelay: `${400 + index * 100}ms`, animationFillMode: 'backwards' }}>
-                  <div className="space-y-1 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-lg group-hover:text-primary transition-colors">{workout.name}</h3>
-                      <Badge variant="secondary" className="capitalize">{workout.type}</Badge>
+                <Link key={workout.id} href={`/workouts/${workout.id}`} className={cn('flex items-center justify-between p-3.5 rounded-lg border hover:border-red-500/20 hover:bg-red-500/[0.02] transition-all duration-200 group animate-in fade-in slide-in-from-right-4 duration-500')} style={{ animationDelay: `${400 + index * 80}ms`, animationFillMode: 'backwards' }}>
+                  <div className="space-y-0.5 flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-medium text-sm group-hover:text-red-500 transition-colors truncate">{workout.name}</h3>
+                      <Badge variant="secondary" className="capitalize text-[10px] px-1.5 py-0">{workout.type}</Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground line-clamp-1">{workout.description}</p>
-                    {workout.duration && <p className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" />{workout.duration} minutes</p>}
+                    {workout.description && <p className="text-xs text-muted-foreground line-clamp-1">{workout.description}</p>}
                   </div>
-                  <div className="flex items-center gap-3 ml-4">
-                    <div className="text-right">
-                      <div className="flex items-center gap-2 text-sm font-medium"><Calendar className="h-4 w-4 text-muted-foreground" />{format(workout.date.toDate(), 'MMM d')}</div>
-                      <div className="text-xs text-muted-foreground">{format(workout.date.toDate(), 'yyyy')}</div>
-                    </div>
-                    <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                  <div className="flex items-center gap-3 ml-3 shrink-0">
+                    {workout.duration && <span className="text-xs text-muted-foreground hidden sm:flex items-center gap-1"><Clock className="h-3 w-3" />{workout.duration}m</span>}
+                    <span className="text-xs font-medium text-muted-foreground"><Calendar className="h-3 w-3 inline mr-1" />{format(workout.date.toDate(), 'MMM d')}</span>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-red-500 group-hover:translate-x-0.5 transition-all" />
                   </div>
                 </Link>
               ))}
@@ -198,36 +193,55 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* ── WORKOUT DISTRIBUTION ────────────────────────────────── */}
-      <Card className="animate-in fade-in slide-in-from-bottom-4 duration-700" style={{ animationDelay: '600ms', animationFillMode: 'backwards' }}>
-        <CardHeader><CardTitle>Workout Distribution</CardTitle><CardDescription>Breakdown of completed workouts by type</CardDescription></CardHeader>
-        <CardContent>
-          <div className="h-[300px] min-w-[300px]">
-            {typeData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={typeData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
-                    {typeData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
-                  </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--card-foreground))' }} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : <div className="flex items-center justify-center h-full text-muted-foreground">No completed workouts yet</div>}
-          </div>
-        </CardContent>
-      </Card>
+      {/* ── BOTTOM ROW: CHART + QUICK ACTIONS ──────────────────── */}
+      <div className="grid gap-4 lg:grid-cols-5">
+        {/* Chart — 3 cols */}
+        <Card className="lg:col-span-3 animate-in fade-in slide-in-from-bottom-4 duration-700" style={{ animationDelay: '500ms', animationFillMode: 'backwards' }}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2"><BarChart3 className="h-4 w-4 text-red-500" />Distribution</CardTitle>
+            <CardDescription className="text-xs">Completed workouts by type</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[260px]">
+              {typeData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={typeData} cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={3} dataKey="value" label={({ name, value }) => `${name}: ${value}`} labelLine={false}>
+                      {typeData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                    </Pie>
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--card-foreground))', fontSize: '12px' }} />
+                    <Legend wrapperStyle={{ fontSize: '12px' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : <div className="flex items-center justify-center h-full text-sm text-muted-foreground">No completed workouts yet</div>}
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* ── QUICK ACTIONS ───────────────────────────────────────── */}
-      <div className="grid gap-4 sm:grid-cols-2 animate-in fade-in slide-in-from-bottom-4 duration-700" style={{ animationDelay: '700ms', animationFillMode: 'backwards' }}>
-        <Card className="hover:shadow-md hover:border-primary/20 transition-all duration-500 group">
-          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Calendar className="h-5 w-5 text-primary" />Calendar View</CardTitle><CardDescription className="text-sm">See your schedule at a glance</CardDescription></CardHeader>
-          <CardContent><Button asChild variant="outline" className="w-full group-hover:border-primary/30"><Link href="/calendar">Open Calendar<ArrowRight className="ml-2 h-4 w-4" /></Link></Button></CardContent>
-        </Card>
-        <Card className="hover:shadow-md hover:border-primary/20 transition-all duration-500 group">
-          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Target className="h-5 w-5 text-primary" />All Workouts</CardTitle><CardDescription className="text-sm">View your complete workout history</CardDescription></CardHeader>
-          <CardContent><Button asChild variant="outline" className="w-full group-hover:border-primary/30"><Link href="/workouts">View Workouts<ArrowRight className="ml-2 h-4 w-4" /></Link></Button></CardContent>
-        </Card>
+        {/* Quick Actions — 2 cols */}
+        <div className="lg:col-span-2 flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700" style={{ animationDelay: '600ms', animationFillMode: 'backwards' }}>
+          <Card className="flex-1 hover:border-red-500/20 transition-all group">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2"><Calendar className="h-4 w-4 text-red-500" />Calendar</CardTitle>
+              <CardDescription className="text-xs">View your schedule</CardDescription>
+            </CardHeader>
+            <CardContent><Button asChild variant="outline" size="sm" className="w-full"><Link href="/calendar">Open<ArrowRight className="ml-2 h-3.5 w-3.5" /></Link></Button></CardContent>
+          </Card>
+          <Card className="flex-1 hover:border-red-500/20 transition-all group">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2"><Target className="h-4 w-4 text-red-500" />Workouts</CardTitle>
+              <CardDescription className="text-xs">Full workout history</CardDescription>
+            </CardHeader>
+            <CardContent><Button asChild variant="outline" size="sm" className="w-full"><Link href="/workouts">View all<ArrowRight className="ml-2 h-3.5 w-3.5" /></Link></Button></CardContent>
+          </Card>
+          <Card className="flex-1 hover:border-red-500/20 transition-all group">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2"><TrendingUp className="h-4 w-4 text-red-500" />Reports</CardTitle>
+              <CardDescription className="text-xs">Training analytics</CardDescription>
+            </CardHeader>
+            <CardContent><Button asChild variant="outline" size="sm" className="w-full"><Link href="/reports">View<ArrowRight className="ml-2 h-3.5 w-3.5" /></Link></Button></CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

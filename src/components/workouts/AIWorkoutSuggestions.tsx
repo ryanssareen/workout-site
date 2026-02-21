@@ -171,7 +171,7 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
     switch (type) {
       case 'run': return 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30';
       case 'swim': return 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border-cyan-500/30';
-      case 'bike': return 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30';
+      case 'bike': return 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30';
       case 'strength': return 'bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/30';
       default: return 'bg-gray-500/10 text-gray-700 dark:text-gray-400 border-gray-500/30';
     }
@@ -179,7 +179,7 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
 
   const getIntensityColor = (d?: string) => {
     switch (d) {
-      case 'easy': return 'bg-green-500/10 text-green-700 dark:text-green-400';
+      case 'easy': return 'bg-neutral-500/10 text-neutral-700 dark:text-neutral-400';
       case 'hard': return 'bg-red-500/10 text-red-700 dark:text-red-400';
       default: return 'bg-amber-500/10 text-amber-700 dark:text-amber-400';
     }
@@ -195,7 +195,7 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
   };
 
   return (
-    <Card className="border-red-200 dark:border-red-900 bg-gradient-to-br from-red-50 to-green-50 dark:from-red-950/20 dark:to-green-950/20">
+    <Card className="border-red-200 dark:border-red-900 bg-gradient-to-br from-red-50 to-neutral-50 dark:from-red-950/20 dark:to-neutral-950/20">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -222,7 +222,7 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
           {/* Validation Status */}
           <div className="flex items-center gap-2">
             {aiEnhanced ? (
-              <Badge className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30">✓ AI-Enhanced & Validated</Badge>
+              <Badge className="bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/30">✓ AI-Enhanced & Validated</Badge>
             ) : (
               <Badge variant="outline" className="text-xs">Logic-Only (AI skipped or failed validation)</Badge>
             )}
@@ -308,9 +308,9 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
                       {/* Benefits */}
                       {s.benefits && s.benefits.length > 0 && (
                         <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-sm font-semibold text-green-700 dark:text-green-400"><TrendingUp className="h-4 w-4" />Benefits</div>
+                          <div className="flex items-center gap-2 text-sm font-semibold text-red-700 dark:text-red-400"><TrendingUp className="h-4 w-4" />Benefits</div>
                           <ul className="text-sm text-muted-foreground space-y-1 pl-6">
-                            {s.benefits.map((b, i) => <li key={i} className="flex items-start gap-2"><CheckCircle2 className="h-3 w-3 mt-0.5 text-green-600 shrink-0" />{b}</li>)}
+                            {s.benefits.map((b, i) => <li key={i} className="flex items-start gap-2"><CheckCircle2 className="h-3 w-3 mt-0.5 text-red-500 shrink-0" />{b}</li>)}
                           </ul>
                         </div>
                       )}

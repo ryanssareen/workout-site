@@ -22,7 +22,7 @@ export default function Home() {
   const sports = [
     { icon: Waves, name: 'Swimming', color: 'bg-red-600' },
     { icon: Activity, name: 'Running', color: 'bg-red-700' },
-    { icon: Bike, name: 'Cycling', color: 'bg-green-600' },
+    { icon: Bike, name: 'Cycling', color: 'bg-red-800' },
     { icon: Dumbbell, name: 'Ironman', color: 'bg-red-600' },
   ];
 
@@ -39,7 +39,7 @@ export default function Home() {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-black/80 backdrop-blur-xl">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-red-600 to-green-500 flex items-center justify-center shadow-lg shadow-red-600/30">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-red-600 to-red-900 flex items-center justify-center shadow-lg shadow-red-600/30">
               <Dumbbell className="h-4 w-4 text-white" />
             </div>
             <span className="font-bold text-lg text-white">The Daily Athlete</span>
@@ -66,7 +66,7 @@ export default function Home() {
         <section className="relative overflow-hidden">
           <div className="absolute inset-0 -z-10">
             <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-red-600/15 rounded-full blur-[120px]" />
-            <div className="absolute top-1/2 -left-40 w-[400px] h-[400px] bg-green-600/10 rounded-full blur-[100px]" />
+            <div className="absolute top-1/2 -left-40 w-[400px] h-[400px] bg-red-900/10 rounded-full blur-[100px]" />
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-red-600/5 rounded-full blur-[80px]" />
           </div>
           <div className="absolute inset-0 -z-10 opacity-[0.03]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'1\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }} />
@@ -80,7 +80,7 @@ export default function Home() {
                 </div>
                 <h1 className="text-5xl sm:text-6xl md:text-7xl font-black tracking-tight leading-[0.9]">
                   OWN
-                  <span className="block bg-gradient-to-r from-red-400 via-red-500 to-green-400 bg-clip-text text-transparent">YOUR DAY.</span>
+                  <span className="block bg-gradient-to-r from-red-400 via-red-500 to-red-300 bg-clip-text text-transparent">YOUR DAY.</span>
                   <span className="block text-white/40 text-4xl sm:text-5xl md:text-6xl mt-2">EVERY DAY.</span>
                 </h1>
                 <p className="text-lg md:text-xl text-white/50 max-w-lg">
@@ -100,7 +100,7 @@ export default function Home() {
                 <div className="grid grid-cols-3 gap-4 max-w-lg pt-2">
                   <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                     <p className="text-xs text-white/40 uppercase tracking-wider">Completion</p>
-                    <p className="text-2xl font-black text-green-400">82%</p>
+                    <p className="text-2xl font-black text-red-400">82%</p>
                   </div>
                   <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                     <p className="text-xs text-white/40 uppercase tracking-wider">Setup</p>
@@ -115,12 +115,12 @@ export default function Home() {
 
               {/* Hero visual - workout card stack (desktop) */}
               <div className="relative hidden lg:block">
-                <div className="absolute -inset-8 bg-gradient-to-br from-red-600/10 via-transparent to-green-600/10 blur-3xl rounded-3xl" />
+                <div className="absolute -inset-8 bg-gradient-to-br from-red-600/10 via-transparent to-red-900/10 blur-3xl rounded-3xl" />
                 <div className="relative space-y-4">
                   {[
                     { type: 'RUN', name: 'Morning 5K', stat: '5.0 km · 24:30', icon: Activity, accent: 'bg-red-500' },
                     { type: 'SWIM', name: 'Endurance Set', stat: '2000m · 35:00', icon: Waves, accent: 'bg-red-600' },
-                    { type: 'BIKE', name: 'Hill Intervals', stat: '30 km · 55:00', icon: Bike, accent: 'bg-green-600' },
+                    { type: 'BIKE', name: 'Hill Intervals', stat: '30 km · 55:00', icon: Bike, accent: 'bg-red-800' },
                     { type: 'STRENGTH', name: 'Upper Body', stat: '45 min · 6 sets', icon: Dumbbell, accent: 'bg-red-600' },
                   ].map((workout, i) => (
                     <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-white shadow-lg shadow-black/10 transition-all duration-300" style={{ transform: `translateX(${i * 12}px)` }}>
@@ -132,7 +132,7 @@ export default function Home() {
                         <p className="font-semibold text-gray-900">{workout.name}</p>
                         <p className="text-sm text-gray-400">{workout.stat}</p>
                       </div>
-                      <CheckCircle2 className="h-5 w-5 text-green-500" />
+                      <CheckCircle2 className="h-5 w-5 text-red-500" />
                     </div>
                   ))}
                 </div>
@@ -144,7 +144,7 @@ export default function Home() {
                   {[
                     { type: 'RUN', name: 'Morning 5K', stat: '5.0 km · 24:30', icon: Activity, accent: 'bg-red-500' },
                     { type: 'SWIM', name: 'Endurance Set', stat: '2000m · 35:00', icon: Waves, accent: 'bg-red-600' },
-                    { type: 'BIKE', name: 'Hill Intervals', stat: '30 km · 55:00', icon: Bike, accent: 'bg-green-600' },
+                    { type: 'BIKE', name: 'Hill Intervals', stat: '30 km · 55:00', icon: Bike, accent: 'bg-red-800' },
                     { type: 'STRENGTH', name: 'Upper Body', stat: '45 min · 6 sets', icon: Dumbbell, accent: 'bg-red-600' },
                   ].map((workout, i) => (
                     <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm min-w-[200px]">
@@ -156,7 +156,7 @@ export default function Home() {
                         <p className="font-semibold text-sm text-white">{workout.name}</p>
                         <p className="text-xs text-white/40">{workout.stat}</p>
                       </div>
-                      <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+                      <CheckCircle2 className="h-4 w-4 text-red-500 flex-shrink-0" />
                     </div>
                   ))}
                 </div>
@@ -252,7 +252,7 @@ export default function Home() {
               {features.map((feature, i) => (
                 <div key={i} className="p-6 rounded-2xl border border-white/10 bg-white/[0.02] hover:border-red-500/30 transition-all duration-300">
                   <div className="flex items-start gap-4">
-                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-red-600 to-green-500 text-white shadow-lg shadow-red-600/20 flex-shrink-0">
+                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-red-600 to-red-900 text-white shadow-lg shadow-red-600/20 flex-shrink-0">
                       <feature.icon className="h-5 w-5" />
                     </div>
                     <div>
@@ -282,7 +282,7 @@ export default function Home() {
                 <ul className="space-y-3">
                   {['One-click Strava connection', 'Workouts auto-mark as complete', 'See distance, pace, heart rate', 'Your data stays private'].map((item, i) => (
                     <li key={i} className="flex items-center gap-2 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+                      <CheckCircle2 className="h-4 w-4 text-red-500 flex-shrink-0" />
                       <span className="text-white/60">{item}</span>
                     </li>
                   ))}
@@ -290,9 +290,9 @@ export default function Home() {
               </div>
               <div className="flex items-center justify-center">
                 <div className="relative w-48 h-48">
-                  <div className="absolute inset-0 bg-gradient-to-br from-red-600/20 to-green-600/20 rounded-full animate-pulse" />
-                  <div className="absolute inset-6 bg-gradient-to-br from-red-600/30 to-green-600/30 rounded-full" />
-                  <div className="absolute inset-12 bg-gradient-to-br from-red-600 to-green-500 rounded-full flex items-center justify-center shadow-2xl shadow-red-600/40">
+                  <div className="absolute inset-0 bg-gradient-to-br from-red-600/20 to-red-900/20 rounded-full animate-pulse" />
+                  <div className="absolute inset-6 bg-gradient-to-br from-red-600/30 to-red-900/30 rounded-full" />
+                  <div className="absolute inset-12 bg-gradient-to-br from-red-600 to-red-900 rounded-full flex items-center justify-center shadow-2xl shadow-red-600/40">
                     <Activity className="h-12 w-12 text-white" />
                   </div>
                 </div>
@@ -332,7 +332,7 @@ export default function Home() {
             <Flame className="h-12 w-12 text-red-400 mx-auto" />
             <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight">
               No Excuses.<br />
-              <span className="bg-gradient-to-r from-red-400 to-green-400 bg-clip-text text-transparent">Just Results.</span>
+              <span className="bg-gradient-to-r from-red-400 to-red-200 bg-clip-text text-transparent">Just Results.</span>
             </h2>
             <p className="text-white/40 text-lg">
               Join athletes who train with purpose. Track every session. Build the habit. Become the athlete you want to be.
@@ -354,7 +354,7 @@ export default function Home() {
       <footer className="border-t border-white/10 py-8 bg-black">
         <div className="container mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-red-600 to-green-500 flex items-center justify-center">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-red-600 to-red-900 flex items-center justify-center">
               <Dumbbell className="h-4 w-4 text-white" />
             </div>
             <span className="font-bold text-white">The Daily Athlete</span>
