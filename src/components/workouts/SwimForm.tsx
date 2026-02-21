@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,6 +12,18 @@ interface SwimFormProps {
 }
 
 export function SwimForm({ data, onChange }: SwimFormProps) {
+  // Initialize defaults for fields that display a default but never fire onChange
+  useEffect(() => {
+    if (!data.distanceUnit || !data.strokeType) {
+      onChange({
+        ...data,
+        distanceUnit: data.distanceUnit || 'meters',
+        strokeType: data.strokeType || 'freestyle',
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">

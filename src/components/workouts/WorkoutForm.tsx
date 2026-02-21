@@ -64,6 +64,7 @@ export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAt
       distance: 5,
       distanceUnit: 'km',
       time: 30,
+      terrain: 'road',
     },
   };
 

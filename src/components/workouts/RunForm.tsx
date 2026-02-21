@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,6 +12,17 @@ interface RunFormProps {
 }
 
 export function RunForm({ data, onChange }: RunFormProps) {
+  // Initialize defaults for fields that display a default but never fire onChange
+  useEffect(() => {
+    if (!data.terrain || !data.distanceUnit) {
+      onChange({
+        ...data,
+        terrain: data.terrain || 'road',
+        distanceUnit: data.distanceUnit || 'km',
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const calculatePace = (distance: number, time: number, unit: 'km' | 'miles') => {
     if (!distance || !time) return '';
     const paceMinutes = time / distance;

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,6 +12,17 @@ interface BikeFormProps {
 }
 
 export function BikeForm({ data, onChange }: BikeFormProps) {
+  // Initialize defaults for fields that display a default but never fire onChange
+  useEffect(() => {
+    if (!data.distanceUnit) {
+      onChange({
+        ...data,
+        distanceUnit: data.distanceUnit || 'km',
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
