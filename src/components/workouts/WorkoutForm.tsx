@@ -75,8 +75,9 @@ export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAt
   // Reset form when defaultValues change (e.g., when AI data loads)
   useEffect(() => {
     if (defaultValues) {
-      reset(defaultValues);
+      reset({ ...FORM_DEFAULTS, ...defaultValues });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultValues, reset]);
 
   const selectedDate = watch('date');
@@ -170,7 +171,7 @@ export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAt
       <div className="space-y-2">
         <Label htmlFor="type">Workout Type *</Label>
         <Select 
-          value={selectedType} 
+          value={selectedType || 'run'} 
           onValueChange={(value: any) => {
             setValue('type', value);
             // Clear type-specific data when changing types
@@ -309,7 +310,7 @@ export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAt
       {!hideAthleteSelector && (
         <div className="space-y-2">
           <Label htmlFor="assignedTo">Assign to Athlete *</Label>
-          <Select value={selectedStudent} onValueChange={(value) => setValue('assignedTo', value)}>
+          <Select value={selectedStudent || ''} onValueChange={(value) => setValue('assignedTo', value)}>
             <SelectTrigger>
               <SelectValue placeholder="Select athlete" />
             </SelectTrigger>
