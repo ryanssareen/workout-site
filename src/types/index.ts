@@ -34,6 +34,7 @@ export interface User {
   trainingFor?: string[];
   gender?: string;
   ageRange?: string;
+  eventDate?: string;
   experienceLevel?: string;
   weeklyAvailability?: string;
   notificationPreferences?: {

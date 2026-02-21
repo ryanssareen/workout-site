@@ -5,14 +5,17 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { getDbInstance } from '@/lib/firebase/config';
-import { Loader2, Sparkles, ArrowRight, ArrowLeft, Check } from 'lucide-react';
+import { Loader2, Sparkles, ArrowRight, ArrowLeft, Check, CalendarIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
 
 const STEPS = ['intro', 'gender', 'age', 'sport', 'event', 'goals', 'experience', 'availability', 'preview'] as const;
 type Step = typeof STEPS[number];
 
-const GENDERS = ['Male', 'Female', 'Non-binary', 'Prefer not to say'];
+const GENDERS = ['Male', 'Female', 'Prefer not to say'];
 const AGE_RANGES = ['18–24', '25–34', '35–44', '45–54', '55+'];
 const SPORTS = ['Running', 'Swimming', 'Biking', 'Ironman'] as const;
 const EXPERIENCE_LEVELS = ['Beginner', 'Intermediate', 'Advanced'];
@@ -65,16 +68,16 @@ export default function OnboardingPage() {
   const [sports, setSports] = useState<string[]>([]);
   const [trainingForEvent, setTrainingForEvent] = useState<boolean | null>(null);
   const [goals, setGoals] = useState<string[]>([]);
+  const [eventDate, setEventDate] = useState<Date | undefined>(undefined);
   const [experience, setExperience] = useState('');
   const [availability, setAvailability] = useState('');
   const [saving, setSaving] = useState(false);
-
-
 
   const goNext = () => {
     const i = STEPS.indexOf(step);
     if (step === 'event' && trainingForEvent === false) {
       setGoals([]);
+      setEventDate(undefined);
       setStep('experience');
       return;
     }
@@ -92,7 +95,6 @@ export default function OnboardingPage() {
   const toggleSport = (s: string) => {
     setSports((prev) => {
       const next = prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s];
-      // Remove goals that no longer belong to any selected sport
       const validGoals = next.flatMap((sp) => GOAL_MAP[sp] || []);
       setGoals((g) => g.filter((goal) => validGoals.includes(goal)));
       return next;
@@ -103,7 +105,6 @@ export default function OnboardingPage() {
     setGoals((prev) => prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]);
   };
 
-  // All goals for selected sports combined
   const availableGoals = sports.flatMap((s) => GOAL_MAP[s] || []);
 
   const handleSkip = async () => {
@@ -133,6 +134,7 @@ export default function OnboardingPage() {
         ageRange,
         sportPreferences: sports,
         trainingFor: goals.length > 0 ? goals : null,
+        eventDate: eventDate ? eventDate.toISOString() : null,
         experienceLevel: experience || null,
         weeklyAvailability: availability || null,
         timezone: tz,
@@ -140,7 +142,7 @@ export default function OnboardingPage() {
         onboardingSkipped: false,
         updatedAt: serverTimestamp(),
       });
-      setUser({ ...user, gender: gender || undefined, ageRange, sportPreferences: sports, trainingFor: goals.length > 0 ? goals : undefined, experienceLevel: experience || undefined, weeklyAvailability: availability || undefined, timezone: tz, onboardingCompleted: true, onboardingSkipped: false });
+      setUser({ ...user, gender: gender || undefined, ageRange, sportPreferences: sports, trainingFor: goals.length > 0 ? goals : undefined, eventDate: eventDate ? eventDate.toISOString() : undefined, experienceLevel: experience || undefined, weeklyAvailability: availability || undefined, timezone: tz, onboardingCompleted: true, onboardingSkipped: false });
       toast.success(`Welcome, ${user.displayName || 'Athlete'}!`);
       router.replace('/dashboard');
     } catch { toast.error('Failed to save — try again'); }
@@ -159,7 +161,7 @@ export default function OnboardingPage() {
           <div className="w-[500px] h-[500px] rounded-full bg-gradient-to-br from-red-600/20 via-green-500/10 to-red-500/15 blur-3xl animate-pulse" />
         </div>
 
-        {/* Skip button — always visible except on intro */}
+        {/* Skip button */}
         {step !== 'intro' && (
           <div className="text-center mb-6 animate-in fade-in duration-300">
             <button onClick={handleSkip} disabled={saving} className="text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4 decoration-muted-foreground/30 hover:decoration-foreground/50">
@@ -276,7 +278,7 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* GOALS (multi-select, combined from all selected sports) */}
+        {/* GOALS (multi-select + event date) */}
         {step === 'goals' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <StepDots current={5} total={visibleStepCount} />
@@ -285,6 +287,42 @@ export default function OnboardingPage() {
               <p className="text-muted-foreground">Pick all that apply.</p>
             </div>
             <OptionGrid options={availableGoals} selected={goals} onSelect={toggleGoal} multi />
+
+            {/* Event Date Picker */}
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-center text-muted-foreground">When is your event?</p>
+              <div className="flex justify-center">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button type="button" className={cn(
+                      'inline-flex items-center gap-3 px-6 py-4 rounded-xl border-2 text-left font-medium transition-all duration-200 min-w-[240px]',
+                      eventDate
+                        ? 'border-red-500 bg-red-500/10 text-foreground shadow-lg shadow-red-500/10'
+                        : 'border-border hover:border-red-500/40 text-muted-foreground hover:text-foreground'
+                    )}>
+                      <CalendarIcon className="w-5 h-5 shrink-0" />
+                      {eventDate ? format(eventDate, 'MMMM d, yyyy') : 'Pick a date (optional)'}
+                      {eventDate && <Check className="w-4 h-4 text-green-500 ml-auto" />}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="center">
+                    <Calendar
+                      mode="single"
+                      selected={eventDate}
+                      onSelect={setEventDate}
+                      disabled={(date) => date < new Date()}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              {eventDate && (
+                <button type="button" onClick={() => setEventDate(undefined)} className="block mx-auto text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2">
+                  Clear date
+                </button>
+              )}
+            </div>
+
             <div className="flex gap-3">
               <button onClick={goBack} className="px-6 py-4 rounded-2xl border-2 border-border text-muted-foreground hover:text-foreground transition-colors"><ArrowLeft className="w-5 h-5" /></button>
               <button onClick={goNext} disabled={goals.length === 0} className={cn('flex-1 flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300', goals.length > 0 ? 'bg-red-600 text-white shadow-xl shadow-red-600/25 hover:shadow-2xl' : 'bg-muted text-muted-foreground cursor-not-allowed')}>Continue <ArrowRight className="w-5 h-5" /></button>
@@ -350,6 +388,7 @@ export default function OnboardingPage() {
                 <div className="rounded-xl bg-muted/50 p-3"><p className="text-xs text-muted-foreground uppercase tracking-wider">Age</p><p className="font-bold">{ageRange}</p></div>
                 <div className="rounded-xl bg-muted/50 p-3"><p className="text-xs text-muted-foreground uppercase tracking-wider">Sports</p><p className="font-bold">{sports.join(', ')}</p></div>
                 {goals.length > 0 && <div className="rounded-xl bg-muted/50 p-3 col-span-2"><p className="text-xs text-muted-foreground uppercase tracking-wider">Events</p><p className="font-bold">{goals.join(', ')}</p></div>}
+                {eventDate && <div className="rounded-xl bg-muted/50 p-3 col-span-2"><p className="text-xs text-muted-foreground uppercase tracking-wider">Event Date</p><p className="font-bold">{format(eventDate, 'MMMM d, yyyy')}</p></div>}
                 {gender && <div className="rounded-xl bg-muted/50 p-3"><p className="text-xs text-muted-foreground uppercase tracking-wider">Gender</p><p className="font-bold">{gender}</p></div>}
                 <div className="rounded-xl bg-muted/50 p-3"><p className="text-xs text-muted-foreground uppercase tracking-wider">Level</p><p className="font-bold">{experience || 'Not set'}</p></div>
               </div>
