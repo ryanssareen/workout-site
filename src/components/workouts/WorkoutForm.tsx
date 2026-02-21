@@ -55,11 +55,16 @@ interface WorkoutFormProps {
 }
 
 export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAthleteSelector }: WorkoutFormProps) {
-  const FORM_DEFAULTS: Partial<WorkoutSchema> = {
-    type: 'run',
+  // Type-agnostic defaults (always applied)
+  const BASE_DEFAULTS: Partial<WorkoutSchema> = {
     date: new Date(),
     tags: [],
     isRecurring: false,
+  };
+
+  // Only used when no type-specific data is provided
+  const FALLBACK_TYPE_DEFAULTS: Partial<WorkoutSchema> = {
+    type: 'run',
     run: {
       distance: 5,
       distanceUnit: 'km',
@@ -68,15 +73,24 @@ export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAt
     },
   };
 
+  const buildDefaults = (overrides?: Partial<WorkoutSchema>) => {
+    const base = { ...BASE_DEFAULTS, ...overrides };
+    // Only inject fallback type/run if no type was provided
+    if (!base.type) {
+      return { ...FALLBACK_TYPE_DEFAULTS, ...base };
+    }
+    return base;
+  };
+
   const { register, handleSubmit, formState: { errors, isSubmitting }, setValue, watch, control, reset } = useForm<WorkoutSchema>({
     resolver: zodResolver(workoutSchema),
-    defaultValues: { ...FORM_DEFAULTS, ...defaultValues },
+    defaultValues: buildDefaults(defaultValues),
   });
 
   // Reset form when defaultValues change (e.g., when AI data loads)
   useEffect(() => {
     if (defaultValues) {
-      reset({ ...FORM_DEFAULTS, ...defaultValues });
+      reset(buildDefaults(defaultValues));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultValues, reset]);
