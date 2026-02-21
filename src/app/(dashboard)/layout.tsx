@@ -26,9 +26,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       return;
     }
 
-    if (user.onboardingCompleted !== false && isOnboardingPage) {
-      router.replace('/dashboard');
-    }
+    // Onboarding page is always accessible — finish/skip handlers route out
   }, [user, loading, pathname, router]);
 
   if (loading) {
