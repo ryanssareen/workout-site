@@ -15,7 +15,8 @@ interface WorkoutSuggestion {
   name: string;
   type: 'run' | 'swim' | 'bike' | 'strength' | 'other';
   date?: string;
-  difficulty?: string;
+  intensity?: string;
+  durationMin?: number;
   estimatedDuration?: number;
   sessionType?: string;
   description?: string;
@@ -25,11 +26,16 @@ interface WorkoutSuggestion {
   warmup?: string;
   mainSet?: string;
   cooldown?: string;
+  sessionLoad?: number;
+  aiModified?: boolean;
+  changesCount?: number;
+  loadDeltaPercent?: number;
   run?: any;
   swim?: any;
   bike?: any;
   strength?: any;
   other?: any;
+  specs?: Record<string, any>;
 }
 
 interface TrainingAnalysis {
@@ -41,6 +47,7 @@ interface TrainingAnalysis {
   phase?: string;
   weeksOut?: number | null;
   deload?: boolean;
+  fatigueState?: string;
 }
 
 interface AthleteProfile {
@@ -68,6 +75,7 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
   const [error, setError] = useState<string | null>(null);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [analysis, setAnalysis] = useState<TrainingAnalysis | null>(null);
+  const [aiEnhanced, setAiEnhanced] = useState(false);
 
   const loadSuggestions = async () => {
     setLoading(true);
@@ -104,6 +112,7 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
 
       const data = await response.json();
       setAnalysis(data.analysis || null);
+      setAiEnhanced(data.aiEnhanced ?? false);
 
       const rawSuggestions = data.suggestions;
       if (!Array.isArray(rawSuggestions) || rawSuggestions.length === 0) {
@@ -111,11 +120,21 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
         return;
       }
 
-      setSuggestions(rawSuggestions.map((s: any) => ({
-        ...s,
-        benefits: Array.isArray(s.benefits) ? s.benefits : [],
-        tags: Array.isArray(s.tags) ? s.tags : [],
-      })));
+      // Normalize: flatten specs into top-level type keys for form compatibility
+      setSuggestions(rawSuggestions.map((s: any) => {
+        const specs = s.specs || {};
+        return {
+          ...s,
+          // Flatten specs.run → s.run etc for form + display
+          ...(specs.run && !s.run ? { run: specs.run } : {}),
+          ...(specs.swim && !s.swim ? { swim: specs.swim } : {}),
+          ...(specs.bike && !s.bike ? { bike: specs.bike } : {}),
+          ...(specs.strength && !s.strength ? { strength: specs.strength } : {}),
+          ...(specs.other && !s.other ? { other: specs.other } : {}),
+          benefits: Array.isArray(s.benefits) ? s.benefits : [],
+          tags: Array.isArray(s.tags) ? s.tags : [],
+        };
+      }));
     } catch (err: any) {
       setError(err.message || 'Failed to load suggestions');
     } finally {
@@ -124,7 +143,27 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
   };
 
   const handleUseWorkout = (suggestion: WorkoutSuggestion) => {
-    sessionStorage.setItem('aiWorkoutData', JSON.stringify(suggestion));
+    // Flatten for form compatibility
+    const formData = {
+      name: suggestion.name,
+      type: suggestion.type,
+      date: suggestion.date,
+      description: suggestion.description
+        || [suggestion.warmup, suggestion.mainSet, suggestion.cooldown].filter(Boolean).join('\n\n'),
+      tags: suggestion.tags,
+      difficulty: suggestion.intensity,
+      estimatedDuration: suggestion.durationMin || suggestion.estimatedDuration,
+      run: suggestion.run,
+      swim: suggestion.swim,
+      bike: suggestion.bike,
+      strength: suggestion.strength,
+      other: suggestion.other,
+      // Pass full AI data for reference
+      warmup: suggestion.warmup,
+      mainSet: suggestion.mainSet,
+      cooldown: suggestion.cooldown,
+    };
+    sessionStorage.setItem('aiWorkoutData', JSON.stringify(formData));
     router.push('/workouts/new?aiGenerated=true');
   };
 
@@ -138,7 +177,7 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
     }
   };
 
-  const getDifficultyColor = (d?: string) => {
+  const getIntensityColor = (d?: string) => {
     switch (d) {
       case 'easy': return 'bg-green-500/10 text-green-700 dark:text-green-400';
       case 'hard': return 'bg-red-500/10 text-red-700 dark:text-red-400';
@@ -152,7 +191,7 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
     if (s.bike) return `${s.bike.distance} ${s.bike.distanceUnit} · ${s.bike.time} min${s.bike.elevationGain ? ` · ${s.bike.elevationGain}m↑` : ''}`;
     if (s.strength) return `${s.strength.totalTime} min · RPE ${s.strength.rpe || '?'}/10`;
     if (s.other) return `${s.other.duration} min`;
-    return `${s.estimatedDuration || '?'} min`;
+    return `${s.durationMin || s.estimatedDuration || '?'} min`;
   };
 
   return (
@@ -169,7 +208,7 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
             </Button>
           )}
         </div>
-        <CardDescription>Personalized workouts based on your history, level, and goals</CardDescription>
+        <CardDescription>Personalized workouts based on your history, level, and goals — logic engine + AI coaching</CardDescription>
       </CardHeader>
 
       {error && (
@@ -180,6 +219,15 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
 
       {suggestions.length > 0 && (
         <CardContent className="space-y-3">
+          {/* Validation Status */}
+          <div className="flex items-center gap-2">
+            {aiEnhanced ? (
+              <Badge className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30">✓ AI-Enhanced & Validated</Badge>
+            ) : (
+              <Badge variant="outline" className="text-xs">Logic-Only (AI skipped or failed validation)</Badge>
+            )}
+          </div>
+
           {/* Training Snapshot */}
           {analysis && (
             <div className="rounded-lg border border-red-200 dark:border-red-800 bg-white/70 dark:bg-red-950/20 p-3 space-y-2">
@@ -191,11 +239,13 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
                 <div><span className="font-medium text-foreground">Completion:</span> {analysis.completedRate ?? 0}%</div>
                 <div><span className="font-medium text-foreground">Avg Session:</span> {analysis.avgDuration ?? 0} min</div>
                 <div><span className="font-medium text-foreground">Last:</span> {typeof analysis.daysSinceLast === 'number' ? `${analysis.daysSinceLast}d ago` : 'Unknown'}</div>
-                {analysis.phase && analysis.phase !== 'general' && (
-                  <div className="col-span-2 sm:col-span-4">
-                    <span className="font-medium text-foreground">Phase:</span>{' '}
-                    <Badge variant="outline" className="text-xs ml-1">{analysis.phase}{analysis.weeksOut ? ` (${analysis.weeksOut}w to event)` : ''}</Badge>
-                    {analysis.deload && <Badge variant="outline" className="text-xs ml-1 border-amber-500 text-amber-600">Deload Week</Badge>}
+                {(analysis.phase && analysis.phase !== 'general') && (
+                  <div className="col-span-2 sm:col-span-4 flex items-center gap-1.5 flex-wrap">
+                    <span className="font-medium text-foreground">Phase:</span>
+                    <Badge variant="outline" className="text-xs">{analysis.phase}{analysis.weeksOut ? ` (${analysis.weeksOut}w to event)` : ''}</Badge>
+                    {analysis.deload && <Badge variant="outline" className="text-xs border-amber-500 text-amber-600">Deload</Badge>}
+                    {analysis.fatigueState === 'fatigued' && <Badge variant="outline" className="text-xs border-red-500 text-red-600">Fatigued</Badge>}
+                    {analysis.fatigueState === 'loaded' && <Badge variant="outline" className="text-xs border-yellow-500 text-yellow-600">Loaded</Badge>}
                   </div>
                 )}
               </div>
@@ -214,7 +264,8 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
                       <div className="flex items-center gap-2 flex-wrap">
                         <h4 className="font-semibold text-base">{s.name}</h4>
                         <Badge className={`capitalize border ${getTypeColor(s.type)}`}>{s.type}</Badge>
-                        {s.difficulty && <Badge className={`text-xs ${getDifficultyColor(s.difficulty)}`}>{s.difficulty}</Badge>}
+                        {s.intensity && <Badge className={`text-xs ${getIntensityColor(s.intensity)}`}>{s.intensity}</Badge>}
+                        {s.aiModified && <Badge variant="outline" className="text-xs border-blue-400 text-blue-600">AI-adjusted</Badge>}
                       </div>
                       {/* Date + Specs line */}
                       <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
