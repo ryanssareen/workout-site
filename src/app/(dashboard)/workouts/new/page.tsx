@@ -98,11 +98,12 @@ export default function NewWorkoutPage() {
 
     setLoading(true);
     try {
-      const workoutData = isUnconnectedAthlete
-        ? { ...data, assignedTo: user.uid }
-        : data;
+      const workoutData = {
+        ...data,
+        assignedTo: isUnconnectedAthlete ? user.uid : (data.assignedTo || user.uid),
+      };
 
-      await createWorkout(workoutData, user.uid);
+      await createWorkout(workoutData as any, user.uid);
 
       toast.success('Workout created successfully!');
 
@@ -245,7 +246,7 @@ export default function NewWorkoutPage() {
               ...(templateData.bike && { bike: templateData.bike }),
               ...(templateData.strength && { strength: templateData.strength }),
               ...(templateData.other && { other: templateData.other }),
-            } : undefined}
+            } : (isUnconnectedAthlete ? { assignedTo: user?.uid } : undefined)}
           />
         </CardContent>
       </Card>

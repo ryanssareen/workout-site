@@ -55,19 +55,21 @@ interface WorkoutFormProps {
 }
 
 export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAthleteSelector }: WorkoutFormProps) {
+  const FORM_DEFAULTS: Partial<WorkoutSchema> = {
+    type: 'run',
+    date: new Date(),
+    tags: [],
+    isRecurring: false,
+    run: {
+      distance: 5,
+      distanceUnit: 'km',
+      time: 30,
+    },
+  };
+
   const { register, handleSubmit, formState: { errors, isSubmitting }, setValue, watch, control, reset } = useForm<WorkoutSchema>({
     resolver: zodResolver(workoutSchema),
-    defaultValues: defaultValues || {
-      type: 'run',
-      date: new Date(),
-      tags: [],
-      isRecurring: false,
-      run: {
-        distance: 5,
-        distanceUnit: 'km',
-        time: 30,
-      },
-    },
+    defaultValues: { ...FORM_DEFAULTS, ...defaultValues },
   });
 
   // Reset form when defaultValues change (e.g., when AI data loads)
@@ -125,8 +127,20 @@ export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAt
     }
   );
 
-  // Get all error messages for display
-  const allErrors = Object.entries(errors).filter(([key, value]) => value?.message);
+  // Get all error messages for display (including nested)
+  const flattenErrors = (obj: any, prefix = ''): Array<[string, string]> => {
+    const result: Array<[string, string]> = [];
+    for (const [key, value] of Object.entries(obj)) {
+      const path = prefix ? `${prefix}.${key}` : key;
+      if (value && typeof value === 'object' && 'message' in value && typeof value.message === 'string') {
+        result.push([path, value.message]);
+      } else if (value && typeof value === 'object') {
+        result.push(...flattenErrors(value, path));
+      }
+    }
+    return result;
+  };
+  const allErrors = flattenErrors(errors);
 
   return (
     <form onSubmit={onFormSubmit} className="space-y-6">
@@ -138,8 +152,8 @@ export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAt
             Please fix the following errors:
           </div>
           <ul className="list-disc list-inside text-sm text-red-600 dark:text-red-400 space-y-1">
-            {allErrors.map(([key, error]) => (
-              <li key={key}>{error?.message}</li>
+            {allErrors.map(([path, message]) => (
+              <li key={path}>{message}</li>
             ))}
           </ul>
         </div>

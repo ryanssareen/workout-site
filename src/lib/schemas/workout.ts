@@ -3,27 +3,27 @@ import { WORKOUT_TAGS } from '@/types/workout';
 
 // Type-specific schemas
 const swimDataSchema = z.object({
-  distance: z.number().min(0.1, 'Distance must be greater than 0'),
+  distance: z.number().min(0, 'Distance is required'),
   distanceUnit: z.enum(['meters', 'yards']),
-  time: z.number().min(0.1, 'Time must be greater than 0'),
+  time: z.number().min(0, 'Time is required'),
   strokes: z.number().optional(),
   strokeType: z.enum(['freestyle', 'backstroke', 'breaststroke', 'butterfly', 'mixed']).optional(),
   poolLength: z.union([z.literal(25), z.literal(50)]).optional(),
 });
 
 const bikeDataSchema = z.object({
-  distance: z.number().min(0.1, 'Distance must be greater than 0'),
+  distance: z.number().min(0, 'Distance is required'),
   distanceUnit: z.enum(['km', 'miles']),
-  time: z.number().min(0.1, 'Time must be greater than 0'),
+  time: z.number().min(0, 'Time is required'),
   avgPower: z.number().optional(),
   avgCadence: z.number().optional(),
   elevationGain: z.number().optional(),
 });
 
 const runDataSchema = z.object({
-  distance: z.number().min(0.1, 'Distance must be greater than 0'),
+  distance: z.number().min(0, 'Distance is required'),
   distanceUnit: z.enum(['km', 'miles']),
-  time: z.number().min(0.1, 'Time must be greater than 0'),
+  time: z.number().min(0, 'Time is required'),
   pace: z.string().optional(),
   elevationGain: z.number().optional(),
   terrain: z.enum(['road', 'trail', 'track', 'treadmill']).optional(),
@@ -67,7 +67,7 @@ export const workoutSchema = z.object({
   date: z.date({
     message: 'Please select a date',
   }),
-  assignedTo: z.string().min(1, 'Please select a student'),
+  assignedTo: z.string().optional(),
   
   // Tags (optional, 0-5 tags)
   tags: z.array(workoutTagSchema).max(5, 'Maximum 5 tags allowed').optional(),
