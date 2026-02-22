@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   Circle,
   Send,
-  Clock,
   Route,
   Timer,
 } from 'lucide-react';
@@ -39,24 +38,53 @@ const TYPE_CONFIG: Record<string, { emoji: string; color: string; border: string
 };
 
 function getTypeData(w: Workout) {
-  const d: Record<string, any> = {};
+  const d: Record<string, string> = {};
+  
+  // Primary stat (distance or sets)
   if (w.type === 'run' && w.run) {
-    if (w.run.distance) d.distance = `${w.run.distance} ${w.run.distanceUnit || 'km'}`;
-    if (w.run.time) d.duration = formatDur(w.run.time);
-    if (w.run.elevationGain) d.elev = `${w.run.elevationGain}m`;
-    if (w.run.avgHeartRate) d.hr = `${w.run.avgHeartRate} bpm`;
+    d.primary = w.run.distance ? `${w.run.distance} ${w.run.distanceUnit || 'km'}` : '--';
+    d.primaryLabel = 'DISTANCE';
+    d.time = w.run.time ? formatDur(w.run.time) : (w.duration ? formatDur(w.duration) : '0:00');
+    d.hr = w.run.avgHeartRate ? `${w.run.avgHeartRate}` : '--';
+    d.hrLabel = 'AVG HR';
+    d.stat4 = w.run.elevationGain ? `${w.run.elevationGain}m` : (w.run.pace ? `${w.run.pace}` : '--');
+    d.stat4Label = w.run.elevationGain ? 'ELEV' : 'PACE';
   } else if (w.type === 'bike' && w.bike) {
-    if (w.bike.distance) d.distance = `${w.bike.distance} ${w.bike.distanceUnit || 'km'}`;
-    if (w.bike.time) d.duration = formatDur(w.bike.time);
-    if (w.bike.elevationGain) d.elev = `${w.bike.elevationGain}m`;
-    if (w.bike.avgHeartRate) d.hr = `${w.bike.avgHeartRate} bpm`;
+    d.primary = w.bike.distance ? `${w.bike.distance} ${w.bike.distanceUnit || 'km'}` : '--';
+    d.primaryLabel = 'DISTANCE';
+    d.time = w.bike.time ? formatDur(w.bike.time) : (w.duration ? formatDur(w.duration) : '0:00');
+    d.hr = w.bike.avgHeartRate ? `${w.bike.avgHeartRate}` : '--';
+    d.hrLabel = 'AVG HR';
+    d.stat4 = w.bike.elevationGain ? `${w.bike.elevationGain}m` : '--';
+    d.stat4Label = 'ELEV';
   } else if (w.type === 'swim' && w.swim) {
-    if (w.swim.distance) d.distance = `${w.swim.distance} ${w.swim.distanceUnit || 'm'}`;
-    if (w.swim.time) d.duration = formatDur(w.swim.time);
+    d.primary = w.swim.distance ? `${w.swim.distance} ${w.swim.distanceUnit || 'm'}` : '--';
+    d.primaryLabel = 'DISTANCE';
+    d.time = w.swim.time ? formatDur(w.swim.time) : (w.duration ? formatDur(w.duration) : '0:00');
+    d.hr = '--';
+    d.hrLabel = 'AVG HR';
+    d.stat4 = '--';
+    d.stat4Label = 'PACE';
   } else if (w.type === 'strength' && w.strength) {
-    d.exercises = `${w.strength.exercises?.length || 0} exercises`;
+    const exCount = w.strength.exercises?.length || 0;
+    const totalSets = w.strength.exercises?.reduce((sum, ex) => sum + (ex.sets || 0), 0) || 0;
+    d.primary = totalSets > 0 ? `${totalSets} Sets` : (exCount > 0 ? `${exCount} Ex` : '--');
+    d.primaryLabel = totalSets > 0 ? 'TOTAL SETS' : 'EXERCISES';
+    d.time = w.duration ? formatDur(w.duration) : '0:00';
+    d.hr = '--';
+    d.hrLabel = 'AVG HR';
+    d.stat4 = '--';
+    d.stat4Label = 'CALORIES';
+  } else {
+    d.primary = '--';
+    d.primaryLabel = 'DISTANCE';
+    d.time = w.duration ? formatDur(w.duration) : '0:00';
+    d.hr = '--';
+    d.hrLabel = 'AVG HR';
+    d.stat4 = '--';
+    d.stat4Label = '';
   }
-  if (!d.duration && w.duration) d.duration = formatDur(w.duration);
+  d.timeLabel = 'TIME';
   return d;
 }
 
@@ -381,28 +409,28 @@ export default function CalendarPage() {
 
                 {dayWorkouts.map(workout => {
                   const cfg = TYPE_CONFIG[workout.type] || TYPE_CONFIG.other;
-                  const typeData = getTypeData(workout);
+                  const stats = getTypeData(workout);
                   const isMissed = past && !workout.completed;
 
                   return (
                     <Link key={workout.id} href={`/workouts/${workout.id}`}
                       className={cn(
-                        'block rounded-xl border-l-4 p-3.5 transition-all hover:shadow-lg hover:scale-[1.01]',
+                        'block rounded-lg border-l-[3px] transition-all hover:bg-muted/50',
                         'border bg-card',
                         cfg.border,
-                        isMissed && 'border-red-400/40 bg-red-500/5',
+                        isMissed && 'opacity-60',
                       )}
                     >
-                      {/* Header: type badge + complete toggle */}
-                      <div className="flex items-center justify-between gap-1 mb-2">
-                        <div className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider', cfg.bg, cfg.color)}>
-                          <span>{cfg.emoji}</span>
-                          {workout.type}
+                      {/* Top: icon + name + toggle */}
+                      <div className="flex items-start gap-2 px-3 pt-2.5 pb-1.5">
+                        <span className="text-lg mt-0.5 shrink-0">{cfg.emoji}</span>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-[13px] font-bold leading-tight line-clamp-1">{workout.name}</h3>
+                          <p className={cn('text-[10px] font-semibold uppercase tracking-wider mt-0.5', cfg.color)}>{workout.type === 'strength' ? 'Strength Training' : workout.type === 'bike' ? 'Cycling' : workout.type === 'swim' ? 'Swimming' : workout.type === 'run' ? 'Running' : workout.type}</p>
                         </div>
                         <button
                           onClick={(e) => handleToggleComplete(e, workout)}
-                          className="shrink-0 opacity-50 hover:opacity-100 transition-opacity"
-                          title={workout.completed ? 'Mark incomplete' : 'Mark complete'}
+                          className="shrink-0 mt-0.5 opacity-40 hover:opacity-100 transition-opacity"
                         >
                           {workout.completed
                             ? <CheckCircle2 className="h-4 w-4 text-green-500" />
@@ -410,33 +438,32 @@ export default function CalendarPage() {
                         </button>
                       </div>
 
-                      {/* Workout name */}
-                      <h3 className="text-[13px] font-bold leading-snug line-clamp-2">{workout.name}</h3>
-
-                      {/* Duration + Distance */}
-                      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3 shrink-0 opacity-50" />
-                          <span className="font-semibold text-foreground/80">{typeData.duration || '0:00'}</span>
+                      {/* Stats grid - Garmin style */}
+                      <div className="grid grid-cols-2 border-t mx-1 mb-1">
+                        <div className="px-2.5 py-1.5 border-r border-b">
+                          <div className="text-xs font-bold truncate">{stats.primary}</div>
+                          <div className="text-[9px] text-muted-foreground font-semibold tracking-wider">{stats.primaryLabel}</div>
                         </div>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Route className="h-3 w-3 shrink-0 opacity-50" />
-                          <span className="font-semibold text-foreground/80">{typeData.distance || '0 km'}</span>
+                        <div className="px-2.5 py-1.5 border-b">
+                          <div className="text-xs font-bold">{stats.time}</div>
+                          <div className="text-[9px] text-muted-foreground font-semibold tracking-wider">{stats.timeLabel}</div>
+                        </div>
+                        <div className="px-2.5 py-1.5 border-r">
+                          <div className="text-xs font-bold">{stats.hr}{stats.hr !== '--' ? ' bpm' : ''}</div>
+                          <div className="text-[9px] text-muted-foreground font-semibold tracking-wider">{stats.hrLabel}</div>
+                        </div>
+                        <div className="px-2.5 py-1.5">
+                          <div className="text-xs font-bold">{stats.stat4}</div>
+                          <div className="text-[9px] text-muted-foreground font-semibold tracking-wider">{stats.stat4Label}</div>
                         </div>
                       </div>
 
-                      {/* Status */}
+                      {/* Status badge */}
                       {(isMissed || workout.completed) && (
-                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                          {isMissed && (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold text-red-600 bg-red-500/10">Missed</span>
-                          )}
-                          {workout.completed && workout.completedLate && (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold text-amber-600 bg-amber-500/10">Late</span>
-                          )}
-                          {workout.completed && !workout.completedLate && (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold text-green-600 bg-green-500/10">✓ Done</span>
-                          )}
+                        <div className="px-3 pb-2">
+                          {isMissed && <span className="text-[9px] font-bold text-red-500">MISSED</span>}
+                          {workout.completed && workout.completedLate && <span className="text-[9px] font-bold text-amber-500">LATE</span>}
+                          {workout.completed && !workout.completedLate && <span className="text-[9px] font-bold text-green-500">✓ DONE</span>}
                         </div>
                       )}
                     </Link>

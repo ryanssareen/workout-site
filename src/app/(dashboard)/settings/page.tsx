@@ -179,7 +179,7 @@ function SettingsContent() {
           </div>
           <div className="flex items-center gap-2">
             <p className="text-xs text-muted-foreground">Role</p>
-            <Badge variant="secondary" className="capitalize">{user?.role}</Badge>
+            <Badge variant="secondary" className="capitalize">{user?.role === 'student' ? 'athlete' : user?.role}</Badge>
           </div>
         </CardContent>
       </Card>
