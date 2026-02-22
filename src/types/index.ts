@@ -46,6 +46,10 @@ export interface User {
   profileCompleted?: number;
   onboardingCompleted?: boolean;
   onboardingSkipped?: boolean;
+  height?: number; // in cm
+  heightUnit?: 'cm' | 'ft';
+  weight?: number; // in kg
+  weightUnit?: 'kg' | 'lbs';
 }
 
 export interface StravaActivityStats {

@@ -386,6 +386,38 @@ export interface DuplicateGroup {
   workouts: Workout[];
 }
 
+// Normalize distance to meters from any workout format
+function getDistanceMeters(w: Workout): number {
+  if (w.actualStats?.distance) return w.actualStats.distance;
+  if (w.type === 'run' && w.run?.distance) {
+    const unit = w.run.distanceUnit || 'km';
+    if (unit === 'miles') return w.run.distance * 1609.34;
+    return w.run.distance * 1000; // km → m
+  }
+  if (w.type === 'bike' && w.bike?.distance) {
+    const unit = w.bike.distanceUnit || 'km';
+    if (unit === 'miles') return w.bike.distance * 1609.34;
+    return w.bike.distance * 1000;
+  }
+  if (w.type === 'swim' && w.swim?.distance) {
+    const unit = w.swim.distanceUnit || 'meters';
+    if (unit === 'yards') return w.swim.distance * 0.9144;
+    return w.swim.distance; // already meters
+  }
+  return 0;
+}
+
+// Normalize duration to seconds from any workout format
+function getDurationSeconds(w: Workout): number {
+  if (w.actualStats?.duration) return w.actualStats.duration;
+  // Type-specific time fields are in minutes
+  if (w.type === 'run' && w.run?.time) return w.run.time * 60;
+  if (w.type === 'bike' && w.bike?.time) return w.bike.time * 60;
+  if (w.type === 'swim' && w.swim?.time) return w.swim.time * 60;
+  if (w.duration) return w.duration * 60;
+  return 0;
+}
+
 export function detectDuplicates(workouts: Workout[]): DuplicateGroup[] {
   const groups: DuplicateGroup[] = [];
   const used = new Set<string>();
@@ -457,12 +489,12 @@ export function detectDuplicates(workouts: Workout[]): DuplicateGroup[] {
       const dateS = toDate(strava);
       const hoursDiff = Math.abs(dateM.getTime() - dateS.getTime()) / (1000 * 60 * 60);
       if (manual.type === strava.type && manual.assignedTo === strava.assignedTo && hoursDiff < 24) {
-        const durM = manual.actualStats?.duration || (manual.duration || 0) * 60;
-        const durS = strava.actualStats?.duration || (strava.duration || 0) * 60;
+        const durM = getDurationSeconds(manual);
+        const durS = getDurationSeconds(strava);
         const durationClose = durM > 0 && durS > 0 && Math.abs(durM - durS) / Math.max(durM, durS) < 0.3;
-        const distM = manual.actualStats?.distance || 0;
-        const distS = strava.actualStats?.distance || 0;
-        const distanceClose = distM > 0 && distS > 0 && Math.abs(distM - distS) / Math.max(distM, distS) < 0.05;
+        const distM = getDistanceMeters(manual);
+        const distS = getDistanceMeters(strava);
+        const distanceClose = distM > 0 && distS > 0 && Math.abs(distM - distS) / Math.max(distM, distS) < 0.15;
         // If same type + same day: match on duration/distance, OR if the manual entry has no stats at all (coach-assigned, just marked done)
         const manualNoStats = durM === 0 && distM === 0;
         if (durationClose || distanceClose || manualNoStats) {
@@ -504,17 +536,17 @@ export function detectDuplicates(workouts: Workout[]): DuplicateGroup[] {
       }
       // Same type + very close date (< 2 hours) + similar duration
       else if (sameType && sameUser && hoursDiff < 2) {
-        const durA = a.actualStats?.duration || (a.duration || 0) * 60;
-        const durB = b.actualStats?.duration || (b.duration || 0) * 60;
+        const durA = getDurationSeconds(a);
+        const durB = getDurationSeconds(b);
         if (durA > 0 && durB > 0 && Math.abs(durA - durB) / Math.max(durA, durB) < 0.15) {
           matches.push(b);
         }
       }
       // Same distance (within 1%) + same day + same user (catches renamed Strava re-syncs)
       else if (sameUser && isSameDay(toDate(a), toDate(b))) {
-        const distA = a.actualStats?.distance || 0;
-        const distB = b.actualStats?.distance || 0;
-        if (distA > 0 && distB > 0 && Math.abs(distA - distB) / Math.max(distA, distB) < 0.01) {
+        const distA = getDistanceMeters(a);
+        const distB = getDistanceMeters(b);
+        if (distA > 0 && distB > 0 && Math.abs(distA - distB) / Math.max(distA, distB) < 0.05) {
           matches.push(b);
         }
       }
