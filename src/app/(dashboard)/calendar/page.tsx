@@ -217,6 +217,7 @@ export default function CalendarPage() {
             <h1 className="text-xl font-bold tracking-tight">
               {format(weekStart, 'MMM d')} — {format(addDays(weekStart, 6), 'MMM d, yyyy')}
             </h1>
+            <p className="text-xs text-muted-foreground mt-0.5">Your weekly training plan</p>
           </div>
           <button onClick={() => setWeekStart(addWeeks(weekStart, 1))}
             className="p-2.5 rounded-xl border hover:bg-muted transition-colors">
@@ -395,13 +396,6 @@ export default function CalendarPage() {
                         </div>
                       )}
 
-                      {/* Description preview */}
-                      {workout.description && (
-                        <p className="text-[11px] text-muted-foreground mt-2 line-clamp-2 leading-relaxed">
-                          {workout.description}
-                        </p>
-                      )}
-
                       {/* Footer: source + status */}
                       <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
                         {isStrava && (
@@ -423,16 +417,6 @@ export default function CalendarPage() {
                         )}
                       </div>
 
-                      {/* Tags */}
-                      {workout.tags && workout.tags.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {workout.tags.slice(0, 3).map(tag => (
-                            <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
                     </Link>
                   );
                 })}
