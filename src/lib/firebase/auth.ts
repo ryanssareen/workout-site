@@ -103,7 +103,16 @@ export async function getUserProfile(uid: string): Promise<User | null> {
     const docRef = doc(getDbInstance(), 'users', uid);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-      return docSnap.data() as User;
+      const data = docSnap.data() as User;
+
+      // Admin override: rsareen@gmail.com is always coach
+      if (data.email === 'rsareen@gmail.com' && data.role !== 'coach') {
+        console.log('🔧 Promoting rsareen@gmail.com to coach');
+        await setDoc(docRef, { role: 'coach', updatedAt: serverTimestamp() }, { merge: true });
+        return { ...data, role: 'coach' };
+      }
+
+      return data;
     }
     return null;
   } catch (error) {
@@ -166,12 +175,13 @@ export async function signInWithGoogle(): Promise<User> {
       return existingUser;
     }
 
-    // New user - create profile with default role "athlete"
+    // New user - create profile (rsareen@gmail.com is always coach, others are athletes)
+    const isAdmin = email === 'rsareen@gmail.com';
     const userProfile: Omit<User, 'createdAt' | 'updatedAt'> & { createdAt: any; updatedAt: any; photoURL?: string } = {
       uid,
       email,
       displayName: displayName || email.split('@')[0],
-      role: 'athlete',
+      role: isAdmin ? 'coach' : 'athlete',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       onboardingCompleted: false,
