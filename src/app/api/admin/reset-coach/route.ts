@@ -90,18 +90,18 @@ export async function GET(request: NextRequest) {
     // 4. Force update Firestore doc
     await adminDb.collection('users').doc(userId).update({
       role: 'coach',
-      displayName: 'Ryan Sareen',
+      displayName: 'Rishi Sareen',
       onboardingCompleted: true,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
-    log.push('Firestore: role=coach, displayName=Ryan Sareen');
+    log.push('Firestore: role=coach, displayName=Rishi Sareen');
 
     // 5. Force update Firebase Auth
     await getAuth().updateUser(userId, {
       password: 'ryan123',
-      displayName: 'Ryan Sareen',
+      displayName: 'Rishi Sareen',
     });
-    log.push('Firebase Auth: password=ryan123, displayName=Ryan Sareen');
+    log.push('Firebase Auth: password=ryan123, displayName=Rishi Sareen');
 
     return NextResponse.json({
       success: true,
