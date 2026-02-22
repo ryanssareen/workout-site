@@ -156,7 +156,7 @@ export async function getUserWorkouts(userId: string, role: 'coach' | 'athlete' 
       );
       const coachWorkouts = await getDocs(coachWorkoutsQuery);
       
-      // Query 2: Workouts assigned to students (Strava imports)
+      // Query 2: Workouts assigned to students (Strava imports + file imports)
       // We need to fetch these separately since Firestore doesn't support OR queries well
       const studentWorkouts: Workout[] = [];
       
@@ -168,14 +168,16 @@ export async function getUserWorkouts(userId: string, role: 'coach' | 'athlete' 
           batches.push(batch);
         }
         
+        // Fetch both strava and import sources (can't use two 'in' operators)
         for (const batch of batches) {
-          const studentQuery = query(
-            workoutsRef,
-            where('assignedTo', 'in', batch),
-            where('source', '==', 'strava')
+          const [stravaDocs, importDocs] = await Promise.all([
+            getDocs(query(workoutsRef, where('assignedTo', 'in', batch), where('source', '==', 'strava'))),
+            getDocs(query(workoutsRef, where('assignedTo', 'in', batch), where('source', '==', 'import'))),
+          ]);
+          studentWorkouts.push(
+            ...stravaDocs.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Workout),
+            ...importDocs.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Workout),
           );
-          const studentDocs = await getDocs(studentQuery);
-          studentWorkouts.push(...studentDocs.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Workout));
         }
       }
       
