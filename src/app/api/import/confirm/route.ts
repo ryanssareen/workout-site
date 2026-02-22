@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sessionCache } from '../analyze/route';
 import { getAdminDb } from '@/lib/firebase/admin';
+import { SerializedWorkout } from '@/lib/import/types';
 import * as admin from 'firebase-admin';
 
 export async function POST(request: NextRequest) {
@@ -17,16 +17,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing sessionId or userId' }, { status: 400 });
     }
 
-    const session = sessionCache.get(sessionId);
-    if (!session) {
+    const db = getAdminDb();
+    const sessionDoc = await db.collection('importSessions').doc(sessionId).get();
+
+    if (!sessionDoc.exists) {
       return NextResponse.json({ error: 'Session expired. Please re-upload your file.' }, { status: 404 });
     }
+
+    const session = sessionDoc.data()!;
     if (session.userId !== userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
+    // Deserialize workouts
+    const allWorkouts: SerializedWorkout[] = JSON.parse(session.workouts);
+
     // Filter to selected valid workouts
-    const toImport = session.workouts.filter(
+    const toImport = allWorkouts.filter(
       w => selectedIndexes.includes(w.rowIndex) && w.status !== 'error'
     );
 
@@ -34,7 +41,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No valid workouts to import' }, { status: 400 });
     }
 
-    const db = getAdminDb();
+    const now = new Date();
+    now.setHours(23, 59, 59, 999); // end of today
     const createdIds: string[] = [];
 
     // Firestore batch (max 500 per batch)
@@ -47,14 +55,19 @@ export async function POST(request: NextRequest) {
         const ref = db.collection('workouts').doc();
         createdIds.push(ref.id);
 
-        const workoutDate = admin.firestore.Timestamp.fromDate(workout.date);
+        const workoutDate = new Date(workout.date);
+        const isPast = workoutDate <= now;
+        const workoutTimestamp = admin.firestore.Timestamp.fromDate(workoutDate);
+
         const workoutDoc: Record<string, any> = {
           name: workout.name,
           type: workout.type,
-          date: workoutDate,
-          completed: true,
-          completedAt: workoutDate,
-          completedBy: 'import',
+          date: workoutTimestamp,
+          completed: isPast,
+          ...(isPast ? {
+            completedAt: workoutTimestamp,
+            completedBy: 'import',
+          } : {}),
           source: 'import',
           createdBy: userId,
           assignedTo: userId,
@@ -108,7 +121,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Clean up session
-    sessionCache.delete(sessionId);
+    await db.collection('importSessions').doc(sessionId).delete();
 
     return NextResponse.json({
       success: true,

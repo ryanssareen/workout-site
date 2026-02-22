@@ -64,9 +64,15 @@ export interface ValidatedWorkout extends ParsedWorkout {
   duplicateOf?: string;
 }
 
+// Serialized version for Firestore storage (dates as ISO strings)
+export interface SerializedWorkout extends Omit<ValidatedWorkout, 'date'> {
+  date: string; // ISO string
+}
+
 export interface AnalysisResult {
   sessionId: string;
   totalRows: number;
+  headers: string[]; // column headers for mapping override UI
   mapping: ColumnMapping;
   workouts: ValidatedWorkout[];
   summary: {

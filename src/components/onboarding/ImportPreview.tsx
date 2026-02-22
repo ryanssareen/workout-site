@@ -2,10 +2,11 @@
 
 import { useState, useMemo } from 'react';
 import { AnalysisResult, ValidatedWorkout } from '@/lib/import/types';
-import { CheckCircle2, AlertTriangle, XCircle, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, XCircle, Loader2, ChevronDown, ChevronUp, Settings2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { MappingOverride } from './MappingOverride';
 
 const TYPE_EMOJI: Record<string, string> = {
   run: '🏃', bike: '🚴', swim: '🏊', strength: '💪', other: '📋',
@@ -19,11 +20,12 @@ interface ImportPreviewProps {
   onBack: () => void;
 }
 
-export function ImportPreview({ result, userId, userName, onComplete, onBack }: ImportPreviewProps) {
+export function ImportPreview({ result: initialResult, userId, userName, onComplete, onBack }: ImportPreviewProps) {
+  const [result, setResult] = useState(initialResult);
   const [importing, setImporting] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
+  const [showMapping, setShowMapping] = useState(result.mapping.confidence < 0.6);
   const [excludedIndexes, setExcludedIndexes] = useState<Set<number>>(() => {
-    // Auto-exclude errors and duplicates
     const excluded = new Set<number>();
     result.workouts.forEach(w => {
       if (w.status === 'error' || w.isDuplicate) excluded.add(w.rowIndex);
@@ -31,13 +33,23 @@ export function ImportPreview({ result, userId, userName, onComplete, onBack }: 
     return excluded;
   });
 
+  // Re-compute exclusions when result changes from remap
+  const handleResultUpdate = (newResult: AnalysisResult) => {
+    setResult(newResult);
+    const excluded = new Set<number>();
+    newResult.workouts.forEach(w => {
+      if (w.status === 'error' || w.isDuplicate) excluded.add(w.rowIndex);
+    });
+    setExcludedIndexes(excluded);
+    setShowMapping(false); // collapse mapping after successful remap
+  };
+
   const importable = useMemo(() =>
     result.workouts.filter(w => w.status !== 'error' && !excludedIndexes.has(w.rowIndex)),
     [result.workouts, excludedIndexes]
   );
 
   const errorWorkouts = result.workouts.filter(w => w.status === 'error');
-  const warningWorkouts = result.workouts.filter(w => w.status === 'warning' && !excludedIndexes.has(w.rowIndex));
 
   const toggleExclude = (idx: number) => {
     setExcludedIndexes(prev => {
@@ -83,6 +95,8 @@ export function ImportPreview({ result, userId, userName, onComplete, onBack }: 
     return Object.entries(counts).sort((a, b) => b[1] - a[1]);
   }, [importable]);
 
+  const needsMappingReview = result.mapping.confidence < 0.85;
+
   return (
     <div className="space-y-5">
       <div className="text-center space-y-2">
@@ -100,6 +114,31 @@ export function ImportPreview({ result, userId, userName, onComplete, onBack }: 
               {TYPE_EMOJI[type] || '📋'} {count} {type}{count > 1 ? 's' : ''}
             </span>
           ))}
+        </div>
+      )}
+
+      {/* Mapping override — forced open if low, toggle if medium */}
+      {needsMappingReview && (
+        <div>
+          {result.mapping.confidence >= 0.6 && (
+            <button
+              onClick={() => setShowMapping(!showMapping)}
+              className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl border border-yellow-500/20 bg-yellow-500/5 text-sm font-medium text-yellow-600 dark:text-yellow-400 mb-2 hover:bg-yellow-500/10 transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <Settings2 className="h-4 w-4" />
+                Review column mapping ({Math.round(result.mapping.confidence * 100)}% confidence)
+              </span>
+              {showMapping ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </button>
+          )}
+          {showMapping && (
+            <MappingOverride
+              result={result}
+              userId={userId}
+              onUpdated={handleResultUpdate}
+            />
+          )}
         </div>
       )}
 
@@ -186,14 +225,6 @@ export function ImportPreview({ result, userId, userName, onComplete, onBack }: 
             </div>
           )}
         </div>
-      )}
-
-      {/* AI confidence note */}
-      {result.mapping.confidence < 0.7 && (
-        <p className="text-xs text-muted-foreground text-center">
-          ⚠️ AI confidence: {Math.round(result.mapping.confidence * 100)}% — some columns may be mismatched.
-          {result.mapping.assumptions.length > 0 && ` Assumptions: ${result.mapping.assumptions.join(', ')}`}
-        </p>
       )}
 
       {/* Actions */}
