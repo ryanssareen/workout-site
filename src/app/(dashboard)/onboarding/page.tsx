@@ -5,14 +5,17 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { getDbInstance } from '@/lib/firebase/config';
-import { Loader2, Sparkles, ArrowRight, ArrowLeft, Check, CalendarIcon, X, Pencil } from 'lucide-react';
+import { Loader2, Sparkles, ArrowRight, ArrowLeft, Check, CalendarIcon, X, Pencil, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
+import { FileUploadStep } from '@/components/onboarding/FileUploadStep';
+import { ImportPreview } from '@/components/onboarding/ImportPreview';
+import { AnalysisResult } from '@/lib/import/types';
 
-const STEPS = ['intro', 'gender', 'age', 'sport', 'event', 'goals', 'experience', 'availability', 'preview'] as const;
+const STEPS = ['intro', 'gender', 'age', 'sport', 'event', 'goals', 'experience', 'availability', 'import', 'preview'] as const;
 type Step = typeof STEPS[number];
 
 const GENDERS = ['Male', 'Female', 'Prefer not to say'];
@@ -184,6 +187,8 @@ export default function OnboardingPage() {
   const [availability, setAvailability] = useState('');
   const [saving, setSaving] = useState(false);
   const [editingGoal, setEditingGoal] = useState<string | null>(null);
+  const [importResult, setImportResult] = useState<AnalysisResult | null>(null);
+  const [importedCount, setImportedCount] = useState(0);
 
   const goals = goalEvents.map((e) => e.goal);
   const firstEventDate = goalEvents.find((e) => e.eventDate)?.eventDate;
@@ -297,7 +302,7 @@ export default function OnboardingPage() {
 
   if (!user) return null;
 
-  const visibleStepCount = trainingForEvent === false ? 7 : 8;
+  const visibleStepCount = trainingForEvent === false ? 8 : 9;
   const displayName = user.displayName || 'Athlete';
 
   return (
@@ -530,6 +535,39 @@ export default function OnboardingPage() {
           </div>
         )}
 
+        {/* IMPORT WORKOUT HISTORY */}
+        {step === 'import' && (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <StepDots current={trainingForEvent === false ? 7 : 8} total={visibleStepCount} />
+
+            {!importResult ? (
+              <>
+                <FileUploadStep
+                  userId={user.uid}
+                  onAnalysisComplete={(data: AnalysisResult) => setImportResult(data)}
+                />
+                <div className="flex gap-3">
+                  <button onClick={goBack} className="px-6 py-4 rounded-2xl border-2 border-border text-muted-foreground hover:text-foreground transition-colors"><ArrowLeft className="w-5 h-5" /></button>
+                  <button onClick={goNext} className="flex-1 flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-semibold text-lg bg-red-600 text-white shadow-xl shadow-red-600/25 hover:shadow-2xl transition-all duration-300">
+                    Skip <ArrowRight className="w-5 h-5" />
+                  </button>
+                </div>
+              </>
+            ) : (
+              <ImportPreview
+                result={importResult}
+                userId={user.uid}
+                userName={user.displayName || ''}
+                onComplete={(count: number) => {
+                  setImportedCount(count);
+                  goNext();
+                }}
+                onBack={() => setImportResult(null)}
+              />
+            )}
+          </div>
+        )}
+
         {/* PREVIEW */}
         {step === 'preview' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -569,6 +607,12 @@ export default function OnboardingPage() {
               {availability && (
                 <div className="rounded-xl bg-red-500/5 border border-red-500/20 p-3 text-center">
                   <p className="text-sm font-medium text-red-600 dark:text-red-400">Training {availability}/week</p>
+                </div>
+              )}
+
+              {importedCount > 0 && (
+                <div className="rounded-xl bg-green-500/5 border border-green-500/20 p-3 text-center">
+                  <p className="text-sm font-medium text-green-600 dark:text-green-400">✅ {importedCount} past workouts imported</p>
                 </div>
               )}
 
