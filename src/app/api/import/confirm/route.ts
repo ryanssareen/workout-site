@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sessionCache } from '../analyze/route';
-import { collection, doc, writeBatch, serverTimestamp, Timestamp } from 'firebase/firestore';
-import { getDbInstance } from '@/lib/firebase/config';
+import { getAdminDb } from '@/lib/firebase/admin';
+import * as admin from 'firebase-admin';
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,21 +34,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No valid workouts to import' }, { status: 400 });
     }
 
-    const db = getDbInstance();
-    const workoutsRef = collection(db, 'workouts');
+    const db = getAdminDb();
     const createdIds: string[] = [];
 
     // Firestore batch (max 500 per batch)
     const batchSize = 500;
     for (let i = 0; i < toImport.length; i += batchSize) {
       const chunk = toImport.slice(i, i + batchSize);
-      const batch = writeBatch(db);
+      const batch = db.batch();
 
       for (const workout of chunk) {
-        const ref = doc(workoutsRef);
+        const ref = db.collection('workouts').doc();
         createdIds.push(ref.id);
 
-        const workoutDate = Timestamp.fromDate(workout.date);
+        const workoutDate = admin.firestore.Timestamp.fromDate(workout.date);
         const workoutDoc: Record<string, any> = {
           name: workout.name,
           type: workout.type,
@@ -61,8 +60,8 @@ export async function POST(request: NextRequest) {
           assignedTo: userId,
           assignedToName: userName || '',
           tags: workout.tags || [],
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         };
 
         if (workout.duration) workoutDoc.duration = workout.duration;

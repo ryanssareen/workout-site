@@ -90,7 +90,7 @@ export interface Workout {
   strength?: StrengthData;
   other?: OtherData;
   // Strava sync fields
-  source?: 'manual' | 'strava';
+  source?: 'manual' | 'strava' | 'import';
   stravaActivityId?: string;
   stravaData?: {
     distance?: number;
