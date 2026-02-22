@@ -15,7 +15,6 @@ import {
   Clock,
   Route,
   Mountain,
-  TrendingUp,
   Target,
   Timer,
 } from 'lucide-react';
@@ -34,12 +33,12 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-const TYPE_CONFIG: Record<string, { emoji: string; color: string; border: string; bg: string; ring: string }> = {
-  run: { emoji: '🏃', color: 'text-red-500', border: 'border-l-red-500', bg: 'bg-red-500/8', ring: 'ring-red-500/20' },
-  bike: { emoji: '🚴', color: 'text-amber-500', border: 'border-l-amber-500', bg: 'bg-amber-500/8', ring: 'ring-amber-500/20' },
-  swim: { emoji: '🏊', color: 'text-cyan-500', border: 'border-l-cyan-500', bg: 'bg-cyan-500/8', ring: 'ring-cyan-500/20' },
-  strength: { emoji: '💪', color: 'text-purple-500', border: 'border-l-purple-500', bg: 'bg-purple-500/8', ring: 'ring-purple-500/20' },
-  other: { emoji: '📋', color: 'text-gray-400', border: 'border-l-gray-400', bg: 'bg-gray-500/8', ring: 'ring-gray-500/20' },
+const TYPE_CONFIG: Record<string, { emoji: string; color: string; border: string; bg: string }> = {
+  run: { emoji: '🏃', color: 'text-red-500', border: 'border-l-red-500', bg: 'bg-red-500/8' },
+  bike: { emoji: '🚴', color: 'text-amber-500', border: 'border-l-amber-500', bg: 'bg-amber-500/8' },
+  swim: { emoji: '🏊', color: 'text-cyan-500', border: 'border-l-cyan-500', bg: 'bg-cyan-500/8' },
+  strength: { emoji: '💪', color: 'text-purple-500', border: 'border-l-purple-500', bg: 'bg-purple-500/8' },
+  other: { emoji: '📋', color: 'text-gray-400', border: 'border-l-gray-400', bg: 'bg-gray-500/8' },
 };
 
 function getTypeData(w: Workout) {
@@ -63,6 +62,104 @@ function getTypeData(w: Workout) {
   if (!d.duration && w.duration) d.duration = formatDur(w.duration);
   return d;
 }
+
+/** Generate a smart one-liner summary from workout data + description */
+function generateAiDescription(w: Workout): string {
+  const parts: string[] = [];
+
+  // Infer intensity from tags
+  const tags = (w as any).tags as string[] | undefined;
+  const intensity = tags?.find(t => ['easy', 'moderate', 'hard', 'recovery', 'tempo', 'intervals', 'race'].includes(t));
+
+  // Build type-specific summary
+  if (w.type === 'run') {
+    const dist = w.run?.distance;
+    const dur = w.run?.time || w.duration;
+    const elev = w.run?.elevationGain;
+    if (intensity) parts.push(capitalize(intensity));
+    if (dist) {
+      parts.push(`${dist}${w.run?.distanceUnit || 'km'} run`);
+    } else if (dur) {
+      parts.push(`${formatDur(dur)} run`);
+    } else {
+      parts.push('Run session');
+    }
+    if (dist && dur) parts.push(`in ${formatDur(dur)}`);
+    if (elev && elev > 50) parts.push(`with ${elev}m climbing`);
+    if (w.run?.avgHeartRate) parts.push(`@ ${w.run.avgHeartRate}bpm avg`);
+  } else if (w.type === 'bike') {
+    const dist = w.bike?.distance;
+    const dur = w.bike?.time || w.duration;
+    const elev = w.bike?.elevationGain;
+    if (intensity) parts.push(capitalize(intensity));
+    if (dist) {
+      parts.push(`${dist}${w.bike?.distanceUnit || 'km'} ride`);
+    } else if (dur) {
+      parts.push(`${formatDur(dur)} ride`);
+    } else {
+      parts.push('Bike session');
+    }
+    if (dist && dur) parts.push(`in ${formatDur(dur)}`);
+    if (elev && elev > 50) parts.push(`with ${elev}m elevation`);
+  } else if (w.type === 'swim') {
+    const dist = w.swim?.distance;
+    const dur = w.swim?.time || w.duration;
+    if (intensity) parts.push(capitalize(intensity));
+    if (dist) {
+      parts.push(`${dist}${w.swim?.distanceUnit || 'm'} swim`);
+    } else if (dur) {
+      parts.push(`${formatDur(dur)} swim`);
+    } else {
+      parts.push('Swim session');
+    }
+    if (dist && dur) parts.push(`in ${formatDur(dur)}`);
+  } else if (w.type === 'strength') {
+    const exCount = w.strength?.exercises?.length || 0;
+    const dur = w.duration;
+    if (intensity) parts.push(capitalize(intensity));
+    if (exCount > 0) {
+      const names = w.strength!.exercises!.slice(0, 3).map(e => e.name);
+      parts.push(`${exCount} exercises`);
+      if (dur) parts.push(`in ${formatDur(dur)}`);
+      // Extract key exercises
+      const summary = names.join(', ');
+      if (summary.length > 0 && summary.length < 60) {
+        parts.push(`— ${summary}`);
+      }
+    } else if (dur) {
+      parts.push(`${formatDur(dur)} strength session`);
+    } else {
+      parts.push('Strength session');
+    }
+  } else {
+    if (w.duration) parts.push(`${formatDur(w.duration)} session`);
+    else parts.push('Training session');
+  }
+
+  const aiLine = parts.join(' ');
+
+  // Append description context if it adds info the stats don't cover
+  if (w.description) {
+    const desc = w.description.trim();
+    // If description is short and different from what we already said, append it
+    if (desc.length > 0 && desc.length < 120) {
+      // Avoid repeating obvious stuff
+      const lower = desc.toLowerCase();
+      const alreadySaid = aiLine.toLowerCase();
+      const isRedundant = lower.includes(w.type) && lower.length < 30;
+      if (!isRedundant && !alreadySaid.includes(lower.slice(0, 20))) {
+        return `${aiLine}. ${desc}`;
+      }
+    } else if (desc.length >= 120) {
+      // Trim long descriptions
+      return `${aiLine}. ${desc.slice(0, 100)}…`;
+    }
+  }
+
+  return aiLine;
+}
+
+function capitalize(s: string) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
 function formatDur(mins: number): string {
   const h = Math.floor(mins / 60);
@@ -259,23 +356,62 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* Weekly Grid */}
-      <div className="flex gap-0 border rounded-2xl overflow-hidden" style={{ height: 'calc(100vh - 140px)' }}>
-        {/* Day Columns */}
+      {/* Weekly Summary Bar */}
+      <div className="flex items-center gap-6 px-5 py-3 rounded-xl border bg-muted/20">
+        <div className="flex items-center gap-2">
+          <div className="relative w-10 h-10">
+            <svg className="w-10 h-10 -rotate-90" viewBox="0 0 40 40">
+              <circle cx="20" cy="20" r="16" fill="none" stroke="currentColor" strokeWidth="3" className="text-muted/40" />
+              <circle cx="20" cy="20" r="16" fill="none" stroke="currentColor" strokeWidth="3"
+                className="text-green-500" strokeDasharray={`${completionPct * 1.005} 100.5`} strokeLinecap="round" />
+            </svg>
+            <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black">{completionPct}%</span>
+          </div>
+          <div>
+            <div className="text-xs font-bold">{weekSummary.completed}/{weekSummary.total}</div>
+            <div className="text-[10px] text-muted-foreground">completed</div>
+          </div>
+        </div>
+        <div className="h-8 w-px bg-border" />
+        <div>
+          <div className="text-xs font-bold flex items-center gap-1"><Timer className="h-3 w-3 opacity-50" />{formatDurLong(weekSummary.totalDuration)}</div>
+          <div className="text-[10px] text-muted-foreground">total time</div>
+        </div>
+        {weekSummary.totalDistance > 0 && (
+          <>
+            <div className="h-8 w-px bg-border" />
+            <div>
+              <div className="text-xs font-bold flex items-center gap-1"><Route className="h-3 w-3 opacity-50" />{weekSummary.totalDistance.toFixed(1)} km</div>
+              <div className="text-[10px] text-muted-foreground">distance</div>
+            </div>
+          </>
+        )}
+        <div className="h-8 w-px bg-border" />
+        <div className="flex items-center gap-3">
+          {Object.entries(weekSummary.byType)
+            .sort((a, b) => b[1].count - a[1].count)
+            .map(([type, data]) => {
+              const cfg = TYPE_CONFIG[type] || TYPE_CONFIG.other;
+              return (
+                <div key={type} className="flex items-center gap-1">
+                  <span className="text-sm">{cfg.emoji}</span>
+                  <span className="text-xs font-bold">{data.count}</span>
+                  <span className="text-[10px] text-muted-foreground capitalize">{type}</span>
+                </div>
+              );
+            })}
+        </div>
+      </div>
+
+      {/* Full-width Weekly Grid */}
+      <div className="flex gap-0 border rounded-2xl overflow-hidden" style={{ height: 'calc(100vh - 210px)' }}>
         {weekDays.map((date) => {
           const dayWorkouts = getWorkoutsForDate(date);
           const today = isToday(date);
           const past = isPast(date) && !today;
 
-          // Day totals
           let dayDuration = 0;
-          let dayDistance = 0;
-          dayWorkouts.forEach(w => {
-            dayDuration += w.duration || 0;
-            if (w.run?.distance) dayDistance += w.run.distance;
-            else if (w.bike?.distance) dayDistance += w.bike.distance;
-            else if (w.swim?.distance) dayDistance += w.swim.distance / 1000;
-          });
+          dayWorkouts.forEach(w => { dayDuration += w.duration || 0; });
 
           return (
             <div key={date.toISOString()}
@@ -321,17 +457,18 @@ export default function CalendarPage() {
                   const typeData = getTypeData(workout);
                   const isMissed = past && !workout.completed;
                   const hasStats = Object.keys(typeData).length > 0;
+                  const aiDesc = generateAiDescription(workout);
 
                   return (
                     <Link key={workout.id} href={`/workouts/${workout.id}`}
                       className={cn(
-                        'block rounded-xl border-l-4 p-3 transition-all hover:shadow-lg hover:scale-[1.02]',
+                        'block rounded-xl border-l-4 p-3.5 transition-all hover:shadow-lg hover:scale-[1.01]',
                         'border bg-card',
                         cfg.border,
                         isMissed && 'border-red-400/40 bg-red-500/5',
                       )}
                     >
-                      {/* Header row: type badge + complete toggle */}
+                      {/* Header: type badge + complete toggle */}
                       <div className="flex items-center justify-between gap-1 mb-2">
                         <div className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider', cfg.bg, cfg.color)}>
                           <span>{cfg.emoji}</span>
@@ -349,64 +486,63 @@ export default function CalendarPage() {
                       </div>
 
                       {/* Workout name */}
-                      <h3 className="text-sm font-bold leading-tight line-clamp-2">{workout.name}</h3>
+                      <h3 className="text-[13px] font-bold leading-snug line-clamp-2">{workout.name}</h3>
 
-                      {/* Stats */}
+                      {/* Stats row */}
                       {hasStats && (
-                        <div className="mt-2.5 grid grid-cols-1 gap-1.5">
+                        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
                           {typeData.duration && (
-                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                              <Clock className="h-3 w-3 shrink-0 opacity-60" />
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Clock className="h-3 w-3 shrink-0 opacity-50" />
                               <span className="font-semibold text-foreground/80">{typeData.duration}</span>
                             </div>
                           )}
                           {typeData.distance && (
-                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                              <Route className="h-3 w-3 shrink-0 opacity-60" />
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Route className="h-3 w-3 shrink-0 opacity-50" />
                               <span className="font-semibold text-foreground/80">{typeData.distance}</span>
                             </div>
                           )}
                           {typeData.elev && (
-                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                              <Mountain className="h-3 w-3 shrink-0 opacity-60" />
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Mountain className="h-3 w-3 shrink-0 opacity-50" />
                               <span className="font-semibold text-foreground/80">{typeData.elev}</span>
                             </div>
                           )}
                           {typeData.hr && (
-                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                              <Activity className="h-3 w-3 shrink-0 opacity-60" />
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Activity className="h-3 w-3 shrink-0 opacity-50" />
                               <span className="font-semibold text-foreground/80">{typeData.hr}</span>
                             </div>
                           )}
                           {typeData.exercises && (
-                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                              <Target className="h-3 w-3 shrink-0 opacity-60" />
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Target className="h-3 w-3 shrink-0 opacity-50" />
                               <span className="font-semibold text-foreground/80">{typeData.exercises}</span>
                             </div>
                           )}
                         </div>
                       )}
 
-                      {/* Description */}
-                      {workout.description && (
-                        <p className="text-[11px] text-muted-foreground mt-2 line-clamp-3 leading-relaxed">
-                          {workout.description}
-                        </p>
-                      )}
+                      {/* AI-generated description */}
+                      <p className="text-[11px] text-muted-foreground mt-2 line-clamp-3 leading-relaxed italic">
+                        {aiDesc}
+                      </p>
 
                       {/* Status */}
-                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                        {isMissed && (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold text-red-600 bg-red-500/10">Missed</span>
-                        )}
-                        {workout.completed && workout.completedLate && (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold text-amber-600 bg-amber-500/10">Late</span>
-                        )}
-                        {workout.completed && !workout.completedLate && (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold text-green-600 bg-green-500/10">✓ Done</span>
-                        )}
-                      </div>
-
+                      {(isMissed || workout.completed) && (
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                          {isMissed && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold text-red-600 bg-red-500/10">Missed</span>
+                          )}
+                          {workout.completed && workout.completedLate && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold text-amber-600 bg-amber-500/10">Late</span>
+                          )}
+                          {workout.completed && !workout.completedLate && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold text-green-600 bg-green-500/10">✓ Done</span>
+                          )}
+                        </div>
+                      )}
                     </Link>
                   );
                 })}
@@ -414,106 +550,6 @@ export default function CalendarPage() {
             </div>
           );
         })}
-
-        {/* Weekly Summary Sidebar */}
-        <div className="w-[220px] shrink-0 border-l bg-muted/20 flex flex-col">
-          <div className="px-4 py-4 border-b bg-background">
-            <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Weekly Summary</div>
-            <div className="text-2xl font-black mt-1">Week {format(weekStart, 'w')}</div>
-            <div className="text-xs text-muted-foreground">{format(weekStart, 'MMM d')} – {format(addDays(weekStart, 6), 'MMM d')}</div>
-          </div>
-
-          <div className="flex-1 p-4 space-y-5 overflow-y-auto">
-            {/* Completion ring */}
-            <div className="text-center">
-              <div className="relative inline-flex items-center justify-center">
-                <svg className="w-28 h-28 -rotate-90" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="8" className="text-muted/40" />
-                  <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="8"
-                    className="text-green-500"
-                    strokeDasharray={`${completionPct * 2.64} 264`}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="absolute">
-                  <div className="text-3xl font-black">{completionPct}%</div>
-                </div>
-              </div>
-              <div className="text-sm font-semibold mt-2">{weekSummary.completed} of {weekSummary.total} completed</div>
-            </div>
-
-            {/* Big stat cards */}
-            <div className="space-y-3">
-              <div className="rounded-xl bg-background border p-4">
-                <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                  <Timer className="h-4 w-4" />
-                  <span className="text-xs font-semibold uppercase tracking-wider">Total Duration</span>
-                </div>
-                <div className="text-3xl font-black">{formatDurLong(weekSummary.totalDuration)}</div>
-                {weekSummary.total > 0 && (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Avg {formatDurLong(Math.round(weekSummary.totalDuration / weekSummary.total))}/session
-                  </div>
-                )}
-              </div>
-
-              {weekSummary.totalDistance > 0 && (
-                <div className="rounded-xl bg-background border p-4">
-                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                    <Route className="h-4 w-4" />
-                    <span className="text-xs font-semibold uppercase tracking-wider">Distance</span>
-                  </div>
-                  <div className="text-3xl font-black">{weekSummary.totalDistance.toFixed(1)} <span className="text-lg font-bold text-muted-foreground">km</span></div>
-                </div>
-              )}
-
-            </div>
-
-            {/* Type breakdown */}
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Breakdown by Type</div>
-              <div className="space-y-3">
-                {Object.entries(weekSummary.byType)
-                  .sort((a, b) => b[1].duration - a[1].duration)
-                  .map(([type, data]) => {
-                    const cfg = TYPE_CONFIG[type] || TYPE_CONFIG.other;
-                    const pct = weekSummary.totalDuration > 0 ? Math.round((data.duration / weekSummary.totalDuration) * 100) : 0;
-                    return (
-                      <div key={type} className="rounded-xl bg-background border p-3.5">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">{cfg.emoji}</span>
-                            <span className="text-sm font-bold capitalize">{type}</span>
-                          </div>
-                          <span className="text-xs font-bold text-muted-foreground">{data.count}×</span>
-                        </div>
-                        <div className="h-2 rounded-full bg-muted overflow-hidden mb-2">
-                          <div className={cn('h-full rounded-full transition-all', {
-                            'bg-red-500': type === 'run',
-                            'bg-amber-500': type === 'bike',
-                            'bg-cyan-500': type === 'swim',
-                            'bg-purple-500': type === 'strength',
-                            'bg-gray-400': type === 'other',
-                          })} style={{ width: `${pct}%` }} />
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span className="font-semibold">{formatDurLong(data.duration)}</span>
-                          {data.distance > 0 && <span>{data.distance.toFixed(1)} km</span>}
-                          <span>{pct}%</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                {Object.keys(weekSummary.byType).length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground opacity-40">
-                    <div className="text-3xl mb-2">🏖️</div>
-                    <div className="text-sm font-medium">No workouts this week</div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
