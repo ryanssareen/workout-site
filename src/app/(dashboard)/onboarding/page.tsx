@@ -25,9 +25,11 @@ export default function OnboardingPage() {
   const [error, setError] = useState('');
   const [step, setStep] = useState<'intro' | 'name' | 'body'>('intro');
   const inputRef = useRef<HTMLInputElement>(null);
+  const completingRef = useRef(false);
 
   useEffect(() => {
     if (!user) return;
+    if (completingRef.current) return; // Don't redirect while completing
     if (user.onboardingCompleted !== false) {
       router.replace('/dashboard');
     }
@@ -111,6 +113,7 @@ export default function OnboardingPage() {
 
       await updateDoc(doc(getDbInstance(), 'users', user.uid), updateData);
 
+      completingRef.current = true;
       setUser({
         ...user,
         displayName: name.trim(),
@@ -128,7 +131,7 @@ export default function OnboardingPage() {
     }
   };
 
-  if (!user || user.onboardingCompleted !== false) {
+  if (!user || (user.onboardingCompleted !== false && !completingRef.current)) {
     return null;
   }
 
