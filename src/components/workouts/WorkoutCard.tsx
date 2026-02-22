@@ -151,6 +151,9 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
                 <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{format(workout.date.toDate(), 'MMM d')}</span>
                 {workout.duration && <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{workout.duration}min</span>}
               </div>
+              {workout.assignedToName && (
+                <p className="text-xs text-muted-foreground">For <span className="font-medium text-foreground/80">{workout.assignedToName}</span></p>
+              )}
             </div>
             <Badge variant="secondary" className={cn('capitalize text-xs', getTypeBadge(workout.type))}>{workout.type}</Badge>
           </div>

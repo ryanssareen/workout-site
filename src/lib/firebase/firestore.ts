@@ -199,6 +199,14 @@ export async function getUserWorkouts(userId: string, role: 'coach' | 'athlete' 
         return timeB - timeA;
       });
       
+      // Enrich workouts with athlete names for coach view
+      const nameMap = new Map(students.map(s => [s.uid, s.displayName]));
+      for (const w of uniqueWorkouts) {
+        if (!w.assignedToName && w.assignedTo && w.assignedTo !== userId) {
+          w.assignedToName = nameMap.get(w.assignedTo) || undefined;
+        }
+      }
+
       return uniqueWorkouts;
     }
   } catch (error) {

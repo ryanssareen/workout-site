@@ -78,6 +78,7 @@ export interface Workout {
   tags?: WorkoutTag[]; // NEW: Workout tags
   createdBy: string;
   assignedTo: string;
+  assignedToName?: string; // athlete display name for coach view
   studentId?: string; // alias for assignedTo used in some components
   completed: boolean;
   createdAt: Timestamp;

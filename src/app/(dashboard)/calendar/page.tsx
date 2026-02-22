@@ -462,7 +462,7 @@ export default function CalendarPage() {
                             <div
                               key={idx}
                               className={cn('w-2 h-2 rounded-full', dotColor)}
-                              title={`${workout.name} (${status})`}
+                              title={`${workout.name}${workout.assignedToName ? ` — ${workout.assignedToName}` : ''} (${status})`}
                             />
                           );
                         })}
@@ -550,6 +550,9 @@ export default function CalendarPage() {
                             {workout.type}
                           </Badge>
                         </div>
+                        {workout.assignedToName && (
+                          <p className="text-xs text-muted-foreground">For <span className="font-medium text-foreground/80">{workout.assignedToName}</span></p>
+                        )}
                         <p className="text-sm text-muted-foreground line-clamp-2">
                           {workout.description}
                         </p>
@@ -677,6 +680,9 @@ export default function CalendarPage() {
                   <div>
                     <h3 className="font-semibold">{workout.name}</h3>
                     <p className="text-sm text-muted-foreground capitalize">{workout.type}</p>
+                    {workout.assignedToName && (
+                      <p className="text-xs text-muted-foreground">For <span className="font-medium text-foreground/80">{workout.assignedToName}</span></p>
+                    )}
                   </div>
                   {workout.completed && (
                     <CheckCircle2 className="h-5 w-5 text-green-500" />

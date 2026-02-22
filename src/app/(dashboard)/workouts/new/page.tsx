@@ -103,6 +103,14 @@ export default function NewWorkoutPage() {
         assignedTo: isUnconnectedAthlete ? user.uid : (data.assignedTo || user.uid),
       };
 
+      // Store athlete name on workout for coach view
+      if (isCoach && workoutData.assignedTo && workoutData.assignedTo !== user.uid) {
+        const athlete = students.find((s) => s.uid === workoutData.assignedTo);
+        if (athlete?.displayName) {
+          (workoutData as any).assignedToName = athlete.displayName;
+        }
+      }
+
       await createWorkout(workoutData as any, user.uid);
 
       toast.success('Workout created successfully!');
