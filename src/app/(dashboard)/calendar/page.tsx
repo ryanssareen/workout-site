@@ -10,12 +10,9 @@ import {
   Download,
   CheckCircle2,
   Circle,
-  Activity,
   Send,
   Clock,
   Route,
-  Mountain,
-  Target,
   Timer,
 } from 'lucide-react';
 import {
@@ -62,104 +59,6 @@ function getTypeData(w: Workout) {
   if (!d.duration && w.duration) d.duration = formatDur(w.duration);
   return d;
 }
-
-/** Generate a smart one-liner summary from workout data + description */
-function generateAiDescription(w: Workout): string {
-  const parts: string[] = [];
-
-  // Infer intensity from tags
-  const tags = (w as any).tags as string[] | undefined;
-  const intensity = tags?.find(t => ['easy', 'moderate', 'hard', 'recovery', 'tempo', 'intervals', 'race'].includes(t));
-
-  // Build type-specific summary
-  if (w.type === 'run') {
-    const dist = w.run?.distance;
-    const dur = w.run?.time || w.duration;
-    const elev = w.run?.elevationGain;
-    if (intensity) parts.push(capitalize(intensity));
-    if (dist) {
-      parts.push(`${dist}${w.run?.distanceUnit || 'km'} run`);
-    } else if (dur) {
-      parts.push(`${formatDur(dur)} run`);
-    } else {
-      parts.push('Run session');
-    }
-    if (dist && dur) parts.push(`in ${formatDur(dur)}`);
-    if (elev && elev > 50) parts.push(`with ${elev}m climbing`);
-    if (w.run?.avgHeartRate) parts.push(`@ ${w.run.avgHeartRate}bpm avg`);
-  } else if (w.type === 'bike') {
-    const dist = w.bike?.distance;
-    const dur = w.bike?.time || w.duration;
-    const elev = w.bike?.elevationGain;
-    if (intensity) parts.push(capitalize(intensity));
-    if (dist) {
-      parts.push(`${dist}${w.bike?.distanceUnit || 'km'} ride`);
-    } else if (dur) {
-      parts.push(`${formatDur(dur)} ride`);
-    } else {
-      parts.push('Bike session');
-    }
-    if (dist && dur) parts.push(`in ${formatDur(dur)}`);
-    if (elev && elev > 50) parts.push(`with ${elev}m elevation`);
-  } else if (w.type === 'swim') {
-    const dist = w.swim?.distance;
-    const dur = w.swim?.time || w.duration;
-    if (intensity) parts.push(capitalize(intensity));
-    if (dist) {
-      parts.push(`${dist}${w.swim?.distanceUnit || 'm'} swim`);
-    } else if (dur) {
-      parts.push(`${formatDur(dur)} swim`);
-    } else {
-      parts.push('Swim session');
-    }
-    if (dist && dur) parts.push(`in ${formatDur(dur)}`);
-  } else if (w.type === 'strength') {
-    const exCount = w.strength?.exercises?.length || 0;
-    const dur = w.duration;
-    if (intensity) parts.push(capitalize(intensity));
-    if (exCount > 0) {
-      const names = w.strength!.exercises!.slice(0, 3).map(e => e.name);
-      parts.push(`${exCount} exercises`);
-      if (dur) parts.push(`in ${formatDur(dur)}`);
-      // Extract key exercises
-      const summary = names.join(', ');
-      if (summary.length > 0 && summary.length < 60) {
-        parts.push(`— ${summary}`);
-      }
-    } else if (dur) {
-      parts.push(`${formatDur(dur)} strength session`);
-    } else {
-      parts.push('Strength session');
-    }
-  } else {
-    if (w.duration) parts.push(`${formatDur(w.duration)} session`);
-    else parts.push('Training session');
-  }
-
-  const aiLine = parts.join(' ');
-
-  // Append description context if it adds info the stats don't cover
-  if (w.description) {
-    const desc = w.description.trim();
-    // If description is short and different from what we already said, append it
-    if (desc.length > 0 && desc.length < 120) {
-      // Avoid repeating obvious stuff
-      const lower = desc.toLowerCase();
-      const alreadySaid = aiLine.toLowerCase();
-      const isRedundant = lower.includes(w.type) && lower.length < 30;
-      if (!isRedundant && !alreadySaid.includes(lower.slice(0, 20))) {
-        return `${aiLine}. ${desc}`;
-      }
-    } else if (desc.length >= 120) {
-      // Trim long descriptions
-      return `${aiLine}. ${desc.slice(0, 100)}…`;
-    }
-  }
-
-  return aiLine;
-}
-
-function capitalize(s: string) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
 function formatDur(mins: number): string {
   const h = Math.floor(mins / 60);
@@ -456,8 +355,6 @@ export default function CalendarPage() {
                   const cfg = TYPE_CONFIG[workout.type] || TYPE_CONFIG.other;
                   const typeData = getTypeData(workout);
                   const isMissed = past && !workout.completed;
-                  const hasStats = Object.keys(typeData).length > 0;
-                  const aiDesc = generateAiDescription(workout);
 
                   return (
                     <Link key={workout.id} href={`/workouts/${workout.id}`}
@@ -488,46 +385,17 @@ export default function CalendarPage() {
                       {/* Workout name */}
                       <h3 className="text-[13px] font-bold leading-snug line-clamp-2">{workout.name}</h3>
 
-                      {/* Stats row */}
-                      {hasStats && (
-                        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
-                          {typeData.duration && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <Clock className="h-3 w-3 shrink-0 opacity-50" />
-                              <span className="font-semibold text-foreground/80">{typeData.duration}</span>
-                            </div>
-                          )}
-                          {typeData.distance && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <Route className="h-3 w-3 shrink-0 opacity-50" />
-                              <span className="font-semibold text-foreground/80">{typeData.distance}</span>
-                            </div>
-                          )}
-                          {typeData.elev && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <Mountain className="h-3 w-3 shrink-0 opacity-50" />
-                              <span className="font-semibold text-foreground/80">{typeData.elev}</span>
-                            </div>
-                          )}
-                          {typeData.hr && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <Activity className="h-3 w-3 shrink-0 opacity-50" />
-                              <span className="font-semibold text-foreground/80">{typeData.hr}</span>
-                            </div>
-                          )}
-                          {typeData.exercises && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <Target className="h-3 w-3 shrink-0 opacity-50" />
-                              <span className="font-semibold text-foreground/80">{typeData.exercises}</span>
-                            </div>
-                          )}
+                      {/* Duration + Distance */}
+                      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3 shrink-0 opacity-50" />
+                          <span className="font-semibold text-foreground/80">{typeData.duration || '0:00'}</span>
                         </div>
-                      )}
-
-                      {/* AI-generated description */}
-                      <p className="text-[11px] text-muted-foreground mt-2 line-clamp-3 leading-relaxed italic">
-                        {aiDesc}
-                      </p>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Route className="h-3 w-3 shrink-0 opacity-50" />
+                          <span className="font-semibold text-foreground/80">{typeData.distance || '0 km'}</span>
+                        </div>
+                      </div>
 
                       {/* Status */}
                       {(isMissed || workout.completed) && (
