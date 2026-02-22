@@ -129,7 +129,7 @@ export function CommentSection({
           onCancelReply={() => setReplyingTo(undefined)}
           placeholder={
             currentUserRole === 'coach'
-              ? 'Add a note for your student...'
+              ? 'Add a note for your athlete...'
               : 'How did this workout feel?'
           }
         />

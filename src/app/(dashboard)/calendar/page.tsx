@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { getUserWorkouts, completeWorkout } from '@/lib/firebase/firestore';
+import { getUserWorkouts, completeWorkout, getCoachStudents } from '@/lib/firebase/firestore';
 import { Workout } from '@/types';
 import {
   ChevronLeft,
@@ -82,6 +82,9 @@ export default function CalendarPage() {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [activeTypes, setActiveTypes] = useState<Set<string>>(new Set(['swim', 'bike', 'run', 'strength', 'other']));
   const [sendingReport, setSendingReport] = useState(false);
+  const [athletes, setAthletes] = useState<{ uid: string; displayName: string }[]>([]);
+  const [selectedAthlete, setSelectedAthlete] = useState<string>('all');
+  const isCoach = user?.role === 'coach';
 
   useEffect(() => {
     if (!user) return;
@@ -89,7 +92,12 @@ export default function CalendarPage() {
       setWorkouts(data);
       setLoading(false);
     });
-  }, [user]);
+    if (isCoach) {
+      getCoachStudents(user.uid).then(data => {
+        setAthletes(data.map((a: any) => ({ uid: a.uid, displayName: a.displayName || a.email || 'Unknown' })));
+      });
+    }
+  }, [user, isCoach]);
 
   const weekDays = useMemo(() =>
     eachDayOfInterval({ start: weekStart, end: addDays(weekStart, 6) }),
@@ -97,13 +105,20 @@ export default function CalendarPage() {
   );
 
   const getWorkoutsForDate = (date: Date) =>
-    workouts.filter(w => activeTypes.has(w.type) && isSameDay(w.date.toDate(), date));
+    workouts.filter(w => {
+      if (!activeTypes.has(w.type)) return false;
+      if (!isSameDay(w.date.toDate(), date)) return false;
+      if (isCoach && selectedAthlete !== 'all' && w.assignedTo !== selectedAthlete) return false;
+      return true;
+    });
 
   const weekSummary = useMemo(() => {
     const weekEnd = addDays(weekStart, 6);
     const weekWorkouts = workouts.filter(w => {
       const d = w.date.toDate();
-      return d >= weekStart && d <= weekEnd && activeTypes.has(w.type);
+      if (!(d >= weekStart && d <= weekEnd && activeTypes.has(w.type))) return false;
+      if (isCoach && selectedAthlete !== 'all' && w.assignedTo !== selectedAthlete) return false;
+      return true;
     });
     const completed = weekWorkouts.filter(w => w.completed).length;
     const total = weekWorkouts.length;
@@ -127,7 +142,7 @@ export default function CalendarPage() {
     });
 
     return { completed, total, totalDuration, totalDistance, byType };
-  }, [workouts, weekStart, activeTypes]);
+  }, [workouts, weekStart, activeTypes, selectedAthlete, isCoach]);
 
   const handleToggleComplete = async (e: React.MouseEvent, workout: Workout) => {
     e.preventDefault();
@@ -244,6 +259,19 @@ export default function CalendarPage() {
               );
             })}
           </div>
+          {/* Athlete Picker (coach only) */}
+          {isCoach && athletes.length > 0 && (
+            <select
+              value={selectedAthlete}
+              onChange={(e) => setSelectedAthlete(e.target.value)}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold border bg-background cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500/30"
+            >
+              <option value="all">All Athletes</option>
+              {athletes.map(a => (
+                <option key={a.uid} value={a.uid}>{a.displayName}</option>
+              ))}
+            </select>
+          )}
           <button onClick={generateICS}
             className="p-2.5 rounded-xl border hover:bg-muted transition-colors" title="Export week">
             <Download className="h-4 w-4" />

@@ -62,7 +62,7 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
 
   const handleCompletionClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isCoach) { alert('Workout is to be completed by the Student'); return; }
+    if (isCoach) { alert('Workout is to be completed by the athlete'); return; }
     const workoutDate = workout.date.toDate();
     const today = new Date();
     today.setHours(0, 0, 0, 0);

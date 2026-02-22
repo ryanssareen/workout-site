@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       console.log('⚠️ No athletes found');
       return NextResponse.json({
         suggestions: [],
-        summary: 'No students found. Start by inviting students to join!',
+        summary: 'No athletes found. Start by inviting athletes to join!',
         stats: {
           totalStudents: 0,
           totalWorkouts: 0,
@@ -138,7 +138,7 @@ export async function POST(req: NextRequest) {
         : undefined;
 
       studentStats.push({
-        name: student.displayName || 'Unnamed Student',
+        name: student.displayName || 'Unnamed Athlete',
         email: student.email,
         totalWorkouts: recentWorkouts.length,
         completedWorkouts: completed.length,
@@ -158,14 +158,14 @@ export async function POST(req: NextRequest) {
     const analysisContext = `
 COACHING DASHBOARD ANALYSIS - Last 30 Days
 
-Total Students: ${studentStats.length}
+Total Athletes: ${studentStats.length}
 Total Workouts Assigned: ${studentStats.reduce((sum, s) => sum + s.totalWorkouts, 0)}
 Overall Completion Rate: ${Math.round(
   studentStats.reduce((sum, s) => sum + s.completedWorkouts, 0) / 
   Math.max(studentStats.reduce((sum, s) => sum + s.totalWorkouts, 0), 1) * 100
 )}%
 
-STUDENT BREAKDOWN:
+ATHLETE BREAKDOWN:
 ${studentStats.map(s => `
 - ${s.name} (${s.email}):
   * Completion Rate: ${s.completionRate}%
@@ -177,8 +177,8 @@ ${studentStats.map(s => `
 `).join('\n')}
 
 IDENTIFY:
-1. Students who need attention (low completion, many missed workouts)
-2. Students doing well (consistent, high completion)
+1. Athletes who need attention (low completion, many missed workouts)
+2. Athletes doing well (consistent, high completion)
 3. Patterns (everyone missing Mondays? Too much volume?)
 4. Actionable recommendations for the coach
 
@@ -190,7 +190,7 @@ Provide 5-7 specific, actionable suggestions in JSON format:
       "title": "Short title",
       "description": "Detailed recommendation",
       "priority": "high" | "medium" | "low",
-      "students": ["student names if relevant"]
+      "students": ["athlete names if relevant"]
     }
   ]
 }
@@ -210,7 +210,7 @@ Provide 5-7 specific, actionable suggestions in JSON format:
       messages: [
         {
           role: 'system',
-          content: 'You are an expert fitness coach advisor. Analyze student workout data and provide actionable coaching suggestions. Return ONLY valid JSON, no markdown or explanations.',
+          content: 'You are an expert fitness coach advisor. Analyze athlete workout data and provide actionable coaching suggestions. Return ONLY valid JSON, no markdown or explanations.',
         },
         {
           role: 'user',
@@ -235,7 +235,7 @@ Provide 5-7 specific, actionable suggestions in JSON format:
           {
             type: 'info',
             title: 'Analysis Complete',
-            description: 'Your students are making progress! Keep monitoring their activity.',
+            description: 'Your athletes are making progress! Keep monitoring their activity.',
             priority: 'low',
             students: [],
           },
