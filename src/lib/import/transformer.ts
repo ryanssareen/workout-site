@@ -1,5 +1,5 @@
 import { ColumnMapping, ParsedWorkout, RawRow } from './types';
-import { WorkoutType } from '@/types';
+import { WorkoutType, WorkoutTag } from '@/types';
 
 export function transformRows(rows: RawRow[], mapping: ColumnMapping): ParsedWorkout[] {
   const results: ParsedWorkout[] = [];
@@ -41,7 +41,7 @@ function transformRow(row: RawRow, index: number, mapping: ColumnMapping): Parse
     date,
     duration: duration || undefined,
     description,
-    tags: tags.length > 0 ? tags : undefined,
+    tags: tags.length > 0 ? tags as WorkoutTag[] : undefined,
     distance: distance || undefined,
     distanceUnit: mapping.distanceUnit || 'km',
     pace,
