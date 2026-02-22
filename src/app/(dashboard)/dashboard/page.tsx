@@ -10,7 +10,7 @@ import Link from 'next/link';
 import {
   Calendar, TrendingUp, Target, Zap, ArrowRight,
   CheckCircle2, Clock, UserCircle, Flame, BarChart3,
-  Plus, Sparkles, Activity, Trophy, ChevronRight,
+  Plus, Activity, Trophy, ChevronRight,
 } from 'lucide-react';
 import { format, startOfWeek, endOfWeek, isWithinInterval, differenceInDays, isSameDay, subDays, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -230,9 +230,6 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button asChild size="sm" variant="outline">
-            <Link href="/suggestions"><Sparkles className="h-4 w-4 mr-1.5" />AI Suggest</Link>
-          </Button>
           <Button asChild size="sm">
             <Link href="/workouts/new"><Plus className="h-4 w-4 mr-1.5" />New Workout</Link>
           </Button>
