@@ -4,17 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { getUserWorkouts, completeWorkout } from '@/lib/firebase/firestore';
 import { Workout } from '@/types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -23,190 +13,124 @@ import {
   Activity,
   Filter,
   Send,
-  RefreshCcw,
+  Dumbbell,
 } from 'lucide-react';
 import {
   format,
-  startOfMonth,
-  endOfMonth,
-  eachDayOfInterval,
-  isSameDay,
-  isSameMonth,
-  isToday,
-  addMonths,
-  subMonths,
-  isPast,
   startOfWeek,
   endOfWeek,
-  getWeek,
+  addWeeks,
+  subWeeks,
+  eachDayOfInterval,
+  isSameDay,
+  isToday,
+  isPast,
+  addDays,
 } from 'date-fns';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
+const TYPE_CONFIG: Record<string, { emoji: string; color: string; border: string; bg: string }> = {
+  run: { emoji: '🏃', color: 'text-red-500', border: 'border-l-red-500', bg: 'bg-red-500/10' },
+  bike: { emoji: '🚴', color: 'text-amber-500', border: 'border-l-amber-500', bg: 'bg-amber-500/10' },
+  swim: { emoji: '🏊', color: 'text-cyan-500', border: 'border-l-cyan-500', bg: 'bg-cyan-500/10' },
+  strength: { emoji: '💪', color: 'text-purple-500', border: 'border-l-purple-500', bg: 'bg-purple-500/10' },
+  other: { emoji: '📋', color: 'text-gray-400', border: 'border-l-gray-400', bg: 'bg-gray-500/10' },
+};
+
+function getTypeData(w: Workout) {
+  const d: Record<string, any> = {};
+  if (w.type === 'run' && w.run) {
+    if (w.run.distance) d.distance = `${w.run.distance} ${w.run.distanceUnit || 'km'}`;
+    if (w.run.time) d.duration = formatDur(w.run.time);
+    if (w.run.elevationGain) d.elev = `${w.run.elevationGain}m`;
+  } else if (w.type === 'bike' && w.bike) {
+    if (w.bike.distance) d.distance = `${w.bike.distance} ${w.bike.distanceUnit || 'km'}`;
+    if (w.bike.time) d.duration = formatDur(w.bike.time);
+    if (w.bike.elevationGain) d.elev = `${w.bike.elevationGain}m`;
+  } else if (w.type === 'swim' && w.swim) {
+    if (w.swim.distance) d.distance = `${w.swim.distance} ${w.swim.distanceUnit || 'm'}`;
+    if (w.swim.time) d.duration = formatDur(w.swim.time);
+  } else if (w.type === 'strength' && w.strength) {
+    d.exercises = `${w.strength.exercises?.length || 0} exercises`;
+  }
+  if (!d.duration && w.duration) d.duration = formatDur(w.duration);
+  return d;
+}
+
+function formatDur(mins: number): string {
+  const h = Math.floor(mins / 60);
+  const m = Math.round(mins % 60);
+  if (h === 0) return `${m}min`;
+  return `${h}h ${m.toString().padStart(2, '0')}m`;
+}
+
 export default function CalendarPage() {
-  const user = useAuthStore((state) => state.user);
+  const user = useAuthStore((s) => s.user);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [activeTypes, setActiveTypes] = useState<Set<Workout['type']>>(new Set(['swim', 'bike', 'run', 'strength', 'other']));
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [activeTypes, setActiveTypes] = useState<Set<string>>(new Set(['swim', 'bike', 'run', 'strength', 'other']));
   const [sendingReport, setSendingReport] = useState(false);
 
-  const typeColors: Record<Workout['type'], string> = {
-    swim: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-100',
-    bike: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-100',
-    run: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-100',
-    strength: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-100',
-    other: 'bg-gray-100 text-gray-800 dark:bg-gray-800/60 dark:text-gray-100',
-  };
-
   useEffect(() => {
-    async function loadWorkouts() {
-      if (!user) return;
-
-      const data = await getUserWorkouts(user.uid, user.role);
+    if (!user) return;
+    getUserWorkouts(user.uid, user.role).then(data => {
       setWorkouts(data);
       setLoading(false);
-    }
-
-    loadWorkouts();
+    });
   }, [user]);
 
-  const getWorkoutsForDate = (date: Date) => {
-    return workouts.filter(workout =>
-      activeTypes.has(workout.type) && isSameDay(workout.date.toDate(), date)
-    );
-  };
+  const weekDays = useMemo(() =>
+    eachDayOfInterval({ start: weekStart, end: addDays(weekStart, 6) }),
+    [weekStart]
+  );
 
-  // Calculate week stats
-  const weekStats = useMemo(() => {
-    const stats: Record<number, { total: number; completed: number }> = {};
+  const getWorkoutsForDate = (date: Date) =>
+    workouts.filter(w => activeTypes.has(w.type) && isSameDay(w.date.toDate(), date));
 
-    workouts.forEach(workout => {
-      const workoutDate = workout.date.toDate();
-      if (isSameMonth(workoutDate, currentMonth)) {
-        if (!activeTypes.has(workout.type)) return;
-        const weekNum = getWeek(workoutDate);
-        if (!stats[weekNum]) {
-          stats[weekNum] = { total: 0, completed: 0 };
-        }
-        stats[weekNum].total++;
-        if (workout.completed) {
-          stats[weekNum].completed++;
-        }
-      }
+  // Weekly summary
+  const weekSummary = useMemo(() => {
+    const weekEnd = addDays(weekStart, 6);
+    const weekWorkouts = workouts.filter(w => {
+      const d = w.date.toDate();
+      return d >= weekStart && d <= weekEnd && activeTypes.has(w.type);
+    });
+    const completed = weekWorkouts.filter(w => w.completed).length;
+    const total = weekWorkouts.length;
+    let totalDuration = 0;
+    let totalDistance = 0;
+    const byType: Record<string, { count: number; duration: number; distance: number }> = {};
+
+    weekWorkouts.forEach(w => {
+      const dur = w.duration || 0;
+      totalDuration += dur;
+      let dist = 0;
+      if (w.run?.distance) dist = w.run.distance;
+      else if (w.bike?.distance) dist = w.bike.distance;
+      else if (w.swim?.distance) dist = w.swim.distance / 1000; // m → km
+      totalDistance += dist;
+
+      if (!byType[w.type]) byType[w.type] = { count: 0, duration: 0, distance: 0 };
+      byType[w.type].count++;
+      byType[w.type].duration += dur;
+      byType[w.type].distance += dist;
     });
 
-    return stats;
-  }, [workouts, currentMonth, activeTypes]);
+    return { completed, total, totalDuration, totalDistance, byType };
+  }, [workouts, weekStart, activeTypes]);
 
-  const monthStats = useMemo(() => {
-    const inMonth = workouts.filter(w => isSameMonth(w.date.toDate(), currentMonth) && activeTypes.has(w.type));
-    const total = inMonth.length;
-    const completed = inMonth.filter(w => w.completed).length;
-    const missed = inMonth.filter(w => isPast(w.date.toDate()) && !w.completed).length;
-    const upcoming = inMonth.filter(w => !isPast(w.date.toDate()) && !w.completed).length;
-    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
-    return { total, completed, missed, upcoming, completionRate };
-  }, [workouts, currentMonth, activeTypes]);
-
-  const daysInMonth = eachDayOfInterval({
-    start: startOfMonth(currentMonth),
-    end: endOfMonth(currentMonth),
-  });
-
-  // Get days to show (including previous/next month padding)
-  const firstDayOfMonth = startOfMonth(currentMonth).getDay();
-  const daysToShow: Date[] = [];
-
-  // Add padding days from previous month
-  for (let i = 0; i < firstDayOfMonth; i++) {
-    const day = new Date(currentMonth);
-    day.setDate(0 - (firstDayOfMonth - i - 1));
-    daysToShow.push(day);
-  }
-
-  // Add current month days
-  daysToShow.push(...daysInMonth);
-
-  // Pad to complete last week
-  const remainingDays = 7 - (daysToShow.length % 7);
-  if (remainingDays < 7) {
-    const lastDay = daysToShow[daysToShow.length - 1];
-    for (let i = 1; i <= remainingDays; i++) {
-      const day = new Date(lastDay);
-      day.setDate(day.getDate() + i);
-      daysToShow.push(day);
-    }
-  }
-
-  const selectedDateWorkouts = selectedDate ? getWorkoutsForDate(selectedDate) : [];
-
-  // Generate ICS file for export
-  const generateICS = () => {
-    const icsLines = [
-      'BEGIN:VCALENDAR',
-      'VERSION:2.0',
-      'PRODID:-//TheDailyAthlete//EN',
-      'CALSCALE:GREGORIAN',
-      'METHOD:PUBLISH',
-    ];
-
-    workouts.forEach(workout => {
-      const workoutDate = workout.date.toDate();
-      const dateStr = format(workoutDate, "yyyyMMdd'T'HHmmss");
-      const endDate = new Date(workoutDate);
-      endDate.setMinutes(endDate.getMinutes() + (workout.duration || 60));
-      const endStr = format(endDate, "yyyyMMdd'T'HHmmss");
-
-      icsLines.push(
-        'BEGIN:VEVENT',
-        `UID:${workout.id}@workout-tracker`,
-        `DTSTART:${dateStr}`,
-        `DTEND:${endStr}`,
-        `SUMMARY:${workout.name} (${workout.type})`,
-        `DESCRIPTION:${workout.description.replace(/\n/g, '\\n')}`,
-        `STATUS:${workout.completed ? 'COMPLETED' : 'CONFIRMED'}`,
-        'END:VEVENT'
-      );
-    });
-
-    icsLines.push('END:VCALENDAR');
-
-    const blob = new Blob([icsLines.join('\r\n')], { type: 'text/calendar' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `workouts-${format(currentMonth, 'yyyy-MM')}.ics`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    toast.success('Calendar exported! Import into Google Calendar, Apple Calendar, or Outlook.');
-  };
-
-  const handleToggleComplete = async (workout: Workout) => {
+  const handleToggleComplete = async (e: React.MouseEvent, workout: Workout) => {
+    e.preventDefault();
+    e.stopPropagation();
     try {
       await completeWorkout(workout.id, !workout.completed);
-      
-      // Reload workouts to get updated completedLate field
       const data = await getUserWorkouts(user!.uid, user!.role);
       setWorkouts(data);
-      
-      toast.success(workout.completed ? 'Marked as incomplete' : 'Marked as complete!');
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to update workout');
-    }
-  };
-
-  const handleDateClick = (date: Date) => {
-    setSelectedDate(date);
-    const dayWorkouts = getWorkoutsForDate(date);
-    if (dayWorkouts.length > 0) {
-      setModalOpen(true);
+      toast.success(workout.completed ? 'Marked incomplete' : 'Marked complete!');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update');
     }
   };
 
@@ -217,19 +141,45 @@ export default function CalendarPage() {
       const res = await fetch('/api/reports/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.uid, periodDays: 30 }),
+        body: JSON.stringify({ userId: user.uid, periodDays: 7 }),
       });
-
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to send report');
-      }
-      toast.success('Report sent to your email!');
-    } catch (error: any) {
-      toast.error(error.message || 'Could not send report');
+      if (!res.ok || !data.success) throw new Error(data.error || 'Failed');
+      toast.success('Report sent!');
+    } catch (err: any) {
+      toast.error(err.message);
     } finally {
       setSendingReport(false);
     }
+  };
+
+  const generateICS = () => {
+    const weekEnd = addDays(weekStart, 6);
+    const weekWorkouts = workouts.filter(w => {
+      const d = w.date.toDate();
+      return d >= weekStart && d <= weekEnd;
+    });
+    const icsLines = [
+      'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//TheDailyAthlete//EN',
+      'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+    ];
+    weekWorkouts.forEach(w => {
+      const d = w.date.toDate();
+      const dateStr = format(d, "yyyyMMdd'T'HHmmss");
+      const end = new Date(d); end.setMinutes(end.getMinutes() + (w.duration || 60));
+      icsLines.push('BEGIN:VEVENT', `UID:${w.id}@tda`, `DTSTART:${dateStr}`,
+        `DTEND:${format(end, "yyyyMMdd'T'HHmmss")}`, `SUMMARY:${w.name} (${w.type})`,
+        `DESCRIPTION:${(w.description || '').replace(/\n/g, '\\n')}`,
+        `STATUS:${w.completed ? 'COMPLETED' : 'CONFIRMED'}`, 'END:VEVENT');
+    });
+    icsLines.push('END:VCALENDAR');
+    const blob = new Blob([icsLines.join('\r\n')], { type: 'text/calendar' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url;
+    a.download = `week-${format(weekStart, 'yyyy-MM-dd')}.ics`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Week exported!');
   };
 
   if (loading) {
@@ -241,458 +191,274 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
-            <CalendarIcon className="h-6 w-6 sm:h-8 sm:w-8" />
-            Workout Calendar
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1 sm:mt-2">View and manage your workout schedule</p>
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setWeekStart(subWeeks(weekStart, 1))}
+            className="p-2 rounded-xl border hover:bg-muted transition-colors">
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <div className="text-center min-w-[200px]">
+            <h1 className="text-xl font-bold">
+              {format(weekStart, 'MMM d')} — {format(addDays(weekStart, 6), 'MMM d, yyyy')}
+            </h1>
+          </div>
+          <button onClick={() => setWeekStart(addWeeks(weekStart, 1))}
+            className="p-2 rounded-xl border hover:bg-muted transition-colors">
+            <ChevronRight className="h-5 w-5" />
+          </button>
+          <button
+            onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors"
+          >Today</button>
         </div>
-
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => setCurrentMonth(new Date())}>
-            <RefreshCcw className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Today</span>
-          </Button>
-          <Button variant="outline" size="sm" onClick={generateICS}>
-            <Download className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Export</span>
-          </Button>
-          <Button
-            size="sm"
-            onClick={handleSendReport}
-            disabled={sendingReport}
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-          >
-            <Send className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">{sendingReport ? 'Sending...' : 'Email Report'}</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* Monthly Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Card className="border-primary/20 bg-primary/5 dark:bg-primary/10">
-          <CardContent className="py-4">
-            <p className="text-xs text-muted-foreground font-medium">{format(currentMonth, 'MMMM')}</p>
-            <div className="text-2xl font-bold">{monthStats.total}</div>
-            <p className="text-sm text-muted-foreground">Scheduled this month</p>
-          </CardContent>
-        </Card>
-        <Card className="border-green-200 bg-green-50 dark:bg-green-950/20">
-          <CardContent className="py-4">
-            <p className="text-xs text-muted-foreground font-medium">Monthly Rate</p>
-            <div className="text-2xl font-bold">{monthStats.completionRate}%</div>
-            <p className="text-sm text-muted-foreground">{monthStats.completed} of {monthStats.total} done</p>
-          </CardContent>
-        </Card>
-        <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
-          <CardContent className="py-4">
-            <p className="text-xs text-muted-foreground font-medium">Coming Up</p>
-            <div className="text-2xl font-bold">{monthStats.upcoming}</div>
-            <p className="text-sm text-muted-foreground">Remaining this month</p>
-          </CardContent>
-        </Card>
-        <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
-          <CardContent className="py-4">
-            <p className="text-xs text-muted-foreground font-medium">Missed</p>
-            <div className="text-2xl font-bold">{monthStats.missed}</div>
-            <p className="text-sm text-muted-foreground">Past due this month</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <Card className="border-dashed">
-        <CardContent className="py-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <Filter className="h-4 w-4" />
-              Filter by type
-            </div>
-            {(['swim', 'bike', 'run', 'strength', 'other'] as Workout['type'][]).map((type) => {
-              const isActive = activeTypes.has(type);
+        <div className="flex items-center gap-2">
+          {/* Filters */}
+          <div className="hidden md:flex items-center gap-1.5 mr-2">
+            {(['run', 'bike', 'swim', 'strength', 'other'] as const).map(type => {
+              const active = activeTypes.has(type);
+              const cfg = TYPE_CONFIG[type];
               return (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => {
-                    const next = new Set(activeTypes);
-                    if (isActive && activeTypes.size > 1) {
-                      next.delete(type);
-                    } else {
-                      next.add(type);
-                    }
-                    setActiveTypes(next);
-                  }}
+                <button key={type} onClick={() => {
+                  const next = new Set(activeTypes);
+                  if (active && activeTypes.size > 1) next.delete(type);
+                  else next.add(type);
+                  setActiveTypes(next);
+                }}
                   className={cn(
-                    'px-3 py-1 rounded-full text-xs font-medium border transition-all',
-                    isActive
-                      ? `${typeColors[type]} border-transparent shadow-sm`
-                      : 'border-border text-muted-foreground hover:bg-muted'
+                    'px-2.5 py-1 rounded-full text-xs font-medium border transition-all',
+                    active ? `${cfg.bg} ${cfg.color} border-current/20` : 'border-border text-muted-foreground/50'
                   )}
-                >
-                  {type}
-                </button>
+                >{cfg.emoji} {type}</button>
               );
             })}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="ml-auto"
-              onClick={() => setActiveTypes(new Set(['swim', 'bike', 'run', 'strength', 'other']))}
-            >
-              Reset
-            </Button>
           </div>
-        </CardContent>
-      </Card>
+          <button onClick={generateICS}
+            className="p-2 rounded-xl border hover:bg-muted transition-colors" title="Export week">
+            <Download className="h-4 w-4" />
+          </button>
+          <button onClick={handleSendReport} disabled={sendingReport}
+            className="p-2 rounded-xl border hover:bg-muted transition-colors" title="Email report">
+            <Send className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Calendar View */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base sm:text-lg">{format(currentMonth, 'MMMM yyyy')}</CardTitle>
-              <div className="flex gap-1 sm:gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8 sm:h-9 sm:w-9"
-                  onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8 sm:h-9 sm:w-9"
-                  onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="hidden sm:flex"
-                  onClick={() => setCurrentMonth(new Date())}
-                >
-                  Today
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
-              {/* Day headers */}
-              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
-                <div key={i} className="text-center text-xs sm:text-sm font-semibold text-muted-foreground p-1 sm:p-2">
-                  <span className="sm:hidden">{day}</span>
-                  <span className="hidden sm:inline">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i]}</span>
+      {/* Weekly Grid */}
+      <div className="flex gap-0 border rounded-2xl overflow-hidden min-h-[calc(100vh-180px)]">
+        {/* Day Columns */}
+        {weekDays.map((date) => {
+          const dayWorkouts = getWorkoutsForDate(date);
+          const today = isToday(date);
+          const past = isPast(date) && !today;
+
+          return (
+            <div key={date.toISOString()}
+              className={cn(
+                'flex-1 min-w-0 flex flex-col border-r last:border-r-0',
+                today && 'bg-red-500/[0.03]',
+              )}
+            >
+              {/* Day Header */}
+              <div className={cn(
+                'px-3 py-3 border-b text-center sticky top-0 z-10 bg-background',
+                today && 'bg-red-600 text-white',
+              )}>
+                <div className="text-xs font-medium uppercase tracking-wider opacity-70">
+                  {format(date, 'EEE')}
                 </div>
-              ))}
+                <div className={cn('text-2xl font-bold', !today && 'text-foreground')}>
+                  {format(date, 'd')}
+                </div>
+                {dayWorkouts.length > 0 && (
+                  <div className={cn(
+                    'text-[10px] font-medium mt-0.5',
+                    today ? 'text-white/70' : 'text-muted-foreground'
+                  )}>
+                    {dayWorkouts.filter(w => w.completed).length}/{dayWorkouts.length} done
+                  </div>
+                )}
+              </div>
 
-              {/* Calendar days */}
-              {daysToShow.map((date, index) => {
-                const dayWorkouts = getWorkoutsForDate(date);
-                const isCurrentMonth = isSameMonth(date, currentMonth);
-                const isSelected = selectedDate && isSameDay(date, selectedDate);
-                const isTodayDate = isToday(date);
-                const isPastDate = isPast(date) && !isTodayDate;
+              {/* Workout Cards */}
+              <div className="flex-1 p-1.5 space-y-1.5 overflow-y-auto">
+                {dayWorkouts.length === 0 && (
+                  <div className="flex items-center justify-center h-full opacity-20">
+                    <span className="text-xs text-muted-foreground">Rest day</span>
+                  </div>
+                )}
 
-                // Determine day status
-                const hasWorkouts = dayWorkouts.length > 0;
-                const allCompleted = hasWorkouts && dayWorkouts.every(w => w.completed);
-                const hasLateCompletion = hasWorkouts && dayWorkouts.some(w => w.completed && w.completedLate);
-                const hasMissed = hasWorkouts && isPastDate && dayWorkouts.some(w => !w.completed);
-                const hasUpcoming = hasWorkouts && !isPastDate && dayWorkouts.some(w => !w.completed);
-
-                // Get completion stats for the week (show on Sundays)
-                const weekNum = getWeek(date);
-                const isWeekStart = date.getDay() === 0;
-                const weekStat = weekStats[weekNum];
-
-                return (
-                  <button
-                    key={index}
-                    onClick={() => handleDateClick(date)}
-                    className={cn(
-                      'min-h-[56px] sm:min-h-[80px] p-1 sm:p-2 rounded-lg border-2 transition-all relative',
-                      'flex flex-col items-start',
-                      !isCurrentMonth && 'bg-muted/30 opacity-50',
-                      isCurrentMonth && 'bg-background',
-                      isSelected && 'border-primary bg-primary/10',
-                      !isSelected && 'border-transparent hover:border-muted-foreground/20',
-                      isTodayDate && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
-                      allCompleted && !hasLateCompletion && isCurrentMonth && 'bg-green-50 dark:bg-green-950/30',
-                      hasLateCompletion && isCurrentMonth && 'bg-orange-50 dark:bg-orange-950/30',
-                      hasMissed && isCurrentMonth && 'bg-red-50 dark:bg-red-950/30',
-                    )}
-                  >
-                    <span className={cn(
-                      'text-xs sm:text-sm font-medium',
-                      !isCurrentMonth && 'text-muted-foreground',
-                      isTodayDate && 'text-primary font-bold',
-                    )}>
-                      {format(date, 'd')}
-                    </span>
-
-                    {/* Workout indicators */}
-                    {hasWorkouts && (
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {dayWorkouts.slice(0, 3).map((workout, idx) => {
-                          let dotColor = 'bg-blue-500'; // upcoming
-                          if (workout.completed) {
-                            if (workout.completedLate) {
-                              dotColor = 'bg-orange-500'; // completed late
-                            } else {
-                              dotColor = 'bg-green-500'; // completed on time
-                            }
-                          } else if (isPastDate) {
-                            dotColor = 'bg-red-500'; // missed
-                          }
-
-                          const status = workout.completed 
-                            ? (workout.completedLate ? 'completed late' : 'completed on time')
-                            : (isPastDate ? 'missed' : 'upcoming');
-
-                          return (
-                            <div
-                              key={idx}
-                              className={cn('w-2 h-2 rounded-full', dotColor)}
-                              title={`${workout.name}${workout.assignedToName ? ` — ${workout.assignedToName}` : ''} (${status})`}
-                            />
-                          );
-                        })}
-                        {dayWorkouts.length > 3 && (
-                          <span className="text-[10px] text-muted-foreground font-medium">
-                            +{dayWorkouts.length - 3}
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Workout count badge */}
-                    {hasWorkouts && (
-                      <div className="absolute bottom-1 right-1">
-                        <Badge
-                          variant="secondary"
-                          className={cn(
-                            'text-[10px] px-1 py-0 h-4',
-                            allCompleted && !hasLateCompletion && 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300',
-                            hasLateCompletion && 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300',
-                            hasMissed && 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300',
-                            hasUpcoming && 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
-                          )}
-                        >
-                          {dayWorkouts.length}
-                        </Badge>
-                      </div>
-                    )}
-
-                    {/* Week completion indicator (Sunday) */}
-                    {isWeekStart && weekStat && weekStat.total > 0 && isCurrentMonth && (
-                      <div className="absolute top-0 right-0 transform translate-x-1 -translate-y-1">
-                        <Badge
-                          variant="outline"
-                          className="text-[9px] px-1 py-0 bg-background"
-                        >
-                          {Math.round((weekStat.completed / weekStat.total) * 100)}%
-                        </Badge>
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Selected Date Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : 'Select a date'}
-            </CardTitle>
-            <CardDescription>
-              {selectedDate && selectedDateWorkouts.length > 0
-                ? `${selectedDateWorkouts.length} workout${selectedDateWorkouts.length !== 1 ? 's' : ''}`
-                : 'No workouts scheduled'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {selectedDateWorkouts.length > 0 ? (
-              <div className="space-y-3">
-                {selectedDateWorkouts.map(workout => {
-                  const isPastWorkout = isPast(workout.date.toDate()) && !isToday(workout.date.toDate());
-                  const isMissed = isPastWorkout && !workout.completed;
+                {dayWorkouts.map(workout => {
+                  const cfg = TYPE_CONFIG[workout.type] || TYPE_CONFIG.other;
+                  const typeData = getTypeData(workout);
+                  const isMissed = past && !workout.completed;
+                  const isStrava = workout.source === 'strava';
+                  const isImported = workout.source === 'import';
 
                   return (
-                    <div
-                      key={workout.id}
+                    <Link key={workout.id} href={`/workouts/${workout.id}`}
                       className={cn(
-                        'p-4 border rounded-lg transition-colors',
-                        workout.completed && 'bg-green-50 dark:bg-green-950/20 border-green-200',
-                        isMissed && 'bg-red-50 dark:bg-red-950/20 border-red-200',
+                        'block rounded-lg border-l-[3px] p-2.5 transition-all hover:shadow-md hover:scale-[1.02] group',
+                        'border border-l-[3px] bg-card',
+                        cfg.border,
+                        workout.completed && 'opacity-80',
+                        isMissed && 'border-red-500/30 bg-red-500/5',
                       )}
                     >
-                      <div className="space-y-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <Link href={`/workouts/${workout.id}`} className="hover:underline">
-                            <h3 className="font-semibold">{workout.name}</h3>
-                          </Link>
-                          <Badge
-                            variant={workout.completed ? 'default' : 'secondary'}
-                            className={cn('capitalize', typeColors[workout.type])}
-                          >
-                            {workout.type}
-                          </Badge>
+                      {/* Type icon + name */}
+                      <div className="flex items-start justify-between gap-1">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-sm shrink-0">{cfg.emoji}</span>
+                          <span className="text-xs font-semibold truncate">{workout.name}</span>
                         </div>
-                        {workout.assignedToName && (
-                          <p className="text-xs text-muted-foreground">For <span className="font-medium text-foreground/80">{workout.assignedToName}</span></p>
-                        )}
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {workout.description}
-                        </p>
-                        {workout.duration && (
-                          <p className="text-xs text-muted-foreground">
-                            Duration: {workout.duration} minutes
-                          </p>
-                        )}
-
-                        {/* Status badges */}
-                        <div className="flex flex-wrap gap-2">
-                          {workout.completed && (
-                            <Badge variant="outline" className="bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800">
-                              <CheckCircle2 className="h-3 w-3 mr-1" />
-                              Completed
-                            </Badge>
-                          )}
-                          {workout.completedBy === 'strava' && (
-                            <Badge variant="outline" className="border-orange-500 text-orange-600 dark:text-orange-400">
-                              <Activity className="h-3 w-3 mr-1" />
-                              Strava
-                            </Badge>
-                          )}
-                          {isMissed && (
-                            <Badge variant="destructive">
-                              Missed
-                            </Badge>
-                          )}
-                        </div>
-
-                        {/* Quick complete button */}
-                        <Button
-                          variant={workout.completed ? 'outline' : 'default'}
-                          size="sm"
-                          className={cn(
-                            'w-full mt-2',
-                            !workout.completed && 'bg-green-600 hover:bg-green-700'
-                          )}
-                          onClick={() => handleToggleComplete(workout)}
+                        <button
+                          onClick={(e) => handleToggleComplete(e, workout)}
+                          className="shrink-0 opacity-60 hover:opacity-100 transition-opacity"
+                          title={workout.completed ? 'Mark incomplete' : 'Mark complete'}
                         >
-                          {workout.completed ? (
-                            <>
-                              <Circle className="h-4 w-4 mr-1" />
-                              Mark Incomplete
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle2 className="h-4 w-4 mr-1" />
-                              Mark Complete
-                            </>
-                          )}
-                        </Button>
+                          {workout.completed
+                            ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                            : <Circle className="h-3.5 w-3.5 text-muted-foreground" />}
+                        </button>
                       </div>
-                    </div>
+
+                      {/* Athlete name (coach view) */}
+                      {workout.assignedToName && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                          {workout.assignedToName}
+                        </p>
+                      )}
+
+                      {/* Stats grid */}
+                      <div className="mt-1.5 space-y-0.5">
+                        {typeData.duration && (
+                          <div className="text-[11px] text-muted-foreground font-mono">
+                            ⏱ {typeData.duration}
+                          </div>
+                        )}
+                        {typeData.distance && (
+                          <div className="text-[11px] text-muted-foreground font-mono">
+                            📏 {typeData.distance}
+                          </div>
+                        )}
+                        {typeData.elev && (
+                          <div className="text-[11px] text-muted-foreground font-mono">
+                            ⛰️ {typeData.elev}
+                          </div>
+                        )}
+                        {typeData.exercises && (
+                          <div className="text-[11px] text-muted-foreground font-mono">
+                            🏋️ {typeData.exercises}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Status badges */}
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {isStrava && (
+                          <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-orange-500">
+                            <Activity className="h-2.5 w-2.5" /> Strava
+                          </span>
+                        )}
+                        {isImported && (
+                          <span className="text-[9px] font-semibold text-blue-500">📥 Import</span>
+                        )}
+                        {isMissed && (
+                          <span className="text-[9px] font-semibold text-red-500">Missed</span>
+                        )}
+                        {workout.completed && workout.completedLate && (
+                          <span className="text-[9px] font-semibold text-amber-500">Late</span>
+                        )}
+                      </div>
+
+                      {/* Tags */}
+                      {workout.tags && workout.tags.length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-0.5">
+                          {workout.tags.slice(0, 2).map(tag => (
+                            <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </Link>
                   );
                 })}
               </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <CalendarIcon className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                <p className="text-sm">
-                  {selectedDate ? 'No workouts on this date' : 'Click a date to view workouts'}
-                </p>
+            </div>
+          );
+        })}
+
+        {/* Weekly Summary Sidebar */}
+        <div className="w-[200px] shrink-0 border-l bg-muted/30 flex flex-col">
+          <div className="px-3 py-3 border-b text-center bg-background">
+            <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Summary</div>
+            <div className="text-lg font-bold mt-0.5">Week {format(weekStart, 'w')}</div>
+          </div>
+          <div className="p-3 space-y-4 text-sm">
+            {/* Completion */}
+            <div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Completion</div>
+              <div className="text-2xl font-bold">
+                {weekSummary.total > 0 ? Math.round((weekSummary.completed / weekSummary.total) * 100) : 0}%
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {weekSummary.completed} of {weekSummary.total} done
+              </div>
+              {weekSummary.total > 0 && (
+                <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-green-500 transition-all"
+                    style={{ width: `${(weekSummary.completed / weekSummary.total) * 100}%` }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Duration */}
+            <div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Duration</div>
+              <div className="text-lg font-bold">{formatDur(weekSummary.totalDuration)}</div>
+            </div>
+
+            {/* Distance */}
+            {weekSummary.totalDistance > 0 && (
+              <div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Distance</div>
+                <div className="text-lg font-bold">{weekSummary.totalDistance.toFixed(1)} km</div>
               </div>
             )}
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* Legend */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Legend</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs sm:text-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-blue-500" />
-              <span>Upcoming</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-green-500" />
-              <span>Completed</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-orange-500" />
-              <span>Completed Late</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-red-500" />
-              <span>Missed</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg ring-2 ring-primary ring-offset-2" />
-              <span>Today</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-[9px] px-1">75%</Badge>
-              <span>Week completion rate</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Workout Modal (for mobile-friendly quick view) */}
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>
-              {selectedDate && format(selectedDate, 'EEEE, MMMM d, yyyy')}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-            {selectedDateWorkouts.map(workout => (
-              <Link
-                key={workout.id}
-                href={`/workouts/${workout.id}`}
-                className={cn(
-                  'block p-4 border rounded-lg hover:bg-muted/50 transition-colors',
-                  workout.completed && 'bg-green-50 dark:bg-green-950/20 border-green-200',
+            {/* By Type breakdown */}
+            <div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">By Type</div>
+              <div className="space-y-2">
+                {Object.entries(weekSummary.byType)
+                  .sort((a, b) => b[1].count - a[1].count)
+                  .map(([type, data]) => {
+                    const cfg = TYPE_CONFIG[type] || TYPE_CONFIG.other;
+                    return (
+                      <div key={type} className="flex items-center gap-2">
+                        <span className="text-sm">{cfg.emoji}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium capitalize">{type}</div>
+                          <div className="text-[10px] text-muted-foreground">
+                            {data.count}× · {formatDur(data.duration)}
+                            {data.distance > 0 ? ` · ${data.distance.toFixed(1)}km` : ''}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                {Object.keys(weekSummary.byType).length === 0 && (
+                  <div className="text-xs text-muted-foreground">No workouts</div>
                 )}
-                onClick={() => setModalOpen(false)}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h3 className="font-semibold">{workout.name}</h3>
-                    <p className="text-sm text-muted-foreground capitalize">{workout.type}</p>
-                    {workout.assignedToName && (
-                      <p className="text-xs text-muted-foreground">For <span className="font-medium text-foreground/80">{workout.assignedToName}</span></p>
-                    )}
-                  </div>
-                  {workout.completed && (
-                    <CheckCircle2 className="h-5 w-5 text-green-500" />
-                  )}
-                </div>
-              </Link>
-            ))}
+              </div>
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      </div>
     </div>
   );
 }
