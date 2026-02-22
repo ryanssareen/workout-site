@@ -36,7 +36,10 @@ function WorkoutsContent() {
   const loadWorkouts = useCallback(async () => {
     if (!user) return;
     const data = await getUserWorkouts(user.uid, user.role);
-    setWorkouts(data);
+    // Filter out future workouts — those only show in calendar
+    const now = new Date();
+    now.setHours(23, 59, 59, 999);
+    setWorkouts(data.filter(w => w.date.toDate() <= now));
     setLoading(false);
     setTimeout(() => setReady(true), 120);
   }, [user]);
