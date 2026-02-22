@@ -320,8 +320,6 @@ export default function CalendarPage() {
                   const cfg = TYPE_CONFIG[workout.type] || TYPE_CONFIG.other;
                   const typeData = getTypeData(workout);
                   const isMissed = past && !workout.completed;
-                  const isStrava = workout.source === 'strava';
-                  const isImported = workout.source === 'import';
                   const hasStats = Object.keys(typeData).length > 0;
 
                   return (
@@ -352,13 +350,6 @@ export default function CalendarPage() {
 
                       {/* Workout name */}
                       <h3 className="text-sm font-bold leading-tight line-clamp-2">{workout.name}</h3>
-
-                      {/* Athlete name (coach view) */}
-                      {workout.assignedToName && (
-                        <p className="text-[11px] text-muted-foreground mt-1 truncate font-medium">
-                          👤 {workout.assignedToName}
-                        </p>
-                      )}
 
                       {/* Stats */}
                       {hasStats && (
@@ -396,16 +387,15 @@ export default function CalendarPage() {
                         </div>
                       )}
 
-                      {/* Footer: source + status */}
-                      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                        {isStrava && (
-                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold text-orange-600 bg-orange-500/10">
-                            <Activity className="h-2.5 w-2.5" /> Strava
-                          </span>
-                        )}
-                        {isImported && (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold text-blue-600 bg-blue-500/10">📥 Import</span>
-                        )}
+                      {/* Description */}
+                      {workout.description && (
+                        <p className="text-[11px] text-muted-foreground mt-2 line-clamp-3 leading-relaxed">
+                          {workout.description}
+                        </p>
+                      )}
+
+                      {/* Status */}
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
                         {isMissed && (
                           <span className="px-1.5 py-0.5 rounded text-[9px] font-bold text-red-600 bg-red-500/10">Missed</span>
                         )}
@@ -426,14 +416,14 @@ export default function CalendarPage() {
         })}
 
         {/* Weekly Summary Sidebar */}
-        <div className="w-[260px] shrink-0 border-l bg-muted/20 flex flex-col">
-          <div className="px-5 py-4 border-b bg-background">
+        <div className="w-[220px] shrink-0 border-l bg-muted/20 flex flex-col">
+          <div className="px-4 py-4 border-b bg-background">
             <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Weekly Summary</div>
             <div className="text-2xl font-black mt-1">Week {format(weekStart, 'w')}</div>
             <div className="text-xs text-muted-foreground">{format(weekStart, 'MMM d')} – {format(addDays(weekStart, 6), 'MMM d')}</div>
           </div>
 
-          <div className="flex-1 p-5 space-y-6 overflow-y-auto">
+          <div className="flex-1 p-4 space-y-5 overflow-y-auto">
             {/* Completion ring */}
             <div className="text-center">
               <div className="relative inline-flex items-center justify-center">
