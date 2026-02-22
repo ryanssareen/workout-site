@@ -55,7 +55,7 @@ export function Navbar() {
               <div className="hidden md:flex items-center gap-3 px-3 py-1.5 rounded-xl bg-primary/5 border border-border/60">
                 <div className="text-right">
                   <p className="text-sm font-medium leading-none">{user.displayName}</p>
-                  <p className="text-xs text-muted-foreground">Athlete</p>
+                  <p className="text-xs text-muted-foreground capitalize">{user.role || 'Athlete'}</p>
                 </div>
                 <Link href="/profile"><Button variant="ghost" size="icon" className="h-8 w-8"><UserCircle className="h-4 w-4" /></Button></Link>
                 <Link href="/settings"><Button variant="ghost" size="icon" className="h-8 w-8"><Settings className="h-4 w-4" /></Button></Link>
@@ -90,7 +90,7 @@ export function Navbar() {
                   <div className="flex items-center gap-2">
                     <Link href="/profile"><Button variant="ghost" size="icon" className="h-8 w-8"><UserCircle className="h-4 w-4" /></Button></Link>
                     <Link href="/settings"><Button variant="ghost" size="icon" className="h-8 w-8"><Settings className="h-4 w-4" /></Button></Link>
-                    <div><p className="text-sm font-medium">{user.displayName}</p><p className="text-xs text-muted-foreground">Athlete</p></div>
+                    <div><p className="text-sm font-medium">{user.displayName}</p><p className="text-xs text-muted-foreground capitalize">{user.role || 'Athlete'}</p></div>
                   </div>
                   <Button variant="outline" size="sm" onClick={handleLogout}><LogOut className="h-4 w-4 mr-2" />Logout</Button>
                 </>
