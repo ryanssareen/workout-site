@@ -671,6 +671,26 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ Finished: Created ${newWorkoutsCount}, merged ${mergedWorkoutsCount}, skipped ${skippedCount}`);
 
+    // Run Groq dedup after every sync
+    let dedupInfo: any = null;
+    try {
+      console.log('🔍 Running Groq dedup after sync...');
+      const { runDedupPipeline, executeDedupDeletions } = await import('@/lib/groq-dedup');
+      const { result: dedupResult } = await runDedupPipeline(userId);
+      if (dedupResult.duplicatesFound > 0) {
+        console.log(`🗑️ Groq found ${dedupResult.duplicatesFound} duplicates — auto-deleting`);
+        const deleted = await executeDedupDeletions(dedupResult);
+        console.log(`✅ Deleted ${deleted} duplicate workouts`);
+        dedupInfo = { duplicatesRemoved: deleted, model: dedupResult.model };
+      } else {
+        console.log('✅ No duplicates found after sync');
+        dedupInfo = { duplicatesRemoved: 0, model: dedupResult.model };
+      }
+    } catch (dedupErr: any) {
+      console.error('⚠️ Dedup pipeline error (non-fatal):', dedupErr.message);
+      dedupInfo = { error: dedupErr.message };
+    }
+
     // Build response message
     let message = '';
     if (mergedWorkoutsCount > 0 && newWorkoutsCount > 0) {
@@ -698,6 +718,7 @@ export async function GET(request: NextRequest) {
       mergedWorkouts: mergedWorkoutsCount,
       totalActivities: activities.length,
       message,
+      dedup: dedupInfo,
     });
   } catch (error) {
     console.error('Strava sync error:', error);
