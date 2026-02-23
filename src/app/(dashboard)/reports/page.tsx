@@ -5,8 +5,9 @@ import { useAuthStore } from '@/lib/stores/authStore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   BarChart3, Loader2, LayoutDashboard, Copy, TrendingUp, Zap,
-  Calendar, PieChart, Activity, Share2,
+  Calendar, PieChart, Activity, Share2, Mail, CheckCircle2, Send,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { DuplicateRemover } from '@/components/reports/dashboard/DuplicateRemover';
 import { getUserWorkouts } from '@/lib/firebase/firestore';
@@ -21,7 +22,7 @@ import {
 } from '@/components/reports/dashboard/ReportsSections';
 import { ShareButtons } from '@/components/workouts/ShareWorkoutCard';
 
-type Section = 'dashboard' | 'training' | 'insights' | 'calendar' | 'distribution' | 'duplicates';
+type Section = 'dashboard' | 'training' | 'insights' | 'calendar' | 'distribution' | 'duplicates' | 'email';
 
 const NAV_ITEMS: { id: Section; label: string; icon: React.ReactNode }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
@@ -30,6 +31,15 @@ const NAV_ITEMS: { id: Section; label: string; icon: React.ReactNode }[] = [
   { id: 'calendar', label: 'Calendar Views', icon: <Calendar className="h-4 w-4" /> },
   { id: 'distribution', label: 'Type Distribution', icon: <PieChart className="h-4 w-4" /> },
   { id: 'duplicates', label: 'Duplicates', icon: <Copy className="h-4 w-4" /> },
+  { id: 'email', label: 'Email Report', icon: <Mail className="h-4 w-4" /> },
+];
+
+const PERIOD_OPTIONS = [
+  { value: 7, label: '7 Days' },
+  { value: 14, label: '14 Days' },
+  { value: 30, label: '30 Days' },
+  { value: 60, label: '60 Days' },
+  { value: 90, label: '90 Days' },
 ];
 
 const getTimeGreeting = (date: Date) => {
@@ -48,6 +58,9 @@ export default function ReportsPage() {
   const [loadingWorkouts, setLoadingWorkouts] = useState(true);
   const [showShare, setShowShare] = useState(false);
   const [ready, setReady] = useState(false);
+  const [emailPeriod, setEmailPeriod] = useState(30);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
   // Time-aware greeting stamped once per page render to keep it consistent
@@ -74,6 +87,29 @@ export default function ReportsPage() {
   }, [user]);
 
   useEffect(() => { fetchWorkouts(); }, [fetchWorkouts]);
+
+  const handleSendEmail = async () => {
+    if (!user) return;
+    setSendingEmail(true);
+    setEmailSent(false);
+    try {
+      const res = await fetch('/api/reports/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.uid, periodDays: emailPeriod }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to send report');
+      }
+      setEmailSent(true);
+      toast.success('Report sent to your email!');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to send email report');
+    } finally {
+      setSendingEmail(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -112,6 +148,72 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent>
             <DuplicateRemover workouts={workouts} onWorkoutsChanged={fetchWorkouts} />
+          </CardContent>
+        </Card>
+      );
+      case 'email': return (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-blue-500" />
+              Email Report to Yourself
+            </CardTitle>
+            <CardDescription>
+              Send a workout summary to <span className="font-medium text-foreground">{user.email}</span>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div>
+              <p className="text-sm font-medium mb-3">Select time period</p>
+              <div className="flex flex-wrap gap-2">
+                {PERIOD_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => { setEmailPeriod(opt.value); setEmailSent(false); }}
+                    className={cn(
+                      'px-4 py-2 rounded-lg text-sm font-medium transition-all border',
+                      emailPeriod === opt.value
+                        ? 'bg-blue-500/15 text-blue-500 border-blue-500/40 shadow-sm'
+                        : 'bg-muted/40 text-muted-foreground border-transparent hover:bg-muted'
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-muted/40 border border-border/60 space-y-2">
+              <p className="text-sm font-medium">Your report will include:</p>
+              <ul className="text-sm text-muted-foreground space-y-1.5">
+                <li className="flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />Completion rate for the last {emailPeriod} days</li>
+                <li className="flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />Workout breakdown by type (run, bike, swim, strength)</li>
+                <li className="flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />Strava stats (if connected)</li>
+                <li className="flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />Motivational feedback based on your progress</li>
+              </ul>
+            </div>
+
+            {emailSent ? (
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+                <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-green-500">Report sent!</p>
+                  <p className="text-xs text-muted-foreground">Check your inbox at {user.email}</p>
+                </div>
+              </div>
+            ) : (
+              <Button
+                onClick={handleSendEmail}
+                disabled={sendingEmail}
+                className="gap-2"
+              >
+                {sendingEmail ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" />Sending...</>
+                ) : (
+                  <><Send className="h-4 w-4" />Send {emailPeriod}-Day Report</>
+                )}
+              </Button>
+            )}
           </CardContent>
         </Card>
       );
