@@ -98,12 +98,40 @@ export async function signOut(): Promise<void> {
   }
 }
 
+// Hardcoded coach config — rsareen@gmail.com auto-connects as coach to these athletes
+const AUTO_COACH_EMAIL = 'rsareen@gmail.com';
+const AUTO_COACH_ATHLETES = [
+  'rsareen+hetal@gmail.com',
+  'rsareen+rohin@gmail.com',
+  'rsareen+rupesh@gmail.com',
+];
+
 export async function getUserProfile(uid: string): Promise<User | null> {
   try {
     const docRef = doc(getDbInstance(), 'users', uid);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       const data = docSnap.data() as User;
+
+      // Auto-promote rsareen@gmail.com to coach
+      if (data.email === AUTO_COACH_EMAIL && data.role !== 'coach') {
+        await setDoc(docRef, { role: 'coach', updatedAt: serverTimestamp() }, { merge: true });
+        return { ...data, role: 'coach' };
+      }
+
+      // Auto-assign athletes to their coach
+      if (AUTO_COACH_ATHLETES.includes(data.email || '') && !data.coachId) {
+        const coachSnap = await getDocs(query(
+          collection(getDbInstance(), 'users'),
+          where('email', '==', AUTO_COACH_EMAIL),
+        ));
+        if (!coachSnap.empty) {
+          const coachId = coachSnap.docs[0].id;
+          await setDoc(docRef, { coachId, role: 'athlete', updatedAt: serverTimestamp() }, { merge: true });
+          return { ...data, coachId, role: 'athlete' };
+        }
+      }
+
       return data;
     }
     return null;
@@ -168,15 +196,29 @@ export async function signInWithGoogle(): Promise<User> {
     }
 
     // New user - create profile
-    const userProfile: Omit<User, 'createdAt' | 'updatedAt'> & { createdAt: any; updatedAt: any; photoURL?: string } = {
+    const isAutoCoach = email === AUTO_COACH_EMAIL;
+    const isAutoAthlete = AUTO_COACH_ATHLETES.includes(email);
+
+    // If auto-athlete, find coach uid
+    let autoCoachId: string | undefined;
+    if (isAutoAthlete) {
+      const coachSnap = await getDocs(query(
+        collection(getDbInstance(), 'users'),
+        where('email', '==', AUTO_COACH_EMAIL),
+      ));
+      if (!coachSnap.empty) autoCoachId = coachSnap.docs[0].id;
+    }
+
+    const userProfile: Omit<User, 'createdAt' | 'updatedAt'> & { createdAt: any; updatedAt: any; photoURL?: string; coachId?: string } = {
       uid,
       email,
       displayName: displayName || email.split('@')[0],
-      role: 'athlete',
+      role: isAutoCoach ? 'coach' : 'athlete',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       onboardingCompleted: false,
       ...(photoURL ? { photoURL } : {}),
+      ...(autoCoachId ? { coachId: autoCoachId } : {}),
     };
 
     await setDoc(doc(getDbInstance(), 'users', uid), userProfile);
