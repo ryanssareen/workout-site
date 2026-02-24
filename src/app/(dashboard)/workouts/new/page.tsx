@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { createWorkout, getCoachStudents } from '@/lib/firebase/firestore';
 import { WorkoutForm } from '@/components/workouts/WorkoutForm';
+import { WorkoutPreviewDialog } from '@/components/workouts/WorkoutPreviewDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
@@ -25,6 +26,8 @@ export default function NewWorkoutPage() {
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [createdWorkoutData, setCreatedWorkoutData] = useState<WorkoutSchema | null>(null);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewData, setPreviewData] = useState<WorkoutSchema | null>(null);
 
   const templateId = searchParams.get('templateId');
   const aiGenerated = searchParams.get('aiGenerated') === 'true';
@@ -94,7 +97,14 @@ export default function NewWorkoutPage() {
   }, [user, authLoading, router]);
 
   const handleSubmit = async (data: WorkoutSchema) => {
-    if (!user) return;
+    // Show preview instead of creating immediately
+    setPreviewData(data);
+    setShowPreview(true);
+  };
+
+  const handleConfirmCreate = async () => {
+    if (!user || !previewData) return;
+    const data = previewData;
 
     setLoading(true);
     try {
@@ -112,6 +122,7 @@ export default function NewWorkoutPage() {
       }
 
       await createWorkout(workoutData as any, user.uid);
+      setShowPreview(false);
 
       toast.success('Workout created successfully!');
 
@@ -265,6 +276,19 @@ export default function NewWorkoutPage() {
           />
         </CardContent>
       </Card>
+
+      <WorkoutPreviewDialog
+        open={showPreview}
+        onClose={() => setShowPreview(false)}
+        onConfirm={handleConfirmCreate}
+        data={previewData}
+        athleteName={
+          isCoach && previewData?.assignedTo
+            ? students.find(s => s.uid === previewData.assignedTo)?.displayName
+            : undefined
+        }
+        loading={loading}
+      />
 
       <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
         <DialogContent>

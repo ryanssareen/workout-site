@@ -20,6 +20,7 @@ const COACH_EMAIL = 'rsareen@gmail.com';
 const ATHLETE_EMAILS = [
   'rsareen+hetal@gmail.com',
   'rsareen+rohin@gmail.com',
+  'rsareen+rupesh@gmail.com',
 ];
 
 export async function GET() {
@@ -56,16 +57,6 @@ export async function GET() {
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
       results.push({ step: 'promoted_to_coach', email: COACH_EMAIL });
-    }
-
-    // Ensure coach has a coach code
-    if (!coachData.coachCode) {
-      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-      await adminDb.collection('users').doc(coachId).update({
-        coachCode: code,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-      results.push({ step: 'generated_coach_code', code });
     }
 
     // Assign each athlete
