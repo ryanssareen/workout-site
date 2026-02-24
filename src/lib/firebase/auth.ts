@@ -54,9 +54,9 @@ export async function createUser(
     const userCredential = await createUserWithEmailAndPassword(getAuthInstance(), email, password);
     const { uid } = userCredential.user;
     
-    // Generate coach code for coaches (except rsareen@gmail.com)
+    // Generate coach code for coaches
     let coachCode: string | undefined;
-    if (role === 'coach' && email !== 'rsareen@gmail.com') {
+    if (role === 'coach') {
       coachCode = await generateUniqueCoachCode();
     }
     
@@ -104,14 +104,6 @@ export async function getUserProfile(uid: string): Promise<User | null> {
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       const data = docSnap.data() as User;
-
-      // Admin override: rsareen@gmail.com is always coach
-      if (data.email === 'rsareen@gmail.com' && data.role !== 'coach') {
-        console.log('🔧 Promoting rsareen@gmail.com to coach');
-        await setDoc(docRef, { role: 'coach', updatedAt: serverTimestamp() }, { merge: true });
-        return { ...data, role: 'coach' };
-      }
-
       return data;
     }
     return null;
@@ -175,13 +167,12 @@ export async function signInWithGoogle(): Promise<User> {
       return existingUser;
     }
 
-    // New user - create profile (rsareen@gmail.com is always coach, others are athletes)
-    const isAdmin = email === 'rsareen@gmail.com';
+    // New user - create profile
     const userProfile: Omit<User, 'createdAt' | 'updatedAt'> & { createdAt: any; updatedAt: any; photoURL?: string } = {
       uid,
       email,
       displayName: displayName || email.split('@')[0],
-      role: isAdmin ? 'coach' : 'athlete',
+      role: 'athlete',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       onboardingCompleted: false,

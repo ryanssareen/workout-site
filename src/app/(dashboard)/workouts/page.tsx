@@ -195,8 +195,8 @@ function WorkoutsContent() {
         ))}
       </div>
 
-      {/* AI Workout Suggestions */}
-      {user && (
+      {/* AI Workout Suggestions - coaches only */}
+      {user && user.role === 'coach' && (
         <AIWorkoutSuggestions
           userId={user.uid}
           recentWorkouts={workouts}

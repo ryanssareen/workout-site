@@ -356,11 +356,8 @@ export async function deleteWorkoutComment(workoutId: string, commentId: string)
 
 export async function getCoachStudents(coachId: string): Promise<any[]> {
   try {
-    // Get coach's user document to check email
+    // Get coach's user document
     const coachDoc = await getDoc(doc(getDbInstance(), 'users', coachId));
-    const coachEmail = coachDoc.exists() ? coachDoc.data()?.email : null;
-
-    console.log('👑 getCoachStudents - Admin check:', { coachId, coachEmail });
 
     const usersRef = collection(getDbInstance(), 'users');
 
@@ -368,37 +365,20 @@ export async function getCoachStudents(coachId: string): Promise<any[]> {
     // Firestore doesn't support OR in where, so we run two queries
     let athletes: any[] = [];
 
-    // Special case: rsareen@gmail.com gets ALL students
-    if (coachEmail === 'rsareen@gmail.com') {
-      console.log('👑 ADMIN MODE: Fetching ALL athletes');
-      const athleteQuery = query(usersRef, where('role', '==', 'athlete'));
-      const studentQuery = query(usersRef, where('role', '==', 'student'));
+    // Coaches only see athletes assigned to them
+    console.log('👤 Fetching assigned athletes only');
+    const athleteQuery = query(usersRef, where('coachId', '==', coachId), where('role', '==', 'athlete'));
+    const studentQuery = query(usersRef, where('coachId', '==', coachId), where('role', '==', 'student'));
 
-      const [athleteSnapshot, studentSnapshot] = await Promise.all([
-        getDocs(athleteQuery),
-        getDocs(studentQuery)
-      ]);
+    const [athleteSnapshot, studentSnapshot] = await Promise.all([
+      getDocs(athleteQuery),
+      getDocs(studentQuery)
+    ]);
 
-      athletes = [
-        ...athleteSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() })),
-        ...studentSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }))
-      ];
-    } else {
-      // Regular coaches only see athletes assigned to them
-      console.log('👤 Regular mode: Fetching assigned athletes only');
-      const athleteQuery = query(usersRef, where('coachId', '==', coachId), where('role', '==', 'athlete'));
-      const studentQuery = query(usersRef, where('coachId', '==', coachId), where('role', '==', 'student'));
-
-      const [athleteSnapshot, studentSnapshot] = await Promise.all([
-        getDocs(athleteQuery),
-        getDocs(studentQuery)
-      ]);
-
-      athletes = [
-        ...athleteSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() })),
-        ...studentSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }))
-      ];
-    }
+    athletes = [
+      ...athleteSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() })),
+      ...studentSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }))
+    ];
 
     console.log('📊 Found athletes:', athletes.length);
     return athletes;

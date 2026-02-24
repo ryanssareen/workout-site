@@ -38,22 +38,11 @@ export async function POST(req: NextRequest) {
 
     console.log('📊 Generating suggestions for coach:', coachId);
 
-    // Admin override: rsareen@gmail.com sees ALL students
-    const isAdmin = userEmail === 'rsareen@gmail.com';
-    console.log('👑 Admin mode:', isAdmin);
-
-    // Get athletes (query both 'athlete' and legacy 'student' roles)
+    // Get athletes assigned to this coach
     console.log('1️⃣ Fetching athletes...');
     let allAthleteDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
-    if (isAdmin) {
-      // Admin sees ALL athletes
-      const [athleteSnapshot, studentSnapshot] = await Promise.all([
-        adminDb.collection('users').where('role', '==', 'athlete').get(),
-        adminDb.collection('users').where('role', '==', 'student').get()
-      ]);
-      allAthleteDocs = [...athleteSnapshot.docs, ...studentSnapshot.docs];
-    } else {
-      // Regular coach sees only their athletes
+    {
+      // Coach sees only their athletes
       const coachAthletesSnapshot = await adminDb
         .collection('users')
         .where('coachId', '==', coachId)
@@ -78,18 +67,10 @@ export async function POST(req: NextRequest) {
     // Get workouts
     console.log('2️⃣ Fetching workouts...');
     let workoutsSnapshot;
-    if (isAdmin) {
-      // Admin sees ALL workouts
-      workoutsSnapshot = await adminDb
-        .collection('workouts')
-        .get();
-    } else {
-      // Regular coach sees only their workouts
-      workoutsSnapshot = await adminDb
-        .collection('workouts')
-        .where('createdBy', '==', coachId)
-        .get();
-    }
+    workoutsSnapshot = await adminDb
+      .collection('workouts')
+      .where('createdBy', '==', coachId)
+      .get();
     console.log('   Found workouts:', workoutsSnapshot.size);
 
     // Analyze each student

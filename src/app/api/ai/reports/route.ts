@@ -82,37 +82,24 @@ export async function POST(req: NextRequest) {
     console.log('📊 Reports query:', question, 'Role:', userRole);
 
     const isCoach = userRole === 'coach';
-    const isAdmin = userEmail === 'rsareen@gmail.com';
 
     let dataContext: string;
     let hasData = false;
 
     if (isCoach) {
-      // Coach flow - analyze all their athletes
+      // Coach flow - analyze their assigned athletes
       let athleteDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
-      if (isAdmin) {
-        const [athleteSnapshot, studentSnapshot] = await Promise.all([
-          adminDb.collection('users').where('role', '==', 'athlete').get(),
-          adminDb.collection('users').where('role', '==', 'student').get()
-        ]);
-        athleteDocs = [...athleteSnapshot.docs, ...studentSnapshot.docs];
-      } else {
-        const coachAthletesSnapshot = await adminDb
-          .collection('users')
-          .where('coachId', '==', userId)
-          .get();
-        athleteDocs = coachAthletesSnapshot.docs;
-      }
+      const coachAthletesSnapshot = await adminDb
+        .collection('users')
+        .where('coachId', '==', userId)
+        .get();
+      athleteDocs = coachAthletesSnapshot.docs;
 
       let workoutsSnapshot;
-      if (isAdmin) {
-        workoutsSnapshot = await adminDb.collection('workouts').get();
-      } else {
-        workoutsSnapshot = await adminDb
-          .collection('workouts')
-          .where('createdBy', '==', userId)
-          .get();
-      }
+      workoutsSnapshot = await adminDb
+        .collection('workouts')
+        .where('createdBy', '==', userId)
+        .get();
 
       const athleteMap = new Map<string, AthleteData>();
       athleteDocs.forEach(doc => {

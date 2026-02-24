@@ -16,7 +16,7 @@ export interface User {
   createdAt: Timestamp;
   updatedAt: Timestamp;
   coachId?: string;
-  coachCode?: string; // 6-letter code for coaches (except rsareen@gmail.com)
+  coachCode?: string; // 6-letter code for coaches
   photoURL?: string; // Google profile photo
   // Strava integration fields
   stravaId?: string;
