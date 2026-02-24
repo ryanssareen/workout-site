@@ -195,8 +195,8 @@ function WorkoutsContent() {
         ))}
       </div>
 
-      {/* AI Workout Suggestions - coaches only */}
-      {user && user.role === 'coach' && (
+      {/* AI Workout Suggestions - coaches and self-training athletes (no coach) */}
+      {user && (user.role === 'coach' || !user.coachId) && (
         <AIWorkoutSuggestions
           userId={user.uid}
           recentWorkouts={workouts}
