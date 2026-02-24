@@ -290,8 +290,58 @@ export default function ProfilePage() {
           </CardHeader>
           <CardContent>
             {user.trainingFor && user.trainingFor.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5">{user.trainingFor.map((t) => <Badge key={t} variant="secondary" className="font-normal">{t}</Badge>)}</div>
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-1.5">{user.trainingFor.map((t) => <Badge key={t} variant="secondary" className="font-normal">{t}</Badge>)}</div>
+                {user.events && user.events.length > 0 && (
+                  <div className="pt-1 space-y-1">
+                    {user.events.filter((e: any) => e.eventName || e.eventDate).map((e: any, i: number) => (
+                      <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">{e.goal}</span>
+                        {e.eventName && <span>— {e.eventName}</span>}
+                        {e.eventDate && <span className="tabular-nums">({e.eventDate})</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             ) : <p className="text-sm text-muted-foreground italic">Not set yet</p>}
+          </CardContent>
+        </Card>
+
+        <Card className="group hover:shadow-md transition-shadow">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-blue-500/10"><Dumbbell className="h-4 w-4 text-blue-500" /></div>
+              Experience & Body
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div>
+                <p className="text-muted-foreground text-xs uppercase tracking-wide">Level</p>
+                <p className="font-medium capitalize">{user.experienceLevel || '—'}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs uppercase tracking-wide">Height</p>
+                <p className="font-medium">
+                  {user.height
+                    ? user.heightUnit === 'ft'
+                      ? `${Math.floor(user.height / 30.48)}′${Math.round((user.height % 30.48) / 2.54)}″`
+                      : `${user.height} cm`
+                    : '—'}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs uppercase tracking-wide">Weight</p>
+                <p className="font-medium">
+                  {user.weight
+                    ? user.weightUnit === 'lbs'
+                      ? `${Math.round(user.weight / 0.453592)} lbs`
+                      : `${user.weight} kg`
+                    : '—'}
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
