@@ -20,6 +20,7 @@ interface SafeWorkout {
   date: string | null;
   completed: boolean;
   duration: number | null;
+  assignedTo: string | null;
 }
 
 function toOptionalString(value: unknown): string | null {
@@ -62,6 +63,7 @@ function toSafeWorkout(id: string, data: WorkoutDoc): SafeWorkout {
     date: toIsoString(data.date),
     completed: data.completed === true,
     duration: toOptionalNumber(data.duration),
+    assignedTo: toOptionalString(data.assignedTo),
   };
 }
 
@@ -117,26 +119,29 @@ function createMcpServer(): McpServer {
     'get_user_workouts',
     {
       title: 'Get User Workouts',
-      description: 'Fetches recent workouts assigned to a single user ID.',
+      description:
+        'Fetches recent workouts for one user when userId is provided, or for all users when omitted.',
       inputSchema: {
         userId: z
           .string()
           .min(1)
           .max(128)
-          .regex(/^[A-Za-z0-9_-]+$/, 'userId contains invalid characters'),
+          .regex(/^[A-Za-z0-9_-]+$/, 'userId contains invalid characters')
+          .optional(),
         limit: z.number().int().min(1).max(MAX_WORKOUT_LIMIT).default(DEFAULT_WORKOUT_LIMIT),
       },
     },
-    async (input: { userId: string; limit?: number }) => {
+    async (input: { userId?: string; limit?: number }) => {
       const { userId, limit = DEFAULT_WORKOUT_LIMIT } = input;
 
-      // Safe query: fixed collection, equality filter, explicit ordering, and bounded limit.
-      const snapshot = await getFirebaseAdminDb()
-        .collection('workouts')
-        .where('assignedTo', '==', userId)
-        .orderBy('date', 'desc')
-        .limit(limit)
-        .get();
+      const workoutsCollection = getFirebaseAdminDb().collection('workouts');
+      const snapshot = userId
+        ? await workoutsCollection
+            .where('assignedTo', '==', userId)
+            .orderBy('date', 'desc')
+            .limit(limit)
+            .get()
+        : await workoutsCollection.orderBy('date', 'desc').limit(limit).get();
 
       const workouts = snapshot.docs.map((doc) =>
         toSafeWorkout(doc.id, doc.data() as WorkoutDoc)
@@ -148,7 +153,8 @@ function createMcpServer(): McpServer {
             type: 'text',
             text: JSON.stringify(
               {
-                userId,
+                scope: userId ? 'single_user' : 'all_users',
+                userId: userId ?? null,
                 count: workouts.length,
                 workouts,
               },
