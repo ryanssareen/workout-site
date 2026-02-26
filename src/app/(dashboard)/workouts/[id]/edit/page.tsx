@@ -135,6 +135,12 @@ export default function EditWorkoutPage() {
           date: workout.date.toDate(),
           duration: workout.duration,
           assignedTo: workout.assignedTo,
+          tags: workout.tags,
+          swim: workout.swim,
+          bike: workout.bike,
+          run: workout.run,
+          strength: workout.strength,
+          other: workout.other,
         }}
         athletes={students}
         loading={submitting}

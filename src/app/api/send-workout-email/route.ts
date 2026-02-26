@@ -3,6 +3,58 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import * as brevo from '@getbrevo/brevo';
 
+function detailRow(label: string, value: string): string {
+  return `<tr>
+    <td colspan="2" style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06);">
+      <div style="font-size: 11px; font-weight: 700; color: #ef4444; text-transform: uppercase; letter-spacing: 1px;">${label}</div>
+      <div style="font-size: 15px; color: #ffffff; margin-top: 4px;">${value}</div>
+    </td>
+  </tr>`;
+}
+
+function buildWorkoutDetailsHtml(workout: any): string {
+  const rows: string[] = [];
+
+  if (workout.swim) {
+    const s = workout.swim;
+    rows.push(detailRow('Distance', `${s.distance} ${s.distanceUnit}`));
+    rows.push(detailRow('Time', `${s.time} min`));
+    if (s.strokeType) rows.push(detailRow('Stroke', s.strokeType));
+    if (s.poolLength) rows.push(detailRow('Pool', `${s.poolLength}m`));
+  } else if (workout.bike) {
+    const b = workout.bike;
+    rows.push(detailRow('Distance', `${b.distance} ${b.distanceUnit}`));
+    rows.push(detailRow('Time', `${b.time} min`));
+    if (b.avgPower) rows.push(detailRow('Power', `${b.avgPower}W`));
+    if (b.avgCadence) rows.push(detailRow('Cadence', `${b.avgCadence} RPM`));
+    if (b.elevationGain) rows.push(detailRow('Elevation', `${b.elevationGain}m`));
+  } else if (workout.run) {
+    const r = workout.run;
+    rows.push(detailRow('Distance', `${r.distance} ${r.distanceUnit}`));
+    rows.push(detailRow('Time', `${r.time} min`));
+    if (r.pace) rows.push(detailRow('Pace', r.pace));
+    if (r.terrain) rows.push(detailRow('Terrain', r.terrain));
+    if (r.elevationGain) rows.push(detailRow('Elevation', `${r.elevationGain}m`));
+  } else if (workout.strength) {
+    const exercises = workout.strength.exercises || [];
+    if (exercises.length > 0) {
+      const list = exercises
+        .map((e: any) => `${e.name}: ${e.sets}x${e.reps}${e.weight ? ` @ ${e.weight}${e.weightUnit}` : ''}`)
+        .join('<br/>');
+      rows.push(detailRow('Exercises', list));
+    }
+    if (workout.strength.totalTime) rows.push(detailRow('Time', `${workout.strength.totalTime} min`));
+    if (workout.strength.rpe) rows.push(detailRow('RPE', `${workout.strength.rpe}/10`));
+  } else if (workout.other) {
+    if (workout.other.duration) rows.push(detailRow('Duration', `${workout.other.duration} min`));
+    if (workout.other.description) rows.push(detailRow('Details', workout.other.description));
+  } else if (workout.duration) {
+    rows.push(detailRow('Duration', `${workout.duration} min`));
+  }
+
+  return rows.join('\n');
+}
+
 export async function POST(request: NextRequest) {
   try {
     if (!process.env.BREVO_API_KEY) {
@@ -39,6 +91,7 @@ export async function POST(request: NextRequest) {
           year: 'numeric',
           month: 'long',
           day: 'numeric',
+          timeZone: 'Asia/Kolkata',
         });
       }
     } catch {
@@ -94,19 +147,12 @@ export async function POST(request: NextRequest) {
                         <div style="font-size: 15px; color: #ffffff; margin-top: 4px;">${formattedDate}</div>
                       </td>
                     </tr>
-                    ${workout.duration ? `
-                    <tr>
-                      <td colspan="2" style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06);">
-                        <div style="font-size: 11px; font-weight: 700; color: #ef4444; text-transform: uppercase; letter-spacing: 1px;">Duration</div>
-                        <div style="font-size: 15px; color: #ffffff; margin-top: 4px;">${workout.duration} minutes</div>
-                      </td>
-                    </tr>
-                    ` : ''}
+                    ${buildWorkoutDetailsHtml(workout)}
                     ${workout.description ? `
                     <tr>
                       <td colspan="2" style="padding: 10px 0;">
-                        <div style="font-size: 11px; font-weight: 700; color: #ef4444; text-transform: uppercase; letter-spacing: 1px;">Description</div>
-                        <div style="font-size: 14px; color: rgba(255,255,255,0.7); margin-top: 4px; line-height: 1.5;">${workout.description}</div>
+                        <div style="font-size: 11px; font-weight: 700; color: #ef4444; text-transform: uppercase; letter-spacing: 1px;">Notes</div>
+                        <div style="font-size: 14px; color: rgba(255,255,255,0.7); margin-top: 4px; line-height: 1.5; white-space: pre-line;">${workout.description}</div>
                       </td>
                     </tr>
                     ` : ''}

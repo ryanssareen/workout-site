@@ -220,8 +220,17 @@ export async function getUserWorkouts(userId: string, role: 'coach' | 'athlete' 
 export async function updateWorkout(id: string, data: Partial<WorkoutFormData>): Promise<void> {
   try {
     const docRef = doc(getDbInstance(), 'workouts', id);
-    const updateData: any = { ...data, updatedAt: serverTimestamp() };
-    if (data.date) { updateData.date = Timestamp.fromDate(data.date); }
+    const updateData: Record<string, any> = { updatedAt: serverTimestamp() };
+
+    for (const [key, value] of Object.entries(data)) {
+      if (value === undefined) continue;
+      if (key === 'date' && value instanceof Date) {
+        updateData[key] = Timestamp.fromDate(value);
+      } else {
+        updateData[key] = value;
+      }
+    }
+
     await updateDoc(docRef, updateData);
   } catch (error: any) {
     throw new Error(error.message || 'Failed to update workout');
