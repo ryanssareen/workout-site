@@ -97,9 +97,16 @@ function getApiKeyFromRequest(request: NextRequest): string | null {
   }
 
   const bearerPrefix = 'Bearer ';
-  return authHeader.startsWith(bearerPrefix)
+  const authKey = authHeader.startsWith(bearerPrefix)
     ? authHeader.slice(bearerPrefix.length)
     : authHeader;
+  if (authKey) {
+    return authKey;
+  }
+
+  // Fallback for clients/connectors that cannot set custom headers.
+  const queryKey = request.nextUrl.searchParams.get('key');
+  return queryKey && queryKey.trim() ? queryKey : null;
 }
 
 function createMcpServer(): McpServer {
