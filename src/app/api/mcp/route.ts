@@ -139,6 +139,7 @@ function createMcpServer(): McpServer {
 }
 
 async function handleMcpRequest(request: NextRequest): Promise<Response> {
+  // This endpoint is intentionally protected by MCP_SECRET + x-api-key.
   const secret = process.env.MCP_SECRET;
   if (!secret) {
     return NextResponse.json(
