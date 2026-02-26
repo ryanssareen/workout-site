@@ -92,16 +92,14 @@ function getApiKeyFromRequest(request: NextRequest): string | null {
   }
 
   const authHeader = request.headers.get('authorization');
-  if (!authHeader) {
-    return null;
-  }
-
-  const bearerPrefix = 'Bearer ';
-  const authKey = authHeader.startsWith(bearerPrefix)
-    ? authHeader.slice(bearerPrefix.length)
-    : authHeader;
-  if (authKey) {
-    return authKey;
+  if (authHeader) {
+    const bearerPrefix = 'Bearer ';
+    const authKey = authHeader.startsWith(bearerPrefix)
+      ? authHeader.slice(bearerPrefix.length)
+      : authHeader;
+    if (authKey) {
+      return authKey;
+    }
   }
 
   // Fallback for clients/connectors that cannot set custom headers.
