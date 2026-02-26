@@ -70,13 +70,36 @@ function isAuthorizedApiKey(candidate: string | null, expected: string): boolean
     return false;
   }
 
-  const candidateBuffer = Buffer.from(candidate);
-  const expectedBuffer = Buffer.from(expected);
+  const normalizedCandidate = candidate.trim();
+  const normalizedExpected = expected.trim();
+  if (!normalizedCandidate || !normalizedExpected) {
+    return false;
+  }
+
+  const candidateBuffer = Buffer.from(normalizedCandidate);
+  const expectedBuffer = Buffer.from(normalizedExpected);
   if (candidateBuffer.length !== expectedBuffer.length) {
     return false;
   }
 
   return timingSafeEqual(candidateBuffer, expectedBuffer);
+}
+
+function getApiKeyFromRequest(request: NextRequest): string | null {
+  const directKey = request.headers.get('x-api-key');
+  if (directKey) {
+    return directKey;
+  }
+
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader) {
+    return null;
+  }
+
+  const bearerPrefix = 'Bearer ';
+  return authHeader.startsWith(bearerPrefix)
+    ? authHeader.slice(bearerPrefix.length)
+    : authHeader;
 }
 
 function createMcpServer(): McpServer {
@@ -148,7 +171,7 @@ async function handleMcpRequest(request: NextRequest): Promise<Response> {
     );
   }
 
-  const apiKey = request.headers.get('x-api-key');
+  const apiKey = getApiKeyFromRequest(request);
   if (!isAuthorizedApiKey(apiKey, secret)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
