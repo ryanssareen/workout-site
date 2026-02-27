@@ -94,19 +94,17 @@ function getApiKeyFromRequest(request: NextRequest): string | null {
   }
 
   const authHeader = request.headers.get('authorization');
-  if (authHeader) {
-    const bearerPrefix = 'Bearer ';
-    const authKey = authHeader.startsWith(bearerPrefix)
-      ? authHeader.slice(bearerPrefix.length)
-      : authHeader;
-    if (authKey) {
-      return authKey;
-    }
+  if (!authHeader) {
+    return null;
   }
 
-  // Fallback for clients/connectors that cannot set custom headers.
-  const queryKey = request.nextUrl.searchParams.get('key');
-  return queryKey && queryKey.trim() ? queryKey : null;
+  const [scheme, ...tokenParts] = authHeader.trim().split(/\s+/);
+  if (scheme?.toLowerCase() !== 'bearer' || tokenParts.length === 0) {
+    return null;
+  }
+
+  const token = tokenParts.join(' ');
+  return token || null;
 }
 
 function createMcpServer(): McpServer {
@@ -173,7 +171,7 @@ function createMcpServer(): McpServer {
 }
 
 async function handleMcpRequest(request: NextRequest): Promise<Response> {
-  // This endpoint is intentionally protected by MCP_SECRET + x-api-key.
+  // This endpoint is intentionally protected by MCP_SECRET via auth headers.
   const secret = process.env.MCP_SECRET;
   if (!secret) {
     return NextResponse.json(
