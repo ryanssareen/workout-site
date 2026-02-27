@@ -171,18 +171,14 @@ function createMcpServer(): McpServer {
 }
 
 async function handleMcpRequest(request: NextRequest): Promise<Response> {
-  // This endpoint is intentionally protected by MCP_SECRET via auth headers.
+  // If MCP_SECRET is set, require a valid Bearer token or x-api-key header.
+  // If MCP_SECRET is not set, allow unauthenticated access.
   const secret = process.env.MCP_SECRET;
-  if (!secret) {
-    return NextResponse.json(
-      { error: 'Server is not configured: MCP_SECRET is missing.' },
-      { status: 500 }
-    );
-  }
-
-  const apiKey = getApiKeyFromRequest(request);
-  if (!isAuthorizedApiKey(apiKey, secret)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (secret) {
+    const apiKey = getApiKeyFromRequest(request);
+    if (!isAuthorizedApiKey(apiKey, secret)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
   }
 
   try {
