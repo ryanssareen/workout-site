@@ -27,7 +27,12 @@ function getServiceAccountCredential(): {
 
   let parsedServiceAccount: FirebaseServiceAccount;
   try {
-    const parsed = JSON.parse(rawServiceAccount) as unknown;
+    // Support both raw JSON and base64-encoded JSON
+    let jsonString = rawServiceAccount;
+    if (!rawServiceAccount.trim().startsWith('{')) {
+      jsonString = Buffer.from(rawServiceAccount, 'base64').toString('utf-8');
+    }
+    const parsed = JSON.parse(jsonString) as unknown;
     if (typeof parsed !== 'object' || parsed === null) {
       throw new Error('FIREBASE_SERVICE_ACCOUNT must be a JSON object.');
     }
