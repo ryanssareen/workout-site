@@ -52,9 +52,10 @@ interface WorkoutFormProps {
   athletes: Array<{ uid: string; displayName: string; email: string }>;
   loading?: boolean;
   hideAthleteSelector?: boolean;
+  isEditing?: boolean;
 }
 
-export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAthleteSelector }: WorkoutFormProps) {
+export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAthleteSelector, isEditing }: WorkoutFormProps) {
   // Type-agnostic defaults (always applied)
   const BASE_DEFAULTS: Partial<WorkoutSchema> = {
     date: new Date(),
@@ -431,7 +432,7 @@ export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAt
 
       {/* Submit Button */}
       <Button type="submit" className="w-full" disabled={loading || isSubmitting}>
-        {loading || isSubmitting ? 'Saving...' : isRecurring ? 'Create Recurring Workout' : 'Create Workout'}
+        {loading || isSubmitting ? 'Saving...' : isEditing ? 'Update Workout' : isRecurring ? 'Create Recurring Workout' : 'Create Workout'}
       </Button>
     </form>
   );

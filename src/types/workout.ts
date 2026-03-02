@@ -26,7 +26,7 @@ export interface SwimData {
   time: number; // minutes
   strokes?: number;
   strokeType?: 'freestyle' | 'backstroke' | 'breaststroke' | 'butterfly' | 'mixed';
-  poolLength?: 25 | 50;
+  poolLength?: number; // 20, 25, 30, 50, or custom
 }
 
 export interface BikeData {

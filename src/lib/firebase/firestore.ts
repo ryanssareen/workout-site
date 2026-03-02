@@ -1,6 +1,6 @@
 import {
   collection, addDoc, updateDoc, deleteDoc, doc, getDoc, getDocs,
-  query, where, orderBy, serverTimestamp, Timestamp, writeBatch,
+  query, where, orderBy, serverTimestamp, Timestamp, writeBatch, deleteField,
 } from 'firebase/firestore';
 import { getDbInstance } from './config';
 import { Workout, WorkoutFormData, WorkoutComment, WorkoutRating, PersonalRecord, PRCategory } from '@/types';
@@ -220,8 +220,28 @@ export async function getUserWorkouts(userId: string, role: 'coach' | 'athlete' 
 export async function updateWorkout(id: string, data: Partial<WorkoutFormData>): Promise<void> {
   try {
     const docRef = doc(getDbInstance(), 'workouts', id);
-    const updateData: any = { ...data, updatedAt: serverTimestamp() };
+    const updateData: any = { updatedAt: serverTimestamp() };
+
+    // Copy only defined values (Firestore rejects undefined)
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined) {
+        updateData[key] = value;
+      }
+    }
+
+    // Convert JS Date to Firestore Timestamp
     if (data.date) { updateData.date = Timestamp.fromDate(data.date); }
+
+    // When type changes, explicitly delete old type-specific fields
+    const TYPE_FIELDS = ['swim', 'bike', 'run', 'strength', 'other'] as const;
+    if (data.type) {
+      for (const field of TYPE_FIELDS) {
+        if (field !== data.type) {
+          updateData[field] = deleteField();
+        }
+      }
+    }
+
     await updateDoc(docRef, updateData);
   } catch (error: any) {
     throw new Error(error.message || 'Failed to update workout');

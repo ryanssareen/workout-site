@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: 'The Daily Athlete - Train Smarter. Every Day.',
   description: 'Your personal training companion. Track workouts, build discipline, and crush your goals.',
   verification: {
-    google: 'bBqx5L03X5a-nFB0y7-EXrcKf_znxlbfzlR5JunMQjg',
+    google: ['bBqx5L03X5a-nFB0y7-EXrcKf_znxlbfzlR5JunMQjg', 'BNFyHY449rHfrrlUMoZ5_jvjdQ9n33pX_ZgrTdk5hIc'],
   },
 };
 

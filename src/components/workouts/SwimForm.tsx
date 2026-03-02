@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SwimData } from '@/types/workout';
+
+const POOL_PRESETS = [20, 25, 30, 50];
 
 interface SwimFormProps {
   data: Partial<SwimData>;
@@ -12,6 +14,10 @@ interface SwimFormProps {
 }
 
 export function SwimForm({ data, onChange }: SwimFormProps) {
+  const [isCustomPool, setIsCustomPool] = useState(
+    data.poolLength ? !POOL_PRESETS.includes(data.poolLength) : false
+  );
+
   // Initialize defaults for fields that display a default but never fire onChange
   useEffect(() => {
     if (!data.distanceUnit || !data.strokeType) {
@@ -23,6 +29,16 @@ export function SwimForm({ data, onChange }: SwimFormProps) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handlePoolChange = (value: string) => {
+    if (value === 'custom') {
+      setIsCustomPool(true);
+      onChange({ ...data, poolLength: undefined });
+    } else {
+      setIsCustomPool(false);
+      onChange({ ...data, poolLength: Number(value) });
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -77,19 +93,33 @@ export function SwimForm({ data, onChange }: SwimFormProps) {
           />
         </div>
         <div>
-          <Label htmlFor="poolLength">Pool Length (m)</Label>
+          <Label htmlFor="poolLength">Pool Length</Label>
           <Select
-            value={data.poolLength?.toString() || '25'}
-            onValueChange={(value) => onChange({ ...data, poolLength: Number(value) as 25 | 50 })}
+            value={isCustomPool ? 'custom' : (data.poolLength?.toString() || '25')}
+            onValueChange={handlePoolChange}
           >
             <SelectTrigger>
               <SelectValue placeholder="Pool length" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="20">20m</SelectItem>
               <SelectItem value="25">25m</SelectItem>
+              <SelectItem value="30">30m</SelectItem>
               <SelectItem value="50">50m</SelectItem>
+              <SelectItem value="custom">Custom</SelectItem>
             </SelectContent>
           </Select>
+          {isCustomPool && (
+            <Input
+              type="number"
+              placeholder="Pool length in meters"
+              min={10}
+              max={100}
+              className="mt-2"
+              value={data.poolLength || ''}
+              onChange={(e) => onChange({ ...data, poolLength: Number(e.target.value) })}
+            />
+          )}
         </div>
       </div>
       <div>

@@ -1,9 +1,11 @@
 import { WorkoutType, WorkoutTag } from '@/types';
 
+// Raw spreadsheet row - every value is a string from the parser
 export interface RawRow {
   [key: string]: string | number | null;
 }
 
+// Groq's interpretation of the spreadsheet structure
 export interface ColumnMapping {
   name: string | null;
   type: string | null;
@@ -28,9 +30,13 @@ export interface ColumnMapping {
     column: string;
     rules: Array<{ pattern: string; type: string }>;
   };
-  tagSuggestions?: Array<{ pattern: string; tags: string[] }>;
+  tagSuggestions?: Array<{
+    pattern: string;
+    tags: string[];
+  }>;
 }
 
+// A single parsed workout ready for validation
 export interface ParsedWorkout {
   rowIndex: number;
   name: string;
@@ -56,6 +62,7 @@ export interface ParsedWorkout {
   confidence: number;
 }
 
+// After validation
 export interface ValidatedWorkout extends ParsedWorkout {
   status: 'valid' | 'warning' | 'error';
   warnings: string[];
@@ -64,15 +71,10 @@ export interface ValidatedWorkout extends ParsedWorkout {
   duplicateOf?: string;
 }
 
-// Serialized version for Firestore storage (dates as ISO strings)
-export interface SerializedWorkout extends Omit<ValidatedWorkout, 'date'> {
-  date: string; // ISO string
-}
-
+// Full analysis response sent to client
 export interface AnalysisResult {
   sessionId: string;
   totalRows: number;
-  headers: string[]; // column headers for mapping override UI
   mapping: ColumnMapping;
   workouts: ValidatedWorkout[];
   summary: {
@@ -83,4 +85,12 @@ export interface AnalysisResult {
     byType: Record<string, number>;
     dateRange: { earliest: string; latest: string } | null;
   };
+}
+
+// Parse result from file parser
+export interface ParseResult {
+  headers: string[];
+  rows: RawRow[];
+  sheetName?: string;
+  totalSheets?: number;
 }

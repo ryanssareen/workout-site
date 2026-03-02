@@ -8,7 +8,7 @@ const swimDataSchema = z.object({
   time: z.number().min(0, 'Time is required'),
   strokes: z.number().optional(),
   strokeType: z.enum(['freestyle', 'backstroke', 'breaststroke', 'butterfly', 'mixed']).optional(),
-  poolLength: z.union([z.literal(25), z.literal(50)]).optional(),
+  poolLength: z.number().min(10).max(100).optional(),
 });
 
 const bikeDataSchema = z.object({

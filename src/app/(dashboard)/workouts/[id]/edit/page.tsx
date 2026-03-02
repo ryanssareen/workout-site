@@ -135,9 +135,17 @@ export default function EditWorkoutPage() {
           date: workout.date.toDate(),
           duration: workout.duration,
           assignedTo: workout.assignedTo,
+          tags: (workout as any).tags,
+          // Pass type-specific data so form doesn't lose it
+          ...(workout.swim ? { swim: workout.swim } : {}),
+          ...(workout.bike ? { bike: workout.bike } : {}),
+          ...(workout.run ? { run: workout.run } : {}),
+          ...(workout.strength ? { strength: workout.strength } : {}),
+          ...(workout.other ? { other: workout.other } : {}),
         }}
         athletes={students}
         loading={submitting}
+        isEditing
       />
     </div>
   );
