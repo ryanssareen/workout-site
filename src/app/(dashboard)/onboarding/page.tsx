@@ -9,9 +9,12 @@ import { Loader2, Sparkles, ArrowRight, ArrowLeft, AlertCircle, Calendar, Trophy
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { SPORT_OPTIONS, TRAINING_FOR_OPTIONS } from '@/lib/schemas/profile';
+import { FileUploadStep } from '@/components/onboarding/FileUploadStep';
+import { ImportPreview } from '@/components/onboarding/ImportPreview';
+import { AnalysisResult } from '@/lib/import/types';
 
-type Step = 'intro' | 'name' | 'sports' | 'goals' | 'experience' | 'body';
-const STEPS: Step[] = ['intro', 'name', 'sports', 'goals', 'experience', 'body'];
+type Step = 'intro' | 'name' | 'sports' | 'goals' | 'experience' | 'body' | 'import' | 'import-preview';
+const STEPS: Step[] = ['intro', 'name', 'sports', 'goals', 'experience', 'body', 'import'];
 
 const EXPERIENCE_LEVELS = [
   { value: 'beginner', label: 'Beginner', desc: 'New to structured training' },
@@ -41,6 +44,8 @@ export default function OnboardingPage() {
   const [checking, setChecking] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [importedCount, setImportedCount] = useState(0);
   const completingRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -55,7 +60,7 @@ export default function OnboardingPage() {
     if (step === 'name') setTimeout(() => inputRef.current?.focus(), 400);
   }, [step]);
 
-  const stepIdx = STEPS.indexOf(step);
+  const stepIdx = step === 'import-preview' ? STEPS.indexOf('import') : STEPS.indexOf(step);
   const totalDots = STEPS.length - 1; // exclude intro
 
   const goNext = () => {
@@ -162,7 +167,8 @@ export default function OnboardingPage() {
         ...(weightKg ? { weight: weightKg, weightUnit } : {}),
       });
 
-      toast.success(`Welcome, ${name.trim()}!`);
+      const importMsg = importedCount > 0 ? ` ${importedCount} workout${importedCount !== 1 ? 's' : ''} imported!` : '';
+      toast.success(`Welcome, ${name.trim()}!${importMsg}`);
       router.replace('/profile?edit=1');
     } catch { toast.error('Failed to save'); }
     finally { setSaving(false); }
@@ -421,11 +427,50 @@ export default function OnboardingPage() {
             </div>
             <div className="flex gap-3">
               <BackButton onClick={goBack} />
-              <PrimaryButton onClick={handleFinish} disabled={saving} className="flex-[2]">
-                {saving ? <><Loader2 className="w-5 h-5 animate-spin" />Setting up...</> : <>Finish<ArrowRight className="w-5 h-5" /></>}
+              <PrimaryButton onClick={goNext} className="flex-[2]">
+                Continue<ArrowRight className="w-5 h-5" />
               </PrimaryButton>
             </div>
             <p className="text-center text-xs text-muted-foreground">You can always update these in your profile settings.</p>
+          </div>
+        )}
+
+        {/* ── IMPORT WORKOUTS ── */}
+        {step === 'import' && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <FileUploadStep
+              userId={user.uid}
+              onAnalysisComplete={(result: AnalysisResult) => {
+                setAnalysisResult(result);
+                setStep('import-preview');
+              }}
+            />
+            <div className="flex gap-3">
+              <BackButton onClick={goBack} />
+              <PrimaryButton onClick={handleFinish} disabled={saving} className="flex-[2]">
+                {saving ? <><Loader2 className="w-5 h-5 animate-spin" />Setting up...</> : <>Skip & Finish<ArrowRight className="w-5 h-5" /></>}
+              </PrimaryButton>
+            </div>
+            <p className="text-center text-xs text-muted-foreground">You can import workout history later from your profile.</p>
+          </div>
+        )}
+
+        {/* ── IMPORT PREVIEW ── */}
+        {step === 'import-preview' && analysisResult && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <ImportPreview
+              result={analysisResult}
+              userId={user.uid}
+              userName={name.trim()}
+              onComplete={(count: number) => {
+                setImportedCount(count);
+                handleFinish();
+              }}
+              onBack={() => {
+                setAnalysisResult(null);
+                setStep('import');
+              }}
+            />
           </div>
         )}
       </div>

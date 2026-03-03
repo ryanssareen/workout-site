@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase/admin';
 import { SerializedWorkout } from '@/lib/import/types';
+import { enrichWorkouts } from '@/lib/import/enricher';
 import * as admin from 'firebase-admin';
 
 export async function POST(request: NextRequest) {
@@ -41,6 +42,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No valid workouts to import' }, { status: 400 });
     }
 
+    // Enrich workouts with Groq (standardize names, generate descriptions, suggest tags)
+    const enrichments = await enrichWorkouts(toImport);
+
     const now = new Date();
     now.setHours(23, 59, 59, 999); // end of today
     const createdIds: string[] = [];
@@ -55,12 +59,15 @@ export async function POST(request: NextRequest) {
         const ref = db.collection('workouts').doc();
         createdIds.push(ref.id);
 
+        // Apply Groq enrichments (better names, descriptions, tags)
+        const enriched = enrichments.get(workout.rowIndex);
+
         const workoutDate = new Date(workout.date);
         const isPast = workoutDate <= now;
         const workoutTimestamp = admin.firestore.Timestamp.fromDate(workoutDate);
 
         const workoutDoc: Record<string, any> = {
-          name: workout.name,
+          name: enriched?.name || workout.name,
           type: workout.type,
           date: workoutTimestamp,
           completed: isPast,
@@ -72,13 +79,15 @@ export async function POST(request: NextRequest) {
           createdBy: userId,
           assignedTo: userId,
           assignedToName: userName || '',
-          tags: workout.tags || [],
+          tags: enriched?.tags?.length ? enriched.tags : (workout.tags || []),
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         };
 
         if (workout.duration) workoutDoc.duration = workout.duration;
-        if (workout.description) workoutDoc.description = workout.description;
+        // Use enriched description, fall back to original
+        const desc = enriched?.description || workout.description;
+        if (desc) workoutDoc.description = desc;
         if (workout.calories) workoutDoc.calories = workout.calories;
 
         // Type-specific data
