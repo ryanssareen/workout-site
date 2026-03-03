@@ -71,10 +71,16 @@ export interface ValidatedWorkout extends ParsedWorkout {
   duplicateOf?: string;
 }
 
+// Serialized workout (dates as ISO strings for JSON transport)
+export interface SerializedWorkout extends Omit<ValidatedWorkout, 'date'> {
+  date: string; // ISO string
+}
+
 // Full analysis response sent to client
 export interface AnalysisResult {
   sessionId: string;
   totalRows: number;
+  headers: string[]; // column headers from the parsed file
   mapping: ColumnMapping;
   workouts: ValidatedWorkout[];
   summary: {
@@ -93,4 +99,6 @@ export interface ParseResult {
   rows: RawRow[];
   sheetName?: string;
   totalSheets?: number;
+  totalRowsInFile: number;
+  truncated: boolean;
 }

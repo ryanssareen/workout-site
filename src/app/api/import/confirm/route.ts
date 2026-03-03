@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
 
         if (workout.type === 'strength' && workout.exercises?.length) {
           workoutDoc.strength = {
-            exercises: workout.exercises.map(ex => ({
+            exercises: workout.exercises.map((ex: { name: string; sets: number; reps: number; weight?: number; weightUnit?: string }) => ({
               name: ex.name,
               sets: ex.sets,
               reps: ex.reps,

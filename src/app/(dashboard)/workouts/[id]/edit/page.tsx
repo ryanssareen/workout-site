@@ -12,6 +12,54 @@ import { Loader2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
+// Ensure type-specific data from Firestore has valid enum values for Zod.
+// Also creates a minimal valid object if the workout type matches but no sub-object exists.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function ensureTypeData(workout: any): Record<string, any> {
+  const type = workout.type as string;
+  const result: Record<string, any> = {};
+
+  if (type === 'run') {
+    const raw = workout.run || {};
+    result.run = {
+      distance: raw.distance ?? 0,
+      distanceUnit: ['km', 'miles'].includes(raw.distanceUnit) ? raw.distanceUnit : 'km',
+      time: raw.time ?? 0,
+      ...(raw.pace ? { pace: raw.pace } : {}),
+      ...(raw.elevationGain ? { elevationGain: raw.elevationGain } : {}),
+      ...(raw.avgHeartRate ? { avgHeartRate: raw.avgHeartRate } : {}),
+      ...(['road', 'trail', 'track', 'treadmill'].includes(raw.terrain) ? { terrain: raw.terrain } : {}),
+    };
+  } else if (type === 'bike') {
+    const raw = workout.bike || {};
+    result.bike = {
+      distance: raw.distance ?? 0,
+      distanceUnit: ['km', 'miles'].includes(raw.distanceUnit) ? raw.distanceUnit : 'km',
+      time: raw.time ?? 0,
+      ...(raw.avgPower ? { avgPower: raw.avgPower } : {}),
+      ...(raw.avgCadence ? { avgCadence: raw.avgCadence } : {}),
+      ...(raw.elevationGain ? { elevationGain: raw.elevationGain } : {}),
+    };
+  } else if (type === 'swim') {
+    const raw = workout.swim || {};
+    result.swim = {
+      distance: raw.distance ?? 0,
+      distanceUnit: ['meters', 'yards'].includes(raw.distanceUnit) ? raw.distanceUnit : 'meters',
+      time: raw.time ?? 0,
+      ...(raw.strokes ? { strokes: raw.strokes } : {}),
+      ...(['freestyle', 'backstroke', 'breaststroke', 'butterfly', 'mixed'].includes(raw.strokeType)
+        ? { strokeType: raw.strokeType } : {}),
+      ...(raw.poolLength ? { poolLength: raw.poolLength } : {}),
+    };
+  } else if (type === 'strength' && workout.strength) {
+    result.strength = workout.strength;
+  } else if (type === 'other' && workout.other) {
+    result.other = workout.other;
+  }
+
+  return result;
+}
+
 /**
  * Workout edit page
  * 
@@ -136,12 +184,8 @@ export default function EditWorkoutPage() {
           duration: workout.duration,
           assignedTo: workout.assignedTo,
           tags: (workout as any).tags,
-          // Pass type-specific data so form doesn't lose it
-          ...(workout.swim ? { swim: workout.swim } : {}),
-          ...(workout.bike ? { bike: workout.bike } : {}),
-          ...(workout.run ? { run: workout.run } : {}),
-          ...(workout.strength ? { strength: workout.strength } : {}),
-          ...(workout.other ? { other: workout.other } : {}),
+          // Build valid type-specific data (creates defaults if missing from Firestore)
+          ...ensureTypeData(workout),
         }}
         athletes={students}
         loading={submitting}

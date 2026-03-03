@@ -286,6 +286,37 @@ async function processActivity(
       console.log(`🗺️ Route data captured: ${routeData.polyline ? 'polyline available' : 'no polyline'}`);
     }
 
+    // Add type-specific sub-objects so workouts can be properly edited
+    const distKm = (activity.distance || 0) / 1000;
+    const timeMin = Math.round((activity.moving_time || 0) / 60);
+    if (workoutType === 'run') {
+      newWorkoutData.run = {
+        distance: Math.round(distKm * 100) / 100,
+        distanceUnit: 'km',
+        time: timeMin,
+        ...(activity.total_elevation_gain ? { elevationGain: Math.round(activity.total_elevation_gain) } : {}),
+        ...(activity.average_heartrate ? { avgHeartRate: Math.round(activity.average_heartrate) } : {}),
+        ...(distKm > 0 && timeMin > 0 ? {
+          pace: `${Math.floor(timeMin / distKm)}:${String(Math.round(((timeMin / distKm) % 1) * 60)).padStart(2, '0')}/km`
+        } : {}),
+      };
+    } else if (workoutType === 'bike') {
+      newWorkoutData.bike = {
+        distance: Math.round(distKm * 100) / 100,
+        distanceUnit: 'km',
+        time: timeMin,
+        ...(activity.total_elevation_gain ? { elevationGain: Math.round(activity.total_elevation_gain) } : {}),
+        ...(activity.average_watts ? { avgPower: Math.round(activity.average_watts) } : {}),
+      };
+    } else if (workoutType === 'swim') {
+      newWorkoutData.swim = {
+        distance: Math.round(activity.distance || 0),
+        distanceUnit: 'meters',
+        time: timeMin,
+        ...(activity.average_heartrate ? { avgHeartRate: Math.round(activity.average_heartrate) } : {}),
+      };
+    }
+
     await newWorkoutRef.set(newWorkoutData);
     console.log(`✅ Created new workout ${workoutId} from Strava activity`);
 
