@@ -42,11 +42,13 @@ src/
 │   │   │   └── [id]/edit/       # Edit workout
 │   │   ├── calendar/            # Weekly calendar view
 │   │   ├── reports/             # Analytics dashboard
-│   │   ├── profile/             # User profile + edit
-│   │   ├── settings/            # Strava connection, account
-│   │   ├── onboarding/          # 7-step onboarding flow
-│   │   ├── suggestions/         # AI workout suggestions page
-│   │   └── coach-suggestions/   # Coach-specific AI suggestions
+│   │   ├── profile/             # Read-only profile (stats, charts, PRs)
+│   │   ├── settings/            # Profile editing, Strava, account settings
+│   │   ├── onboarding/          # 3-step onboarding flow (sports, goals, about)
+│   │   ├── ai-coach/            # AI coach chat
+│   │   ├── progress/            # Progress tracking
+│   │   └── records/             # Personal records
+│   ├── athlete/[username]/      # Public athlete profile page (SSR)
 │   ├── api/                     # ~45 API routes
 │   │   ├── ai/                  # AI: chat, suggestions, reports, tagging, profanity
 │   │   ├── auth/strava/         # Strava OAuth (authorize, callback, disconnect)
@@ -63,7 +65,7 @@ src/
 │   └── contact/                 # Contact page
 ├── components/
 │   ├── auth/                    # LoginForm, RegisterForm
-│   ├── dashboard/               # Navbar, stats cards, ProgressRing, StudentOverview
+│   ├── dashboard/               # Navbar, stats cards, ProfileCompletionBar, ProgressRing
 │   ├── workouts/                # WorkoutCard, WorkoutForm, sport-specific forms
 │   │   ├── comments/            # Comment listing, form, threading
 │   │   ├── SwimForm.tsx         # Swim-specific fields
@@ -76,6 +78,8 @@ src/
 │   │   ├── MiniRoutePreview.tsx # Thumbnail route preview
 │   │   ├── ShareWorkoutCard.tsx # Social sharing card + image export
 │   │   └── CompletionDialog.tsx # Complete/uncomplete modals
+│   ├── calendar/                # Calendar views, TYPE_CONFIG, getTypeData
+│   ├── profile/                 # ProfileComponents (shared PieChart, StatCard, helpers), PhotoUpload
 │   ├── reports/                 # Report sections, charts, tables
 │   ├── onboarding/              # FileUploadStep, ImportPreview
 │   ├── strava/                  # DuplicateDialog
@@ -92,6 +96,7 @@ src/
 │   │   └── profile.ts           # Zod schemas for profile
 │   ├── stores/
 │   │   └── authStore.ts         # Zustand auth state
+│   ├── analytics.ts             # computeSummary, computeTypeDistribution for workout stats
 │   ├── email/                   # Email templates (summary, reminder)
 │   ├── import/                  # CSV parsing, column mapping, enrichment
 │   ├── training/                # Training logic engines
@@ -115,17 +120,21 @@ src/
   uid: string;
   email: string;
   displayName: string;
+  username?: string;                      // Unique URL slug for public profile
   role: 'coach' | 'athlete' | 'student'; // 'student' is legacy → use 'athlete'
-  photoURL?: string;                      // Google profile photo
+  photoURL?: string;                      // Profile photo (Google or Firebase Storage upload)
   coachId?: string;                       // UID of assigned coach
-  coachCode?: string;                     // Legacy 6-letter code (no longer generated)
+  coachCode?: string;                     // 6-letter coach code (coaches only)
   createdAt: Timestamp;
   updatedAt: Timestamp;
 
   // Profile
   bio?: string;
   timezone?: string;
-  sportPreferences?: string[];            // ['Running', 'Cycling', 'Swimming', 'Strength Training']
+  profilePublic?: boolean;                // Whether public profile is visible
+  profileTagline?: string;                // AI-generated athlete tagline
+  sportPreferences?: string[];            // ['Running', 'Cycling', 'Swimming', 'Strength Training', 'Triathlon']
+  ageRange?: string;                      // e.g., '18-24', '25-34', etc.
   trainingFor?: string[];                 // ['Marathon', 'Ironman', etc.]
   events?: Array<{ goal: string; eventName: string; eventDate?: string }>;
   experienceLevel?: string;               // beginner | intermediate | advanced | elite
@@ -164,7 +173,7 @@ src/
 {
   id: string;
   name: string;
-  type: 'swim' | 'run' | 'bike' | 'strength' | 'other';
+  type: 'swim' | 'run' | 'bike' | 'strength' | 'triathlon' | 'other';
   description?: string;
   date: Timestamp;
   duration?: number;                      // minutes
@@ -381,17 +390,13 @@ src/
 - All new users registered as `'athlete'` role
 - Redirect to `/onboarding` after signup
 
-### Onboarding (`/onboarding`) — 7 Steps
+### Onboarding (`/onboarding/profile`) — 3 Steps
 
-1. **Intro** — Welcome splash
-2. **Name** — Display name with profanity check
-3. **Sports** — Multi-select: Running, Cycling, Swimming, Strength Training
-4. **Goals** — Multi-select from 14 options (Hyrox, Ironman, Marathon, Half Marathon, Triathlon, Spartan Race, CrossFit, Ultra Marathon, 5K/10K, Century Ride, Open Water Swim, Powerlifting, General Fitness, Other) + optional event name/date
-5. **Experience** — Single select: Beginner, Intermediate, Advanced, Elite
-6. **Body Metrics** — Height (cm or ft/in), Weight (kg or lbs) with unit toggles
-7. **Import** — Optional CSV/spreadsheet upload via FileUploadStep + ImportPreview
+1. **Sports** — Multi-select from SPORT_OPTIONS: Running, Cycling, Swimming, Strength Training, Triathlon. Sport emoji badges with toggle selection.
+2. **Goals** — Multi-select from 14 TRAINING_FOR_OPTIONS (Hyrox, Ironman, Marathon, Half Marathon, Triathlon, Spartan Race, CrossFit, Ultra Marathon, 5K/10K, Century Ride, Open Water Swim, Powerlifting, General Fitness, Other). Each selected goal shows inline **event name** (text input) and **event date** (date picker) fields. Events saved as `Array<{ goal, eventName, eventDate }>`.
+3. **About You** — Age range (dropdown), experience level (dropdown), height (with cm/ft toggle), weight (with kg/lbs toggle).
 
-Progress dots, back/continue navigation, animated transitions between steps.
+Progress dots, back/continue navigation, "Skip for now" option. Data saved to Firestore user doc on finish. Redirects to dashboard.
 
 ### Dashboard (`/dashboard`)
 
@@ -411,18 +416,15 @@ Progress dots, back/continue navigation, animated transitions between steps.
 
 ### Workouts (`/workouts`)
 
-**Main View:** 5 category cards (Swim, Run, Bike, Strength, Other) showing workout counts per type.
+**Main View:** Flat list of all workouts with horizontal type filter tags at the top.
 
-**Category View:** Filtered workout list with WorkoutCard components. Each card shows:
-- Name, date, duration, type badge
-- Tags (color-coded)
-- Description (3-line clamp)
-- Planned stats summary
-- Status badges (Done/Late/Missed/Upcoming/Strava/Route)
-- Actual stats from Strava (if available)
-- Mini route preview (if GPS data exists)
-- Strava photos (compact thumbnails)
-- Action buttons: Complete, Edit, Delete
+**Type Filter Tags:** All | Run | Bike | Swim | Strength | Other — horizontal row of clickable tag pills. Active tag is highlighted. Clicking filters the list in real-time (client-side state, no URL params).
+
+**Workout List:** Single-column compact rows, each showing:
+- Type emoji + workout name + type badge + date + key stat (distance/duration) + completion status icon (✓ or ○)
+- Each row links to `/workouts/[id]` detail page
+- Sorted by date descending
+- AI Workout Suggestions section at bottom
 
 **Create Workout** (`/workouts/new`):
 1. WorkoutForm with type-specific sub-forms (SwimForm, RunForm, BikeForm, StrengthForm, OtherForm)
@@ -447,7 +449,8 @@ Progress dots, back/continue navigation, animated transitions between steps.
 
 ### Calendar (`/calendar`)
 
-- Week navigation (prev/next + "Today" button) with date range display
+- 2-week desktop calendar view with workout type differentiation and color coding
+- Navigation (prev/next + "Today" button) with date range display
 - Type filters (Run, Bike, Swim, Strength, Other)
 - Athlete picker dropdown (coaches only)
 - Export ICS + email report buttons
@@ -471,29 +474,34 @@ Progress dots, back/continue navigation, animated transitions between steps.
 
 Share Reports button with modal. Time-aware greeting.
 
-### Profile (`/profile`)
+### Profile (`/profile`) — Read-Only Public-Style View
 
-**View Mode:**
-- Avatar with circular progress ring
-- Display name, email, timezone, role badge, bio
-- Completion checklist (if < 100%)
-- Info cards: Sports, Training For + events, Experience & Body, Notifications
+Displays the same layout as the public athlete profile (`/athlete/[username]`):
+- **Hero:** Profile photo (with PhotoUpload) + display name + @username + AI-generated tagline + bio + sport preference pills
+- **"Edit Profile" button** — links to `/settings` (no inline editing)
+- **Stats grid:** Total workouts, hours trained, total distance, calories burned (computed via `computeSummary()` from `src/lib/analytics.ts`)
+- **Training breakdown:** Pie chart showing workout type distribution (computed via `computeTypeDistribution()`)
+- **Recent workouts:** Latest 5 workouts with type emoji, name, date, key stats
+- **Personal records:** PR showcase with badges
+- **Empty state:** Shown when no workouts exist yet
 
-**Edit Dialog:**
-- Name (with profanity check), Bio, Timezone dropdown
-- Sport preferences (multi-select badges)
-- Training goals (multi-select + event details)
-- Notification toggles
+Shared components (`PieChart`, `StatCard`, format helpers) live in `src/components/profile/ProfileComponents.tsx` — used by both `/profile` and `/athlete/[username]`.
 
 ### Settings (`/settings`)
 
-- Profile card (name, email, role badge)
-- Strava integration:
+- **Edit Profile** card — full profile edit form:
+  - **Basic Info:** Display name, bio (300 char limit), timezone dropdown
+  - **About You:** Age range, experience level, height (with cm/ft toggle), weight (with kg/lbs toggle)
+  - **Sports:** SPORT_OPTIONS badge toggles (Running, Cycling, Swimming, Strength Training, Triathlon)
+  - **Training For:** TRAINING_FOR_OPTIONS badge toggles + inline event name/date fields for each selected goal
+  - **Role display** (read-only) + Save button with Firestore update
+- **Public Profile** toggle — enable/disable `/athlete/[username]` page
+- **Strava integration:**
   - Connect/disconnect buttons
   - Manual sync with duplicate detection dialog
   - Auto-sync status indicator
   - Link to Garmin-Strava connection guide
-- Account: Change password link, Sign out button
+- **Account:** Change password link, Sign out button
 
 ### Preview Routes
 
@@ -512,6 +520,19 @@ Share Reports button with modal. Time-aware greeting.
 - OpenGraph/Twitter card metadata with emoji titles
 - CTA: "Add to My Workouts" or "Sign Up"
 - Used in email notifications ("View Workout" links to this)
+
+### Public Athlete Profile (`/athlete/[username]`)
+
+- Server-rendered (SSR), no auth required
+- OpenGraph + Twitter card metadata for rich link previews
+- **Hero:** Avatar + display name + @username + AI-generated tagline + bio + sport pills
+- **Stats grid:** Total workouts, hours trained, total distance, calories
+- **Training breakdown pie chart** + **Recent workouts** (side by side)
+- **Personal records** showcase with PR badges
+- **CTA banner:** "Join The Daily Athlete" for visitors (not shown for logged-in profile owner)
+- **Share button:** Copy link to clipboard
+- Privacy: Only shows aggregate stats + workout names, not full descriptions or comments
+- Uses shared components from `src/components/profile/ProfileComponents.tsx`
 
 ### Other Public Pages
 
@@ -589,16 +610,13 @@ Share Reports button with modal. Time-aware greeting.
 
 ## Coach-Athlete System
 
-Coach-athlete connections are **backend-managed only**. No UI exists for connecting via codes.
+Coach-athlete connections work via **unique 6-letter coach codes**.
 
 **How it works:**
-- `rsareen@gmail.com` is the sole coach, hardcoded in `src/lib/firebase/auth.ts`
-- Athletes `rsareen+hetal@gmail.com`, `rsareen+rohin@gmail.com`, `rsareen+rupesh@gmail.com` are auto-connected
-- On `getUserProfile()`, rsareen@gmail.com is auto-promoted to `'coach'` role
-- On `getUserProfile()`, matching athletes get `coachId` set to the coach's UID
-- On `signInWithGoogle()`, new users matching these emails are auto-connected
-- Coach code generation has been removed from registration flow
-- No UI allows athletes to enter coach codes or connect to coaches
+- Coaches receive a unique 6-letter code upon registration
+- Athletes enter their coach's code during registration to connect
+- Coach code system: coaches get a unique 6-letter `coachCode`, athletes enter it to set `coachId`
+- Legacy hardcoded connections also exist for `rsareen@gmail.com` as coach
 
 **Role-Based Access:**
 - **Coaches:** Create/assign workouts, view all athletes' data, generate reports, calendar athlete picker
@@ -722,7 +740,7 @@ interface AuthState {
 - `RECURRING_FREQUENCIES` — `['daily', 'weekly', 'biweekly', 'monthly']`
 
 ### `src/lib/schemas/profile.ts`
-- `SPORT_OPTIONS` — `['Running', 'Cycling', 'Swimming', 'Strength Training']`
+- `SPORT_OPTIONS` — `['Running', 'Cycling', 'Swimming', 'Strength Training', 'Triathlon']`
 - `TRAINING_FOR_OPTIONS` — 14 options (Hyrox, Ironman, Marathon, etc.)
 - `profileSchema`
 

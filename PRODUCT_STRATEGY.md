@@ -14,8 +14,8 @@
 | **Strava Sync** | Production-ready | OAuth + webhooks + dedup + photos + routes. Well-executed. |
 | **AI Suggestions** | Genuinely advanced | 3-tier pipeline (logic engine → Groq → validator), periodization-aware, fatigue-aware. Better than Final Surge, TrainingPeaks. |
 | **Report Engine** | Solid foundation | 6 section types, Recharts charts, AI-generated reports via Groq, PNG/PDF/email export. |
-| **Onboarding** | Over-built | 7 steps is too many for a solo athlete. Needs simplification. |
-| **Multi-Sport** | Complete | Swim, bike, run, strength, other — all with sport-specific fields. |
+| **Onboarding** | Streamlined | Simplified to 3 steps (Sports → Goals with event name/date → About You). Profile completion bar on dashboard for deferred fields. |
+| **Multi-Sport** | Complete | Swim, bike, run, strength, triathlon, other — all with sport-specific fields. |
 | **Email System** | Working | Brevo for transactional, cron for reminders/summaries. |
 
 ### What's Missing or Weak
@@ -23,7 +23,7 @@
 | Area | Gap | Impact |
 |------|-----|--------|
 | **Report sharing UX** | Reports can export PNG/PDF but there's no beautiful, branded "year in review" or "weekly wrap" shareable card | HIGH — this is the viral opportunity |
-| **Public athlete profiles** | No shareable profile page showing stats/achievements | HIGH — viral surface |
+| ~~**Public athlete profiles**~~ | ✅ DONE — `/athlete/[username]` with stats, pie chart, recent workouts, PRs, AI tagline | ~~HIGH~~ |
 | **Product analytics** | Zero tracking of user behavior (no PostHog, no Amplitude, nothing) | HIGH — can't improve what you can't measure |
 | **PWA / mobile install** | No manifest.json, no service worker, no "Add to Home Screen" | MEDIUM — athletes use phones |
 | **Monetization** | No payment system, no tiers, no pricing page | MEDIUM — not urgent pre-PMF |
@@ -173,32 +173,22 @@ Each item below is a standalone implementation task. Pick any one and ask Claude
 
 ---
 
-### Implementation 3: Public Athlete Profile Page
+### Implementation 3: Public Athlete Profile Page ✅ DONE
 
-**What:** A shareable public page at `/athlete/[username]` showing training stats, recent activity, and achievements. No login required to view.
+**Status:** Fully implemented. Public profile pages live at `/athlete/[username]` with SSR, OpenGraph metadata, and full stats.
 
-**Page content:**
-- Display name + avatar
-- Training stats summary (total workouts, hours, distance, streak)
-- Sport breakdown donut chart
-- Recent 5 workouts (name, type, date, distance/duration)
-- PR showcase (top 3 personal records)
-- Monthly activity heatmap (GitHub-style)
-- "Join The Daily Athlete" CTA for visitors
-
-**Technical approach:**
-- Add `username` field to user profile (slugified display name, must be unique)
-- New page: `src/app/athlete/[username]/page.tsx` — server-rendered, public
-- OpenGraph metadata for rich link previews when shared
-- Firestore query: lookup user by username, fetch public workout data
-- Privacy: Only show aggregate stats + workout names, not full descriptions or comments
-
-**Key files to modify:**
-- `src/types/index.ts` — add `username` field to User type
-- `src/lib/firebase/firestore.ts` — add `getUserByUsername()` function
-- `src/app/(dashboard)/profile/page.tsx` — add username setup UI
-- `src/lib/analytics.ts` — reuse computation functions
-- New: `src/app/athlete/[username]/page.tsx`
+**What was built:**
+- Server-rendered public profile at `/athlete/[username]` — no login required
+- Hero section: avatar + name + @username + AI-generated tagline + bio + sport pills
+- Stats grid: total workouts, hours, distance, calories
+- Training breakdown pie chart + recent workouts (side by side)
+- Personal records showcase with PR badges
+- "Join The Daily Athlete" CTA banner for visitors
+- Shared components extracted to `src/components/profile/ProfileComponents.tsx` (PieChart, StatCard, helpers) — used by both `/profile` and `/athlete/[username]`
+- Username field on user profile (unique, slugified)
+- `getUserByUsername()` + `getUserWorkouts()` + `getPersonalRecords()` in Firestore
+- Profile page (`/profile`) rewritten as read-only public-style view matching the public page layout
+- Edit profile moved to `/settings` page
 
 ---
 
@@ -268,45 +258,28 @@ Each item below is a standalone implementation task. Pick any one and ask Claude
 
 ---
 
-### Implementation 6: Simplified Onboarding (3 Steps) + Profile Completion Bar
+### Implementation 6: Simplified Onboarding (3 Steps) + Profile Completion Bar ✅ DONE
 
-**What:** Replace the 7-step onboarding with a focused 3-step flow, then show a persistent "Complete Your Profile" bar on the dashboard for remaining details.
+**Status:** Fully implemented. Onboarding reduced to 3 focused steps. Profile completion bar on dashboard. Edit profile form lives in `/settings`.
 
-**New onboarding flow:**
-1. **Name** — Display name input with AI profanity check. Clean, focused screen. "What should we call you?"
-2. **Age Range** — Select age range bracket (e.g., Under 18, 18-24, 25-34, 35-44, 45-54, 55-64, 65+). Single-select buttons. Used to personalize AI suggestions and training intensity defaults.
-3. **Connect Strava** — Strava OAuth with clear value props ("Auto-sync your workouts, see your routes, get AI insights"). Prominent "Connect Strava" button + subtle "Skip for now" link below.
+**What was built:**
 
-After step 3: redirect to dashboard. If they connected Strava, trigger an initial sync in the background so workouts appear immediately.
+**3-step onboarding flow (`/onboarding/profile`):**
+1. **Sports** — Multi-select from SPORT_OPTIONS: Running, Cycling, Swimming, Strength Training, Triathlon. Sport emoji badges with toggle selection.
+2. **Goals** — Multi-select from 14 TRAINING_FOR_OPTIONS + inline event name and event date fields for each selected goal. Events saved as `Array<{ goal, eventName, eventDate }>`.
+3. **About You** — Age range (dropdown), experience level (dropdown), height (with cm/ft toggle), weight (with kg/lbs toggle).
+
+Progress dots, back/continue navigation, "Skip for now" option. Data saved to Firestore user doc on finish.
 
 **Profile completion bar (dashboard):**
-- Persistent banner near the top of the dashboard (below the navbar, above the hero section)
-- Shows: "Complete your profile for better AI coaching" + progress indicator (e.g., "3 of 7 complete")
-- Expands or links to a profile completion modal/page with remaining fields:
-  - Sports preferences (multi-select: Running, Cycling, Swimming, Strength Training)
-  - Training goals (multi-select from 14 options + event name/date)
-  - Experience level (Beginner / Intermediate / Advanced / Elite)
-  - Body metrics (height in cm or ft/in, weight in kg or lbs)
-  - CSV/spreadsheet workout import
-- Each field completion updates the progress count
-- Bar is dismissible ("Dismiss" or "Remind me later") but reappears on next session until 100%
-- Once all fields complete, bar disappears permanently
+- `ProfileCompletionBar` component shows progress percentage + links to `/settings` to complete remaining fields
+- Appears on dashboard when profile < 100% complete
+- `getProfileCompletionInfo()` utility calculates completion based on all profile fields
 
-**Technical approach:**
-- Rewrite `src/app/(dashboard)/onboarding/page.tsx` — reduce to 3 steps (Name, Age Range, Strava)
-- Add `ageRange` field to user profile in Firestore
-- New component: `src/components/dashboard/ProfileCompletionBar.tsx` — the persistent banner
-- The banner links to existing profile edit dialog (`src/app/(dashboard)/profile/page.tsx`) or opens a focused completion modal
-- Profile completion % logic already exists (`profileCompleted` field on user doc) — extend it to include age range
-- After Strava connect in step 3, trigger `/api/strava/sync` in background
-
-**Key files to modify:**
-- `src/app/(dashboard)/onboarding/page.tsx` — rewrite to 3 steps
-- `src/types/index.ts` — add `ageRange` field to User type
-- `src/app/(dashboard)/dashboard/page.tsx` — add ProfileCompletionBar at top
-- `src/app/(dashboard)/profile/page.tsx` — ensure all deferred fields are editable here
-- `src/lib/firebase/firestore.ts` — update profile completion calculation to include age range
-- New: `src/components/dashboard/ProfileCompletionBar.tsx`
+**Edit profile in settings:**
+- Full profile edit form added to `/settings` page (not `/profile`)
+- Sections: Basic Info (name, bio, timezone), About You (age, experience, height, weight), Sports, Training For (with event name/date), Notifications
+- `/profile` is now a read-only public-style view with "Edit Profile" linking to `/settings`
 
 ---
 
@@ -434,7 +407,7 @@ After step 3: redirect to dashboard. If they connected Strava, trigger an initia
 
 **Phase 1 — Foundation (Week 1-2):**
 1. Implementation 7: Product Analytics (PostHog) — measure everything from day one
-2. Implementation 6: Simplified Onboarding — reduce friction for new signups
+2. ~~Implementation 6: Simplified Onboarding~~ ✅ DONE — 3-step onboarding + profile completion bar + edit profile in settings
 3. Implementation 8: PWA Support — mobile install capability
 
 **Phase 2 — Viral Reports Core (Week 3-6):**
@@ -448,7 +421,7 @@ After step 3: redirect to dashboard. If they connected Strava, trigger an initia
 9. Implementation 9: Race Recap Card — high-emotion share moment
 
 **Phase 4 — Growth Infrastructure (Week 11-14):**
-10. Implementation 3: Public Athlete Profile — SEO + social proof surface
+10. ~~Implementation 3: Public Athlete Profile~~ ✅ DONE — `/athlete/[username]` with stats, charts, PRs, AI tagline
 
 **Then:** Launch marketing push (Product Hunt, Reddit, Strava clubs), measure viral coefficient, iterate on highest-performing card types, add monetization when hitting 100+ active users.
 
