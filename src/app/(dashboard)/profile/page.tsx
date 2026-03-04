@@ -44,6 +44,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { getProfileCompletionInfo } from '@/components/dashboard/ProfileCompletionBar';
 
 const TIMEZONES = Intl.supportedValuesOf('timeZone');
 
@@ -68,15 +69,10 @@ function getDefaultValues(user: User | null): ProfileFormData {
   };
 }
 
-function calculateCompletion(data: ProfileFormData) {
-  let score = 0;
-  if (data.displayName) score += 20;
-  if (data.bio) score += 20;
-  if (data.timezone) score += 15;
-  if (data.sportPreferences && data.sportPreferences.length > 0) score += 15;
-  if (data.trainingFor && data.trainingFor.length > 0) score += 15;
-  if (data.notificationPreferences) score += 15;
-  return score;
+function calculateCompletionFromForm(data: ProfileFormData, user: User) {
+  // Merge form data with existing user data that isn't in the form
+  const merged = { ...user, ...data } as User;
+  return getProfileCompletionInfo(merged).percentage;
 }
 
 function formatTimezone(timezone?: string) {
@@ -164,7 +160,7 @@ export default function ProfilePage() {
 
     setSaving(true);
     try {
-      const profileCompleted = calculateCompletion(data);
+      const profileCompleted = calculateCompletionFromForm(data, user);
       await updateDoc(doc(getDbInstance(), 'users', user.uid), {
         displayName: data.displayName,
         bio: data.bio || null,
@@ -198,13 +194,16 @@ export default function ProfilePage() {
   if (!user) return null;
 
   const isLoading = saving || checkingName;
-  const profileCompletion = user.profileCompleted ?? calculateCompletion(getDefaultValues(user));
+  const completionInfo = getProfileCompletionInfo(user);
+  const profileCompletion = completionInfo.percentage;
   const completionItems = [
     { label: 'Name', done: !!user.displayName },
-    { label: 'Bio', done: !!user.bio },
-    { label: 'Timezone', done: !!user.timezone },
+    { label: 'Age range', done: !!user.ageRange },
     { label: 'Sports', done: (user.sportPreferences?.length ?? 0) > 0 },
-    { label: 'Training', done: (user.trainingFor?.length ?? 0) > 0 },
+    { label: 'Training goals', done: (user.trainingFor?.length ?? 0) > 0 },
+    { label: 'Experience', done: !!user.experienceLevel },
+    { label: 'Height', done: !!user.height },
+    { label: 'Weight', done: !!user.weight },
   ];
 
   return (

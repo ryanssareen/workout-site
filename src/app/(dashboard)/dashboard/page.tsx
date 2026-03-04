@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import {
-  Calendar, TrendingUp, Target, Zap, ArrowRight,
+  Calendar, TrendingUp, Target, Zap,
   CheckCircle2, Clock, UserCircle, Flame, BarChart3,
   Plus, Activity, Trophy, ChevronRight,
 } from 'lucide-react';
@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { ProgressRing } from '@/components/dashboard/stats/ProgressRing';
 import { cn } from '@/lib/utils';
 import { useStravaAutoSync } from '@/hooks/useStravaAutoSync';
+import { ProfileCompletionBar } from '@/components/dashboard/ProfileCompletionBar';
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell,
 } from 'recharts';
@@ -59,16 +60,6 @@ function calculateStreak(workouts: Workout[]): number {
   return streak;
 }
 
-function calculateProfileCompletion(user: any): number {
-  let score = 0;
-  if (user.displayName) score += 20;
-  if (user.bio) score += 20;
-  if (user.timezone) score += 15;
-  if (user.sportPreferences?.length > 0) score += 15;
-  if (user.trainingFor?.length > 0) score += 15;
-  if (user.notificationPreferences) score += 15;
-  return score;
-}
 
 export default function DashboardPage() {
   const user = useAuthStore((state) => state.user);
@@ -185,35 +176,11 @@ export default function DashboardPage() {
     );
   }
 
-  const profileCompletion = user ? calculateProfileCompletion(user) : 100;
-  const needsOnboarding = !user?.sportPreferences?.length || !user?.ageRange;
-  const showProfileCTA = profileCompletion < 100;
-
   return (
     <div className="space-y-6 pb-8">
 
-      {/* ── PROFILE COMPLETION CTA ──────────────────────────────── */}
-      {showProfileCTA && (
-        <div className="relative overflow-hidden rounded-2xl border border-red-500/20 bg-gradient-to-br from-red-500/5 via-transparent to-neutral-900/5 p-5">
-          <div className="relative flex flex-col sm:flex-row items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-red-600 flex items-center justify-center shadow-lg shadow-red-600/20 shrink-0">
-              <UserCircle className="w-7 h-7 text-white" />
-            </div>
-            <div className="flex-1 text-center sm:text-left space-y-1.5">
-              <h2 className="text-lg font-bold">{needsOnboarding ? 'Finish Your Setup' : 'Complete Your Profile'}</h2>
-              <div className="flex items-center gap-3 justify-center sm:justify-start">
-                <div className="flex-1 max-w-xs h-2 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full rounded-full bg-red-500 transition-all duration-500" style={{ width: `${profileCompletion}%` }} />
-                </div>
-                <span className="text-sm font-bold text-red-500">{profileCompletion}%</span>
-              </div>
-            </div>
-            <Button asChild size="sm" className="shrink-0">
-              <Link href={needsOnboarding ? '/onboarding' : '/profile?edit=1'}>{needsOnboarding ? 'Continue' : 'Complete'} <ArrowRight className="ml-1.5 h-3.5 w-3.5" /></Link>
-            </Button>
-          </div>
-        </div>
-      )}
+      {/* ── PROFILE COMPLETION BAR ──────────────────────────────── */}
+      {user && <ProfileCompletionBar user={user} />}
 
       {/* ── HERO HEADER ────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
