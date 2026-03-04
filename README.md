@@ -1,35 +1,49 @@
-# Workout Tracker - Coach & Student Platform
+# The Daily Athlete - Coach & Athlete Platform
 
-A modern web application for coaches to create and assign workouts to their students. Built with Next.js, Firebase, and TypeScript.
+A modern workout tracking platform connecting coaches with athletes. Built with Next.js 16, React 19, Firebase, and TypeScript.
 
 ## ✨ Features
 
 ### Core Functionality
-- **User Authentication**: Email/password authentication with role-based access (Coach/Student)
-- **Workout Management**: Create, read, update, and delete workouts
-- **Multi-Sport Support**: Swim, Run, Bike, and Strength training types
+- **User Authentication**: Email/password + Google Sign-In with role-based access (Coach/Athlete)
+- **Workout Management**: Create, read, update, and delete workouts with flat list view and type filter tags
+- **Multi-Sport Support**: Running, Cycling, Swimming, Strength Training, Triathlon, and Other
+- **Calendar View**: 2-week desktop calendar with workout type differentiation and color coding
 - **Date Scheduling**: Schedule workouts with specific dates and durations
-- **Completion Tracking**: Students can mark workouts as complete
+- **Completion Tracking**: Athletes mark workouts as complete with actual stats (distance, duration, heart rate)
+- **Strava Integration**: OAuth connection, auto-sync via webhooks, manual sync with duplicate detection
 - **Dark Mode**: Full light/dark theme support with toggle
 
+### Profile & Onboarding
+- **3-Step Onboarding**: Sports selection → Training goals (with event name & date) → About you (age, experience, body metrics)
+- **Profile Page**: Public-style view with stats grid, training breakdown pie chart, recent workouts, and personal records
+- **Public Athlete Profiles**: Shareable `/athlete/[username]` pages with AI-generated taglines
+- **Profile Photo Upload**: Firebase Storage-backed avatar uploads with compression
+- **Edit Profile in Settings**: Full profile form (name, bio, timezone, sports, goals, body metrics) lives in `/settings`
+
 ### AI-Powered Features
-- **Whiteboard Vision**: Upload photos of workout plans written on whiteboards
-- **Auto-Extraction**: AI automatically extracts workout details from images
-- **Smart Parsing**: Converts handwritten notes into structured workout data
+- **AI Workout Suggestions**: Personalized workout recommendations based on training history and goals
+- **AI Coach Chat**: Conversational AI coach with thread history
+- **Dynamic Reports**: Structured JSON reports with charts, tables, stat cards, and PR badges
+- **Profile Taglines**: AI-generated athlete taglines
+- **Whiteboard Vision**: Upload photos of workout plans for automatic extraction
 
 ### User Roles
-- **Coaches**: Create, edit, delete workouts; assign to students
-- **Students**: View assigned workouts; mark as complete
+- **Coaches**: Create, edit, assign workouts; view all athletes' data; generate reports; unique 6-letter coach code
+- **Athletes**: View/complete assigned workouts; track progress; connect Strava; share public profile
 
 ## 🛠 Tech Stack
 
-- **Framework**: Next.js 16 (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS 4.0
-- **UI Components**: shadcn/ui + Radix UI
-- **Authentication**: Firebase Authentication
+- **Framework**: Next.js 16 (App Router), React 19
+- **Language**: TypeScript 5.9
+- **Styling**: Tailwind CSS 4, shadcn/ui, Radix primitives
+- **Authentication**: Firebase Auth (email/password + Google Sign-In)
 - **Database**: Firebase Firestore
-- **AI Vision**: OpenAI GPT-4 Vision API
+- **Storage**: Firebase Storage (profile photos)
+- **AI**: Groq SDK + OpenAI SDK (workout suggestions, reports, taglines, vision)
+- **Email**: Nodemailer (Gmail SMTP) + Brevo
+- **Integrations**: Strava API (OAuth + webhooks)
+- **Charts**: Recharts + custom SVG pie charts
 - **State Management**: Zustand
 - **Form Handling**: React Hook Form + Zod
 - **Deployment**: Vercel
@@ -206,21 +220,26 @@ Add all variables from `.env.local` in Vercel dashboard:
 
 ### For Coaches
 
-1. **Register**: Create account with "Coach" role
-2. **Create Workouts**: 
-   - Go to Dashboard → "Create Workout"
+1. **Register**: Create account with "Coach" role — get a unique 6-letter code
+2. **Create Workouts**:
+   - Go to Workouts → "Create Workout"
    - Choose manual entry or upload whiteboard photo
    - Fill in workout details (name, type, description, date)
-   - Assign to a student
-3. **Manage Workouts**: View, edit, or delete from workouts list
-4. **Track Progress**: See completion status on dashboard
+   - Assign to an athlete
+3. **Manage Workouts**: Flat list view with type filter tags (All/Run/Bike/Swim/Strength/Other)
+4. **Track Progress**: View dashboard, reports, and athlete profiles
+5. **AI Reports**: Generate detailed performance reports with charts and insights
 
-### For Students
+### For Athletes
 
-1. **Register**: Create account with "Student" role
-2. **View Workouts**: See all assigned workouts on dashboard
-3. **Complete Workouts**: Mark workouts as done when finished
-4. **Track History**: Review past workouts
+1. **Register**: Create account with "Athlete" role — enter coach's 6-letter code
+2. **Onboarding**: Complete 3-step profile setup (sports, goals with event details, personal info)
+3. **View Workouts**: See all assigned workouts filtered by type, click for details
+4. **Complete Workouts**: Mark workouts as done with actual stats
+5. **Connect Strava**: Auto-sync activities from Strava with duplicate detection
+6. **Profile**: View your stats, training breakdown pie chart, recent workouts, and PRs
+7. **Public Profile**: Share your `/athlete/[username]` page with AI-generated tagline
+8. **Edit Profile**: Update all settings in the Settings page
 
 ## 📁 Project Structure
 
@@ -228,31 +247,39 @@ Add all variables from `.env.local` in Vercel dashboard:
 workout-site/
 ├── src/
 │   ├── app/                    # Next.js App Router pages
-│   │   ├── (auth)/            # Authentication pages
-│   │   │   ├── login/
-│   │   │   └── register/
+│   │   ├── (auth)/            # Authentication pages (login, register, reset-password)
 │   │   ├── (dashboard)/       # Protected dashboard pages
-│   │   │   ├── dashboard/
-│   │   │   └── workouts/
-│   │   ├── api/               # API routes
-│   │   │   ├── vision/        # AI vision processing
-│   │   │   └── workouts/      # Workout CRUD
+│   │   │   ├── dashboard/     # Main dashboard
+│   │   │   ├── workouts/      # Workouts list (flat view with type filters)
+│   │   │   ├── calendar/      # Calendar view (2-week desktop)
+│   │   │   ├── profile/       # Read-only profile (stats, charts, PRs)
+│   │   │   ├── settings/      # Profile editing, Strava, account settings
+│   │   │   ├── onboarding/    # 3-step onboarding (sports, goals, about)
+│   │   │   ├── reports/       # AI-generated reports
+│   │   │   ├── ai-coach/      # AI coach chat
+│   │   │   ├── progress/      # Progress tracking
+│   │   │   └── records/       # Personal records
+│   │   ├── athlete/[username]/ # Public athlete profiles (SSR)
+│   │   ├── api/               # API routes (ai, auth, cron, reports, strava, webhooks, workouts)
 │   │   └── page.tsx           # Landing page
 │   ├── components/
-│   │   ├── auth/              # Login/register forms
-│   │   ├── dashboard/         # Nav, theme toggle
-│   │   ├── workouts/          # Workout components
-│   │   ├── providers/         # Context providers
+│   │   ├── auth/              # Login/register forms (Google + email)
+│   │   ├── calendar/          # Calendar views, TYPE_CONFIG, getTypeData
+│   │   ├── dashboard/         # Navbar, ProfileCompletionBar
+│   │   ├── profile/           # ProfileComponents (shared), PhotoUpload
+│   │   ├── reports/           # ReportContainer, ReportRenderer, sections
+│   │   ├── strava/            # DuplicateDialog
+│   │   ├── workouts/          # WorkoutCard, WorkoutForm, AI suggestions, ShareWorkoutCard
 │   │   └── ui/                # shadcn/ui components
 │   ├── lib/
-│   │   ├── firebase/          # Firebase config & helpers
-│   │   ├── schemas/           # Zod validation schemas
+│   │   ├── analytics.ts       # Workout analytics (summary, type distribution)
+│   │   ├── firebase/          # Firebase config, auth, firestore, admin
+│   │   ├── email/             # Email templates and sending
+│   │   ├── schemas/           # Zod schemas (profile: SPORT_OPTIONS, TRAINING_FOR_OPTIONS)
 │   │   ├── stores/            # Zustand state management
 │   │   └── utils.ts           # Utility functions
-│   └── types/
-│       └── index.ts           # TypeScript type definitions
+│   └── types/                  # TypeScript types (index, workout, reports, ai)
 ├── public/                     # Static assets
-├── .env.local                  # Environment variables (not in git)
 ├── package.json
 └── README.md
 ```
@@ -270,17 +297,16 @@ npm run lint     # Run ESLint
 
 ### Adding New Workout Types
 
-1. Update `src/types/index.ts`:
-```typescript
-export type WorkoutType = 'swim' | 'run' | 'bike' | 'strength' | 'yoga'; // Add 'yoga'
-```
+1. Update `WorkoutType` in `src/types/index.ts`
+2. Update the Zod enum in `src/lib/schemas/workout.ts`
+3. Add type config (emoji, color) in `src/components/calendar/types.ts` → `TYPE_CONFIG`
+4. Add to `TYPE_EMOJI`, `TYPE_COLORS`, `SPORT_LABELS` in `src/components/profile/ProfileComponents.tsx`
+5. Update form select options in `WorkoutForm.tsx`
 
-2. Update `src/lib/schemas/workout.ts`:
-```typescript
-type: z.enum(['swim', 'run', 'bike', 'strength', 'yoga'])
-```
+### Adding New Sports to Profile
 
-3. Update form select options in `WorkoutForm.tsx`
+1. Add to `SPORT_OPTIONS` in `src/lib/schemas/profile.ts`
+2. Add emoji mapping in `src/app/(dashboard)/onboarding/profile/page.tsx` → `SPORT_EMOJI`
 
 ### Changing Theme Colors
 
@@ -345,5 +371,4 @@ For issues or questions:
 ---
 
 Built with ❤️ using Next.js and Firebase
-```
 

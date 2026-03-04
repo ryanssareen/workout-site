@@ -1,7 +1,7 @@
 # CoachTrack - CLAUDE.md
 
 ## Project Overview
-CoachTrack is a SaaS workout tracking platform connecting coaches with athletes via unique 6-letter codes. Built with Next.js 14 (App Router), TypeScript, Firebase, and deployed on Vercel.
+CoachTrack (The Daily Athlete) is a SaaS workout tracking platform connecting coaches with athletes via unique 6-letter codes. Built with Next.js 16 (App Router), React 19, TypeScript 5.9, Firebase, and deployed on Vercel.
 
 ## Tech Stack
 - **Framework:** Next.js 16 with App Router, React 19, TypeScript 5.9
@@ -22,25 +22,30 @@ CoachTrack is a SaaS workout tracking platform connecting coaches with athletes 
 src/
 ├── app/
 │   ├── (auth)/          # Login, register, reset-password
-│   ├── (dashboard)/     # Protected routes: dashboard, workouts, calendar, reports, settings, ai-coach, progress, records
+│   ├── (dashboard)/     # Protected routes: dashboard, workouts, calendar, reports, settings, ai-coach, progress, records, profile, onboarding
+│   ├── athlete/[username]/ # Public athlete profile page (SSR)
 │   ├── api/             # API routes (ai, auth, cron, reports, strava, webhooks, workouts)
 │   └── page.tsx         # Landing page
 ├── components/
 │   ├── auth/            # LoginForm, RegisterForm (Google + email)
-│   ├── dashboard/       # Navbar, layout components
+│   ├── calendar/        # Calendar views, workout type config (TYPE_CONFIG, getTypeData)
+│   ├── dashboard/       # Navbar, layout components, ProfileCompletionBar
+│   ├── profile/         # ProfileComponents (shared PieChart, StatCard, helpers), PhotoUpload
 │   ├── reports/         # ReportContainer, ReportRenderer, section components
-│   ├── workouts/        # WorkoutCard, WorkoutForm, AIWorkoutSuggestions, StrengthForm, comments
+│   ├── strava/          # DuplicateDialog for Strava sync conflicts
+│   ├── workouts/        # WorkoutCard, WorkoutForm, AIWorkoutSuggestions, StrengthForm, comments, ShareWorkoutCard
 │   └── ui/              # shadcn/ui primitives
 ├── lib/
+│   ├── analytics.ts     # computeSummary, computeTypeDistribution for workout stats
 │   ├── firebase/        # config.ts, auth.ts, firestore.ts, admin.ts
 │   ├── email/           # Email templates and sending
-│   ├── schemas/         # Zod validation schemas
+│   ├── schemas/         # Zod validation schemas (profile.ts has SPORT_OPTIONS, TRAINING_FOR_OPTIONS, etc.)
 │   └── stores/          # Zustand state stores
 └── types/               # TypeScript types (index.ts, workout.ts, reports.ts, ai.ts)
 ```
 
 ### Data Model (Firestore Collections)
-- **users** — uid, email, displayName, role (`coach`|`athlete`), coachId, coachCode (6-letter), Strava tokens
+- **users** — uid, email, displayName, username (unique), role (`coach`|`athlete`), coachId, coachCode (6-letter), Strava tokens, photoURL, bio, ageRange, experienceLevel, height/weight, sportPreferences, trainingFor, events (goal + eventName + eventDate), profileTagline, profilePublic
 - **workouts** — Multi-sport (swim/run/bike/strength/other), assigned coach→athlete, completion tracking, Strava sync, comments subcollection
 - **personalRecords** — User PRs with history
 - **chatThreads** — AI coach conversation threads
@@ -60,13 +65,26 @@ npx tsc --noEmit     # Type check without building
 
 ## Key Conventions
 - Use `@/` path alias for imports from `src/`
-- Firebase instances accessed via `getAuthInstance()`, `getDbInstance()` from `src/lib/firebase/config.ts`
+- Firebase instances accessed via `getAuthInstance()`, `getDbInstance()`, `getStorageInstance()` from `src/lib/firebase/config.ts`
 - Firebase Admin SDK in `src/lib/firebase/admin.ts` — API routes only
 - All dates stored as Firestore `Timestamp`, converted with `date-fns` for display
 - Use `sonner` toast for user notifications
 - Form handling with `react-hook-form` + `zod` validation
 - `'student'` role is legacy — always use `'athlete'` for new code
 - Environment variables are on Vercel — never commit secrets
+- Shared profile components (PieChart, StatCard, formatters) live in `src/components/profile/ProfileComponents.tsx` — used by both `/profile` and `/athlete/[username]`
+- Sport options defined in `src/lib/schemas/profile.ts` — SPORT_OPTIONS (Running, Cycling, Swimming, Strength Training, Triathlon), TRAINING_FOR_OPTIONS (14 event types)
+- Profile editing lives in `/settings` page, not the `/profile` page (profile is read-only view)
+- Workout analytics (computeSummary, computeTypeDistribution) in `src/lib/analytics.ts`
+- Onboarding flow at `/onboarding/profile` — 3 steps: Sports, Goals (with event name/date), About You
+
+## Page Architecture
+- `/profile` — Read-only public-style profile view (stats, pie chart, recent workouts, PRs). "Edit Profile" links to `/settings`
+- `/settings` — Full profile edit form (name, bio, timezone, age, experience, height/weight, sports, training goals with event name/date), Strava integration, public profile toggle, account management
+- `/workouts` — Flat list of all workouts with horizontal type filter tags (All/Run/Bike/Swim/Strength/Other), compact single-row per workout
+- `/athlete/[username]` — Public athlete profile (SSR), shares components with `/profile` via ProfileComponents.tsx
+- `/onboarding/profile` — 3-step onboarding: pick sports → pick goals (with event details) → about you (age, experience, height, weight)
+- `/calendar` — Calendar view with workout type differentiation, 2-week desktop view
 
 ## Known Issues & Active Work
 - Strava webhook subscription needs proper registration (webhook code exists but auto-sync requires env vars + API call setup)
