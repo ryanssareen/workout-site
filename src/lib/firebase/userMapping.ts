@@ -38,8 +38,9 @@ export async function getUsernameFromUid(uid: string): Promise<string | null> {
 
 export async function isUsernameAvailable(username: string): Promise<boolean> {
   try {
-    const userDoc = await getDoc(doc(getDbInstance(), 'users', username));
-    return !userDoc.exists();
+    const res = await fetch(`/api/auth/check-username?username=${encodeURIComponent(username)}`);
+    const data = await res.json();
+    return data.available === true;
   } catch (error) {
     console.error('Error checking username availability:', error);
     return false;
