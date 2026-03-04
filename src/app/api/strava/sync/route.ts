@@ -298,6 +298,7 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get('userId');
     const checkDuplicates = searchParams.get('checkDuplicates') === 'true';
     const duplicateDecisions = searchParams.get('decisions');
+    const period = searchParams.get('period'); // 'week' | 'month' | 'year' | null
 
     if (!userId) {
       console.error('❌ No userId provided');
@@ -345,12 +346,13 @@ export async function GET(request: NextRequest) {
       console.log('✅ Token refreshed');
     }
 
-    // Fetch activities from the last year in batches
-    console.log('📡 Fetching activities from the last year...');
-    const oneYearAgo = Math.floor(Date.now() / 1000) - (365 * 24 * 60 * 60);
+    // Calculate time range based on period parameter
+    const periodDays = period === 'week' ? 7 : period === 'month' ? 30 : 365;
+    const afterTimestamp = Math.floor(Date.now() / 1000) - (periodDays * 24 * 60 * 60);
+    console.log(`📡 Fetching activities from the last ${period || 'year'} (${periodDays} days)...`);
 
     let activitiesResponse = await fetch(
-      `https://www.strava.com/api/v3/athlete/activities?after=${oneYearAgo}&per_page=200`,
+      `https://www.strava.com/api/v3/athlete/activities?after=${afterTimestamp}&per_page=200`,
       {
         headers: { Authorization: `Bearer ${accessToken}` },
       }
@@ -382,7 +384,7 @@ export async function GET(request: NextRequest) {
       // Retry with new token
       console.log('✅ Token refreshed, retrying request...');
       activitiesResponse = await fetch(
-        `https://www.strava.com/api/v3/athlete/activities?after=${oneYearAgo}&per_page=200`,
+        `https://www.strava.com/api/v3/athlete/activities?after=${afterTimestamp}&per_page=200`,
         {
           headers: { Authorization: `Bearer ${newToken}` },
         }
@@ -430,7 +432,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log(`✅ Fetched ${activities.length} activities from last year`);
+    console.log(`✅ Fetched ${activities.length} activities from last ${period || 'year'}`);
 
     // Get existing Strava workout IDs to avoid duplicates
     const existingWorkoutsSnapshot = await adminDb
@@ -737,8 +739,9 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ Finished: Created ${newWorkoutsCount}, merged ${mergedWorkoutsCount}, skipped ${skippedCount}`);
 
-    // Run Groq dedup after every sync
+    // Run Groq dedup only on full sync (year or no period specified) — skip for partial syncs
     let dedupInfo: any = null;
+    if (!period || period === 'year') {
     try {
       console.log('🔍 Running Groq dedup after sync...');
       const { runDedupPipeline, executeDedupDeletions } = await import('@/lib/groq-dedup');
@@ -755,6 +758,9 @@ export async function GET(request: NextRequest) {
     } catch (dedupErr: any) {
       console.error('⚠️ Dedup pipeline error (non-fatal):', dedupErr.message);
       dedupInfo = { error: dedupErr.message };
+    }
+    } else {
+      console.log(`⏩ Skipping dedup for partial sync (period=${period})`);
     }
 
     // Build response message
@@ -780,6 +786,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      period: period || 'year',
       newWorkouts: newWorkoutsCount,
       mergedWorkouts: mergedWorkoutsCount,
       totalActivities: activities.length,
