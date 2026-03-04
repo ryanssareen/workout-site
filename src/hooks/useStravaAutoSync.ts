@@ -19,6 +19,7 @@ const SYNC_PHASES = ['week', 'month', 'year'] as const;
 export function useStravaAutoSync(
   user: User | null,
   onNewWorkouts?: () => void,
+  onFirstPhaseComplete?: () => void,
 ) {
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<{ newWorkouts: number; merged: number } | null>(null);
@@ -49,6 +50,7 @@ export function useStravaAutoSync(
     setSyncing(true);
     let totalNew = 0;
     let totalMerged = 0;
+    let firstPhaseNotified = false;
 
     try {
       for (const phase of SYNC_PHASES) {
@@ -71,6 +73,12 @@ export function useStravaAutoSync(
           onNewWorkouts?.();
         } else {
           console.log(`[auto-sync] ${phase}: no new activities`);
+        }
+
+        // After first phase completes, notify caller (e.g. to redirect to calendar)
+        if (!firstPhaseNotified && phase === 'week') {
+          firstPhaseNotified = true;
+          onFirstPhaseComplete?.();
         }
       }
 
@@ -119,7 +127,7 @@ export function useStravaAutoSync(
     } finally {
       setSyncing(false);
     }
-  }, [onNewWorkouts, syncPhase]);
+  }, [onNewWorkouts, onFirstPhaseComplete, syncPhase]);
 
   useEffect(() => {
     if (hasFired.current) return;
