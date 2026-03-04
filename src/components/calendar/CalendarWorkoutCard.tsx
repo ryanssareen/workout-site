@@ -148,7 +148,7 @@ function CompactCard({
               <Activity className="h-3 w-3" />S
             </span>
           )}
-          {onToggleComplete && (
+          {onToggleComplete && workout.source !== 'strava' && (
             <button
               onClick={(e) => onToggleComplete(e, workout)}
               className="opacity-40 hover:opacity-100 transition-opacity"
