@@ -111,11 +111,11 @@ export default function NewWorkoutPage() {
     try {
       const workoutData = {
         ...data,
-        assignedTo: isUnconnectedAthlete ? user.uid : (data.assignedTo || user.uid),
+        assignedTo: isUnconnectedAthlete ? user.username : (data.assignedTo || user.username),
       };
 
       // Store athlete name on workout for coach view
-      if (isCoach && workoutData.assignedTo && workoutData.assignedTo !== user.uid) {
+      if (isCoach && workoutData.assignedTo && workoutData.assignedTo !== user.username) {
         const athlete = students.find((s) => s.uid === workoutData.assignedTo);
         if (athlete?.displayName) {
           (workoutData as any).assignedToName = athlete.displayName;
@@ -238,7 +238,7 @@ export default function NewWorkoutPage() {
           || [templateData.warmup, templateData.mainSet, templateData.cooldown].filter(Boolean).join('\n\n')
           || '',
         tags: Array.isArray(templateData.tags) ? templateData.tags : undefined,
-        assignedTo: isUnconnectedAthlete ? user?.uid : students[0]?.uid || '',
+        assignedTo: isUnconnectedAthlete ? user?.username : students[0]?.uid || '',
         ...(templateData.run && { run: templateData.run }),
         ...(templateData.swim && { swim: templateData.swim }),
         ...(templateData.bike && { bike: templateData.bike }),
@@ -246,8 +246,8 @@ export default function NewWorkoutPage() {
         ...(templateData.other && { other: templateData.other }),
       };
     }
-    return isUnconnectedAthlete ? { assignedTo: user?.uid } : undefined;
-  }, [templateData, isUnconnectedAthlete, user?.uid, students]);
+    return isUnconnectedAthlete ? { assignedTo: user?.username } : undefined;
+  }, [templateData, isUnconnectedAthlete, user?.username, students]);
 
   return (
     <div className="space-y-6">
