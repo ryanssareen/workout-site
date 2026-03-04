@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
 
               <!-- CTA -->
               <div style="text-align: center; margin-top: 30px;">
-                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://coachtrack.vercel.app'}${workoutId ? `/preview/${workoutId}` : '/workouts'}" style="display: inline-block; background-color: #dc2626; color: #ffffff; padding: 16px 48px; text-decoration: none; border-radius: 8px; font-weight: 800; font-size: 15px; text-transform: uppercase; letter-spacing: 1px;">
+                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://ryanssareen-workout-site-k6vl.vercel.app'}${workoutId ? `/preview/${workoutId}` : '/workouts'}" style="display: inline-block; background-color: #dc2626; color: #ffffff; padding: 16px 48px; text-decoration: none; border-radius: 8px; font-weight: 800; font-size: 15px; text-transform: uppercase; letter-spacing: 1px;">
                   View Workout
                 </a>
               </div>
