@@ -7,18 +7,123 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
-import { User, Unlink, Settings, LogOut, Key, CheckCircle2, Loader2, ExternalLink, Copy, Check, Globe, RefreshCw } from 'lucide-react';
+import {
+  User,
+  Unlink,
+  Settings,
+  LogOut,
+  Key,
+  CheckCircle2,
+  Loader2,
+  ExternalLink,
+  Copy,
+  Check,
+  Globe,
+  RefreshCw,
+  Pencil,
+  Save,
+} from 'lucide-react';
 import { signOut } from '@/lib/firebase/auth';
 import Link from 'next/link';
 import { StravaDuplicateDialog } from '@/components/strava/DuplicateDialog';
+import {
+  SPORT_OPTIONS,
+  TRAINING_FOR_OPTIONS,
+  AGE_RANGE_OPTIONS,
+  EXPERIENCE_LEVEL_OPTIONS,
+} from '@/lib/schemas/profile';
+import type { User as UserType } from '@/types';
 
 function SettingsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
+
+  // ── Edit Profile state ──
+  const [displayName, setDisplayName] = useState(user?.displayName || '');
+  const [bio, setBio] = useState(user?.bio || '');
+  const [timezone, setTimezone] = useState(user?.timezone || '');
+  const [ageRange, setAgeRange] = useState(user?.ageRange || '');
+  const [experienceLevel, setExperienceLevel] = useState(user?.experienceLevel || '');
+  const [height, setHeight] = useState<string>(user?.height ? String(user.height) : '');
+  const [heightUnit, setHeightUnit] = useState(user?.heightUnit || 'cm');
+  const [weight, setWeight] = useState<string>(user?.weight ? String(user.weight) : '');
+  const [weightUnit, setWeightUnit] = useState(user?.weightUnit || 'kg');
+  const [sportPreferences, setSportPreferences] = useState<string[]>(user?.sportPreferences || []);
+  const [trainingFor, setTrainingFor] = useState<string[]>(user?.trainingFor || []);
+  const [events, setEvents] = useState<Array<{ goal: string; eventName: string; eventDate?: string }>>(user?.events || []);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  const toggleArrayItem = (arr: string[], item: string) =>
+    arr.includes(item) ? arr.filter(i => i !== item) : [...arr, item];
+
+  const toggleSport = (sport: string) => setSportPreferences(prev => toggleArrayItem(prev, sport));
+
+  const toggleGoal = (goal: string) => {
+    setTrainingFor(prev => {
+      if (prev.includes(goal)) {
+        setEvents(evts => evts.filter(e => e.goal !== goal));
+        return prev.filter(g => g !== goal);
+      } else {
+        setEvents(evts => [...evts, { goal, eventName: '', eventDate: '' }]);
+        return [...prev, goal];
+      }
+    });
+  };
+
+  const updateEvent = (goal: string, field: 'eventName' | 'eventDate', value: string) => {
+    setEvents(evts => evts.map(e => e.goal === goal ? { ...e, [field]: value } : e));
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    if (!displayName.trim() || displayName.trim().length < 2) {
+      toast.error('Name must be at least 2 characters');
+      return;
+    }
+    setIsSavingProfile(true);
+    try {
+      const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
+      const { getDbInstance } = await import('@/lib/firebase/config');
+      const updates: Record<string, any> = {
+        displayName: displayName.trim(),
+        bio: bio.trim() || null,
+        timezone: timezone || null,
+        ageRange: ageRange || null,
+        experienceLevel: experienceLevel || null,
+        height: height ? parseFloat(height) : null,
+        heightUnit,
+        weight: weight ? parseFloat(weight) : null,
+        weightUnit,
+        sportPreferences,
+        trainingFor,
+        events: events.filter(e => trainingFor.includes(e.goal)),
+        updatedAt: serverTimestamp(),
+      };
+      await updateDoc(doc(getDbInstance(), 'users', user.username), updates);
+      setUser({
+        ...user,
+        ...updates,
+        updatedAt: new Date() as any,
+      } as UserType);
+      toast.success('Profile updated!');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to save profile');
+    }
+    setIsSavingProfile(false);
+  };
 
   const [isConnectingStrava, setIsConnectingStrava] = useState(false);
   const [isDisconnectingStrava, setIsDisconnectingStrava] = useState(false);
@@ -212,19 +317,166 @@ function SettingsContent() {
         </div>
       </div>
 
-      {/* Profile */}
+      {/* Edit Profile */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2"><User className="h-4 w-4 text-primary" />Profile</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2"><Pencil className="h-4 w-4 text-primary" />Edit Profile</CardTitle>
+          <CardDescription>Update your personal information and training preferences</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div><p className="text-xs text-muted-foreground mb-1">Name</p><p className="font-medium">{user?.displayName}</p></div>
-            <div><p className="text-xs text-muted-foreground mb-1">Email</p><p className="font-medium">{user?.email}</p></div>
+        <CardContent className="space-y-6">
+          {/* Basic Info */}
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Basic Info</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="displayName" className="text-xs">Display Name</Label>
+                <Input id="displayName" value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Your name" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Email</Label>
+                <Input value={user?.email || ''} disabled className="opacity-60" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="bio" className="text-xs">Bio <span className="text-muted-foreground font-normal">({bio.length}/300)</span></Label>
+              <Textarea id="bio" value={bio} onChange={e => setBio(e.target.value.slice(0, 300))} placeholder="Tell us about yourself..." rows={2} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Timezone</Label>
+              <Select value={timezone} onValueChange={setTimezone}>
+                <SelectTrigger><SelectValue placeholder="Select timezone" /></SelectTrigger>
+                <SelectContent>
+                  {Intl.supportedValuesOf('timeZone').filter(tz => tz.includes('/')).slice(0, 100).map(tz => (
+                    <SelectItem key={tz} value={tz}>{tz.replace(/_/g, ' ')}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <p className="text-xs text-muted-foreground">Role</p>
-            <Badge variant="secondary" className="capitalize">{user?.role === 'student' ? 'athlete' : user?.role}</Badge>
+
+          {/* About You */}
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">About You</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Age Range</Label>
+                <Select value={ageRange} onValueChange={setAgeRange}>
+                  <SelectTrigger><SelectValue placeholder="Select age range" /></SelectTrigger>
+                  <SelectContent>
+                    {AGE_RANGE_OPTIONS.map(opt => (
+                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Experience Level</Label>
+                <Select value={experienceLevel} onValueChange={setExperienceLevel}>
+                  <SelectTrigger><SelectValue placeholder="Select level" /></SelectTrigger>
+                  <SelectContent>
+                    {EXPERIENCE_LEVEL_OPTIONS.map(opt => (
+                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Height</Label>
+                <div className="flex gap-2">
+                  <Input type="number" value={height} onChange={e => setHeight(e.target.value)} placeholder="Height" className="flex-1" />
+                  <Select value={heightUnit} onValueChange={(v: 'cm' | 'ft') => setHeightUnit(v)}>
+                    <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cm">cm</SelectItem>
+                      <SelectItem value="ft">ft</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Weight</Label>
+                <div className="flex gap-2">
+                  <Input type="number" value={weight} onChange={e => setWeight(e.target.value)} placeholder="Weight" className="flex-1" />
+                  <Select value={weightUnit} onValueChange={(v: 'kg' | 'lbs') => setWeightUnit(v)}>
+                    <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="kg">kg</SelectItem>
+                      <SelectItem value="lbs">lbs</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sports */}
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sports</p>
+            <div className="flex flex-wrap gap-1.5">
+              {SPORT_OPTIONS.map(sport => (
+                <Badge
+                  key={sport}
+                  variant={sportPreferences.includes(sport) ? 'default' : 'outline'}
+                  className="cursor-pointer text-xs transition-all"
+                  onClick={() => toggleSport(sport)}
+                >
+                  {sport}
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          {/* Training For */}
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Training For</p>
+            <div className="flex flex-wrap gap-1.5">
+              {TRAINING_FOR_OPTIONS.map(goal => (
+                <Badge
+                  key={goal}
+                  variant={trainingFor.includes(goal) ? 'default' : 'outline'}
+                  className="cursor-pointer text-xs transition-all"
+                  onClick={() => toggleGoal(goal)}
+                >
+                  {goal}
+                </Badge>
+              ))}
+            </div>
+            {/* Event details for selected goals */}
+            {events.filter(e => trainingFor.includes(e.goal)).length > 0 && (
+              <div className="space-y-2 pt-1">
+                {events.filter(e => trainingFor.includes(e.goal)).map(evt => (
+                  <div key={evt.goal} className="flex flex-col sm:flex-row gap-2 p-2.5 rounded-lg border bg-muted/30">
+                    <span className="text-xs font-medium text-muted-foreground shrink-0 pt-1.5">{evt.goal}</span>
+                    <Input
+                      placeholder="Event name (optional)"
+                      value={evt.eventName}
+                      onChange={e => updateEvent(evt.goal, 'eventName', e.target.value)}
+                      className="h-8 text-xs flex-1"
+                    />
+                    <Input
+                      type="date"
+                      value={evt.eventDate || ''}
+                      onChange={e => updateEvent(evt.goal, 'eventDate', e.target.value)}
+                      className="h-8 text-xs w-36"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Role + Save */}
+          <div className="flex items-center justify-between pt-2 border-t">
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-muted-foreground">Role</p>
+              <Badge variant="secondary" className="capitalize text-xs">{user?.role === 'student' ? 'athlete' : user?.role}</Badge>
+            </div>
+            <Button size="sm" onClick={handleSaveProfile} disabled={isSavingProfile}>
+              {isSavingProfile ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Save className="h-4 w-4 mr-1.5" />}
+              {isSavingProfile ? 'Saving...' : 'Save Changes'}
+            </Button>
           </div>
         </CardContent>
       </Card>

@@ -1,37 +1,104 @@
 'use client';
 
 import { Suspense, useEffect, useState, useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { getUserWorkouts, deleteWorkout, completeWorkout } from '@/lib/firebase/firestore';
 import { Workout, WorkoutType } from '@/types';
-import { WorkoutList } from '@/components/workouts/WorkoutList';
 import { AIWorkoutSuggestions } from '@/components/workouts/AIWorkoutSuggestions';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { Plus, ListChecks, Loader2, Waves, Footprints, Bike, Dumbbell, MoreHorizontal, ArrowLeft } from 'lucide-react';
+import { Plus, ListChecks, Loader2, CheckCircle2, Circle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { TYPE_CONFIG, getTypeData } from '@/components/calendar/types';
+import { format, isPast, isToday } from 'date-fns';
 
-const WORKOUT_CATEGORIES: { type: WorkoutType; label: string; icon: React.ReactNode; color: string; bgColor: string }[] = [
-  { type: 'swim', label: 'Swim', icon: <Waves className="h-6 w-6" />, color: 'bg-blue-500', bgColor: 'bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/20' },
-  { type: 'run', label: 'Run', icon: <Footprints className="h-6 w-6" />, color: 'bg-green-500', bgColor: 'bg-green-500/10 hover:bg-green-500/20 border-green-500/20' },
-  { type: 'bike', label: 'Bike', icon: <Bike className="h-6 w-6" />, color: 'bg-orange-500', bgColor: 'bg-orange-500/10 hover:bg-orange-500/20 border-orange-500/20' },
-  { type: 'strength', label: 'Strength', icon: <Dumbbell className="h-6 w-6" />, color: 'bg-purple-500', bgColor: 'bg-purple-500/10 hover:bg-purple-500/20 border-purple-500/20' },
-  { type: 'other', label: 'Other', icon: <MoreHorizontal className="h-6 w-6" />, color: 'bg-gray-500', bgColor: 'bg-gray-500/10 hover:bg-gray-500/20 border-gray-500/20' },
+const FILTER_OPTIONS: { value: WorkoutType | 'all'; label: string; emoji?: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'run', label: 'Run', emoji: '🏃' },
+  { value: 'bike', label: 'Bike', emoji: '🚴' },
+  { value: 'swim', label: 'Swim', emoji: '🏊' },
+  { value: 'strength', label: 'Strength', emoji: '💪' },
+  { value: 'other', label: 'Other', emoji: '📋' },
 ];
+
+function WorkoutRow({ workout }: { workout: Workout }) {
+  const cfg = TYPE_CONFIG[workout.type] || TYPE_CONFIG.other;
+  const stats = getTypeData(workout);
+  const workoutDate = workout.date.toDate();
+  const dateStr = format(workoutDate, 'MMM d');
+  const past = isPast(workoutDate) && !isToday(workoutDate);
+  const isMissed = past && !workout.completed && workout.source !== 'strava';
+  const isLate = workout.completedLate === true;
+
+  return (
+    <Link
+      href={`/workouts/${workout.id}`}
+      className={cn(
+        'flex items-center gap-3 p-3.5 rounded-xl border bg-card transition-all hover:shadow-sm hover:border-primary/20',
+        isMissed && 'opacity-50',
+      )}
+    >
+      <span className="text-lg shrink-0">{cfg.emoji}</span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className={cn(
+            'text-sm font-semibold truncate',
+            isMissed && 'line-through text-muted-foreground',
+          )}>{workout.name}</span>
+          <Badge variant="secondary" className={cn('text-[10px] capitalize shrink-0', cfg.color)}>
+            {workout.type}
+          </Badge>
+          {isLate && (
+            <Badge variant="secondary" className="text-[10px] shrink-0 bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              Late
+            </Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+          <span>{dateStr}</span>
+          {stats.primary !== '--' && (
+            <>
+              <span className="opacity-40">·</span>
+              <span>{stats.primary}</span>
+            </>
+          )}
+          {stats.time && stats.time !== '0:00' && (
+            <>
+              <span className="opacity-40">·</span>
+              <span>{stats.time}</span>
+            </>
+          )}
+          {workout.assignedToName && (
+            <>
+              <span className="opacity-40">·</span>
+              <span className="truncate">For {workout.assignedToName}</span>
+            </>
+          )}
+        </div>
+      </div>
+      <div className="shrink-0">
+        {workout.completed ? (
+          <CheckCircle2 className={cn('h-4.5 w-4.5', isLate ? 'text-amber-500' : 'text-green-500')} />
+        ) : isMissed ? (
+          <AlertCircle className="h-4.5 w-4.5 text-red-500" />
+        ) : (
+          <Circle className="h-4.5 w-4.5 text-muted-foreground/30" />
+        )}
+      </div>
+    </Link>
+  );
+}
 
 function WorkoutsContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const user = useAuthStore((state) => state.user);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
   const [ready, setReady] = useState(false);
-
-  // Get category from URL params
-  const selectedCategory = searchParams.get('category') as WorkoutType | null;
+  const [activeFilter, setActiveFilter] = useState<WorkoutType | 'all'>('all');
 
   const loadWorkouts = useCallback(async () => {
     if (!user) return;
@@ -46,43 +113,23 @@ function WorkoutsContent() {
 
   useEffect(() => { loadWorkouts(); }, [loadWorkouts]);
 
-  // Filter workouts by selected category
-  const filteredWorkouts = selectedCategory
-    ? workouts.filter(w => w.type === selectedCategory)
-    : [];
+  // Filtered workouts
+  const filteredWorkouts = activeFilter === 'all'
+    ? workouts
+    : workouts.filter(w => w.type === activeFilter);
 
-  // Get workout counts per category
-  const workoutCounts = WORKOUT_CATEGORIES.reduce((acc, cat) => {
-    acc[cat.type] = workouts.filter(w => w.type === cat.type).length;
-    return acc;
-  }, {} as Record<string, number>);
+  // Sorted by date descending
+  const sortedWorkouts = [...filteredWorkouts].sort(
+    (a, b) => b.date.toDate().getTime() - a.date.toDate().getTime()
+  );
 
-  const handleEdit = (id: string) => router.push(`/workouts/${id}/edit`);
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this workout?')) return;
-    try {
-      const workout = workouts.find(w => w.id === id);
-      await deleteWorkout(workout?.ownerUsername || user!.username, id);
-      toast.success('Workout deleted');
-      await loadWorkouts();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to delete workout');
+  // Counts per type
+  const workoutCounts: Record<string, number> = { all: workouts.length };
+  for (const cat of FILTER_OPTIONS) {
+    if (cat.value !== 'all') {
+      workoutCounts[cat.value] = workouts.filter(w => w.type === cat.value).length;
     }
-  };
-
-  const handleToggleComplete = async (id: string, completed: boolean, notes?: string) => {
-    try {
-      const workout = workouts.find(w => w.id === id);
-      await completeWorkout(workout?.ownerUsername || user!.username, id, completed, notes);
-      toast.success(completed ? 'Workout completed!' : 'Marked incomplete');
-      await loadWorkouts();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to update workout');
-    }
-  };
-
-  const handleViewDetails = (id: string) => router.push(`/workouts/${id}`);
+  }
 
   const canManageWorkouts = user?.role === 'coach' || ((user?.role === 'athlete' || user?.role === 'student') && !user?.coachUsername);
 
@@ -97,53 +144,6 @@ function WorkoutsContent() {
     );
   }
 
-  // If a category is selected, show the workout list for that category
-  if (selectedCategory) {
-    const categoryConfig = WORKOUT_CATEGORIES.find(c => c.type === selectedCategory);
-
-    return (
-      <div className="space-y-6">
-        {/* Header with back button */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => router.push('/workouts')}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className={cn('p-2.5 rounded-xl', categoryConfig?.color)}>
-              {categoryConfig?.icon}
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">{categoryConfig?.label} Workouts</h1>
-              <p className="text-sm text-muted-foreground">
-                {filteredWorkouts.length} workout{filteredWorkouts.length !== 1 ? 's' : ''}
-              </p>
-            </div>
-          </div>
-          {canManageWorkouts && (
-            <Button asChild className="shadow-lg shadow-primary/20">
-              <Link href="/workouts/new">
-                <Plus className="mr-2 h-4 w-4" />
-                Create Workout
-              </Link>
-            </Button>
-          )}
-        </div>
-
-        {/* Workout List */}
-        <WorkoutList
-          workouts={filteredWorkouts}
-          onEdit={canManageWorkouts ? handleEdit : undefined}
-          onDelete={canManageWorkouts ? handleDelete : undefined}
-          onToggleComplete={handleToggleComplete}
-          onViewDetails={handleViewDetails}
-          isCoach={user?.role === 'coach'}
-          emptyMessage={`No ${selectedCategory} workouts found`}
-        />
-      </div>
-    );
-  }
-
-  // Main page: show category cards
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -157,7 +157,7 @@ function WorkoutsContent() {
               {user?.role === 'coach' ? 'My Workouts' : 'Workouts'}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {user?.role === 'coach' ? 'Manage workouts you\'ve created' : 'Select a category to view workouts'}
+              {filteredWorkouts.length} workout{filteredWorkouts.length !== 1 ? 's' : ''}
             </p>
           </div>
         </div>
@@ -171,30 +171,52 @@ function WorkoutsContent() {
         )}
       </div>
 
-      {/* Category Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-        {WORKOUT_CATEGORIES.map((cat) => (
-          <Card
-            key={cat.type}
+      {/* Filter Tags */}
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+        {FILTER_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => setActiveFilter(opt.value)}
             className={cn(
-              'p-4 cursor-pointer transition-all border-2',
-              cat.bgColor
+              'flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all border shrink-0',
+              activeFilter === opt.value
+                ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                : 'bg-card border-border text-muted-foreground hover:border-primary/40 hover:text-foreground',
             )}
-            onClick={() => router.push(`/workouts?category=${cat.type}`)}
           >
-            <div className="flex flex-col items-center text-center gap-3">
-              <div className={cn('p-3 rounded-xl text-white', cat.color)}>
-                {cat.icon}
-              </div>
-              <div>
-                <h3 className="font-semibold">{cat.label}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {workoutCounts[cat.type]} workout{workoutCounts[cat.type] !== 1 ? 's' : ''}
-                </p>
-              </div>
-            </div>
-          </Card>
+            {opt.emoji && <span className="text-xs">{opt.emoji}</span>}
+            {opt.label}
+            <span className={cn(
+              'text-xs tabular-nums ml-0.5',
+              activeFilter === opt.value ? 'text-primary-foreground/70' : 'text-muted-foreground/50',
+            )}>
+              {workoutCounts[opt.value] || 0}
+            </span>
+          </button>
         ))}
+      </div>
+
+      {/* Workout List */}
+      <div className="space-y-2">
+        {sortedWorkouts.length === 0 ? (
+          <div className="text-center py-16 space-y-2">
+            <p className="text-muted-foreground">
+              {activeFilter === 'all' ? 'No workouts yet' : `No ${activeFilter} workouts found`}
+            </p>
+            {canManageWorkouts && (
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/workouts/new">
+                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                  Create your first workout
+                </Link>
+              </Button>
+            )}
+          </div>
+        ) : (
+          sortedWorkouts.map((workout) => (
+            <WorkoutRow key={workout.id} workout={workout} />
+          ))
+        )}
       </div>
 
       {/* AI Workout Suggestions - coaches and self-training athletes (no coach) */}

@@ -31,6 +31,7 @@ const SPORT_EMOJI: Record<string, string> = {
   'Cycling': '🚴',
   'Swimming': '🏊',
   'Strength Training': '💪',
+  'Triathlon': '🏅',
 };
 
 export default function OnboardingProfilePage() {
@@ -47,12 +48,16 @@ export default function OnboardingProfilePage() {
   const [weight, setWeight] = useState<number | null>(user?.weight ?? null);
   const [weightUnit, setWeightUnit] = useState<'kg' | 'lbs'>(user?.weightUnit || 'kg');
   const [saving, setSaving] = useState(false);
+  const [events, setEvents] = useState<Array<{ goal: string; eventName: string; eventDate?: string }>>(
+    user?.events || []
+  );
 
   useEffect(() => {
     if (!user) return;
     // Pre-fill from existing user data
     if (user.sportPreferences?.length) setSports(user.sportPreferences);
     if (user.trainingFor?.length) setGoals(user.trainingFor);
+    if (user.events?.length) setEvents(user.events);
     if (user.experienceLevel) setExperience(user.experienceLevel);
     if (user.height) setHeight(user.height);
     if (user.heightUnit) setHeightUnit(user.heightUnit);
@@ -82,8 +87,20 @@ export default function OnboardingProfilePage() {
   };
 
   const toggleGoal = (goal: string) => {
-    setGoals((prev) =>
-      prev.includes(goal) ? prev.filter((g) => g !== goal) : [...prev, goal],
+    setGoals((prev) => {
+      if (prev.includes(goal)) {
+        setEvents((evts) => evts.filter((e) => e.goal !== goal));
+        return prev.filter((g) => g !== goal);
+      } else {
+        setEvents((evts) => [...evts, { goal, eventName: '', eventDate: '' }]);
+        return [...prev, goal];
+      }
+    });
+  };
+
+  const updateEvent = (goal: string, field: 'eventName' | 'eventDate', value: string) => {
+    setEvents((prev) =>
+      prev.map((e) => (e.goal === goal ? { ...e, [field]: value } : e)),
     );
   };
 
@@ -105,9 +122,12 @@ export default function OnboardingProfilePage() {
       };
       const completionInfo = getProfileCompletionInfo(updatedUser as any);
 
+      const savedEvents = events.filter((e) => goals.includes(e.goal));
+
       await updateDoc(doc(getDbInstance(), 'users', user.username), {
         sportPreferences: sports,
         trainingFor: goals,
+        events: savedEvents,
         experienceLevel: experience || null,
         height: height || null,
         heightUnit,
@@ -121,6 +141,7 @@ export default function OnboardingProfilePage() {
         ...user,
         sportPreferences: sports,
         trainingFor: goals,
+        events: savedEvents,
         experienceLevel: experience || undefined,
         height: height ?? undefined,
         heightUnit,
@@ -233,6 +254,39 @@ export default function OnboardingProfilePage() {
                 </button>
               ))}
             </div>
+
+            {/* Event details for selected goals */}
+            {goals.length > 0 && (
+              <div className="space-y-2.5">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Event details (optional)
+                </p>
+                {events
+                  .filter((e) => goals.includes(e.goal))
+                  .map((event) => (
+                    <div
+                      key={event.goal}
+                      className="rounded-xl border border-border p-3 space-y-2 animate-in fade-in duration-300"
+                    >
+                      <p className="text-sm font-medium">{event.goal}</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input
+                          placeholder="Event name"
+                          value={event.eventName}
+                          onChange={(e) => updateEvent(event.goal, 'eventName', e.target.value)}
+                          className="h-10 text-sm rounded-lg"
+                        />
+                        <Input
+                          type="date"
+                          value={event.eventDate || ''}
+                          onChange={(e) => updateEvent(event.goal, 'eventDate', e.target.value)}
+                          className="h-10 text-sm rounded-lg"
+                        />
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
 
             <div className="flex gap-3">
               <BackButton onClick={goBack} />
