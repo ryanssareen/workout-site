@@ -21,7 +21,7 @@ const bikeDataSchema = z.object({
 });
 
 const runDataSchema = z.object({
-  distance: z.number().min(0, 'Distance is required'),
+  distance: z.number().min(0).optional(),
   distanceUnit: z.enum(['km', 'miles']),
   time: z.number().min(0, 'Time is required'),
   pace: z.string().optional(),
