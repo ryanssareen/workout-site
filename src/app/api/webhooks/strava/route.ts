@@ -234,7 +234,7 @@ async function processActivity(
         const newDist = activity.distance || 0;
         const distanceClose = existingDist > 0 && newDist > 0 && Math.abs(existingDist - newDist) / Math.max(existingDist, newDist) < 0.05;
         
-        if (durationClose || distanceClose) {
+        if (durationClose && distanceClose) {
           console.log(`🛑 PROXIMITY DUPLICATE: "${activity.name}" ~= "${data.name}" (${doc.id}) — dur diff: ${Math.abs(existingDur - newDur)}s, dist diff: ${Math.abs(existingDist - newDist)}m — SKIPPING`);
           return { success: true, message: 'Duplicate prevented (proximity match)' };
         }

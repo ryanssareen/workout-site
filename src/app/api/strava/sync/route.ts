@@ -641,7 +641,7 @@ export async function GET(request: NextRequest) {
             const eDist = pData.actualStats?.distance || 0;
             const nDist = activity.distance || 0;
             const distClose = eDist > 0 && nDist > 0 && Math.abs(eDist - nDist) / Math.max(eDist, nDist) < 0.05;
-            if (dClose || distClose) {
+            if (dClose && distClose) {
               console.log(`  🛑 Proximity duplicate: "${activity.name}" ~= "${pData.name}" (${pDoc.id}) — SKIPPING`);
               proximityDupe = true;
               skippedCount++;
