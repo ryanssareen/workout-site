@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { PhotoUpload } from '@/components/profile/PhotoUpload';
 import {
   Select,
   SelectContent,
@@ -234,12 +235,7 @@ export default function ProfilePage() {
             <div className="relative shrink-0">
               <ProgressRing percent={profileCompletion} size={140} stroke={5} />
               <div className="absolute inset-0 flex items-center justify-center">
-                <Avatar className="w-[116px] h-[116px] border-4 border-background shadow-xl">
-                  {user.photoURL ? <AvatarImage src={user.photoURL} alt={user.displayName} /> : null}
-                  <AvatarFallback className="text-3xl font-bold bg-gradient-to-br from-red-500/20 to-red-800/20 text-red-500">
-                    {user.displayName ? getInitials(user.displayName) : '?'}
-                  </AvatarFallback>
-                </Avatar>
+                <PhotoUpload user={user} size={116} />
               </div>
               <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-card border border-border rounded-full px-3 py-1 shadow-md">
                 <span className="text-xs font-bold tabular-nums">{profileCompletion}%</span>

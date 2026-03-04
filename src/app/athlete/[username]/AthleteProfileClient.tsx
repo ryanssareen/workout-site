@@ -1,13 +1,13 @@
 'use client';
 
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Sparkles, Trophy, Clock, MapPin, Dumbbell,
-  Activity, UserPlus, LogIn, Lock,
+  Activity, UserPlus, LogIn, Lock, Share2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuthStore } from '@/lib/stores/authStore';
@@ -16,6 +16,7 @@ import {
   computeSummary,
   computeTypeDistribution,
 } from '@/lib/analytics';
+import { ShareButtons } from '@/components/workouts/ShareWorkoutCard';
 import type { Workout } from '@/types';
 
 // ── Types ──
@@ -118,6 +119,8 @@ export function AthleteProfileClient({ profile }: { profile: AthleteProfileData 
   const isOwnProfile = currentUser?.username === profile.username;
   const [tagline, setTagline] = useState(profile.profileTagline);
   const [taglineLoading, setTaglineLoading] = useState(false);
+  const [showShare, setShowShare] = useState(false);
+  const shareCardRef = useRef<HTMLDivElement>(null);
 
   // Lazy-load tagline if not cached
   useEffect(() => {
@@ -233,7 +236,89 @@ export function AthleteProfileClient({ profile }: { profile: AthleteProfileData 
               )}
             </div>
           )}
+
+          {/* Share Profile Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowShare(!showShare)}
+            className="gap-2"
+          >
+            <Share2 className="h-4 w-4" />
+            Share Profile
+          </Button>
         </section>
+
+        {/* Share Profile Panel */}
+        {showShare && (
+          <section className="space-y-4">
+            <ShareButtons
+              title="Share Profile"
+              shareText={`Check out ${profile.displayName}'s athlete profile on The Daily Athlete 💪`}
+              shareUrl={typeof window !== 'undefined' ? `${window.location.origin}/athlete/${profile.username}` : ''}
+              fileName={`${profile.username}-profile`}
+              cardRef={shareCardRef}
+              onClose={() => setShowShare(false)}
+            />
+
+            {/* Share Preview Card */}
+            <div className="rounded-xl border overflow-hidden">
+              <p className="text-xs text-muted-foreground px-4 py-2 bg-muted/30">Preview — this is what people will see</p>
+              <div ref={shareCardRef} className="p-6 bg-gradient-to-br from-gray-950 via-gray-900 to-red-950" style={{ width: '100%', minHeight: 200 }}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center">
+                      <span className="text-white font-bold text-sm">DA</span>
+                    </div>
+                    <span className="text-gray-400 text-sm font-medium">The Daily Athlete</span>
+                  </div>
+                  <span className="text-gray-500 text-xs">@{profile.username}</span>
+                </div>
+
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-red-500/30 to-orange-500/30 flex items-center justify-center border-2 border-white/10 overflow-hidden">
+                    {profile.photoURL ? (
+                      <img src={profile.photoURL} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-xl font-bold text-white">{getInitials(profile.displayName)}</span>
+                    )}
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-white">{profile.displayName}</h2>
+                    {tagline && <p className="text-sm text-gray-400 italic">{tagline}</p>}
+                  </div>
+                </div>
+
+                {activeSports.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-4">
+                    {activeSports.map(sport => (
+                      <span key={sport} className="px-2 py-0.5 rounded-full text-xs bg-white/10 text-white/80">
+                        {TYPE_EMOJI[sport]} {SPORT_LABELS[sport] || sport}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {hasWorkouts && (
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Workouts</p>
+                      <p className="text-white text-xl font-bold">{summary.completedWorkouts}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Hours</p>
+                      <p className="text-white text-xl font-bold">{formatHours(summary.totalHours)}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Distance</p>
+                      <p className="text-white text-xl font-bold">{formatDistance(summary.totalDistanceKm)}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* ── Stats Grid ── */}
         {hasWorkouts && (

@@ -103,7 +103,7 @@ export function ProfileCompletionBar({ user }: ProfileCompletionBarProps) {
 
           {/* CTA */}
           <Button asChild size="sm" variant="outline" className="shrink-0 border-amber-500/30 hover:bg-amber-500/10 hover:border-amber-500/50">
-            <Link href="/profile?edit=1">
+            <Link href="/onboarding/profile">
               Complete <ChevronRight className="ml-1 h-3.5 w-3.5" />
             </Link>
           </Button>
