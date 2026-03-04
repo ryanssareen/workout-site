@@ -256,7 +256,102 @@ async function processActivity(
     if (activity.start_latlng) routeData.startLatLng = activity.start_latlng;
     if (activity.end_latlng) routeData.endLatLng = activity.end_latlng;
 
-    // CREATE NEW WORKOUT from Strava activity
+    // Build type-specific sub-objects from Strava data
+    const distKm = (activity.distance || 0) / 1000;
+    const timeMin = Math.round((activity.moving_time || 0) / 60);
+    const typeData: any = {};
+    if (workoutType === 'run') {
+      typeData.run = {
+        distance: Math.round(distKm * 100) / 100,
+        distanceUnit: 'km',
+        time: timeMin,
+        ...(activity.total_elevation_gain ? { elevationGain: Math.round(activity.total_elevation_gain) } : {}),
+        ...(activity.average_heartrate ? { avgHeartRate: Math.round(activity.average_heartrate) } : {}),
+        ...(distKm > 0 && timeMin > 0 ? {
+          pace: `${Math.floor(timeMin / distKm)}:${String(Math.round(((timeMin / distKm) % 1) * 60)).padStart(2, '0')}/km`
+        } : {}),
+      };
+    } else if (workoutType === 'bike') {
+      typeData.bike = {
+        distance: Math.round(distKm * 100) / 100,
+        distanceUnit: 'km',
+        time: timeMin,
+        ...(activity.total_elevation_gain ? { elevationGain: Math.round(activity.total_elevation_gain) } : {}),
+        ...(activity.average_watts ? { avgPower: Math.round(activity.average_watts) } : {}),
+      };
+    } else if (workoutType === 'swim') {
+      typeData.swim = {
+        distance: Math.round(activity.distance || 0),
+        distanceUnit: 'meters',
+        time: timeMin,
+        ...(activity.average_heartrate ? { avgHeartRate: Math.round(activity.average_heartrate) } : {}),
+      };
+    }
+
+    // TRY TO MATCH with an existing planned workout on the same day
+    const dayStart = new Date(activityDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(activityDate);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    const plannedSnapshot = await adminDb
+      .collection('users').doc(username).collection('workouts')
+      .where('type', '==', workoutType)
+      .where('completed', '==', false)
+      .get();
+
+    // Find a planned workout on the same day (not from Strava)
+    let matchedDoc: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+    for (const doc of plannedSnapshot.docs) {
+      const data = doc.data();
+      if (data.source === 'strava') continue;
+      const workoutDate = data.date?.toDate ? data.date.toDate() : new Date(data.date);
+      if (workoutDate >= dayStart && workoutDate <= dayEnd) {
+        matchedDoc = doc;
+        break;
+      }
+    }
+
+    if (matchedDoc) {
+      // MATCH FOUND — update the planned workout with Strava data
+      console.log(`🔗 Matched Strava activity with planned workout: ${matchedDoc.data().name} (${matchedDoc.id})`);
+
+      const mergeData: any = {
+        completed: true,
+        completedAt: admin.firestore.Timestamp.fromDate(activityDate),
+        completedBy: 'strava',
+        stravaActivityId: stravaActivityId,
+        actualStats,
+        duration: timeMin,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        ...typeData,
+      };
+
+      // Add route data if available
+      if (Object.keys(routeData).length > 0) {
+        mergeData.routeData = routeData;
+      }
+
+      // Add Strava stats under stravaData for detail panel
+      mergeData.stravaData = {
+        ...(activity.distance ? { distance: activity.distance } : {}),
+        ...(activity.moving_time ? { time: activity.moving_time } : {}),
+        ...(activity.total_elevation_gain ? { elevationGain: Math.round(activity.total_elevation_gain) } : {}),
+        ...(activity.average_heartrate ? { avgHeartRate: Math.round(activity.average_heartrate) } : {}),
+        ...(activity.max_heartrate ? { maxHeartRate: Math.round(activity.max_heartrate) } : {}),
+        ...(activity.average_watts ? { avgPower: Math.round(activity.average_watts) } : {}),
+      };
+
+      await matchedDoc.ref.update(mergeData);
+      console.log(`✅ Merged Strava data into planned workout ${matchedDoc.id}`);
+
+      return {
+        success: true,
+        message: `Matched "${activity.name}" with planned workout "${matchedDoc.data().name}"`
+      };
+    }
+
+    // NO MATCH — create a new Strava workout entry
     // Use deterministic doc ID to prevent duplicates from concurrent webhook retries
     const workoutId = `strava_${stravaActivityId}`;
     const newWorkoutRef = adminDb.collection('users').doc(username).collection('workouts').doc(workoutId);
@@ -264,9 +359,9 @@ async function processActivity(
     const newWorkoutData: any = {
       name: activity.name,
       type: workoutType,
-      description: `Imported from Strava\nDistance: ${((activity.distance || 0) / 1000).toFixed(2)} km\nMoving time: ${Math.round((activity.moving_time || 0) / 60)} min`,
+      description: `Imported from Strava\nDistance: ${((activity.distance || 0) / 1000).toFixed(2)} km\nMoving time: ${timeMin} min`,
       date: admin.firestore.Timestamp.fromDate(activityDate),
-      duration: Math.round((activity.moving_time || 0) / 60),
+      duration: timeMin,
       ownerUsername: username,
       createdBy: username,
       assignedTo: username,
@@ -278,6 +373,7 @@ async function processActivity(
       source: 'strava',
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      ...typeData,
     };
 
     // Add route data if available
@@ -286,70 +382,22 @@ async function processActivity(
       console.log(`🗺️ Route data captured: ${routeData.polyline ? 'polyline available' : 'no polyline'}`);
     }
 
-    // Add type-specific sub-objects so workouts can be properly edited
-    const distKm = (activity.distance || 0) / 1000;
-    const timeMin = Math.round((activity.moving_time || 0) / 60);
-    if (workoutType === 'run') {
-      newWorkoutData.run = {
-        distance: Math.round(distKm * 100) / 100,
-        distanceUnit: 'km',
-        time: timeMin,
-        ...(activity.total_elevation_gain ? { elevationGain: Math.round(activity.total_elevation_gain) } : {}),
-        ...(activity.average_heartrate ? { avgHeartRate: Math.round(activity.average_heartrate) } : {}),
-        ...(distKm > 0 && timeMin > 0 ? {
-          pace: `${Math.floor(timeMin / distKm)}:${String(Math.round(((timeMin / distKm) % 1) * 60)).padStart(2, '0')}/km`
-        } : {}),
-      };
-    } else if (workoutType === 'bike') {
-      newWorkoutData.bike = {
-        distance: Math.round(distKm * 100) / 100,
-        distanceUnit: 'km',
-        time: timeMin,
-        ...(activity.total_elevation_gain ? { elevationGain: Math.round(activity.total_elevation_gain) } : {}),
-        ...(activity.average_watts ? { avgPower: Math.round(activity.average_watts) } : {}),
-      };
-    } else if (workoutType === 'swim') {
-      newWorkoutData.swim = {
-        distance: Math.round(activity.distance || 0),
-        distanceUnit: 'meters',
-        time: timeMin,
-        ...(activity.average_heartrate ? { avgHeartRate: Math.round(activity.average_heartrate) } : {}),
-      };
-    }
+    // Add Strava stats
+    newWorkoutData.stravaData = {
+      ...(activity.distance ? { distance: activity.distance } : {}),
+      ...(activity.moving_time ? { time: activity.moving_time } : {}),
+      ...(activity.total_elevation_gain ? { elevationGain: Math.round(activity.total_elevation_gain) } : {}),
+      ...(activity.average_heartrate ? { avgHeartRate: Math.round(activity.average_heartrate) } : {}),
+      ...(activity.max_heartrate ? { maxHeartRate: Math.round(activity.max_heartrate) } : {}),
+      ...(activity.average_watts ? { avgPower: Math.round(activity.average_watts) } : {}),
+    };
 
     await newWorkoutRef.set(newWorkoutData);
-    console.log(`✅ Created new workout ${workoutId} from Strava activity`);
-
-    // DELETE old incomplete workouts of same type within ±2 days (optional cleanup)
-    const twoDaysBefore = new Date(activityDate);
-    twoDaysBefore.setDate(twoDaysBefore.getDate() - 2);
-    const twoDaysAfter = new Date(activityDate);
-    twoDaysAfter.setDate(twoDaysAfter.getDate() + 2);
-
-    const oldWorkoutsSnapshot = await adminDb
-      .collection('users').doc(username).collection('workouts')
-      .where('type', '==', workoutType)
-      .where('completed', '==', false)
-      .where('date', '>=', admin.firestore.Timestamp.fromDate(twoDaysBefore))
-      .where('date', '<=', admin.firestore.Timestamp.fromDate(twoDaysAfter))
-      .get();
-
-    if (!oldWorkoutsSnapshot.empty) {
-      console.log(`🗑️ Found ${oldWorkoutsSnapshot.size} old incomplete ${workoutType} workouts to delete`);
-      
-      const batch = adminDb.batch();
-      oldWorkoutsSnapshot.docs.forEach(doc => {
-        console.log(`  ❌ Deleting old workout: ${doc.data().name} (${doc.id})`);
-        batch.delete(doc.ref);
-      });
-      await batch.commit();
-      
-      console.log(`✅ Deleted ${oldWorkoutsSnapshot.size} old workouts`);
-    }
+    console.log(`✅ Created new workout ${workoutId} from Strava activity (no planned match)`);
 
     return {
       success: true,
-      message: `Created workout "${activity.name}" from Strava${oldWorkoutsSnapshot.size > 0 ? ` and deleted ${oldWorkoutsSnapshot.size} old workout(s)` : ''}`
+      message: `Created workout "${activity.name}" from Strava`
     };
   } catch (error: any) {
     console.error('❌ Error processing activity:', error);
