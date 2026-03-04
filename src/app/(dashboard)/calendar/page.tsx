@@ -6,122 +6,58 @@ import { useSearchParams } from 'next/navigation';
 import { getUserWorkouts, completeWorkout, getCoachStudents } from '@/lib/firebase/firestore';
 import { Workout } from '@/types';
 import { useStravaAutoSync } from '@/hooks/useStravaAutoSync';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  CheckCircle2,
-  Circle,
-  Send,
-  Route,
-  Timer,
-  Loader2,
-} from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import {
   format,
   startOfWeek,
+  addDays,
   addWeeks,
   subWeeks,
-  eachDayOfInterval,
+  startOfMonth,
+  endOfMonth,
   isSameDay,
-  isToday,
-  isPast,
-  addDays,
 } from 'date-fns';
-import Link from 'next/link';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
 
-const TYPE_CONFIG: Record<string, { emoji: string; color: string; border: string; bg: string }> = {
-  run: { emoji: '🏃', color: 'text-red-500', border: 'border-l-red-500', bg: 'bg-red-500/8' },
-  bike: { emoji: '🚴', color: 'text-amber-500', border: 'border-l-amber-500', bg: 'bg-amber-500/8' },
-  swim: { emoji: '🏊', color: 'text-cyan-500', border: 'border-l-cyan-500', bg: 'bg-cyan-500/8' },
-  strength: { emoji: '💪', color: 'text-purple-500', border: 'border-l-purple-500', bg: 'bg-purple-500/8' },
-  other: { emoji: '📋', color: 'text-gray-400', border: 'border-l-gray-400', bg: 'bg-gray-500/8' },
-};
-
-function getTypeData(w: Workout) {
-  const d: Record<string, string> = {};
-  
-  // Primary stat (distance or sets)
-  if (w.type === 'run' && w.run) {
-    d.primary = w.run.distance ? `${w.run.distance} ${w.run.distanceUnit || 'km'}` : '--';
-    d.primaryLabel = 'DISTANCE';
-    d.time = w.run.time ? formatDur(w.run.time) : (w.duration ? formatDur(w.duration) : '0:00');
-    d.hr = w.run.avgHeartRate ? `${w.run.avgHeartRate}` : '--';
-    d.hrLabel = 'AVG HR';
-    d.stat4 = w.run.elevationGain ? `${w.run.elevationGain}m` : (w.run.pace ? `${w.run.pace}` : '--');
-    d.stat4Label = w.run.elevationGain ? 'ELEV' : 'PACE';
-  } else if (w.type === 'bike' && w.bike) {
-    d.primary = w.bike.distance ? `${w.bike.distance} ${w.bike.distanceUnit || 'km'}` : '--';
-    d.primaryLabel = 'DISTANCE';
-    d.time = w.bike.time ? formatDur(w.bike.time) : (w.duration ? formatDur(w.duration) : '0:00');
-    d.hr = w.bike.avgHeartRate ? `${w.bike.avgHeartRate}` : '--';
-    d.hrLabel = 'AVG HR';
-    d.stat4 = w.bike.elevationGain ? `${w.bike.elevationGain}m` : '--';
-    d.stat4Label = 'ELEV';
-  } else if (w.type === 'swim' && w.swim) {
-    d.primary = w.swim.distance ? `${w.swim.distance} ${w.swim.distanceUnit || 'm'}` : '--';
-    d.primaryLabel = 'DISTANCE';
-    d.time = w.swim.time ? formatDur(w.swim.time) : (w.duration ? formatDur(w.duration) : '0:00');
-    d.hr = '--';
-    d.hrLabel = 'AVG HR';
-    d.stat4 = '--';
-    d.stat4Label = 'PACE';
-  } else if (w.type === 'strength' && w.strength) {
-    const exCount = w.strength.exercises?.length || 0;
-    const totalSets = w.strength.exercises?.reduce((sum, ex) => sum + (ex.sets || 0), 0) || 0;
-    d.primary = totalSets > 0 ? `${totalSets} Sets` : (exCount > 0 ? `${exCount} Ex` : '--');
-    d.primaryLabel = totalSets > 0 ? 'TOTAL SETS' : 'EXERCISES';
-    d.time = w.duration ? formatDur(w.duration) : '0:00';
-    d.hr = '--';
-    d.hrLabel = 'AVG HR';
-    d.stat4 = '--';
-    d.stat4Label = 'CALORIES';
-  } else {
-    d.primary = '--';
-    d.primaryLabel = 'DISTANCE';
-    d.time = w.duration ? formatDur(w.duration) : '0:00';
-    d.hr = '--';
-    d.hrLabel = 'AVG HR';
-    d.stat4 = '--';
-    d.stat4Label = '';
-  }
-  d.timeLabel = 'TIME';
-  return d;
-}
-
-function formatDur(mins: number): string {
-  const h = Math.floor(mins / 60);
-  const m = Math.round(mins % 60);
-  if (h === 0) return `${m}min`;
-  return `${h}:${m.toString().padStart(2, '0')}`;
-}
-
-function formatDurLong(mins: number): string {
-  const h = Math.floor(mins / 60);
-  const m = Math.round(mins % 60);
-  if (h === 0) return `${m} min`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
-}
+// Calendar components
+import { CalendarHeader } from '@/components/calendar/CalendarHeader';
+import { CalendarMonthView } from '@/components/calendar/CalendarMonthView';
+import { MobileWeekStrip } from '@/components/calendar/MobileWeekStrip';
+import { CalendarDayWorkouts } from '@/components/calendar/CalendarDayWorkouts';
+import { WorkoutDetailPanel } from '@/components/calendar/WorkoutDetailPanel';
+import { CalendarSummary } from '@/components/calendar/CalendarSummary';
 
 export default function CalendarPage() {
   const user = useAuthStore((s) => s.user);
   const searchParams = useSearchParams();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Desktop: month navigation
+  const [currentMonth, setCurrentMonth] = useState(() => new Date());
+  // Mobile: week navigation
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
-  const [activeTypes, setActiveTypes] = useState<Set<string>>(new Set(['swim', 'bike', 'run', 'strength', 'other']));
-  const [sendingReport, setSendingReport] = useState(false);
+  // Selected day (both mobile + desktop)
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  // Selected workout for detail panel (desktop)
+  const [selectedWorkoutId, setSelectedWorkoutId] = useState<string | null>(null);
+
+  // Filters
+  const [activeTypes, setActiveTypes] = useState<Set<string>>(
+    new Set(['swim', 'bike', 'run', 'strength', 'other']),
+  );
+
+  // Coach features
   const [athletes, setAthletes] = useState<{ uid: string; displayName: string }[]>([]);
   const [selectedAthlete, setSelectedAthlete] = useState<string>('all');
   const isCoach = user?.role === 'coach';
 
-  // Fresh from onboarding Strava connect — skip cooldown, run progressive sync
+  // Report
+  const [sendingReport, setSendingReport] = useState(false);
+
+  // ── Strava sync ──────────────────────────────────────────────────────
   const fromStrava = searchParams.get('strava') === 'connected';
 
-  // Refresh workouts from Firestore (called after each sync phase)
   const refreshWorkouts = useCallback(async () => {
     if (!user) return;
     const data = await getUserWorkouts(user.username, user.role);
@@ -129,54 +65,67 @@ export default function CalendarPage() {
     setLoading(false);
   }, [user]);
 
-  // Progressive Strava sync — runs on the calendar when arriving from onboarding
   const { syncing, syncPhaseLabel } = useStravaAutoSync(
     fromStrava ? user : null,
     refreshWorkouts,
-    fromStrava, // skipCooldown
+    fromStrava,
   );
 
+  // ── Data loading ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!user) return;
-    getUserWorkouts(user.username, user.role).then(data => {
+    getUserWorkouts(user.username, user.role).then((data) => {
       setWorkouts(data);
       setLoading(false);
     });
     if (isCoach) {
-      getCoachStudents(user.username).then(data => {
-        setAthletes(data.map((a: any) => ({ uid: a.uid, displayName: a.displayName || a.email || 'Unknown' })));
+      getCoachStudents(user.username).then((data) => {
+        setAthletes(
+          data.map((a: any) => ({
+            uid: a.uid,
+            displayName: a.displayName || a.email || 'Unknown',
+          })),
+        );
       });
     }
   }, [user, isCoach]);
 
-  const weekDays = useMemo(() =>
-    eachDayOfInterval({ start: weekStart, end: addDays(weekStart, 6) }),
-    [weekStart]
-  );
+  // ── Pre-computed workout lookup ──────────────────────────────────────
+  const workoutsByDate = useMemo(() => {
+    const map = new Map<string, Workout[]>();
+    workouts.forEach((w) => {
+      // Apply type filter
+      if (!activeTypes.has(w.type)) return;
+      // Apply athlete filter
+      if (isCoach && selectedAthlete !== 'all' && w.assignedTo !== selectedAthlete) return;
 
-  const getWorkoutsForDate = (date: Date) =>
-    workouts.filter(w => {
-      if (!activeTypes.has(w.type)) return false;
-      if (!isSameDay(w.date.toDate(), date)) return false;
-      if (isCoach && selectedAthlete !== 'all' && w.assignedTo !== selectedAthlete) return false;
-      return true;
+      const key = format(w.date.toDate(), 'yyyy-MM-dd');
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(w);
     });
+    return map;
+  }, [workouts, activeTypes, isCoach, selectedAthlete]);
 
-  const weekSummary = useMemo(() => {
+  // ── Summary computation ──────────────────────────────────────────────
+  const summary = useMemo(() => {
+    // For desktop: compute for entire visible month
+    // For mobile: compute for current week
+    // We'll compute for the current week for the summary bar (consistent with previous behavior)
     const weekEnd = addDays(weekStart, 6);
-    const weekWorkouts = workouts.filter(w => {
+    const weekWorkouts = workouts.filter((w) => {
       const d = w.date.toDate();
       if (!(d >= weekStart && d <= weekEnd && activeTypes.has(w.type))) return false;
       if (isCoach && selectedAthlete !== 'all' && w.assignedTo !== selectedAthlete) return false;
       return true;
     });
-    const completed = weekWorkouts.filter(w => w.completed).length;
+
+    const completed = weekWorkouts.filter((w) => w.completed).length;
     const total = weekWorkouts.length;
     let totalDuration = 0;
     let totalDistance = 0;
     const byType: Record<string, { count: number; duration: number; distance: number }> = {};
 
-    weekWorkouts.forEach(w => {
+    weekWorkouts.forEach((w) => {
       const dur = w.duration || 0;
       totalDuration += dur;
       let dist = 0;
@@ -194,6 +143,7 @@ export default function CalendarPage() {
     return { completed, total, totalDuration, totalDistance, byType };
   }, [workouts, weekStart, activeTypes, selectedAthlete, isCoach]);
 
+  // ── Handlers ─────────────────────────────────────────────────────────
   const handleToggleComplete = async (e: React.MouseEvent, workout: Workout) => {
     e.preventDefault();
     e.stopPropagation();
@@ -205,6 +155,20 @@ export default function CalendarPage() {
     } catch (err: any) {
       toast.error(err.message || 'Failed to update');
     }
+  };
+
+  const handleToggleType = (type: string) => {
+    const next = new Set(activeTypes);
+    if (activeTypes.has(type) && activeTypes.size > 1) next.delete(type);
+    else next.add(type);
+    setActiveTypes(next);
+  };
+
+  const handleToday = () => {
+    const now = new Date();
+    setCurrentMonth(now);
+    setWeekStart(startOfWeek(now, { weekStartsOn: 1 }));
+    setSelectedDate(now);
   };
 
   const handleSendReport = async () => {
@@ -227,34 +191,63 @@ export default function CalendarPage() {
   };
 
   const generateICS = () => {
-    const weekEnd = addDays(weekStart, 6);
-    const weekWorkouts = workouts.filter(w => {
+    // Export current month's workouts
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    const monthWorkouts = workouts.filter((w) => {
       const d = w.date.toDate();
-      return d >= weekStart && d <= weekEnd;
+      return d >= monthStart && d <= monthEnd;
     });
+
     const icsLines = [
-      'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//TheDailyAthlete//EN',
-      'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//TheDailyAthlete//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
     ];
-    weekWorkouts.forEach(w => {
+    monthWorkouts.forEach((w) => {
       const d = w.date.toDate();
       const dateStr = format(d, "yyyyMMdd'T'HHmmss");
-      const end = new Date(d); end.setMinutes(end.getMinutes() + (w.duration || 60));
-      icsLines.push('BEGIN:VEVENT', `UID:${w.id}@tda`, `DTSTART:${dateStr}`,
-        `DTEND:${format(end, "yyyyMMdd'T'HHmmss")}`, `SUMMARY:${w.name} (${w.type})`,
+      const end = new Date(d);
+      end.setMinutes(end.getMinutes() + (w.duration || 60));
+      icsLines.push(
+        'BEGIN:VEVENT',
+        `UID:${w.id}@tda`,
+        `DTSTART:${dateStr}`,
+        `DTEND:${format(end, "yyyyMMdd'T'HHmmss")}`,
+        `SUMMARY:${w.name} (${w.type})`,
         `DESCRIPTION:${(w.description || '').replace(/\n/g, '\\n')}`,
-        `STATUS:${w.completed ? 'COMPLETED' : 'CONFIRMED'}`, 'END:VEVENT');
+        `STATUS:${w.completed ? 'COMPLETED' : 'CONFIRMED'}`,
+        'END:VEVENT',
+      );
     });
     icsLines.push('END:VCALENDAR');
+
     const blob = new Blob([icsLines.join('\r\n')], { type: 'text/calendar' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url;
-    a.download = `week-${format(weekStart, 'yyyy-MM-dd')}.ics`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `calendar-${format(currentMonth, 'yyyy-MM')}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success('Week exported!');
+    toast.success('Calendar exported!');
   };
 
+  // Find selected workout for detail panel
+  const selectedWorkout = selectedWorkoutId
+    ? workouts.find((w) => w.id === selectedWorkoutId) || null
+    : null;
+
+  // Workouts for selected date (mobile)
+  const selectedDateWorkouts = useMemo(() => {
+    const key = format(selectedDate, 'yyyy-MM-dd');
+    return workoutsByDate.get(key) || [];
+  }, [selectedDate, workoutsByDate]);
+
+  // ── Loading state ────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -263,248 +256,115 @@ export default function CalendarPage() {
     );
   }
 
-  const completionPct = weekSummary.total > 0 ? Math.round((weekSummary.completed / weekSummary.total) * 100) : 0;
-
   return (
     <div className="space-y-3">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button onClick={() => setWeekStart(subWeeks(weekStart, 1))}
-            className="p-2.5 rounded-xl border hover:bg-muted transition-colors">
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <div className="text-center min-w-[220px]">
-            <h1 className="text-xl font-bold tracking-tight">
-              {format(weekStart, 'MMM d')} — {format(addDays(weekStart, 6), 'MMM d, yyyy')}
-            </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">Your weekly training plan</p>
-          </div>
-          <button onClick={() => setWeekStart(addWeeks(weekStart, 1))}
-            className="p-2.5 rounded-xl border hover:bg-muted transition-colors">
-            <ChevronRight className="h-5 w-5" />
-          </button>
-          <button
-            onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}
-            className="px-4 py-2 rounded-lg text-xs font-bold bg-red-600 text-white hover:bg-red-700 transition-colors"
-          >Today</button>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="hidden md:flex items-center gap-1.5 mr-2">
-            {(['run', 'bike', 'swim', 'strength', 'other'] as const).map(type => {
-              const active = activeTypes.has(type);
-              const cfg = TYPE_CONFIG[type];
-              return (
-                <button key={type} onClick={() => {
-                  const next = new Set(activeTypes);
-                  if (active && activeTypes.size > 1) next.delete(type);
-                  else next.add(type);
-                  setActiveTypes(next);
-                }}
-                  className={cn(
-                    'px-3 py-1.5 rounded-full text-xs font-semibold border transition-all',
-                    active ? `${cfg.bg} ${cfg.color} border-current/20` : 'border-border text-muted-foreground/40'
-                  )}
-                >{cfg.emoji} {type}</button>
-              );
-            })}
-          </div>
-          {/* Athlete Picker (coach only) */}
-          {isCoach && athletes.length > 0 && (
-            <select
-              value={selectedAthlete}
-              onChange={(e) => setSelectedAthlete(e.target.value)}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold border bg-background cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500/30"
-            >
-              <option value="all">All Athletes</option>
-              {athletes.map(a => (
-                <option key={a.uid} value={a.uid}>{a.displayName}</option>
-              ))}
-            </select>
-          )}
-          <button onClick={generateICS}
-            className="p-2.5 rounded-xl border hover:bg-muted transition-colors" title="Export week">
-            <Download className="h-4 w-4" />
-          </button>
-          <button onClick={handleSendReport} disabled={sendingReport}
-            className="p-2.5 rounded-xl border hover:bg-muted transition-colors" title="Email report">
-            <Send className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
+      {/* ═══ MOBILE LAYOUT (below md:) ═══ */}
+      <div className="md:hidden space-y-3">
+        <CalendarHeader
+          currentMonth={currentMonth}
+          onMonthChange={setCurrentMonth}
+          onToday={handleToday}
+          activeTypes={activeTypes}
+          onToggleType={handleToggleType}
+          isCoach={isCoach}
+          athletes={athletes}
+          selectedAthlete={selectedAthlete}
+          onSelectAthlete={setSelectedAthlete}
+          onExport={generateICS}
+          onSendReport={handleSendReport}
+          sendingReport={sendingReport}
+        />
 
-      {/* Weekly Summary Bar */}
-      <div className="flex items-center gap-6 px-5 py-3 rounded-xl border bg-muted/20">
-        <div className="flex items-center gap-2">
-          <div className="relative w-10 h-10">
-            <svg className="w-10 h-10 -rotate-90" viewBox="0 0 40 40">
-              <circle cx="20" cy="20" r="16" fill="none" stroke="currentColor" strokeWidth="3" className="text-muted/40" />
-              <circle cx="20" cy="20" r="16" fill="none" stroke="currentColor" strokeWidth="3"
-                className="text-green-500" strokeDasharray={`${completionPct * 1.005} 100.5`} strokeLinecap="round" />
-            </svg>
-            <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black">{completionPct}%</span>
+        <MobileWeekStrip
+          weekStart={weekStart}
+          selectedDate={selectedDate}
+          onSelectDate={setSelectedDate}
+          onWeekChange={setWeekStart}
+          workoutsByDate={workoutsByDate}
+        />
+
+        <CalendarSummary {...summary} />
+
+        {/* Strava sync indicator */}
+        {syncing && (
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-orange-500/20 bg-orange-500/5">
+            <Loader2 className="h-4 w-4 animate-spin text-orange-500 shrink-0" />
+            <p className="text-sm text-orange-600 dark:text-orange-400">
+              Syncing Strava workouts{syncPhaseLabel ? ` — ${syncPhaseLabel}` : ''}...
+            </p>
           </div>
-          <div>
-            <div className="text-xs font-bold">{weekSummary.completed}/{weekSummary.total}</div>
-            <div className="text-[10px] text-muted-foreground">completed</div>
-          </div>
-        </div>
-        <div className="h-8 w-px bg-border" />
-        <div>
-          <div className="text-xs font-bold flex items-center gap-1"><Timer className="h-3 w-3 opacity-50" />{formatDurLong(weekSummary.totalDuration)}</div>
-          <div className="text-[10px] text-muted-foreground">total time</div>
-        </div>
-        {weekSummary.totalDistance > 0 && (
-          <>
-            <div className="h-8 w-px bg-border" />
-            <div>
-              <div className="text-xs font-bold flex items-center gap-1"><Route className="h-3 w-3 opacity-50" />{weekSummary.totalDistance.toFixed(1)} km</div>
-              <div className="text-[10px] text-muted-foreground">distance</div>
-            </div>
-          </>
         )}
-        <div className="h-8 w-px bg-border" />
-        <div className="flex items-center gap-3">
-          {Object.entries(weekSummary.byType)
-            .sort((a, b) => b[1].count - a[1].count)
-            .map(([type, data]) => {
-              const cfg = TYPE_CONFIG[type] || TYPE_CONFIG.other;
-              return (
-                <div key={type} className="flex items-center gap-1">
-                  <span className="text-sm">{cfg.emoji}</span>
-                  <span className="text-xs font-bold">{data.count}</span>
-                  <span className="text-[10px] text-muted-foreground capitalize">{type}</span>
-                </div>
-              );
-            })}
-        </div>
+
+        <CalendarDayWorkouts
+          date={selectedDate}
+          workouts={selectedDateWorkouts}
+          onToggleComplete={handleToggleComplete}
+        />
       </div>
 
-      {/* Strava Sync Indicator */}
-      {syncing && (
-        <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-orange-500/20 bg-orange-500/5">
-          <Loader2 className="h-4 w-4 animate-spin text-orange-500 shrink-0" />
-          <p className="text-sm text-orange-600 dark:text-orange-400">
-            Syncing Strava workouts{syncPhaseLabel ? ` — ${syncPhaseLabel}` : ''}...
-          </p>
-        </div>
-      )}
+      {/* ═══ DESKTOP LAYOUT (md: and above) ═══ */}
+      <div className="hidden md:block">
+        <div className="space-y-3">
+          <CalendarHeader
+            currentMonth={currentMonth}
+            onMonthChange={setCurrentMonth}
+            onToday={handleToday}
+            activeTypes={activeTypes}
+            onToggleType={handleToggleType}
+            isCoach={isCoach}
+            athletes={athletes}
+            selectedAthlete={selectedAthlete}
+            onSelectAthlete={setSelectedAthlete}
+            onExport={generateICS}
+            onSendReport={handleSendReport}
+            sendingReport={sendingReport}
+          />
 
-      {/* Full-width Weekly Grid */}
-      <div className="flex gap-0 border rounded-2xl overflow-hidden" style={{ height: 'calc(100vh - 210px)' }}>
-        {weekDays.map((date) => {
-          const dayWorkouts = getWorkoutsForDate(date);
-          const today = isToday(date);
-          const past = isPast(date) && !today;
+          <CalendarSummary {...summary} />
 
-          let dayDuration = 0;
-          dayWorkouts.forEach(w => { dayDuration += w.duration || 0; });
-
-          return (
-            <div key={date.toISOString()}
-              className={cn(
-                'flex-1 min-w-0 flex flex-col border-r last:border-r-0',
-                today && 'bg-red-500/[0.03]',
-              )}
-            >
-              {/* Day Header */}
-              <div className={cn(
-                'px-2 py-4 border-b text-center shrink-0',
-                today ? 'bg-red-600 text-white' : 'bg-muted/30',
-              )}>
-                <div className={cn('text-[11px] font-semibold uppercase tracking-widest', today ? 'text-white/70' : 'opacity-50')}>
-                  {format(date, 'EEE')}
-                </div>
-                <div className={cn('text-3xl font-black mt-0.5', !today && 'text-foreground')}>
-                  {format(date, 'd')}
-                </div>
-                {dayWorkouts.length > 0 && (
-                  <div className={cn('mt-1 space-y-0.5', today ? 'text-white/60' : 'text-muted-foreground')}>
-                    <div className="text-[10px] font-semibold">
-                      {dayWorkouts.filter(w => w.completed).length}/{dayWorkouts.length} done
-                    </div>
-                    {dayDuration > 0 && (
-                      <div className="text-[10px]">{formatDurLong(dayDuration)}</div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Workout Cards */}
-              <div className="flex-1 p-2 space-y-2 overflow-y-auto">
-                {dayWorkouts.length === 0 && (
-                  <div className="flex flex-col items-center justify-center h-full opacity-15 gap-1">
-                    <div className="text-2xl">🌿</div>
-                    <span className="text-[11px] text-muted-foreground font-medium">Rest</span>
-                  </div>
-                )}
-
-                {dayWorkouts.map(workout => {
-                  const cfg = TYPE_CONFIG[workout.type] || TYPE_CONFIG.other;
-                  const stats = getTypeData(workout);
-                  const isMissed = past && !workout.completed;
-
-                  return (
-                    <Link key={workout.id} href={`/workouts/${workout.id}`}
-                      className={cn(
-                        'block rounded-lg border-l-[3px] transition-all hover:bg-muted/50',
-                        'border bg-card',
-                        cfg.border,
-                        isMissed && 'opacity-60',
-                      )}
-                    >
-                      {/* Top: icon + name + toggle */}
-                      <div className="flex items-start gap-2 px-3 pt-2.5 pb-1.5">
-                        <span className="text-lg mt-0.5 shrink-0">{cfg.emoji}</span>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-[13px] font-bold leading-tight line-clamp-1">{workout.name}</h3>
-                          <p className={cn('text-[10px] font-semibold uppercase tracking-wider mt-0.5', cfg.color)}>{workout.type === 'strength' ? 'Strength Training' : workout.type === 'bike' ? 'Cycling' : workout.type === 'swim' ? 'Swimming' : workout.type === 'run' ? 'Running' : workout.type}</p>
-                        </div>
-                        <button
-                          onClick={(e) => handleToggleComplete(e, workout)}
-                          className="shrink-0 mt-0.5 opacity-40 hover:opacity-100 transition-opacity"
-                        >
-                          {workout.completed
-                            ? <CheckCircle2 className="h-4 w-4 text-green-500" />
-                            : <Circle className="h-4 w-4 text-muted-foreground" />}
-                        </button>
-                      </div>
-
-                      {/* Stats grid - Garmin style */}
-                      <div className="grid grid-cols-2 border-t mx-1 mb-1">
-                        <div className="px-2.5 py-1.5 border-r border-b">
-                          <div className="text-xs font-bold truncate">{stats.primary}</div>
-                          <div className="text-[9px] text-muted-foreground font-semibold tracking-wider">{stats.primaryLabel}</div>
-                        </div>
-                        <div className="px-2.5 py-1.5 border-b">
-                          <div className="text-xs font-bold">{stats.time}</div>
-                          <div className="text-[9px] text-muted-foreground font-semibold tracking-wider">{stats.timeLabel}</div>
-                        </div>
-                        <div className="px-2.5 py-1.5 border-r">
-                          <div className="text-xs font-bold">{stats.hr}{stats.hr !== '--' ? ' bpm' : ''}</div>
-                          <div className="text-[9px] text-muted-foreground font-semibold tracking-wider">{stats.hrLabel}</div>
-                        </div>
-                        <div className="px-2.5 py-1.5">
-                          <div className="text-xs font-bold">{stats.stat4}</div>
-                          <div className="text-[9px] text-muted-foreground font-semibold tracking-wider">{stats.stat4Label}</div>
-                        </div>
-                      </div>
-
-                      {/* Status badge */}
-                      {(isMissed || workout.completed) && (
-                        <div className="px-3 pb-2">
-                          {isMissed && <span className="text-[9px] font-bold text-red-500">MISSED</span>}
-                          {workout.completed && workout.completedLate && <span className="text-[9px] font-bold text-amber-500">LATE</span>}
-                          {workout.completed && !workout.completedLate && <span className="text-[9px] font-bold text-green-500">✓ DONE</span>}
-                        </div>
-                      )}
-                    </Link>
-                  );
-                })}
-              </div>
+          {/* Strava sync indicator */}
+          {syncing && (
+            <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-orange-500/20 bg-orange-500/5">
+              <Loader2 className="h-4 w-4 animate-spin text-orange-500 shrink-0" />
+              <p className="text-sm text-orange-600 dark:text-orange-400">
+                Syncing Strava workouts{syncPhaseLabel ? ` — ${syncPhaseLabel}` : ''}...
+              </p>
             </div>
-          );
-        })}
+          )}
+        </div>
+
+        {/* Month grid + detail panel side by side */}
+        <div className="flex gap-0 mt-3">
+          <div className="flex-1 min-w-0">
+            <CalendarMonthView
+              currentMonth={currentMonth}
+              workoutsByDate={workoutsByDate}
+              selectedDate={selectedDate}
+              onSelectDate={(date) => {
+                setSelectedDate(date);
+                // If there's only one workout on that day, auto-select it
+                const key = format(date, 'yyyy-MM-dd');
+                const dayWorkouts = workoutsByDate.get(key) || [];
+                if (dayWorkouts.length === 1) {
+                  setSelectedWorkoutId(dayWorkouts[0].id);
+                } else {
+                  setSelectedWorkoutId(null);
+                }
+              }}
+              onSelectWorkout={(id) => setSelectedWorkoutId(id)}
+              activeTypes={activeTypes}
+            />
+          </div>
+
+          {/* Detail panel */}
+          {selectedWorkout && (
+            <WorkoutDetailPanel
+              workout={selectedWorkout}
+              onClose={() => setSelectedWorkoutId(null)}
+              onToggleComplete={handleToggleComplete}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
