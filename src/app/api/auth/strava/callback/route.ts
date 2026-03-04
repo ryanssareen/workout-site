@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
 
     // Redirect back to settings with success
     return NextResponse.redirect(
-      new URL('/settings?strava=success', baseUrl)
+      new URL('/settings?strava=connected', baseUrl)
     );
   } catch (error: any) {
     console.error('❌ Strava callback error:', error);
