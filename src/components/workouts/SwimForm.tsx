@@ -83,16 +83,6 @@ export function SwimForm({ data, onChange }: SwimFormProps) {
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="strokes">Number of Strokes</Label>
-          <Input
-            id="strokes"
-            type="number"
-            placeholder="1500"
-            value={data.strokes || ''}
-            onChange={(e) => onChange({ ...data, strokes: Number(e.target.value) })}
-          />
-        </div>
-        <div>
           <Label htmlFor="poolLength">Pool Length</Label>
           <Select
             value={isCustomPool ? 'custom' : (data.poolLength?.toString() || '25')}

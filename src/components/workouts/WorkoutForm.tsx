@@ -67,10 +67,8 @@ export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAt
   const FALLBACK_TYPE_DEFAULTS: Partial<WorkoutSchema> = {
     type: 'run',
     run: {
-      distance: 5,
       distanceUnit: 'km',
       time: 30,
-      terrain: 'road',
     },
   };
 
@@ -210,37 +208,6 @@ export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAt
           </SelectContent>
         </Select>
         {errors.type && <p className="text-sm text-red-500">{errors.type.message}</p>}
-      </div>
-
-      {/* Workout Tags */}
-      <div className="space-y-3">
-        <Label>Tags (optional)</Label>
-        <div className="flex flex-wrap gap-2">
-          {WORKOUT_TAGS.map((tag) => {
-            const isSelected = selectedTags.includes(tag);
-            return (
-              <button
-                key={tag}
-                type="button"
-                onClick={() => handleTagToggle(tag)}
-                className={cn(
-                  'px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 capitalize',
-                  isSelected
-                    ? `${TAG_COLORS[tag]} ring-2 ring-offset-2 ring-primary`
-                    : 'bg-muted hover:bg-muted/80 text-muted-foreground'
-                )}
-              >
-                {tag}
-                {isSelected && <X className="inline-block ml-1 h-3 w-3" />}
-              </button>
-            );
-          })}
-        </div>
-        {selectedTags.length > 0 && (
-          <p className="text-xs text-muted-foreground">
-            {selectedTags.length} tag{selectedTags.length > 1 ? 's' : ''} selected
-          </p>
-        )}
       </div>
 
       {/* Free-Text Description */}

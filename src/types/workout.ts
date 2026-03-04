@@ -40,7 +40,7 @@ export interface BikeData {
 }
 
 export interface RunData {
-  distance: number;
+  distance?: number;
   distanceUnit: 'km' | 'miles';
   time: number; // minutes
   pace?: string; // e.g., "5:30/km"
@@ -132,7 +132,8 @@ export function getWorkoutSummary(workout: Workout): string {
   }
   if (workout.run) {
     const pace = workout.run.pace ? ` (${workout.run.pace})` : '';
-    return `${workout.run.distance}${workout.run.distanceUnit} in ${workout.run.time} min${pace}`;
+    const dist = workout.run.distance ? `${workout.run.distance}${workout.run.distanceUnit} in ` : '';
+    return `${dist}${workout.run.time} min${pace}`;
   }
   if (workout.strength) {
     const exerciseCount = workout.strength.exercises.length;
