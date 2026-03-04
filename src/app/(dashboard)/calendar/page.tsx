@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { useSearchParams } from 'next/navigation';
 import { getUserWorkouts, completeWorkout, getCoachStudents } from '@/lib/firebase/firestore';
 import { Workout } from '@/types';
+import { useStravaAutoSync } from '@/hooks/useStravaAutoSync';
 import {
   ChevronLeft,
   ChevronRight,
@@ -13,6 +15,7 @@ import {
   Send,
   Route,
   Timer,
+  Loader2,
 } from 'lucide-react';
 import {
   format,
@@ -105,6 +108,7 @@ function formatDurLong(mins: number): string {
 
 export default function CalendarPage() {
   const user = useAuthStore((s) => s.user);
+  const searchParams = useSearchParams();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
@@ -113,6 +117,24 @@ export default function CalendarPage() {
   const [athletes, setAthletes] = useState<{ uid: string; displayName: string }[]>([]);
   const [selectedAthlete, setSelectedAthlete] = useState<string>('all');
   const isCoach = user?.role === 'coach';
+
+  // Fresh from onboarding Strava connect — skip cooldown, run progressive sync
+  const fromStrava = searchParams.get('strava') === 'connected';
+
+  // Refresh workouts from Firestore (called after each sync phase)
+  const refreshWorkouts = useCallback(async () => {
+    if (!user) return;
+    const data = await getUserWorkouts(user.username, user.role);
+    setWorkouts(data);
+    setLoading(false);
+  }, [user]);
+
+  // Progressive Strava sync — runs on the calendar when arriving from onboarding
+  const { syncing, syncPhaseLabel } = useStravaAutoSync(
+    fromStrava ? user : null,
+    refreshWorkouts,
+    fromStrava, // skipCooldown
+  );
 
   useEffect(() => {
     if (!user) return;
@@ -357,6 +379,16 @@ export default function CalendarPage() {
             })}
         </div>
       </div>
+
+      {/* Strava Sync Indicator */}
+      {syncing && (
+        <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-orange-500/20 bg-orange-500/5">
+          <Loader2 className="h-4 w-4 animate-spin text-orange-500 shrink-0" />
+          <p className="text-sm text-orange-600 dark:text-orange-400">
+            Syncing Strava workouts{syncPhaseLabel ? ` — ${syncPhaseLabel}` : ''}...
+          </p>
+        </div>
+      )}
 
       {/* Full-width Weekly Grid */}
       <div className="flex gap-0 border rounded-2xl overflow-hidden" style={{ height: 'calc(100vh - 210px)' }}>

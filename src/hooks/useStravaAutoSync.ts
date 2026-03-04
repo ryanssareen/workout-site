@@ -7,25 +7,36 @@ import { toast } from 'sonner';
 const SYNC_COOLDOWN_KEY = 'coachtrack_last_strava_sync';
 const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes between auto-syncs
 
-// Progressive sync phases: fast first, then expand
-const SYNC_PHASES = ['week', 'month', 'year'] as const;
+// Progressive sync phases: most recent first, then expand
+const SYNC_PHASES = ['2days', 'week', 'month', '2months', '6months', 'year'] as const;
+
+const PHASE_LABELS: Record<string, string> = {
+  '2days': 'last 2 days',
+  'week': 'last week',
+  'month': 'last 30 days',
+  '2months': 'last 60 days',
+  '6months': 'last 6 months',
+  'year': 'last year',
+};
 
 /**
  * Background Strava sync on login / page load.
- * Syncs progressively: 1 week → 1 month → 1 year.
+ * Syncs progressively: 2 days → 1 week → 1 month → 2 months → 6 months → 1 year.
  * After each phase that imports workouts, refreshes the page data
  * so the calendar populates quickly instead of waiting for the full year.
  */
 export function useStravaAutoSync(
   user: User | null,
   onNewWorkouts?: () => void,
-  onFirstPhaseComplete?: () => void,
+  /** Skip cooldown check (e.g. fresh onboarding) */
+  skipCooldown?: boolean,
 ) {
   const [syncing, setSyncing] = useState(false);
+  const [syncPhaseLabel, setSyncPhaseLabel] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<{ newWorkouts: number; merged: number } | null>(null);
   const hasFired = useRef(false);
 
-  const syncPhase = useCallback(async (userId: string, period: string): Promise<{ newWorkouts: number; merged: number; needsReconnect?: boolean }> => {
+  const fetchPhase = useCallback(async (userId: string, period: string): Promise<{ newWorkouts: number; merged: number; needsReconnect?: boolean }> => {
     const res = await fetch(
       `/api/strava/sync?userId=${userId}&period=${period}`,
       { headers: { Accept: 'application/json' } },
@@ -50,13 +61,13 @@ export function useStravaAutoSync(
     setSyncing(true);
     let totalNew = 0;
     let totalMerged = 0;
-    let firstPhaseNotified = false;
 
     try {
       for (const phase of SYNC_PHASES) {
         console.log(`[auto-sync] phase: ${phase}`);
+        setSyncPhaseLabel(PHASE_LABELS[phase] || phase);
 
-        const result = await syncPhase(userId, phase);
+        const result = await fetchPhase(userId, phase);
 
         if (result.needsReconnect) {
           console.warn('[auto-sync] Strava token expired, needs reconnect');
@@ -73,12 +84,6 @@ export function useStravaAutoSync(
           onNewWorkouts?.();
         } else {
           console.log(`[auto-sync] ${phase}: no new activities`);
-        }
-
-        // After first phase completes, notify caller (e.g. to redirect to calendar)
-        if (!firstPhaseNotified && phase === 'week') {
-          firstPhaseNotified = true;
-          onFirstPhaseComplete?.();
         }
       }
 
@@ -126,26 +131,29 @@ export function useStravaAutoSync(
       console.error('[auto-sync] unexpected error:', err);
     } finally {
       setSyncing(false);
+      setSyncPhaseLabel(null);
     }
-  }, [onNewWorkouts, onFirstPhaseComplete, syncPhase]);
+  }, [onNewWorkouts, fetchPhase]);
 
   useEffect(() => {
     if (hasFired.current) return;
     if (!user?.stravaAccessToken) return;
 
-    // Cooldown check — don't spam Strava
-    try {
-      const last = sessionStorage.getItem(SYNC_COOLDOWN_KEY);
-      if (last && Date.now() - Number(last) < COOLDOWN_MS) {
-        console.log('[auto-sync] skipped — cooldown active');
-        return;
-      }
-    } catch { /* SSR or private browsing */ }
+    // Cooldown check — don't spam Strava (skip for fresh onboarding)
+    if (!skipCooldown) {
+      try {
+        const last = sessionStorage.getItem(SYNC_COOLDOWN_KEY);
+        if (last && Date.now() - Number(last) < COOLDOWN_MS) {
+          console.log('[auto-sync] skipped — cooldown active');
+          return;
+        }
+      } catch { /* SSR or private browsing */ }
+    }
 
     hasFired.current = true;
     console.log('[auto-sync] firing progressive Strava sync');
     runSync(user.username);
-  }, [user, runSync]);
+  }, [user, runSync, skipCooldown]);
 
-  return { syncing, syncResult };
+  return { syncing, syncPhaseLabel, syncResult };
 }
