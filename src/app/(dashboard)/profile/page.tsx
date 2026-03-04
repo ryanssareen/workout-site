@@ -161,7 +161,7 @@ export default function ProfilePage() {
     setSaving(true);
     try {
       const profileCompleted = calculateCompletionFromForm(data, user);
-      await updateDoc(doc(getDbInstance(), 'users', user.uid), {
+      await updateDoc(doc(getDbInstance(), 'users', user.username), {
         displayName: data.displayName,
         bio: data.bio || null,
         timezone: data.timezone || null,

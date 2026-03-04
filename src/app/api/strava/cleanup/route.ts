@@ -32,8 +32,7 @@ export async function GET(request: NextRequest) {
 
     // Get all Strava workouts for this user
     const workoutsSnapshot = await adminDb
-      .collection('workouts')
-      .where('assignedTo', '==', userId)
+      .collection('users').doc(userId).collection('workouts')
       .where('source', '==', 'strava')
       .get();
 
@@ -80,7 +79,7 @@ export async function GET(request: NextRequest) {
       const batch = adminDb.batch();
 
       for (const docId of chunk) {
-        batch.delete(adminDb.collection('workouts').doc(docId));
+        batch.delete(adminDb.collection('users').doc(userId).collection('workouts').doc(docId));
       }
 
       await batch.commit();

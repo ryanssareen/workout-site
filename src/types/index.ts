@@ -10,12 +10,13 @@ export type { WorkoutTag };
 
 export interface User {
   uid: string;
+  username: string; // Document key in users/{username}
   email: string;
   displayName: string;
   role: UserRole;
   createdAt: Timestamp;
   updatedAt: Timestamp;
-  coachId?: string;
+  coachUsername?: string; // Username of coach (was coachId)
   coachCode?: string; // 6-letter code for coaches
   photoURL?: string; // Google profile photo
   // Strava integration fields
@@ -80,10 +81,11 @@ export interface Workout {
   date: Timestamp;
   duration?: number;
   tags?: WorkoutTag[]; // NEW: Workout tags
-  createdBy: string;
-  assignedTo: string;
+  ownerUsername: string; // Username of the athlete who owns this workout (subcollection parent)
+  createdBy: string; // Username of creator (coach or self)
+  assignedTo: string; // Username of assigned athlete
   assignedToName?: string; // athlete display name for coach view
-  studentId?: string; // alias for assignedTo used in some components
+  studentId?: string; // legacy alias for assignedTo
   completed: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -194,6 +196,6 @@ export interface AuthContextType {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, displayName: string, role: UserRole) => Promise<void>;
+  signUp: (email: string, password: string, displayName: string, username: string, role: UserRole) => Promise<void>;
   signOut: () => Promise<void>;
 }

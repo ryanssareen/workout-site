@@ -29,13 +29,16 @@ function getNextDate(currentDate: Date, frequency: string): Date {
   }
 }
 
-export async function createWorkout(data: ExtendedWorkoutFormData, createdBy: string): Promise<string> {
+export async function createWorkout(data: ExtendedWorkoutFormData, createdByUsername: string): Promise<string> {
   try {
+    const ownerUsername = data.assignedTo;
+
     const baseWorkoutData: any = {
       name: data.name,
       type: data.type,
-      createdBy,
+      createdBy: createdByUsername,
       assignedTo: data.assignedTo,
+      ownerUsername,
       completed: false,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -60,15 +63,15 @@ export async function createWorkout(data: ExtendedWorkoutFormData, createdBy: st
       const db = getDbInstance();
       const batch = writeBatch(db);
       const workoutIds: string[] = [];
-      
+
       let currentDate = new Date(data.date);
       const endDate = new Date(data.recurringEndDate);
       let isFirstWorkout = true;
       let firstWorkoutId = '';
-      
+
       // Create workouts from start date until end date
       while (currentDate <= endDate) {
-        const workoutRef = doc(collection(db, 'workouts'));
+        const workoutRef = doc(collection(db, 'users', ownerUsername, 'workouts'));
         const workoutData = {
           ...baseWorkoutData,
           date: Timestamp.fromDate(currentDate),
@@ -77,21 +80,21 @@ export async function createWorkout(data: ExtendedWorkoutFormData, createdBy: st
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         };
-        
+
         batch.set(workoutRef, workoutData);
         workoutIds.push(workoutRef.id);
-        
+
         if (isFirstWorkout) {
           firstWorkoutId = workoutRef.id;
           isFirstWorkout = false;
         }
-        
+
         // Move to next date based on frequency
         currentDate = getNextDate(currentDate, data.recurringFrequency);
       }
-      
+
       await batch.commit();
-      console.log(`✅ Created ${workoutIds.length} recurring workouts`);
+      console.log(`Created ${workoutIds.length} recurring workouts`);
       return firstWorkoutId;
     } else {
       // Single workout creation
@@ -99,7 +102,8 @@ export async function createWorkout(data: ExtendedWorkoutFormData, createdBy: st
         ...baseWorkoutData,
         date: Timestamp.fromDate(data.date),
       };
-      const docRef = await addDoc(collection(getDbInstance(), 'workouts'), workoutData);
+      const workoutsRef = collection(getDbInstance(), 'users', ownerUsername, 'workouts');
+      const docRef = await addDoc(workoutsRef, workoutData);
       return docRef.id;
     }
   } catch (error: any) {
@@ -107,9 +111,9 @@ export async function createWorkout(data: ExtendedWorkoutFormData, createdBy: st
   }
 }
 
-export async function getWorkout(id: string): Promise<Workout | null> {
+export async function getWorkout(ownerUsername: string, id: string): Promise<Workout | null> {
   try {
-    const docRef = doc(getDbInstance(), 'workouts', id);
+    const docRef = doc(getDbInstance(), 'users', ownerUsername, 'workouts', id);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       return { id: docSnap.id, ...docSnap.data() } as Workout;
@@ -121,16 +125,17 @@ export async function getWorkout(id: string): Promise<Workout | null> {
   }
 }
 
-export async function getUserWorkouts(userId: string, role: 'coach' | 'athlete' | 'student'): Promise<Workout[]> {
+export async function getUserWorkouts(username: string, role: 'coach' | 'athlete' | 'student'): Promise<Workout[]> {
   try {
-    const workoutsRef = collection(getDbInstance(), 'workouts');
+    const db = getDbInstance();
 
     // Handle both 'athlete' and legacy 'student' role
     if (role === 'athlete' || role === 'student') {
-      // Athletes see workouts assigned to them
-      const q = query(workoutsRef, where('assignedTo', '==', userId), orderBy('date', 'desc'));
+      // Athletes see workouts in their own subcollection
+      const workoutsRef = collection(db, 'users', username, 'workouts');
+      const q = query(workoutsRef, orderBy('date', 'desc'));
       const querySnapshot = await getDocs(q);
-      const allWorkouts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Workout[];
+      const allWorkouts = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Workout[];
 
       // Hide recurring workouts that are more than 2 days in the future
       const twoDaysFromNow = addDays(new Date(), 2);
@@ -141,57 +146,47 @@ export async function getUserWorkouts(userId: string, role: 'coach' | 'athlete' 
       });
     } else {
       // Coaches see:
-      // 1. Workouts they created (createdBy = coachId)
-      // 2. Workouts assigned to their students (including Strava imports)
-      
+      // 1. Workouts they created (createdBy = coachUsername) across students
+      // 2. Workouts in their students' subcollections (including Strava imports)
+
       // Get coach's students
-      const students = await getCoachStudents(userId);
-      const studentIds = students.map(s => s.uid);
-      
-      // Query 1: Workouts created by coach
-      const coachWorkoutsQuery = query(
-        workoutsRef, 
-        where('createdBy', '==', userId), 
-        orderBy('date', 'desc')
-      );
-      const coachWorkouts = await getDocs(coachWorkoutsQuery);
-      
-      // Query 2: Workouts assigned to students (Strava imports + file imports)
-      // We need to fetch these separately since Firestore doesn't support OR queries well
-      const studentWorkouts: Workout[] = [];
-      
-      if (studentIds.length > 0) {
-        // Firestore 'in' supports max 10 items, so batch if needed
-        const batches = [];
-        for (let i = 0; i < studentIds.length; i += 10) {
-          const batch = studentIds.slice(i, i + 10);
-          batches.push(batch);
+      const students = await getCoachStudents(username);
+
+      const allWorkouts: Workout[] = [];
+
+      // For each student, query their workout subcollection
+      for (const student of students) {
+        const studentUsername = student.uid; // uid field contains username (doc.id)
+        const studentWorkoutsRef = collection(db, 'users', studentUsername, 'workouts');
+
+        // Get strava and import source workouts
+        const [stravaDocs, importDocs, coachCreatedDocs] = await Promise.all([
+          getDocs(query(studentWorkoutsRef, where('source', '==', 'strava'))),
+          getDocs(query(studentWorkoutsRef, where('source', '==', 'import'))),
+          getDocs(query(studentWorkoutsRef, where('createdBy', '==', username))),
+        ]);
+
+        const studentWorkouts = [
+          ...stravaDocs.docs.map(d => ({ id: d.id, ...d.data() }) as Workout),
+          ...importDocs.docs.map(d => ({ id: d.id, ...d.data() }) as Workout),
+          ...coachCreatedDocs.docs.map(d => ({ id: d.id, ...d.data() }) as Workout),
+        ];
+
+        // Enrich with athlete name
+        for (const w of studentWorkouts) {
+          if (!w.assignedToName) {
+            w.assignedToName = student.displayName || undefined;
+          }
         }
-        
-        // Fetch both strava and import sources (can't use two 'in' operators)
-        for (const batch of batches) {
-          const [stravaDocs, importDocs] = await Promise.all([
-            getDocs(query(workoutsRef, where('assignedTo', 'in', batch), where('source', '==', 'strava'))),
-            getDocs(query(workoutsRef, where('assignedTo', 'in', batch), where('source', '==', 'import'))),
-          ]);
-          studentWorkouts.push(
-            ...stravaDocs.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Workout),
-            ...importDocs.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Workout),
-          );
-        }
+
+        allWorkouts.push(...studentWorkouts);
       }
-      
-      // Combine and deduplicate
-      const allWorkouts = [
-        ...coachWorkouts.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Workout),
-        ...studentWorkouts
-      ];
-      
+
       // Remove duplicates by ID
       const uniqueWorkouts = Array.from(
         new Map(allWorkouts.map(w => [w.id, w])).values()
       );
-      
+
       // Sort by date descending
       uniqueWorkouts.sort((a, b) => {
         const dateA = a.date?.toDate ? a.date.toDate() : (a.date as any);
@@ -200,14 +195,6 @@ export async function getUserWorkouts(userId: string, role: 'coach' | 'athlete' 
         const timeB = dateB instanceof Date ? dateB.getTime() : new Date(dateB).getTime();
         return timeB - timeA;
       });
-      
-      // Enrich workouts with athlete names for coach view
-      const nameMap = new Map(students.map(s => [s.uid, s.displayName]));
-      for (const w of uniqueWorkouts) {
-        if (!w.assignedToName && w.assignedTo && w.assignedTo !== userId) {
-          w.assignedToName = nameMap.get(w.assignedTo) || undefined;
-        }
-      }
 
       return uniqueWorkouts;
     }
@@ -217,9 +204,9 @@ export async function getUserWorkouts(userId: string, role: 'coach' | 'athlete' 
   }
 }
 
-export async function updateWorkout(id: string, data: Partial<WorkoutFormData>): Promise<void> {
+export async function updateWorkout(ownerUsername: string, id: string, data: Partial<WorkoutFormData>): Promise<void> {
   try {
-    const docRef = doc(getDbInstance(), 'workouts', id);
+    const docRef = doc(getDbInstance(), 'users', ownerUsername, 'workouts', id);
     const updateData: any = { updatedAt: serverTimestamp() };
 
     // Copy only defined values (Firestore rejects undefined)
@@ -248,17 +235,17 @@ export async function updateWorkout(id: string, data: Partial<WorkoutFormData>):
   }
 }
 
-export async function deleteWorkout(id: string): Promise<void> {
+export async function deleteWorkout(ownerUsername: string, id: string): Promise<void> {
   try {
-    await deleteDoc(doc(getDbInstance(), 'workouts', id));
+    await deleteDoc(doc(getDbInstance(), 'users', ownerUsername, 'workouts', id));
   } catch (error: any) {
     throw new Error(error.message || 'Failed to delete workout');
   }
 }
 
-export async function toggleWorkoutCompletion(id: string, completed: boolean): Promise<void> {
+export async function toggleWorkoutCompletion(ownerUsername: string, id: string, completed: boolean): Promise<void> {
   try {
-    const docRef = doc(getDbInstance(), 'workouts', id);
+    const docRef = doc(getDbInstance(), 'users', ownerUsername, 'workouts', id);
     await updateDoc(docRef, { completed, updatedAt: serverTimestamp() });
   } catch (error: any) {
     throw new Error(error.message || 'Failed to update workout status');
@@ -267,19 +254,20 @@ export async function toggleWorkoutCompletion(id: string, completed: boolean): P
 
 // Enhanced completion with notes and rating
 export async function completeWorkout(
+  ownerUsername: string,
   id: string,
   completed: boolean,
   notes?: string
 ): Promise<void> {
   try {
-    const docRef = doc(getDbInstance(), 'workouts', id);
-    
+    const docRef = doc(getDbInstance(), 'users', ownerUsername, 'workouts', id);
+
     // Get workout to check if completion is late
     const workoutSnap = await getDoc(docRef);
     if (!workoutSnap.exists()) {
       throw new Error('Workout not found');
     }
-    
+
     const updateData: Record<string, any> = {
       completed,
       updatedAt: serverTimestamp(),
@@ -288,24 +276,24 @@ export async function completeWorkout(
     if (completed) {
       const now = new Date();
       const workoutDate = workoutSnap.data().date.toDate();
-      
+
       // Set workout date to end of day for fair comparison
       workoutDate.setHours(23, 59, 59, 999);
-      
+
       // Check if completing after due date
       const isLate = now > workoutDate;
-      
-      console.log('🔍 Late completion check:', {
+
+      console.log('Late completion check:', {
         now: now.toISOString(),
         workoutDate: workoutDate.toISOString(),
         isLate,
         workoutName: workoutSnap.data().name
       });
-      
+
       updateData.completedAt = serverTimestamp();
       updateData.completedBy = 'manual';
       updateData.completedLate = isLate;
-      
+
       if (notes) {
         updateData.completionNotes = notes;
       }
@@ -325,6 +313,7 @@ export async function completeWorkout(
 
 // Workout Comments Functions
 export async function addWorkoutComment(
+  ownerUsername: string,
   workoutId: string,
   userId: string,
   userRole: 'coach' | 'athlete' | 'student',
@@ -334,7 +323,7 @@ export async function addWorkoutComment(
   parentCommentId?: string
 ): Promise<string> {
   try {
-    const commentsRef = collection(getDbInstance(), 'workouts', workoutId, 'comments');
+    const commentsRef = collection(getDbInstance(), 'users', ownerUsername, 'workouts', workoutId, 'comments');
     const commentData: Omit<WorkoutComment, 'id'> = {
       workoutId,
       userId,
@@ -353,57 +342,50 @@ export async function addWorkoutComment(
   }
 }
 
-export async function getWorkoutComments(workoutId: string): Promise<WorkoutComment[]> {
+export async function getWorkoutComments(ownerUsername: string, workoutId: string): Promise<WorkoutComment[]> {
   try {
-    const commentsRef = collection(getDbInstance(), 'workouts', workoutId, 'comments');
+    const commentsRef = collection(getDbInstance(), 'users', ownerUsername, 'workouts', workoutId, 'comments');
     const q = query(commentsRef, orderBy('createdAt', 'asc'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as WorkoutComment[];
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as WorkoutComment[];
   } catch (error) {
     console.error('Error fetching comments:', error);
     return [];
   }
 }
 
-export async function deleteWorkoutComment(workoutId: string, commentId: string): Promise<void> {
+export async function deleteWorkoutComment(ownerUsername: string, workoutId: string, commentId: string): Promise<void> {
   try {
-    const commentRef = doc(getDbInstance(), 'workouts', workoutId, 'comments', commentId);
+    const commentRef = doc(getDbInstance(), 'users', ownerUsername, 'workouts', workoutId, 'comments', commentId);
     await deleteDoc(commentRef);
   } catch (error: any) {
     throw new Error(error.message || 'Failed to delete comment');
   }
 }
 
-export async function getCoachStudents(coachId: string): Promise<any[]> {
+export async function getCoachStudents(coachUsername: string): Promise<any[]> {
   try {
-    // Get coach's user document
-    const coachDoc = await getDoc(doc(getDbInstance(), 'users', coachId));
-
     const usersRef = collection(getDbInstance(), 'users');
 
     // Query for both 'athlete' and legacy 'student' roles
     // Firestore doesn't support OR in where, so we run two queries
-    let athletes: any[] = [];
-
-    // Coaches only see athletes assigned to them
-    console.log('👤 Fetching assigned athletes only');
-    const athleteQuery = query(usersRef, where('coachId', '==', coachId), where('role', '==', 'athlete'));
-    const studentQuery = query(usersRef, where('coachId', '==', coachId), where('role', '==', 'student'));
+    const athleteQuery = query(usersRef, where('coachUsername', '==', coachUsername), where('role', '==', 'athlete'));
+    const studentQuery = query(usersRef, where('coachUsername', '==', coachUsername), where('role', '==', 'student'));
 
     const [athleteSnapshot, studentSnapshot] = await Promise.all([
       getDocs(athleteQuery),
       getDocs(studentQuery)
     ]);
 
-    athletes = [
-      ...athleteSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() })),
-      ...studentSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }))
+    const athletes = [
+      ...athleteSnapshot.docs.map(d => ({ uid: d.id, ...d.data() })),
+      ...studentSnapshot.docs.map(d => ({ uid: d.id, ...d.data() }))
     ];
 
-    console.log('📊 Found athletes:', athletes.length);
+    console.log('Found athletes:', athletes.length);
     return athletes;
   } catch (error) {
-    console.error('❌ Error fetching students:', error);
+    console.error('Error fetching students:', error);
     return [];
   }
 }
@@ -434,13 +416,13 @@ export interface CoachStats {
   studentsWithStats: StudentWithStats[];
 }
 
-export async function getCoachDashboardStats(coachId: string): Promise<CoachStats> {
+export async function getCoachDashboardStats(coachUsername: string): Promise<CoachStats> {
   try {
     // Get students
-    const students = await getCoachStudents(coachId);
+    const students = await getCoachStudents(coachUsername);
 
-    // Get all workouts created by this coach
-    const workouts = await getUserWorkouts(coachId, 'coach');
+    // Get all workouts visible to this coach
+    const workouts = await getUserWorkouts(coachUsername, 'coach');
 
     // Calculate workout stats
     const completedWorkouts = workouts.filter(w => w.completed).length;
@@ -469,7 +451,8 @@ export async function getCoachDashboardStats(coachId: string): Promise<CoachStat
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     const studentsWithStats: StudentWithStats[] = students.map(student => {
-      const studentWorkouts = workouts.filter(w => w.assignedTo === student.uid);
+      const studentUsername = student.uid; // uid contains username (doc.id)
+      const studentWorkouts = workouts.filter(w => w.assignedTo === studentUsername);
       const studentCompleted = studentWorkouts.filter(w => w.completed);
 
       // Check if student completed any workout in last 7 days
@@ -525,10 +508,10 @@ export async function getCoachDashboardStats(coachId: string): Promise<CoachStat
   }
 }
 
-// Get coach info by ID
-export async function getCoachInfo(coachId: string): Promise<{ uid: string; displayName: string; email: string } | null> {
+// Get coach info by username
+export async function getCoachInfo(coachUsername: string): Promise<{ uid: string; displayName: string; email: string } | null> {
   try {
-    const coachDoc = await getDoc(doc(getDbInstance(), 'users', coachId));
+    const coachDoc = await getDoc(doc(getDbInstance(), 'users', coachUsername));
     if (coachDoc.exists()) {
       const data = coachDoc.data();
       return {
@@ -546,7 +529,7 @@ export async function getCoachInfo(coachId: string): Promise<{ uid: string; disp
 
 // Update user's Strava connection
 export async function updateUserStravaConnection(
-  userId: string,
+  username: string,
   stravaData: {
     stravaId: string;
     stravaAccessToken: string;
@@ -555,7 +538,7 @@ export async function updateUserStravaConnection(
   }
 ): Promise<void> {
   try {
-    const userRef = doc(getDbInstance(), 'users', userId);
+    const userRef = doc(getDbInstance(), 'users', username);
     await updateDoc(userRef, {
       ...stravaData,
       stravaConnectedAt: serverTimestamp(),
@@ -567,9 +550,9 @@ export async function updateUserStravaConnection(
 }
 
 // Disconnect Strava
-export async function disconnectStrava(userId: string): Promise<void> {
+export async function disconnectStrava(username: string): Promise<void> {
   try {
-    const userRef = doc(getDbInstance(), 'users', userId);
+    const userRef = doc(getDbInstance(), 'users', username);
     await updateDoc(userRef, {
       stravaId: null,
       stravaAccessToken: null,
@@ -589,7 +572,7 @@ export async function getPersonalRecords(userId: string): Promise<PersonalRecord
     const recordsRef = collection(getDbInstance(), 'personalRecords');
     const q = query(recordsRef, where('userId', '==', userId), orderBy('date', 'desc'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as PersonalRecord[];
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as PersonalRecord[];
   } catch (error) {
     console.error('Error fetching personal records:', error);
     return [];
@@ -714,7 +697,7 @@ export async function updatePersonalRecord(
     const updateData: Record<string, any> = {
       updatedAt: serverTimestamp(),
     };
-    
+
     // Only add fields that are defined
     if (data.value !== undefined) {
       updateData.value = data.value;
@@ -725,7 +708,7 @@ export async function updatePersonalRecord(
     if (data.notes !== undefined && data.notes !== '') {
       updateData.notes = data.notes;
     }
-    
+
     await updateDoc(recordRef, updateData);
   } catch (error: any) {
     throw new Error(error.message || 'Failed to update personal record');

@@ -75,13 +75,13 @@ function toEpochMs(dateValue: unknown): number {
   return 0;
 }
 
-async function getCoachStudentIds(coachId: string): Promise<string[]> {
+async function getCoachStudentUsernames(coachUsername: string): Promise<string[]> {
   const studentsSnapshot = await adminDb
     .collection('users')
-    .where('coachId', '==', coachId)
+    .where('coachUsername', '==', coachUsername)
     .get();
 
-  return studentsSnapshot.docs.map((doc) => doc.id);
+  return studentsSnapshot.docs.map((doc) => doc.id); // doc.id is username
 }
 
 function normalizeTagList(tags: unknown): string[] {
@@ -116,20 +116,20 @@ export async function GET(request: NextRequest) {
     const workoutsById = new Map<string, Record<string, unknown>>();
 
     if (role === 'coach') {
-      const [coachCreatedSnapshot, studentIds] = await Promise.all([
-        adminDb.collection('workouts').where('createdBy', '==', userId).get(),
-        getCoachStudentIds(userId),
+      const [coachCreatedSnapshot, studentUsernames] = await Promise.all([
+        adminDb.collectionGroup('workouts').where('createdBy', '==', userId).get(),
+        getCoachStudentUsernames(userId),
       ]);
 
       coachCreatedSnapshot.docs.forEach((doc) => {
         workoutsById.set(doc.id, { id: doc.id, ...doc.data() });
       });
 
-      if (studentIds.length > 0) {
-        for (let i = 0; i < studentIds.length; i += 10) {
-          const batch = studentIds.slice(i, i + 10);
+      if (studentUsernames.length > 0) {
+        for (let i = 0; i < studentUsernames.length; i += 10) {
+          const batch = studentUsernames.slice(i, i + 10);
           const studentSnapshot = await adminDb
-            .collection('workouts')
+            .collectionGroup('workouts')
             .where('assignedTo', 'in', batch)
             .get();
 
@@ -141,10 +141,18 @@ export async function GET(request: NextRequest) {
           });
         }
       }
+
+      // Also query the coach's own subcollection for self-assigned workouts
+      const coachOwnSnapshot = await adminDb
+        .collection('users').doc(userId).collection('workouts')
+        .get();
+
+      coachOwnSnapshot.docs.forEach((doc) => {
+        workoutsById.set(doc.id, { id: doc.id, ...doc.data() });
+      });
     } else if (role === 'athlete' || role === 'student') {
       const athleteSnapshot = await adminDb
-        .collection('workouts')
-        .where('assignedTo', '==', userId)
+        .collection('users').doc(userId).collection('workouts')
         .get();
 
       athleteSnapshot.docs.forEach((doc) => {
@@ -152,8 +160,8 @@ export async function GET(request: NextRequest) {
       });
     } else {
       const [createdSnapshot, assignedSnapshot] = await Promise.all([
-        adminDb.collection('workouts').where('createdBy', '==', userId).get(),
-        adminDb.collection('workouts').where('assignedTo', '==', userId).get(),
+        adminDb.collectionGroup('workouts').where('createdBy', '==', userId).get(),
+        adminDb.collectionGroup('workouts').where('assignedTo', '==', userId).get(),
       ]);
 
       createdSnapshot.docs.forEach((doc) => {
@@ -211,6 +219,7 @@ export async function POST(_: NextRequest) {
       date: toTimestamp(body.date) ?? admin.firestore.Timestamp.fromDate(new Date()),
       createdBy,
       assignedTo,
+      ownerUsername: assignedTo,
       completed: false,
       source: typeof body.source === 'string' ? body.source : 'manual',
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -237,7 +246,7 @@ export async function POST(_: NextRequest) {
       }
     });
 
-    const createdRef = await adminDb.collection('workouts').add(workoutData);
+    const createdRef = await adminDb.collection('users').doc(assignedTo).collection('workouts').add(workoutData);
     const createdDoc = await createdRef.get();
 
     return NextResponse.json({

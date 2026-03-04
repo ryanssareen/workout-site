@@ -1,13 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createUser, signInWithGoogle } from '@/lib/firebase/auth';
+import { validateUsername, isUsernameAvailable } from '@/lib/firebase/userMapping';
+import { useAuthStore } from '@/lib/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Dumbbell, Loader2, User, Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
+import { Dumbbell, Loader2, User, Mail, Lock, ArrowRight, AlertCircle, AtSign } from 'lucide-react';
 import Link from 'next/link';
 
 export function RegisterForm() {
@@ -15,18 +17,28 @@ export function RegisterForm() {
     email: '',
     password: '',
     displayName: '',
+    username: '',
   });
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [nameError, setNameError] = useState('');
+  const [usernameError, setUsernameError] = useState('');
+  const [usernameChecking, setUsernameChecking] = useState(false);
   const router = useRouter();
+  const setNeedsUsername = useAuthStore((s) => s.setNeedsUsername);
 
   const handleGoogleSignUp = async () => {
     setGoogleLoading(true);
     try {
-      await signInWithGoogle();
-      toast.success('Account created!');
-      router.push('/onboarding');
+      const result = await signInWithGoogle();
+      if (result.type === 'existing') {
+        toast.success('Welcome back!');
+        router.push('/dashboard');
+      } else {
+        // New Google user needs to pick a username
+        setNeedsUsername(true, result);
+        router.push('/choose-username');
+      }
     } catch (error: any) {
       if (error.message !== 'Sign-in cancelled') {
         toast.error(error.message);
@@ -49,19 +61,54 @@ export function RegisterForm() {
       }
       return true;
     } catch {
-      // Allow through if check fails
       return true;
     }
   };
 
+  const handleUsernameChange = useCallback(async (value: string) => {
+    const lower = value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+    setFormData((prev) => ({ ...prev, username: lower }));
+    setUsernameError('');
+
+    if (!lower) return;
+
+    const validation = validateUsername(lower);
+    if (!validation.valid) {
+      setUsernameError(validation.error || '');
+      return;
+    }
+
+    setUsernameChecking(true);
+    const available = await isUsernameAvailable(lower);
+    setUsernameChecking(false);
+    if (!available) {
+      setUsernameError('Username is already taken');
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setNameError('');
+    setUsernameError('');
     setLoading(true);
 
     const trimmedName = formData.displayName.trim();
     if (trimmedName.length < 2) {
       setNameError('Name must be at least 2 characters.');
+      setLoading(false);
+      return;
+    }
+
+    const validation = validateUsername(formData.username);
+    if (!validation.valid) {
+      setUsernameError(validation.error || '');
+      setLoading(false);
+      return;
+    }
+
+    const available = await isUsernameAvailable(formData.username);
+    if (!available) {
+      setUsernameError('Username is already taken');
       setLoading(false);
       return;
     }
@@ -77,6 +124,7 @@ export function RegisterForm() {
         formData.email,
         formData.password,
         trimmedName,
+        formData.username,
         'athlete'
       );
 
@@ -113,6 +161,22 @@ export function RegisterForm() {
                 <span>{nameError}</span>
               </div>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="username" className="text-sm font-medium text-white/70">Username</Label>
+            <div className="relative">
+              <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+              <Input id="username" type="text" placeholder="johndoe" value={formData.username} onChange={(e) => handleUsernameChange(e.target.value)} required maxLength={20} className={`pl-10 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-red-500 focus:ring-red-500/20 transition-colors ${usernameError ? 'border-red-500' : ''}`} />
+              {usernameChecking && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 animate-spin" />}
+            </div>
+            {usernameError && (
+              <div className="flex items-center gap-1.5 text-red-400 text-sm animate-in fade-in slide-in-from-top-1 duration-200">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{usernameError}</span>
+              </div>
+            )}
+            <p className="text-xs text-white/25">Lowercase letters, numbers, underscores. 3-20 characters.</p>
           </div>
 
           <div className="space-y-2">

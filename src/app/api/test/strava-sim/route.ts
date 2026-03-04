@@ -114,18 +114,18 @@ function generateMockActivities() {
 
 // GET: Run dedup on existing real user data (dry-run)
 export async function GET(request: NextRequest) {
-  const userId = request.nextUrl.searchParams.get('userId');
-  if (!userId) {
+  const username = request.nextUrl.searchParams.get('userId'); // param name kept for compat, value is now username
+  if (!username) {
     return NextResponse.json({ error: 'userId query param required' }, { status: 400 });
   }
 
   try {
-    const { workouts, result } = await runDedupPipeline(userId);
+    const { workouts, result } = await runDedupPipeline(username);
 
     return NextResponse.json({
       success: true,
       mode: 'dry-run (GET — no deletions)',
-      userId,
+      userId: username,
       totalWorkouts: workouts.length,
       workoutsSent: workouts.map(w => ({
         id: w.id, name: w.name, type: w.type, date: w.date,
@@ -141,10 +141,10 @@ export async function GET(request: NextRequest) {
 
 // POST: Full simulation — create mock data → run dedup → optionally delete
 export async function POST(request: NextRequest) {
-  const userId = request.nextUrl.searchParams.get('userId');
+  const username = request.nextUrl.searchParams.get('userId'); // param name kept for compat, value is now username
   const execute = request.nextUrl.searchParams.get('execute') === 'true';
 
-  if (!userId) {
+  if (!username) {
     return NextResponse.json({ error: 'userId query param required' }, { status: 400 });
   }
 
@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
 
   try {
     // ── Step 1: Verify user exists ──
-    const userDoc = await adminDb.collection('users').doc(userId).get();
+    const userDoc = await adminDb.collection('users').doc(username).get();
     if (!userDoc.exists) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
     for (const activity of mockActivities) {
       const docId = `test_${activity.id}`;
       mockIds.push(docId);
-      const ref = adminDb.collection('workouts').doc(docId);
+      const ref = adminDb.collection('users').doc(username).collection('workouts').doc(docId);
       batch.set(ref, {
         name: activity.name,
         type: activity.type,
@@ -179,8 +179,9 @@ export async function POST(request: NextRequest) {
         },
         source: activity.source,
         stravaActivityId: activity.stravaActivityId || null,
-        assignedTo: userId,
-        createdBy: userId,
+        ownerUsername: username,
+        assignedTo: username,
+        createdBy: username,
         completed: true,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -191,7 +192,7 @@ export async function POST(request: NextRequest) {
 
     // ── Step 3: Run Groq dedup pipeline on ALL user workouts ──
     timeline.push('🔍 Running Groq dedup pipeline...');
-    const { workouts, result } = await runDedupPipeline(userId);
+    const { workouts, result } = await runDedupPipeline(username);
     timeline.push(`📊 Analyzed ${workouts.length} total workouts`);
     timeline.push(`🎯 Groq found ${result.duplicatesFound} duplicates (model: ${result.model})`);
 
@@ -204,7 +205,7 @@ export async function POST(request: NextRequest) {
     // ── Step 4: Execute or dry-run ──
     let deletedCount = 0;
     if (execute && result.deletions.length > 0) {
-      deletedCount = await executeDedupDeletions(result);
+      deletedCount = await executeDedupDeletions(result, username);
       timeline.push(`✅ EXECUTED: Deleted ${deletedCount} duplicate workouts`);
     } else if (result.deletions.length > 0) {
       timeline.push(`⏸️ DRY-RUN: Would delete ${result.deletions.length} workouts. Use ?execute=true to delete.`);
@@ -214,7 +215,7 @@ export async function POST(request: NextRequest) {
     const cleanupBatch = adminDb.batch();
     let cleanedUp = 0;
     for (const docId of mockIds) {
-      const docRef = adminDb.collection('workouts').doc(docId);
+      const docRef = adminDb.collection('users').doc(username).collection('workouts').doc(docId);
       const docSnap = await docRef.get();
       if (docSnap.exists) {
         cleanupBatch.delete(docRef);
@@ -229,7 +230,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       mode: execute ? 'EXECUTE' : 'DRY-RUN',
-      userId,
+      userId: username,
       timeline,
       simulation: {
         mockActivitiesCreated: mockActivities.length,
@@ -249,7 +250,7 @@ export async function POST(request: NextRequest) {
     try {
       const cleanupBatch = adminDb.batch();
       for (const docId of mockIds) {
-        cleanupBatch.delete(adminDb.collection('workouts').doc(docId));
+        cleanupBatch.delete(adminDb.collection('users').doc(username).collection('workouts').doc(docId));
       }
       await cleanupBatch.commit();
     } catch { /* ignore cleanup errors */ }

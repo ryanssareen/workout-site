@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
 
     // Get Strava workouts that don't have photos field yet
     const workoutsSnapshot = await adminDb
-      .collection('workouts')
+      .collectionGroup('workouts')
       .where('source', '==', 'strava')
       .limit(500)
       .get();
@@ -79,13 +79,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Group by user to reuse tokens
+    // Group by user (ownerUsername) to reuse tokens
     const byUser: Record<string, any[]> = {};
     for (const doc of workoutsToCheck) {
       const data = doc.data();
-      const userId = data.assignedTo;
-      if (!byUser[userId]) byUser[userId] = [];
-      byUser[userId].push({ id: doc.id, ...data });
+      const ownerUsername = data.ownerUsername || data.assignedTo;
+      if (!byUser[ownerUsername]) byUser[ownerUsername] = [];
+      byUser[ownerUsername].push({ id: doc.id, ref: doc.ref, ...data });
     }
 
     let updated = 0;
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
             console.log(`❌ ${workout.name}: ${response.status}`);
 
             if (response.status !== 429) {
-              await adminDb.collection('workouts').doc(workout.id).update({
+              await workout.ref.update({
                 photosChecked: true,
               });
             }
@@ -145,14 +145,14 @@ export async function POST(request: NextRequest) {
           }
 
           if (urls.length > 0) {
-            await adminDb.collection('workouts').doc(workout.id).update({
+            await workout.ref.update({
               photos: urls,
               photosChecked: true,
             });
             updated++;
             console.log(`✅ ${workout.name}: ${urls.length} photos`);
           } else {
-            await adminDb.collection('workouts').doc(workout.id).update({
+            await workout.ref.update({
               photosChecked: true,
             });
             noPhotos++;
@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
 
     // Count remaining
     const remainingSnapshot = await adminDb
-      .collection('workouts')
+      .collectionGroup('workouts')
       .where('source', '==', 'strava')
       .limit(500)
       .get();

@@ -15,6 +15,7 @@ interface WorkoutData {
   date: admin.firestore.Timestamp;
   duration?: number;
   assignedTo: string;
+  ownerUsername: string;
   completed: boolean;
   reminderSent?: boolean;
 }
@@ -24,9 +25,9 @@ interface UserData {
   displayName: string;
 }
 
-async function getUserData(userId: string): Promise<UserData | null> {
+async function getUserData(username: string): Promise<UserData | null> {
   try {
-    const userDoc = await adminDb.collection('users').doc(userId).get();
+    const userDoc = await adminDb.collection('users').doc(username).get();
     if (userDoc.exists) {
       const data = userDoc.data();
       return {
@@ -183,7 +184,7 @@ export async function GET(request: NextRequest) {
 
     // Get tomorrow's incomplete workouts that haven't been reminded
     const workoutsSnapshot = await adminDb
-      .collection('workouts')
+      .collectionGroup('workouts')
       .where('date', '>=', admin.firestore.Timestamp.fromDate(tomorrowStart))
       .where('date', '<=', admin.firestore.Timestamp.fromDate(tomorrowEnd))
       .where('completed', '==', false)
@@ -230,8 +231,9 @@ export async function GET(request: NextRequest) {
       );
 
       if (sent) {
-        // Mark as reminded
-        await adminDb.collection('workouts').doc(workout.id).update({
+        // Mark as reminded (subcollection path: users/{username}/workouts/{id})
+        const ownerUsername = workout.ownerUsername || workout.assignedTo;
+        await adminDb.collection('users').doc(ownerUsername).collection('workouts').doc(workout.id).update({
           reminderSent: true,
         });
 

@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 import { adminDb } from '@/lib/firebase/admin';
+import { adminResolveUsername } from '@/lib/firebase/adminUserMapping';
 
 const SYSTEM_PROMPT = `You are CoachTrack's AI report generator. Analyze workout data and create beautifully structured reports using JSON format.
 
@@ -83,6 +84,9 @@ export async function POST(req: NextRequest) {
 
     const isCoach = userRole === 'coach';
 
+    // Resolve UID to username
+    const username = await adminResolveUsername(userId);
+
     let dataContext: string;
     let hasData = false;
 
@@ -91,15 +95,9 @@ export async function POST(req: NextRequest) {
       let athleteDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
       const coachAthletesSnapshot = await adminDb
         .collection('users')
-        .where('coachId', '==', userId)
+        .where('coachUsername', '==', username)
         .get();
       athleteDocs = coachAthletesSnapshot.docs;
-
-      let workoutsSnapshot;
-      workoutsSnapshot = await adminDb
-        .collection('workouts')
-        .where('createdBy', '==', userId)
-        .get();
 
       const athleteMap = new Map<string, AthleteData>();
       athleteDocs.forEach(doc => {
@@ -116,41 +114,49 @@ export async function POST(req: NextRequest) {
         });
       });
 
+      // Query each athlete's workout subcollection
       const allWorkouts: WorkoutData[] = [];
       const now = new Date();
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
 
-      workoutsSnapshot.docs.forEach(doc => {
-        const data = doc.data();
-        const workoutDate = data.date?.toDate ? data.date.toDate() : new Date(data.date);
+      for (const athleteDoc of athleteDocs) {
+        const athleteUsername = athleteDoc.id;
+        const workoutsSnapshot = await adminDb
+          .collection('users').doc(athleteUsername).collection('workouts')
+          .get();
 
-        const workout: WorkoutData = {
-          id: doc.id,
-          name: data.name || 'Unnamed',
-          type: data.type || 'other',
-          date: workoutDate,
-          completed: !!data.completed,
-          completedLate: !!data.completedLate,
-          assignedTo: data.assignedTo || '',
-          duration: data.duration,
-        };
+        workoutsSnapshot.docs.forEach(doc => {
+          const data = doc.data();
+          const workoutDate = data.date?.toDate ? data.date.toDate() : new Date(data.date);
 
-        allWorkouts.push(workout);
+          const workout: WorkoutData = {
+            id: doc.id,
+            name: data.name || 'Unnamed',
+            type: data.type || 'other',
+            date: workoutDate,
+            completed: !!data.completed,
+            completedLate: !!data.completedLate,
+            assignedTo: data.assignedTo || '',
+            duration: data.duration,
+          };
 
-        const athlete = athleteMap.get(workout.assignedTo);
-        if (athlete) {
-          athlete.workouts.push(workout);
-          athlete.totalCount++;
-          if (workout.completed) {
-            athlete.completedCount++;
-            if (workout.completedLate) {
-              athlete.lateCount++;
+          allWorkouts.push(workout);
+
+          const athlete = athleteMap.get(athleteUsername);
+          if (athlete) {
+            athlete.workouts.push(workout);
+            athlete.totalCount++;
+            if (workout.completed) {
+              athlete.completedCount++;
+              if (workout.completedLate) {
+                athlete.lateCount++;
+              }
             }
           }
-        }
-      });
+        });
+      }
 
       athleteMap.forEach(athlete => {
         athlete.completionRate = athlete.totalCount > 0
@@ -217,13 +223,12 @@ ${a.name} (${a.email}):
 Today's Date: ${now.toLocaleDateString()}
 `;
     } else {
-      // Athlete flow - analyze only their own workouts
+      // Athlete flow - analyze only their own workouts (subcollection)
       const workoutsSnapshot = await adminDb
-        .collection('workouts')
-        .where('assignedTo', '==', userId)
+        .collection('users').doc(username).collection('workouts')
         .get();
 
-      const userDoc = await adminDb.collection('users').doc(userId).get();
+      const userDoc = await adminDb.collection('users').doc(username).get();
       const userName = userDoc.exists ? userDoc.data()?.displayName || 'Athlete' : 'Athlete';
 
       const allWorkouts: WorkoutData[] = [];

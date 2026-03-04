@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase/admin';
 import { formatWorkouts, formatWorkoutFallback, WorkoutForFormat } from '@/lib/groq-format';
 import * as admin from 'firebase-admin';
+import { adminResolveUsername } from '@/lib/firebase/adminUserMapping';
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,32 +25,26 @@ export async function POST(request: NextRequest) {
 
     const db = getAdminDb();
 
-    // Fetch workouts
+    // Resolve UID to username
+    const username = await adminResolveUsername(userId);
+
+    // Fetch workouts from user's subcollection
     let snapshot;
     if (workoutIds?.length) {
-      // Fetch specific workouts (batched for Firestore 'in' limit)
+      // Fetch specific workouts from user's subcollection (batched for Firestore 'in' limit)
       const docs: admin.firestore.DocumentSnapshot[] = [];
       for (let i = 0; i < workoutIds.length; i += 10) {
         const batch = workoutIds.slice(i, i + 10);
-        const batchSnap = await db.collection('workouts')
+        const batchSnap = await db.collection('users').doc(username).collection('workouts')
           .where(admin.firestore.FieldPath.documentId(), 'in', batch)
           .get();
         docs.push(...batchSnap.docs);
       }
       snapshot = { docs, size: docs.length };
     } else {
-      // Fetch all workouts for user (both created by and assigned to)
-      const [createdSnap, assignedSnap] = await Promise.all([
-        db.collection('workouts').where('createdBy', '==', userId).get(),
-        db.collection('workouts').where('assignedTo', '==', userId).get(),
-      ]);
-
-      // Deduplicate
-      const docMap = new Map<string, admin.firestore.DocumentSnapshot>();
-      for (const doc of [...createdSnap.docs, ...assignedSnap.docs]) {
-        docMap.set(doc.id, doc);
-      }
-      snapshot = { docs: Array.from(docMap.values()), size: docMap.size };
+      // Fetch all workouts for user from their subcollection
+      const userWorkoutsSnap = await db.collection('users').doc(username).collection('workouts').get();
+      snapshot = { docs: userWorkoutsSnap.docs, size: userWorkoutsSnap.size };
     }
 
     if (snapshot.size === 0) {
@@ -100,7 +95,7 @@ export async function POST(request: NextRequest) {
       const batch = db.batch();
 
       for (const fw of chunk) {
-        const ref = db.collection('workouts').doc(fw.id);
+        const ref = db.collection('users').doc(username).collection('workouts').doc(fw.id);
         batch.update(ref, {
           name: fw.name,
           description: fw.description,

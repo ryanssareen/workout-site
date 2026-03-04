@@ -218,7 +218,7 @@ export function ShareWorkoutCard({ workout }: ShareWorkoutCardProps) {
   })();
 
   const aiComment = workout.routeData?.aiComment;
-  const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/preview/${workout.id}` : '';
+  const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/preview/${workout.ownerUsername}/${workout.id}` : '';
   const shareText = `🏋️ ${workout.name}${distance ? ` • ${distance} km` : ''}${duration ? ` • ${duration} min` : ''}${aiComment ? `\n${aiComment}` : ''}\n\nTracked on The Daily Athlete`;
 
   if (!isOpen) {

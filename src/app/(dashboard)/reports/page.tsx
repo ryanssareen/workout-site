@@ -63,7 +63,7 @@ export default function ReportsPage() {
     setLoadingWorkouts(true);
     try {
       const role = user.role === 'student' ? 'athlete' : user.role;
-      const data = await getUserWorkouts(user.uid, role as 'coach' | 'athlete');
+      const data = await getUserWorkouts(user.username, role as 'coach' | 'athlete');
       setWorkouts(data);
     } catch (err) {
       console.error('Failed to fetch workouts:', err);

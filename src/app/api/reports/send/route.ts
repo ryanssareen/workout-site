@@ -5,20 +5,21 @@ import { adminDb } from '@/lib/firebase/admin';
 import admin from 'firebase-admin';
 import * as brevo from '@getbrevo/brevo';
 import { generateSummaryEmail, generateSummarySubject, SummaryData } from '@/lib/email/summaryTemplate';
+import { adminResolveUsername } from '@/lib/firebase/adminUserMapping';
 
 interface RequestBody {
   userId?: string;
   periodDays?: number;
 }
 
-async function buildSummary(userId: string, periodDays: number): Promise<{ summary: SummaryData; coachEmail?: string | null } | null> {
-  const userDoc = await adminDb.collection('users').doc(userId).get();
+async function buildSummary(username: string, periodDays: number): Promise<{ summary: SummaryData; coachEmail?: string | null } | null> {
+  const userDoc = await adminDb.collection('users').doc(username).get();
   if (!userDoc.exists) return null;
 
   const userData = userDoc.data() as any;
   const userEmail = userData.email as string | undefined;
   const userName = userData.displayName || 'Athlete';
-  const coachId = userData.coachId as string | undefined;
+  const coachUsername = userData.coachUsername as string | undefined;
 
   if (!userEmail) return null;
 
@@ -27,8 +28,7 @@ async function buildSummary(userId: string, periodDays: number): Promise<{ summa
   const periodStart = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000);
 
   const workoutsSnapshot = await adminDb
-    .collection('workouts')
-    .where('assignedTo', '==', userId)
+    .collection('users').doc(username).collection('workouts')
     .where('date', '>=', admin.firestore.Timestamp.fromDate(periodStart))
     .where('date', '<=', admin.firestore.Timestamp.fromDate(now))
     .get();
@@ -77,8 +77,8 @@ async function buildSummary(userId: string, periodDays: number): Promise<{ summa
   };
 
   let coachEmail: string | null = null;
-  if (coachId) {
-    const coachDoc = await adminDb.collection('users').doc(coachId).get();
+  if (coachUsername) {
+    const coachDoc = await adminDb.collection('users').doc(coachUsername).get();
     if (coachDoc.exists) coachEmail = (coachDoc.data() as any)?.email || null;
   }
 
@@ -115,12 +115,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'userId is required' }, { status: 400 });
     }
 
-    const summaryResult = await buildSummary(userId, periodDays);
+    // Resolve UID to username
+    const username = await adminResolveUsername(userId);
+
+    const summaryResult = await buildSummary(username, periodDays);
     if (!summaryResult) {
       return NextResponse.json({ success: false, error: 'No workouts or user/email not found' }, { status: 404 });
     }
 
-    const userDoc = await adminDb.collection('users').doc(userId).get();
+    const userDoc = await adminDb.collection('users').doc(username).get();
     const userData = userDoc.data() as any;
     const userEmail = userData.email as string | undefined;
     const userName = userData.displayName || 'Athlete';
@@ -131,7 +134,7 @@ export async function POST(request: NextRequest) {
 
     await sendEmail(userEmail, userName, summaryResult.summary, summaryResult.coachEmail);
 
-    await adminDb.collection('users').doc(userId).update({ lastSummaryDate: admin.firestore.FieldValue.serverTimestamp() });
+    await adminDb.collection('users').doc(username).update({ lastSummaryDate: admin.firestore.FieldValue.serverTimestamp() });
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

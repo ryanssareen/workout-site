@@ -10,6 +10,7 @@ import { MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface CommentSectionProps {
+  ownerUsername: string;
   workoutId: string;
   workoutName: string;
   currentUserId: string;
@@ -19,6 +20,7 @@ interface CommentSectionProps {
 }
 
 export function CommentSection({
+  ownerUsername,
   workoutId,
   workoutName,
   currentUserId,
@@ -30,7 +32,7 @@ export function CommentSection({
   const [replyingTo, setReplyingTo] = useState<string | undefined>();
 
   const loadComments = async () => {
-    const data = await getWorkoutComments(workoutId);
+    const data = await getWorkoutComments(ownerUsername, workoutId);
     setComments(data);
     setLoading(false);
   };
@@ -42,6 +44,7 @@ export function CommentSection({
   const handleSubmit = async (text: string, rating?: WorkoutRating) => {
     try {
       await addWorkoutComment(
+        ownerUsername,
         workoutId,
         currentUserId,
         currentUserRole,
@@ -58,6 +61,7 @@ export function CommentSection({
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+              ownerUsername,
               workoutId,
               workoutName,
               commentText: text,
@@ -83,7 +87,7 @@ export function CommentSection({
     if (!confirm('Delete this comment?')) return;
 
     try {
-      await deleteWorkoutComment(workoutId, commentId);
+      await deleteWorkoutComment(ownerUsername, workoutId, commentId);
       toast.success('Comment deleted');
       await loadComments();
     } catch (error: any) {

@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
+import { adminResolveUsername } from '@/lib/firebase/adminUserMapping';
 
 // GET: List all templates for a user
 export async function GET(request: NextRequest) {
@@ -60,8 +61,8 @@ export async function POST(request: NextRequest) {
     const docRef = await adminDb.collection('workoutTemplates').add(templateData);
 
     // If workoutId is provided, update the workout to track the templateId
-    if (workoutId) {
-      await adminDb.collection('workouts').doc(workoutId).update({
+    if (workoutId && createdBy) {
+      await adminDb.collection('users').doc(createdBy).collection('workouts').doc(workoutId).update({
         templateId: docRef.id,
         updatedAt: new Date(),
       });
@@ -101,8 +102,8 @@ export async function DELETE(request: NextRequest) {
     }
 
     // If template has a workoutId, remove the templateId from that workout
-    if (templateData?.workoutId) {
-      await adminDb.collection('workouts').doc(templateData.workoutId).update({
+    if (templateData?.workoutId && templateData?.createdBy) {
+      await adminDb.collection('users').doc(templateData.createdBy).collection('workouts').doc(templateData.workoutId).update({
         templateId: null,
         updatedAt: new Date(),
       });

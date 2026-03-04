@@ -35,7 +35,7 @@ function WorkoutsContent() {
 
   const loadWorkouts = useCallback(async () => {
     if (!user) return;
-    const data = await getUserWorkouts(user.uid, user.role);
+    const data = await getUserWorkouts(user.username, user.role);
     // Filter out future workouts — those only show in calendar
     const now = new Date();
     now.setHours(23, 59, 59, 999);
@@ -62,7 +62,8 @@ function WorkoutsContent() {
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this workout?')) return;
     try {
-      await deleteWorkout(id);
+      const workout = workouts.find(w => w.id === id);
+      await deleteWorkout(workout?.ownerUsername || user!.username, id);
       toast.success('Workout deleted');
       await loadWorkouts();
     } catch (error: any) {
@@ -72,7 +73,8 @@ function WorkoutsContent() {
 
   const handleToggleComplete = async (id: string, completed: boolean, notes?: string) => {
     try {
-      await completeWorkout(id, completed, notes);
+      const workout = workouts.find(w => w.id === id);
+      await completeWorkout(workout?.ownerUsername || user!.username, id, completed, notes);
       toast.success(completed ? 'Workout completed!' : 'Marked incomplete');
       await loadWorkouts();
     } catch (error: any) {
@@ -82,7 +84,7 @@ function WorkoutsContent() {
 
   const handleViewDetails = (id: string) => router.push(`/workouts/${id}`);
 
-  const canManageWorkouts = user?.role === 'coach' || ((user?.role === 'athlete' || user?.role === 'student') && !user?.coachId);
+  const canManageWorkouts = user?.role === 'coach' || ((user?.role === 'athlete' || user?.role === 'student') && !user?.coachUsername);
 
   if (loading || !ready) {
     return (
@@ -196,7 +198,7 @@ function WorkoutsContent() {
       </div>
 
       {/* AI Workout Suggestions - coaches and self-training athletes (no coach) */}
-      {user && (user.role === 'coach' || !user.coachId) && (
+      {user && (user.role === 'coach' || !user.coachUsername) && (
         <AIWorkoutSuggestions
           userId={user.uid}
           recentWorkouts={workouts}

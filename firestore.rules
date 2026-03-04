@@ -1,44 +1,51 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Users collection - users can only read/write their own data
-    match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+
+    // UID → username mapping (created during registration)
+    match /userMappings/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid;
+      allow update, delete: if false; // Immutable
     }
-    
-    // Workouts collection
-    match /workouts/{workoutId} {
+
+    // Users keyed by username
+    match /users/{username} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.createdBy;
-      allow update: if request.auth != null && (
-        request.auth.uid == resource.data.createdBy ||
-        request.auth.uid == resource.data.assignedTo
-      );
-      allow delete: if request.auth != null && request.auth.uid == resource.data.createdBy;
-      
-      // Workout comments subcollection
-      match /comments/{commentId} {
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow update: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow delete: if false;
+
+      // Workouts subcollection under each user
+      match /workouts/{workoutId} {
         allow read: if request.auth != null;
+        // Athletes can create their own; coaches can create for athletes (app-level auth)
         allow create: if request.auth != null;
-        allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+        allow update: if request.auth != null;
+        allow delete: if request.auth != null;
+
+        // Comments on workouts
+        match /comments/{commentId} {
+          allow read: if request.auth != null;
+          allow create: if request.auth != null;
+          allow delete: if request.auth != null;
+        }
       }
     }
-    
-    // Personal Records collection
+
+    // Personal Records (flat collection, userId field for ownership)
     match /personalRecords/{recordId} {
-      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null;
     }
-    
-    // Chat Threads collection - NEW!
+
+    // AI Chat Threads (userId field = auth UID)
     match /chatThreads/{threadId} {
-      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-      allow update: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
   }
 }

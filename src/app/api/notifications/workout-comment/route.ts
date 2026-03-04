@@ -7,6 +7,7 @@ import { WorkoutRating } from '@/types';
 
 interface CommentNotificationPayload {
   workoutId: string;
+  ownerUsername: string;
   workoutName: string;
   commentText: string;
   studentName: string;
@@ -100,30 +101,30 @@ function generateNotificationEmail(
 export async function POST(request: NextRequest) {
   try {
     const body: CommentNotificationPayload = await request.json();
-    const { workoutId, workoutName, commentText, studentName, rating } = body;
+    const { workoutId, ownerUsername, workoutName, commentText, studentName, rating } = body;
 
-    if (!workoutId || !commentText || !studentName) {
+    if (!workoutId || !ownerUsername || !commentText || !studentName) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    // Get the workout to find the coach
-    const workoutDoc = await adminDb.collection('workouts').doc(workoutId).get();
+    // Get the workout to find the coach (subcollection path)
+    const workoutDoc = await adminDb.collection('users').doc(ownerUsername).collection('workouts').doc(workoutId).get();
     if (!workoutDoc.exists) {
       return NextResponse.json({ error: 'Workout not found' }, { status: 404 });
     }
 
     const workoutData = workoutDoc.data();
-    const coachId = workoutData?.createdBy;
+    const coachUsername = workoutData?.createdBy;
 
-    if (!coachId) {
+    if (!coachUsername) {
       return NextResponse.json({ error: 'No coach found' }, { status: 404 });
     }
 
     // Get coach data
-    const coachDoc = await adminDb.collection('users').doc(coachId).get();
+    const coachDoc = await adminDb.collection('users').doc(coachUsername).get();
     if (!coachDoc.exists) {
       return NextResponse.json({ error: 'Coach not found' }, { status: 404 });
     }

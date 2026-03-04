@@ -4,13 +4,13 @@ import { notFound } from 'next/navigation';
 import { PreviewClient } from './PreviewClient';
 
 interface PreviewPageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ username: string; id: string }>;
 }
 
-async function getWorkout(id: string) {
+async function getWorkout(username: string, id: string) {
   try {
     const db = getAdminDb();
-    const doc = await db.collection('workouts').doc(id).get();
+    const doc = await db.collection('users').doc(username).collection('workouts').doc(id).get();
     if (!doc.exists) return null;
 
     const data = doc.data()!;
@@ -26,6 +26,7 @@ async function getWorkout(id: string) {
 
     return {
       id: doc.id,
+      ownerUsername: username,
       name: data.name || 'Untitled Workout',
       type: data.type || 'other',
       description: data.description || '',
@@ -64,8 +65,8 @@ async function getWorkout(id: string) {
 }
 
 export async function generateMetadata({ params }: PreviewPageProps): Promise<Metadata> {
-  const { id } = await params;
-  const workout = await getWorkout(id);
+  const { username, id } = await params;
+  const workout = await getWorkout(username, id);
 
   if (!workout) {
     return { title: 'Workout Not Found | The Daily Athlete' };
@@ -97,8 +98,8 @@ export async function generateMetadata({ params }: PreviewPageProps): Promise<Me
 }
 
 export default async function PreviewPage({ params }: PreviewPageProps) {
-  const { id } = await params;
-  const workout = await getWorkout(id);
+  const { username, id } = await params;
+  const workout = await getWorkout(username, id);
 
   if (!workout) {
     notFound();

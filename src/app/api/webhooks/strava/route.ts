@@ -147,14 +147,14 @@ async function processActivity(
     }
 
     const userDoc = usersSnapshot.docs[0];
-    const userId = userDoc.id;
+    const username = userDoc.id;
     const userData = userDoc.data();
 
-    console.log(`👤 Found user: ${userData.displayName} (${userId})`);
+    console.log(`👤 Found user: ${userData.displayName} (${username})`);
 
     // Check if we already imported this activity (STRICT CHECK)
     const existingWorkout = await adminDb
-      .collection('workouts')
+      .collection('users').doc(username).collection('workouts')
       .where('stravaActivityId', '==', stravaActivityId)
       .limit(1)
       .get();
@@ -166,7 +166,7 @@ async function processActivity(
 
     // DOUBLE CHECK: Also check by activity ID string conversion
     const existingWorkout2 = await adminDb
-      .collection('workouts')
+      .collection('users').doc(username).collection('workouts')
       .where('stravaActivityId', '==', String(stravaActivityId))
       .limit(1)
       .get();
@@ -180,8 +180,7 @@ async function processActivity(
     // This catches rapid duplicate webhooks
     const sixtySecondsAgo = new Date(Date.now() - 60000);
     const recentWorkouts = await adminDb
-      .collection('workouts')
-      .where('assignedTo', '==', userId)
+      .collection('users').doc(username).collection('workouts')
       .where('source', '==', 'strava')
       .where('createdAt', '>', admin.firestore.Timestamp.fromDate(sixtySecondsAgo))
       .get();
@@ -191,7 +190,7 @@ async function processActivity(
     }
 
     // Get access token
-    const accessToken = await getAccessToken(userId, userData);
+    const accessToken = await getAccessToken(username, userData);
     if (!accessToken) {
       return { success: false, message: 'Failed to get access token' };
     }
@@ -214,8 +213,7 @@ async function processActivity(
     const thirtyMinAfter = new Date(activityDate.getTime() + 30 * 60 * 1000);
     
     const proximityCheck = await adminDb
-      .collection('workouts')
-      .where('assignedTo', '==', userId)
+      .collection('users').doc(username).collection('workouts')
       .where('type', '==', workoutType)
       .where('source', '==', 'strava')
       .where('date', '>=', admin.firestore.Timestamp.fromDate(thirtyMinBefore))
@@ -261,16 +259,17 @@ async function processActivity(
     // CREATE NEW WORKOUT from Strava activity
     // Use deterministic doc ID to prevent duplicates from concurrent webhook retries
     const workoutId = `strava_${stravaActivityId}`;
-    const newWorkoutRef = adminDb.collection('workouts').doc(workoutId);
-    
+    const newWorkoutRef = adminDb.collection('users').doc(username).collection('workouts').doc(workoutId);
+
     const newWorkoutData: any = {
       name: activity.name,
       type: workoutType,
       description: `Imported from Strava\nDistance: ${((activity.distance || 0) / 1000).toFixed(2)} km\nMoving time: ${Math.round((activity.moving_time || 0) / 60)} min`,
       date: admin.firestore.Timestamp.fromDate(activityDate),
       duration: Math.round((activity.moving_time || 0) / 60),
-      createdBy: userId,
-      assignedTo: userId,
+      ownerUsername: username,
+      createdBy: username,
+      assignedTo: username,
       completed: true,
       completedAt: admin.firestore.Timestamp.fromDate(activityDate),
       completedBy: 'strava',
@@ -328,8 +327,7 @@ async function processActivity(
     twoDaysAfter.setDate(twoDaysAfter.getDate() + 2);
 
     const oldWorkoutsSnapshot = await adminDb
-      .collection('workouts')
-      .where('assignedTo', '==', userId)
+      .collection('users').doc(username).collection('workouts')
       .where('type', '==', workoutType)
       .where('completed', '==', false)
       .where('date', '>=', admin.firestore.Timestamp.fromDate(twoDaysBefore))
@@ -417,12 +415,12 @@ export async function POST(request: NextRequest) {
               const userSnap = await adminDb.collection('users')
                 .where('stravaId', '==', String(owner_id)).limit(1).get();
               if (!userSnap.empty) {
-                const userId = userSnap.docs[0].id;
-                console.log('🔍 Running Groq dedup for user:', userId);
-                const { result: dedupResult } = await runDedupPipeline(userId);
+                const username = userSnap.docs[0].id;
+                console.log('🔍 Running Groq dedup for user:', username);
+                const { result: dedupResult } = await runDedupPipeline(username);
                 if (dedupResult.duplicatesFound > 0) {
                   console.log(`🗑️ Groq found ${dedupResult.duplicatesFound} duplicates — deleting`);
-                  const deleted = await executeDedupDeletions(dedupResult);
+                  const deleted = await executeDedupDeletions(dedupResult, username);
                   console.log(`✅ Deleted ${deleted} duplicate workouts`);
                 } else {
                   console.log('✅ No duplicates found');

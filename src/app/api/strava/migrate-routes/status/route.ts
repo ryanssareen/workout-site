@@ -5,9 +5,9 @@ import { adminDb } from '@/lib/firebase/admin';
 
 export async function GET() {
   try {
-    // Get all Strava workouts
+    // Get all Strava workouts across all user subcollections
     const workoutsSnapshot = await adminDb
-      .collection('workouts')
+      .collectionGroup('workouts')
       .where('source', '==', 'strava')
       .get();
 

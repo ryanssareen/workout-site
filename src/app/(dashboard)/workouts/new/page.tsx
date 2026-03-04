@@ -34,13 +34,13 @@ export default function NewWorkoutPage() {
   const aiGenerated = searchParams.get('aiGenerated') === 'true';
 
   const isCoach = user?.role === 'coach';
-  const isUnconnectedAthlete = (user?.role === 'athlete' || user?.role === 'student') && !user?.coachId;
+  const isUnconnectedAthlete = (user?.role === 'athlete' || user?.role === 'student') && !user?.coachUsername;
 
   useEffect(() => {
     async function loadStudents() {
       if (!user || user.role !== 'coach') return;
 
-      const data = await getCoachStudents(user.uid);
+      const data = await getCoachStudents(user.username);
       setStudents(data);
     }
 
@@ -91,7 +91,7 @@ export default function NewWorkoutPage() {
   // Redirect if not authorized (must be coach OR unconnected athlete)
   useEffect(() => {
     if (authLoading) return;
-    const canCreate = user?.role === 'coach' || ((user?.role === 'athlete' || user?.role === 'student') && !user?.coachId);
+    const canCreate = user?.role === 'coach' || ((user?.role === 'athlete' || user?.role === 'student') && !user?.coachUsername);
     if (user && !canCreate) {
       router.push('/dashboard');
     }
@@ -122,7 +122,7 @@ export default function NewWorkoutPage() {
         }
       }
 
-      const newWorkoutId = await createWorkout(workoutData as any, user.uid);
+      const newWorkoutId = await createWorkout(workoutData as any, user.username);
       setShowPreview(false);
 
       toast.success('Workout created successfully!');
@@ -160,6 +160,7 @@ export default function NewWorkoutPage() {
           studentName: athlete.displayName,
           workout: createdWorkoutData,
           workoutId: createdWorkoutId,
+          ownerUsername: athlete.uid,
         }),
       });
       if (!res.ok) {

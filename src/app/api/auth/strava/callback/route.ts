@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { adminDb } from '@/lib/firebase/admin';
+import { adminResolveUsername } from '@/lib/firebase/adminUserMapping';
 
 export async function GET(request: NextRequest) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://workout-site-hac0.onrender.com';
@@ -24,18 +25,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get userId from cookie
+    // Get userId (UID) from cookie and resolve to username
     const cookieStore = await cookies();
-    const userId = cookieStore.get('strava_oauth_userId')?.value;
-    
-    console.log('🔵 UserId from cookie:', userId);
-    
-    if (!userId) {
+    const uid = cookieStore.get('strava_oauth_userId')?.value;
+
+    console.log('🔵 UID from cookie:', uid);
+
+    if (!uid) {
       console.error('❌ No userId found in cookie');
       return NextResponse.redirect(
         new URL('/settings?strava=error&reason=no_cookie', baseUrl)
       );
     }
+
+    // Resolve UID to username for the new schema
+    const username = await adminResolveUsername(uid);
+    console.log('🔵 Resolved username:', username);
 
     console.log('🔐 Exchanging code for tokens...');
     console.log('🔵 Client ID:', process.env.STRAVA_CLIENT_ID);
@@ -67,7 +72,7 @@ export async function GET(request: NextRequest) {
     console.log('✅ Received tokens, athlete ID:', tokenData.athlete?.id);
 
     // Store tokens in Firestore
-    await adminDb.collection('users').doc(userId).update({
+    await adminDb.collection('users').doc(username).update({
       stravaConnected: true,
       stravaId: String(tokenData.athlete.id),
       stravaAccessToken: tokenData.access_token,
@@ -84,7 +89,7 @@ export async function GET(request: NextRequest) {
       stravaConnectedAt: new Date(),
     });
 
-    console.log('✅ Strava tokens saved for user:', userId);
+    console.log('✅ Strava tokens saved for user:', username);
 
     // Clear the cookie
     cookieStore.delete('strava_oauth_userId');

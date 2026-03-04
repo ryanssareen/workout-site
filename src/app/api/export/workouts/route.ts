@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 import { timingSafeEqual } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdminDb } from '@/lib/firebase-admin';
+import { adminResolveUsername } from '@/lib/firebase/adminUserMapping';
 
 // ─── Value helpers (same as MCP route) ───────────────────────────────────────
 
@@ -120,16 +121,14 @@ export async function GET(request: NextRequest) {
 
     const userDoc = usersSnapshot.docs[0];
     const userData = userDoc.data();
-    const userId = userDoc.id;
+    const username = userDoc.id; // doc.id is now username
 
-    // 2. Query workouts
-    let workoutsQuery = db.collection('workouts')
-      .where('assignedTo', '==', userId)
-      .orderBy('date', 'desc');
+    // 2. Query workouts from subcollection
+    const workoutsCol = db.collection('users').doc(username).collection('workouts');
+    let workoutsQuery = workoutsCol.orderBy('date', 'desc');
 
     if (!includeAll) {
-      workoutsQuery = db.collection('workouts')
-        .where('assignedTo', '==', userId)
+      workoutsQuery = workoutsCol
         .where('completed', '==', false)
         .orderBy('date', 'desc');
     }
@@ -142,7 +141,7 @@ export async function GET(request: NextRequest) {
     // 3. Return JSON
     return NextResponse.json({
       user: {
-        uid: userId,
+        username,
         email: userData.email ?? email,
         displayName: userData.displayName ?? null,
         role: userData.role ?? null,

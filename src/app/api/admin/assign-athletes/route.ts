@@ -39,20 +39,20 @@ export async function GET() {
     }
 
     const coachDoc = coachSnap.docs[0];
-    const coachId = coachDoc.id;
+    const coachUsername = coachDoc.id; // doc.id is now username
     const coachData = coachDoc.data();
 
     results.push({
       step: 'coach_found',
       email: COACH_EMAIL,
-      uid: coachId,
+      username: coachUsername,
       name: coachData.displayName,
       role: coachData.role,
     });
 
     // Ensure coach has role = 'coach'
     if (coachData.role !== 'coach') {
-      await adminDb.collection('users').doc(coachId).update({
+      await adminDb.collection('users').doc(coachUsername).update({
         role: 'coach',
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
@@ -73,12 +73,12 @@ export async function GET() {
       }
 
       const athleteDoc = athleteSnap.docs[0];
-      const athleteId = athleteDoc.id;
+      const athleteUsername = athleteDoc.id; // doc.id is now username
       const athleteData = athleteDoc.data();
 
-      // Update athlete: set coachId and ensure role is athlete
-      await adminDb.collection('users').doc(athleteId).update({
-        coachId: coachId,
+      // Update athlete: set coachUsername and ensure role is athlete
+      await adminDb.collection('users').doc(athleteUsername).update({
+        coachUsername: coachUsername,
         role: athleteData.role === 'student' ? 'athlete' : (athleteData.role || 'athlete'),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
@@ -86,16 +86,16 @@ export async function GET() {
       results.push({
         step: 'athlete_assigned',
         email: athleteEmail,
-        uid: athleteId,
+        username: athleteUsername,
         name: athleteData.displayName,
-        coachId: coachId,
-        previousCoachId: athleteData.coachId || 'none',
+        coachUsername: coachUsername,
+        previousCoachUsername: athleteData.coachUsername || 'none',
       });
     }
 
     return NextResponse.json({
       success: true,
-      coach: { email: COACH_EMAIL, uid: coachId },
+      coach: { email: COACH_EMAIL, username: coachUsername },
       results,
       message: `Assigned ${ATHLETE_EMAILS.length} athletes to ${COACH_EMAIL}. You can delete this route now.`,
     });
