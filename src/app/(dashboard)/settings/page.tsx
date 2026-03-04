@@ -44,7 +44,7 @@ function SettingsContent() {
     }
   }, [searchParams, router]);
 
-  const handleConnectStrava = () => { setIsConnectingStrava(true); window.location.href = `/api/auth/strava/authorize?userId=${user?.username}`; };
+  const handleConnectStrava = () => { setIsConnectingStrava(true); window.location.href = `/api/auth/strava/authorize?userId=${user?.uid}`; };
 
   const handleDisconnectStrava = async () => {
     if (!user) return;
