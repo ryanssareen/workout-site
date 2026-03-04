@@ -1,6 +1,6 @@
 import { SerializedWorkout } from './types';
 
-const GROQ_MODEL = 'llama-3.1-70b-versatile';
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
 const BATCH_SIZE = 25; // max workouts per Groq call
 
 export interface EnrichedWorkout {

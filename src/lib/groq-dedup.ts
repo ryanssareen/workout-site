@@ -33,7 +33,7 @@ export interface DedupResult {
   fallbackUsed: boolean;
 }
 
-const GROQ_MODEL = 'llama-3.1-70b-versatile';
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
 const SYSTEM_PROMPT = `You are a workout duplicate detection engine. You receive a JSON array of workout records for a single user and must identify duplicates.
 
