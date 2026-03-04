@@ -91,12 +91,17 @@ export async function GET(request: NextRequest) {
 
     console.log('✅ Strava tokens saved for user:', username);
 
-    // Clear the cookie
-    cookieStore.delete('strava_oauth_userId');
+    // Determine redirect destination based on where the flow started
+    const from = cookieStore.get('strava_oauth_from')?.value;
+    const redirectPath = from === 'onboarding' ? '/dashboard?strava=connected' : '/settings?strava=connected';
 
-    // Redirect back to settings with success
+    // Clear cookies
+    cookieStore.delete('strava_oauth_userId');
+    cookieStore.delete('strava_oauth_from');
+
+    // Redirect to appropriate page
     return NextResponse.redirect(
-      new URL('/settings?strava=connected', baseUrl)
+      new URL(redirectPath, baseUrl)
     );
   } catch (error: any) {
     console.error('❌ Strava callback error:', error);

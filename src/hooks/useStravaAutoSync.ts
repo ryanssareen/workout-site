@@ -7,10 +7,14 @@ import { toast } from 'sonner';
 const SYNC_COOLDOWN_KEY = 'coachtrack_last_strava_sync';
 const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes between auto-syncs
 
+// Progressive sync phases: fast first, then expand
+const SYNC_PHASES = ['week', 'month', 'year'] as const;
+
 /**
  * Background Strava sync on login / page load.
- * Fires once per session (or after cooldown), silently syncs,
- * and calls onNewWorkouts() if anything came in so the page can refresh.
+ * Syncs progressively: 1 week → 1 month → 1 year.
+ * After each phase that imports workouts, refreshes the page data
+ * so the calendar populates quickly instead of waiting for the full year.
  */
 export function useStravaAutoSync(
   user: User | null,
@@ -20,46 +24,71 @@ export function useStravaAutoSync(
   const [syncResult, setSyncResult] = useState<{ newWorkouts: number; merged: number } | null>(null);
   const hasFired = useRef(false);
 
+  const syncPhase = useCallback(async (userId: string, period: string): Promise<{ newWorkouts: number; merged: number; needsReconnect?: boolean }> => {
+    const res = await fetch(
+      `/api/strava/sync?userId=${userId}&period=${period}`,
+      { headers: { Accept: 'application/json' } },
+    );
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      if (err.needsReconnect) {
+        return { newWorkouts: 0, merged: 0, needsReconnect: true };
+      }
+      throw new Error(err.error || 'sync failed');
+    }
+
+    const data = await res.json();
+    return {
+      newWorkouts: data.newWorkouts || 0,
+      merged: data.mergedWorkouts || 0,
+    };
+  }, []);
+
   const runSync = useCallback(async (userId: string) => {
     setSyncing(true);
-    try {
-      // Skip duplicate check for auto-sync — just import new stuff
-      const res = await fetch(
-        `/api/strava/sync?userId=${userId}`,
-        { headers: { Accept: 'application/json' } },
-      );
+    let totalNew = 0;
+    let totalMerged = 0;
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        // Don't toast auth errors on auto-sync — user will see it when they manually sync
-        if (err.needsReconnect) {
+    try {
+      for (const phase of SYNC_PHASES) {
+        console.log(`[auto-sync] phase: ${phase}`);
+
+        const result = await syncPhase(userId, phase);
+
+        if (result.needsReconnect) {
           console.warn('[auto-sync] Strava token expired, needs reconnect');
           return;
         }
-        console.error('[auto-sync] sync failed:', err);
-        return;
+
+        totalNew += result.newWorkouts;
+        totalMerged += result.merged;
+        const phaseTotal = result.newWorkouts + result.merged;
+
+        // Refresh the page after each phase that brought in new data
+        if (phaseTotal > 0) {
+          console.log(`[auto-sync] ${phase}: ${result.newWorkouts} new, ${result.merged} merged — refreshing`);
+          onNewWorkouts?.();
+        } else {
+          console.log(`[auto-sync] ${phase}: no new activities`);
+        }
       }
 
-      const data = await res.json();
-      const total = (data.newWorkouts || 0) + (data.mergedWorkouts || 0);
+      setSyncResult({ newWorkouts: totalNew, merged: totalMerged });
 
-      setSyncResult({ newWorkouts: data.newWorkouts || 0, merged: data.mergedWorkouts || 0 });
-
-      if (total > 0) {
-        // Show a subtle success toast
+      // Show one summary toast after all phases complete
+      const grandTotal = totalNew + totalMerged;
+      if (grandTotal > 0) {
         const parts: string[] = [];
-        if (data.newWorkouts > 0) parts.push(`${data.newWorkouts} new`);
-        if (data.mergedWorkouts > 0) parts.push(`${data.mergedWorkouts} merged`);
-        toast.success(`Strava synced: ${parts.join(', ')} workout${total > 1 ? 's' : ''}`, {
+        if (totalNew > 0) parts.push(`${totalNew} new`);
+        if (totalMerged > 0) parts.push(`${totalMerged} merged`);
+        toast.success(`Strava synced: ${parts.join(', ')} workout${grandTotal > 1 ? 's' : ''}`, {
           icon: '🔄',
           duration: 4000,
         });
-
-        // Tell the page to refresh its data
-        onNewWorkouts?.();
       }
 
-      // Auto-dedup: run after every sync (whether or not new workouts came in)
+      // Auto-dedup: run once after all phases
       try {
         console.log('[auto-sync] running auto-dedup...');
         const dedupRes = await fetch('/api/workouts/auto-dedup', {
@@ -74,7 +103,7 @@ export function useStravaAutoSync(
               icon: '🧹',
               duration: 4000,
             });
-            onNewWorkouts?.(); // refresh again after cleanup
+            onNewWorkouts?.();
           }
         }
       } catch (dedupErr) {
@@ -90,7 +119,7 @@ export function useStravaAutoSync(
     } finally {
       setSyncing(false);
     }
-  }, [onNewWorkouts]);
+  }, [onNewWorkouts, syncPhase]);
 
   useEffect(() => {
     if (hasFired.current) return;
@@ -106,7 +135,7 @@ export function useStravaAutoSync(
     } catch { /* SSR or private browsing */ }
 
     hasFired.current = true;
-    console.log('[auto-sync] firing background Strava sync');
+    console.log('[auto-sync] firing progressive Strava sync');
     runSync(user.username);
   }, [user, runSync]);
 

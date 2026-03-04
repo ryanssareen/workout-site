@@ -34,6 +34,17 @@ export async function GET(request: NextRequest) {
       path: '/',
     });
 
+    // Store redirect origin so callback knows where to send the user
+    const from = request.nextUrl.searchParams.get('from');
+    if (from) {
+      cookieStore.set('strava_oauth_from', from, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 600,
+        path: '/',
+      });
+    }
+
     // Build Strava OAuth URL
     const authUrl = new URL('https://www.strava.com/oauth/authorize');
     authUrl.searchParams.append('client_id', clientId);

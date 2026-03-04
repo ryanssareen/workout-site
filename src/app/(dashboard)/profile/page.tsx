@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { profileSchema, ProfileFormData, SPORT_OPTIONS, TRAINING_FOR_OPTIONS } from '@/lib/schemas/profile';
+import { profileSchema, ProfileFormData, SPORT_OPTIONS, TRAINING_FOR_OPTIONS, AGE_RANGE_OPTIONS, EXPERIENCE_LEVEL_OPTIONS } from '@/lib/schemas/profile';
 import { User } from '@/types';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { getDbInstance } from '@/lib/firebase/config';
@@ -59,6 +59,12 @@ function getDefaultValues(user: User | null): ProfileFormData {
     displayName: user?.displayName || '',
     bio: user?.bio || '',
     timezone: user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+    ageRange: user?.ageRange || '',
+    experienceLevel: user?.experienceLevel || '',
+    height: user?.height || null,
+    heightUnit: user?.heightUnit || 'cm',
+    weight: user?.weight || null,
+    weightUnit: user?.weightUnit || 'kg',
     sportPreferences: user?.sportPreferences || [],
     trainingFor: user?.trainingFor || [],
     notificationPreferences: user?.notificationPreferences || {
@@ -165,6 +171,12 @@ export default function ProfilePage() {
         displayName: data.displayName,
         bio: data.bio || null,
         timezone: data.timezone || null,
+        ageRange: data.ageRange || null,
+        experienceLevel: data.experienceLevel || null,
+        height: data.height || null,
+        heightUnit: data.heightUnit || 'cm',
+        weight: data.weight || null,
+        weightUnit: data.weightUnit || 'kg',
         sportPreferences: data.sportPreferences || [],
         trainingFor: data.trainingFor || [],
         notificationPreferences: data.notificationPreferences || null,
@@ -177,6 +189,12 @@ export default function ProfilePage() {
         displayName: data.displayName,
         bio: data.bio,
         timezone: data.timezone,
+        ageRange: data.ageRange,
+        experienceLevel: data.experienceLevel,
+        height: data.height ?? undefined,
+        heightUnit: data.heightUnit,
+        weight: data.weight ?? undefined,
+        weightUnit: data.weightUnit,
         sportPreferences: data.sportPreferences,
         trainingFor: data.trainingFor,
         notificationPreferences: data.notificationPreferences,
@@ -402,6 +420,80 @@ export default function ProfilePage() {
                     <SelectTrigger><SelectValue placeholder="Select timezone" /></SelectTrigger>
                     <SelectContent className="max-h-[300px]">{TIMEZONES.map((tz) => <SelectItem key={tz} value={tz}>{formatTimezone(tz)}</SelectItem>)}</SelectContent>
                   </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Age, Experience, Body */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">About You</CardTitle>
+                <CardDescription>Help us personalize your training</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Age Range</Label>
+                    <Select value={watch('ageRange') || ''} onValueChange={(val) => setValue('ageRange', val, { shouldDirty: true })}>
+                      <SelectTrigger><SelectValue placeholder="Select age" /></SelectTrigger>
+                      <SelectContent>
+                        {AGE_RANGE_OPTIONS.map((opt) => (
+                          <SelectItem key={opt} value={opt}>{opt === 'under-18' ? 'Under 18' : opt === '65+' ? '65+' : opt}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Experience Level</Label>
+                    <Select value={watch('experienceLevel') || ''} onValueChange={(val) => setValue('experienceLevel', val, { shouldDirty: true })}>
+                      <SelectTrigger><SelectValue placeholder="Select level" /></SelectTrigger>
+                      <SelectContent>
+                        {EXPERIENCE_LEVEL_OPTIONS.map((opt) => (
+                          <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Height</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        placeholder={watch('heightUnit') === 'ft' ? 'e.g. 170' : 'e.g. 175'}
+                        value={watch('height') ?? ''}
+                        onChange={(e) => setValue('height', e.target.value ? Number(e.target.value) : null, { shouldDirty: true })}
+                        className="flex-1"
+                      />
+                      <Select value={watch('heightUnit') || 'cm'} onValueChange={(val) => setValue('heightUnit', val as 'cm' | 'ft', { shouldDirty: true })}>
+                        <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="cm">cm</SelectItem>
+                          <SelectItem value="ft">ft</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Weight</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        placeholder={watch('weightUnit') === 'lbs' ? 'e.g. 165' : 'e.g. 75'}
+                        value={watch('weight') ?? ''}
+                        onChange={(e) => setValue('weight', e.target.value ? Number(e.target.value) : null, { shouldDirty: true })}
+                        className="flex-1"
+                      />
+                      <Select value={watch('weightUnit') || 'kg'} onValueChange={(val) => setValue('weightUnit', val as 'kg' | 'lbs', { shouldDirty: true })}>
+                        <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="kg">kg</SelectItem>
+                          <SelectItem value="lbs">lbs</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
