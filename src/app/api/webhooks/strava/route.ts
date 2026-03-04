@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
+import { waitUntil } from '@vercel/functions';
 import { adminDb } from '@/lib/firebase/admin';
 import admin from 'firebase-admin';
 import crypto from 'crypto';
@@ -405,40 +406,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: 'ignored' });
     }
 
-    // CRITICAL: Return 200 immediately so Strava doesn't timeout and kill the subscription.
-    // Vercel keeps the serverless function alive until all promises settle,
-    // so we fire off processing without awaiting it.
-    const processingPromise = processActivity(String(owner_id), String(object_id))
-      .then(async (result) => {
-        console.log('✅ Webhook processing result:', JSON.stringify(result));
-        // Run Groq dedup after every successful sync
-        if (result.success) {
-          try {
-            // Find user by Strava ID to get userId
-            const userSnap = await adminDb.collection('users')
-              .where('stravaId', '==', String(owner_id)).limit(1).get();
-            if (!userSnap.empty) {
-              const userId = userSnap.docs[0].id;
-              console.log('🔍 Running Groq dedup for user:', userId);
-              const { result: dedupResult } = await runDedupPipeline(userId);
-              if (dedupResult.duplicatesFound > 0) {
-                console.log(`🗑️ Groq found ${dedupResult.duplicatesFound} duplicates — deleting`);
-                const deleted = await executeDedupDeletions(dedupResult);
-                console.log(`✅ Deleted ${deleted} duplicate workouts`);
-              } else {
-                console.log('✅ No duplicates found');
+    // Return 200 immediately so Strava doesn't timeout.
+    // Use waitUntil() to keep the serverless function alive for background processing.
+    waitUntil(
+      processActivity(String(owner_id), String(object_id))
+        .then(async (result) => {
+          console.log('✅ Webhook processing result:', JSON.stringify(result));
+          if (result.success) {
+            try {
+              const userSnap = await adminDb.collection('users')
+                .where('stravaId', '==', String(owner_id)).limit(1).get();
+              if (!userSnap.empty) {
+                const userId = userSnap.docs[0].id;
+                console.log('🔍 Running Groq dedup for user:', userId);
+                const { result: dedupResult } = await runDedupPipeline(userId);
+                if (dedupResult.duplicatesFound > 0) {
+                  console.log(`🗑️ Groq found ${dedupResult.duplicatesFound} duplicates — deleting`);
+                  const deleted = await executeDedupDeletions(dedupResult);
+                  console.log(`✅ Deleted ${deleted} duplicate workouts`);
+                } else {
+                  console.log('✅ No duplicates found');
+                }
               }
+            } catch (dedupErr: any) {
+              console.error('⚠️ Dedup pipeline error (non-fatal):', dedupErr.message);
             }
-          } catch (dedupErr: any) {
-            console.error('⚠️ Dedup pipeline error (non-fatal):', dedupErr.message);
           }
-        }
-      })
-      .catch(err => console.error('❌ Webhook processing error:', err));
-
-    // Don't await — return immediately
-    // The function will stay alive on Vercel until processingPromise resolves
-    void processingPromise;
+        })
+        .catch(err => console.error('❌ Webhook processing error:', err))
+    );
 
     return NextResponse.json({ status: 'accepted', message: 'Processing in background' });
   } catch (error: any) {
