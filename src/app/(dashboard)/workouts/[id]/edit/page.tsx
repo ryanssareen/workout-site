@@ -113,7 +113,7 @@ export default function EditWorkoutPage() {
       }
 
       // Verify ownership
-      if (workoutData.createdBy !== user.uid) {
+      if (workoutData.createdBy !== user.username) {
         toast.error('You can only edit your own workouts');
         router.push('/workouts');
         return;

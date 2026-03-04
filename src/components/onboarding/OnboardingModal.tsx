@@ -53,7 +53,7 @@ export function OnboardingModal() {
 
     setSaving(true);
     try {
-      const userRef = doc(getDbInstance(), 'users', user.uid);
+      const userRef = doc(getDbInstance(), 'users', user.username);
       await updateDoc(userRef, {
         displayName: trimmed,
         onboardingCompleted: true,
