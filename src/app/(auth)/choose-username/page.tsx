@@ -124,6 +124,7 @@ export default function ChooseUsernamePage() {
                   required
                   maxLength={20}
                   autoFocus
+                  autoComplete="off"
                   className={`pl-10 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-red-500 focus:ring-red-500/20 transition-colors ${usernameError ? 'border-red-500' : ''}`}
                 />
                 {checking && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 animate-spin" />}
