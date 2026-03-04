@@ -5,6 +5,7 @@ export const SPORT_OPTIONS = [
   'Cycling',
   'Swimming',
   'Strength Training',
+  'Triathlon',
 ] as const;
 
 export const TRAINING_FOR_OPTIONS = [
