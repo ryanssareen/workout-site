@@ -421,8 +421,8 @@ export default function WorkoutDetailPage() {
             </div>
           )}
 
-          {/* Completion button - only show for athletes */}
-          {isAthlete ? (
+          {/* Completion button - only show for planned workouts (not Strava) */}
+          {workout.source === 'strava' ? null : isAthlete ? (
             <Button
               onClick={() =>
                 workout.completed

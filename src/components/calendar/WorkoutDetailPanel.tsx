@@ -193,7 +193,7 @@ export function WorkoutDetailPanel({
 
         {/* Actions */}
         <div className="flex items-center gap-2 pt-2 border-t">
-          {onToggleComplete && (
+          {onToggleComplete && workout.source !== 'strava' && (
             <button
               onClick={(e) => onToggleComplete(e, workout)}
               className={cn(
