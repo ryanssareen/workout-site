@@ -151,7 +151,7 @@ export default function WorkoutDetailPage() {
           duration: workout.duration,
           timeframe: timeframe || null,
           frequency: frequency || null,
-          createdBy: user.uid,
+          createdBy: user.username,
           workoutId: workout.id, // Track which workout created this template
         }),
       });
@@ -186,7 +186,7 @@ export default function WorkoutDetailPage() {
     setIsSavingTemplate(true);
     try {
       const response = await fetch(
-        `/api/templates?templateId=${workout.templateId}&userId=${user.uid}`,
+        `/api/templates?templateId=${workout.templateId}&userId=${user.username}`,
         {
           method: 'DELETE',
         }
@@ -229,7 +229,7 @@ export default function WorkoutDetailPage() {
 
   if (!user || !workout) return null;
 
-  const canEdit = user.role === 'coach' && workout.createdBy === user.uid;
+  const canEdit = user.role === 'coach' && workout.createdBy === user.username;
   const isPastWorkout = workout.date.toDate() < new Date();
   const isMissed = isPastWorkout && !workout.completed;
   const isAthlete = user.role === 'athlete' || user.role === 'student';
@@ -479,7 +479,7 @@ export default function WorkoutDetailPage() {
         workoutId={workout.id}
         workoutName={workout.name}
         ownerUsername={workout.ownerUsername}
-        currentUserId={user.uid}
+        currentUserId={user.username}
         currentUserName={user.displayName}
         currentUserRole={user.role}
         coachId={workout.createdBy}

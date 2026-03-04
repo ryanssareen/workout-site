@@ -58,7 +58,7 @@ export function WorkoutPreview({ workout, workoutId }: WorkoutPreviewProps) {
       const res = await fetch('/api/workouts/copy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workoutId, userId: user.uid }),
+        body: JSON.stringify({ workoutId, userId: user.username }),
       });
       if (!res.ok) throw new Error('Failed to copy workout');
       toast.success('Workout added to your list!');
