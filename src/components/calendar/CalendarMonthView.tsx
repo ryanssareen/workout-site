@@ -4,12 +4,10 @@ import { useMemo } from 'react';
 import { Workout } from '@/types';
 import { CalendarWorkoutCard } from './CalendarWorkoutCard';
 import {
-  startOfMonth,
-  endOfMonth,
   startOfWeek,
   endOfWeek,
+  addWeeks,
   eachDayOfInterval,
-  isSameMonth,
   isSameDay,
   isToday,
   format,
@@ -36,25 +34,22 @@ export function CalendarMonthView({
   onSelectDate,
   onSelectWorkout,
   activeTypes,
-  maxPillsPerCell = 3,
+  maxPillsPerCell = 5,
 }: CalendarMonthViewProps) {
-  // Build the 6-week grid (always show 6 rows for consistent height)
-  const calendarDays = useMemo(() => {
-    const monthStart = startOfMonth(currentMonth);
-    const monthEnd = endOfMonth(currentMonth);
-    const gridStart = startOfWeek(monthStart, { weekStartsOn: 0 }); // Sunday
-    const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
-    return eachDayOfInterval({ start: gridStart, end: gridEnd });
-  }, [currentMonth]);
-
-  // Group days into weeks (rows of 7)
+  // Build a 2-week grid centered on the selected date (or first of month)
   const weeks = useMemo(() => {
+    const anchor = selectedDate || currentMonth;
+    const week1Start = startOfWeek(anchor, { weekStartsOn: 0 });
+    const week2Start = addWeeks(week1Start, 1);
+    const week2End = endOfWeek(week2Start, { weekStartsOn: 0 });
+
+    const days = eachDayOfInterval({ start: week1Start, end: week2End });
     const result: Date[][] = [];
-    for (let i = 0; i < calendarDays.length; i += 7) {
-      result.push(calendarDays.slice(i, i + 7));
+    for (let i = 0; i < days.length; i += 7) {
+      result.push(days.slice(i, i + 7));
     }
     return result;
-  }, [calendarDays]);
+  }, [currentMonth, selectedDate]);
 
   return (
     <div
@@ -73,7 +68,7 @@ export function CalendarMonthView({
         ))}
       </div>
 
-      {/* Calendar grid */}
+      {/* Calendar grid — 2 weeks */}
       <div className="flex-1 flex flex-col">
         {weeks.map((week, weekIdx) => (
           <div key={weekIdx} className="flex-1 grid grid-cols-7 border-b last:border-b-0 min-h-0">
@@ -82,7 +77,6 @@ export function CalendarMonthView({
               const dayWorkouts = (workoutsByDate.get(dateKey) || []).filter((w) =>
                 activeTypes.has(w.type),
               );
-              const inMonth = isSameMonth(day, currentMonth);
               const today = isToday(day);
               const selected = selectedDate ? isSameDay(day, selectedDate) : false;
               const visibleWorkouts = dayWorkouts.slice(0, maxPillsPerCell);
@@ -93,29 +87,32 @@ export function CalendarMonthView({
                   key={dateKey}
                   onClick={() => onSelectDate(day)}
                   className={cn(
-                    'border-r last:border-r-0 px-1.5 py-1.5 cursor-pointer transition-colors overflow-hidden flex flex-col',
-                    !inMonth && 'bg-muted/10',
+                    'border-r last:border-r-0 px-2 py-2 cursor-pointer transition-colors overflow-hidden flex flex-col',
                     selected && 'bg-primary/5 ring-1 ring-inset ring-primary/30',
                     today && !selected && 'bg-red-500/[0.03]',
                     'hover:bg-muted/30',
                   )}
                 >
-                  {/* Date number */}
-                  <div className="flex items-center justify-between mb-1">
+                  {/* Date number + day name */}
+                  <div className="flex items-center gap-1.5 mb-1.5">
                     <span
                       className={cn(
-                        'text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full',
-                        !inMonth && 'text-muted-foreground/40',
+                        'text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full shrink-0',
                         today && 'bg-red-600 text-white',
-                        !today && inMonth && 'text-foreground',
+                        !today && 'text-foreground',
                       )}
                     >
                       {format(day, 'd')}
                     </span>
+                    {(today || selected) && (
+                      <span className="text-[10px] font-medium text-muted-foreground uppercase truncate">
+                        {format(day, 'MMM')}
+                      </span>
+                    )}
                   </div>
 
-                  {/* Workout mini-pills */}
-                  <div className="flex-1 space-y-0.5 min-h-0 overflow-y-auto">
+                  {/* Workout pills — more space with only 2 rows */}
+                  <div className="flex-1 space-y-1 min-h-0 overflow-y-auto">
                     {visibleWorkouts.map((workout) => (
                       <CalendarWorkoutCard
                         key={workout.id}
@@ -127,6 +124,11 @@ export function CalendarMonthView({
                     {overflow > 0 && (
                       <div className="text-[10px] text-muted-foreground font-medium pl-1">
                         +{overflow} more
+                      </div>
+                    )}
+                    {dayWorkouts.length === 0 && (
+                      <div className="text-[10px] text-muted-foreground/40 italic pl-1 pt-1">
+                        Rest day
                       </div>
                     )}
                   </div>

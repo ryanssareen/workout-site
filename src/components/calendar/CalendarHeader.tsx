@@ -9,7 +9,7 @@ import {
   Plus,
   MoreHorizontal,
 } from 'lucide-react';
-import { format, addMonths, subMonths } from 'date-fns';
+import { format, addWeeks, subWeeks, startOfWeek, endOfWeek } from 'date-fns';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import {
@@ -63,22 +63,29 @@ export function CalendarHeader({
             Today
           </button>
           <button
-            onClick={() => onMonthChange(subMonths(currentMonth, 1))}
+            onClick={() => onMonthChange(subWeeks(currentMonth, 2))}
             className="p-2 rounded-xl border hover:bg-muted transition-colors"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
           <button
-            onClick={() => onMonthChange(addMonths(currentMonth, 1))}
+            onClick={() => onMonthChange(addWeeks(currentMonth, 2))}
             className="p-2 rounded-xl border hover:bg-muted transition-colors"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Center: Month/Year */}
+        {/* Center: 2-week date range */}
         <h1 className="text-lg md:text-xl font-bold tracking-tight uppercase">
-          {format(currentMonth, 'MMMM yyyy')}
+          <span className="hidden md:inline">
+            {format(startOfWeek(currentMonth, { weekStartsOn: 0 }), 'MMM d')}
+            {' – '}
+            {format(endOfWeek(addWeeks(startOfWeek(currentMonth, { weekStartsOn: 0 }), 1), { weekStartsOn: 0 }), 'MMM d, yyyy')}
+          </span>
+          <span className="md:hidden">
+            {format(currentMonth, 'MMMM yyyy')}
+          </span>
         </h1>
 
         {/* Right: Actions */}
