@@ -11,9 +11,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
   const loading = useAuthStore((state) => state.loading);
+  const needsUsername = useAuthStore((state) => state.needsUsername);
 
   useEffect(() => {
     if (loading) return;
+
+    if (needsUsername) {
+      router.replace('/choose-username');
+      return;
+    }
 
     if (!user) {
       router.replace('/login');
@@ -27,7 +33,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
 
     // Onboarding page is always accessible — finish/skip handlers route out
-  }, [user, loading, pathname, router]);
+  }, [user, loading, needsUsername, pathname, router]);
 
   if (loading) {
     return (
