@@ -1,9 +1,9 @@
 import { Metadata } from 'next';
 import { getAdminDb } from '@/lib/firebase/admin';
-import { WorkoutPreview } from '@/components/workouts/WorkoutPreview';
 import { notFound } from 'next/navigation';
+import { PreviewClient } from './PreviewClient';
 
-interface WorkoutPageProps {
+interface PreviewPageProps {
   params: Promise<{ id: string }>;
 }
 
@@ -14,6 +14,16 @@ async function getWorkout(id: string) {
     if (!doc.exists) return null;
 
     const data = doc.data()!;
+
+    // Get coach name
+    let coachName: string | null = null;
+    if (data.createdBy) {
+      const coachDoc = await db.collection('users').doc(data.createdBy).get();
+      if (coachDoc.exists) {
+        coachName = coachDoc.data()?.displayName || null;
+      }
+    }
+
     return {
       id: doc.id,
       name: data.name || 'Untitled Workout',
@@ -23,6 +33,9 @@ async function getWorkout(id: string) {
       duration: data.duration || null,
       completed: data.completed || false,
       source: data.source || 'manual',
+      tags: data.tags || [],
+      photos: data.photos || [],
+      coachName,
       run: data.run || null,
       bike: data.bike || null,
       swim: data.swim || null,
@@ -40,10 +53,9 @@ async function getWorkout(id: string) {
         ? {
             polyline: data.routeData.polyline || null,
             startLatLng: data.routeData.startLatLng || null,
+            aiComment: data.routeData.aiComment || null,
           }
         : null,
-      tags: data.tags || [],
-      photos: data.photos || [],
     };
   } catch (error) {
     console.error('Error fetching workout for preview:', error);
@@ -51,7 +63,7 @@ async function getWorkout(id: string) {
   }
 }
 
-export async function generateMetadata({ params }: WorkoutPageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: PreviewPageProps): Promise<Metadata> {
   const { id } = await params;
   const workout = await getWorkout(id);
 
@@ -59,28 +71,32 @@ export async function generateMetadata({ params }: WorkoutPageProps): Promise<Me
     return { title: 'Workout Not Found | The Daily Athlete' };
   }
 
+  const typeEmoji: Record<string, string> = { run: '🏃', bike: '🚴', swim: '🏊', strength: '💪', other: '⚡' };
+  const emoji = typeEmoji[workout.type] || '⚡';
+  const title = `${emoji} ${workout.name} | The Daily Athlete`;
+
   const description = workout.description
     ? workout.description.slice(0, 160)
     : `${workout.type.charAt(0).toUpperCase() + workout.type.slice(1)} workout on The Daily Athlete`;
 
   return {
-    title: `${workout.name} | The Daily Athlete`,
+    title,
     description,
     openGraph: {
-      title: workout.name,
+      title: `${emoji} ${workout.name}`,
       description,
       type: 'article',
       siteName: 'The Daily Athlete',
     },
     twitter: {
-      card: 'summary',
-      title: workout.name,
+      card: 'summary_large_image',
+      title: `${emoji} ${workout.name}`,
       description,
     },
   };
 }
 
-export default async function PublicWorkoutPage({ params }: WorkoutPageProps) {
+export default async function PreviewPage({ params }: PreviewPageProps) {
   const { id } = await params;
   const workout = await getWorkout(id);
 
@@ -88,11 +104,5 @@ export default async function PublicWorkoutPage({ params }: WorkoutPageProps) {
     notFound();
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 max-w-3xl">
-        <WorkoutPreview workout={workout} workoutId={id} />
-      </div>
-    </div>
-  );
+  return <PreviewClient workout={workout} />;
 }

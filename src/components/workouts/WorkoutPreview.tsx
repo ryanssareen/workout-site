@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, Activity, Dumbbell, UserPlus, LogIn, Loader2 } from 'lucide-react';
+import { Calendar, Clock, Activity, Dumbbell, UserPlus, LogIn, Loader2, Camera } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useState } from 'react';
@@ -33,6 +33,7 @@ interface WorkoutPreviewProps {
     strength: { exercises?: { name: string; sets: number; reps: number; weight?: number; weightUnit?: string }[] } | null;
     other: { description?: string; duration?: number } | null;
     routeData: { polyline: string | null; startLatLng: [number, number] | null } | null;
+    photos: string[];
   };
   workoutId: string;
 }
@@ -182,6 +183,25 @@ export function WorkoutPreview({ workout, workoutId }: WorkoutPreviewProps) {
                       {ex.weight ? ` @ ${ex.weight}${ex.weightUnit || 'kg'}` : ''}
                     </span>
                   </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {workout.photos && workout.photos.length > 0 && (
+            <div>
+              <h3 className="font-semibold mb-3 flex items-center gap-2">
+                <Camera className="h-4 w-4 text-orange-500" />
+                Photos ({workout.photos.length})
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {workout.photos.map((url, i) => (
+                  <img
+                    key={i}
+                    src={url}
+                    alt={`Workout photo ${i + 1}`}
+                    className="w-full aspect-square rounded-lg object-cover"
+                  />
                 ))}
               </div>
             </div>

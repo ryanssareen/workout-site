@@ -544,32 +544,6 @@ export async function getCoachInfo(coachId: string): Promise<{ uid: string; disp
   }
 }
 
-// Connect student to coach
-export async function connectToCoach(studentId: string, coachId: string): Promise<void> {
-  try {
-    const userRef = doc(getDbInstance(), 'users', studentId);
-    await updateDoc(userRef, {
-      coachId,
-      updatedAt: serverTimestamp(),
-    });
-  } catch (error: any) {
-    throw new Error(error.message || 'Failed to connect to coach');
-  }
-}
-
-// Disconnect student from coach
-export async function disconnectFromCoach(studentId: string): Promise<void> {
-  try {
-    const userRef = doc(getDbInstance(), 'users', studentId);
-    await updateDoc(userRef, {
-      coachId: null,
-      updatedAt: serverTimestamp(),
-    });
-  } catch (error: any) {
-    throw new Error(error.message || 'Failed to disconnect from coach');
-  }
-}
-
 // Update user's Strava connection
 export async function updateUserStravaConnection(
   userId: string,

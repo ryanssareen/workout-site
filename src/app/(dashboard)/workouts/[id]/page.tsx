@@ -22,6 +22,7 @@ const RouteMap = dynamic(
   { ssr: false, loading: () => <div className="h-[300px] bg-muted rounded-lg animate-pulse" /> }
 );
 import { CompletionDialog, UncompletionDialog } from '@/components/workouts/CompletionDialog';
+import { WorkoutPhotos } from '@/components/workouts/WorkoutPhotos';
 import { WorkoutRecommendations } from '@/components/ai/WorkoutRecommendations';
 import { cn } from '@/lib/utils';
 import {
@@ -389,6 +390,11 @@ export default function WorkoutDetailPage() {
               </h3>
               <RouteMap routeData={workout.routeData} height={450} workoutId={workout.id} />
             </div>
+          )}
+
+          {/* Strava Photos */}
+          {workout.photos && workout.photos.length > 0 && (
+            <WorkoutPhotos photos={workout.photos} />
           )}
 
           {/* Share */}

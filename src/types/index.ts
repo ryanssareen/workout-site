@@ -109,6 +109,7 @@ export interface Workout {
   completionStatus?: 'pending' | 'completed' | 'skipped';
   actualStats?: StravaActivityStats;
   routeData?: RouteData; // Map route from Strava
+  photos?: string[]; // Photo URLs (from Strava or uploaded)
   // Manual completion fields
   completionNotes?: string;
   completedBy?: 'manual' | 'strava';

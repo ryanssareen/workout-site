@@ -11,6 +11,7 @@ import { format } from 'date-fns';
 import { Calendar, Clock, Edit, Trash2, CheckCircle2, Circle, Activity, MessageSquare, MapPin } from 'lucide-react';
 import { CompletionDialog, UncompletionDialog } from './CompletionDialog';
 import { MiniRoutePreview } from './MiniRoutePreview';
+import { WorkoutPhotos } from './WorkoutPhotos';
 import { cn } from '@/lib/utils';
 
 const TAG_COLORS: Record<WorkoutTag, string> = {
@@ -209,6 +210,11 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
               width={280}
               height={70}
             />
+          )}
+
+          {/* Strava photos */}
+          {workout.photos && workout.photos.length > 0 && (
+            <WorkoutPhotos photos={workout.photos} compact className="mb-3" />
           )}
 
           {workout.completionNotes && <div className="text-sm bg-muted/50 rounded-lg p-2.5 italic text-muted-foreground mb-3">&quot;{workout.completionNotes}&quot;</div>}

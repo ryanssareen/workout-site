@@ -25,6 +25,7 @@ export default function NewWorkoutPage() {
   const [loadingTemplate, setLoadingTemplate] = useState(false);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [createdWorkoutData, setCreatedWorkoutData] = useState<WorkoutSchema | null>(null);
+  const [createdWorkoutId, setCreatedWorkoutId] = useState<string | null>(null);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState<WorkoutSchema | null>(null);
@@ -121,7 +122,7 @@ export default function NewWorkoutPage() {
         }
       }
 
-      await createWorkout(workoutData as any, user.uid);
+      const newWorkoutId = await createWorkout(workoutData as any, user.uid);
       setShowPreview(false);
 
       toast.success('Workout created successfully!');
@@ -130,6 +131,7 @@ export default function NewWorkoutPage() {
         const athlete = students.find((s) => s.uid === data.assignedTo);
         if (athlete?.email) {
           setCreatedWorkoutData(data);
+          setCreatedWorkoutId(newWorkoutId);
           setShowEmailDialog(true);
           return;
         }
@@ -157,6 +159,7 @@ export default function NewWorkoutPage() {
           studentEmail: athlete.email,
           studentName: athlete.displayName,
           workout: createdWorkoutData,
+          workoutId: createdWorkoutId,
         }),
       });
       if (!res.ok) {

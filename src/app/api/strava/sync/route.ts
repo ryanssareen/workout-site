@@ -134,6 +134,37 @@ Return ONLY a JSON object: {"tags": ["tag1", "tag2"]${hasLocation || hasRoute ? 
   }
 }
 
+// Fetch photo URLs for a Strava activity
+async function fetchStravaPhotos(activityId: string, accessToken: string): Promise<string[]> {
+  try {
+    const response = await fetch(
+      `https://www.strava.com/api/v3/activities/${activityId}/photos?size=600&photo_sources=true`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+
+    if (!response.ok) {
+      console.log(`⚠️ Failed to fetch photos for activity ${activityId}: ${response.status}`);
+      return [];
+    }
+
+    const photos = await response.json();
+    if (!Array.isArray(photos) || photos.length === 0) return [];
+
+    // Extract the best available URL from each photo
+    const urls: string[] = [];
+    for (const photo of photos) {
+      const url = photo.urls?.['600'] || photo.urls?.['100'] || photo.urls?.['0'];
+      if (url) urls.push(url);
+    }
+
+    console.log(`📸 Found ${urls.length} photos for activity ${activityId}`);
+    return urls;
+  } catch (error) {
+    console.error(`❌ Error fetching photos for activity ${activityId}:`, error);
+    return [];
+  }
+}
+
 // Refresh Strava access token if expired
 async function refreshStravaToken(userId: string, refreshToken: string): Promise<string | null> {
   try {
@@ -652,6 +683,14 @@ export async function GET(request: NextRequest) {
           if (Object.keys(routeData).length > 0) {
             if (aiComment) routeData.aiComment = aiComment;
             newWorkoutData.routeData = routeData;
+          }
+
+          // Fetch photos if the activity has any
+          if (activity.total_photo_count > 0) {
+            const photoUrls = await fetchStravaPhotos(String(activity.id), accessToken);
+            if (photoUrls.length > 0) {
+              newWorkoutData.photos = photoUrls;
+            }
           }
 
           // Add type-specific sub-objects so workouts can be properly edited

@@ -110,7 +110,7 @@ export function StudentOverview({ students, delay = 0 }: StudentOverviewProps) {
               <Users className="h-6 w-6 text-muted-foreground" />
             </div>
             <p className="text-sm text-muted-foreground">
-              No athletes yet. Share your coach code to get started!
+              No athletes connected yet.
             </p>
           </div>
         ) : (

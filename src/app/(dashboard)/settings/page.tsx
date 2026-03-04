@@ -3,9 +3,6 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
-// Backend coach functions preserved for future use
-// import { findCoachByCode } from '@/lib/firebase/auth';
-// import { connectToCoach, disconnectFromCoach, getCoachInfo } from '@/lib/firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
