@@ -51,6 +51,9 @@ export interface User {
   heightUnit?: 'cm' | 'ft';
   weight?: number; // in kg
   weightUnit?: 'kg' | 'lbs';
+  // Public profile
+  profileTagline?: string;    // AI-generated one-liner for public profile
+  profilePublic?: boolean;    // Whether /athlete/username is accessible (default: true)
 }
 
 export interface StravaActivityStats {

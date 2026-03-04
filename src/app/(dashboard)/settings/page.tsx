@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { User, Unlink, Settings, LogOut, Key, CheckCircle2, Loader2, ExternalLink, Copy, Check } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { User, Unlink, Settings, LogOut, Key, CheckCircle2, Loader2, ExternalLink, Copy, Check, Globe, RefreshCw } from 'lucide-react';
 import { signOut } from '@/lib/firebase/auth';
 import Link from 'next/link';
 import { StravaDuplicateDialog } from '@/components/strava/DuplicateDialog';
@@ -23,6 +24,9 @@ function SettingsContent() {
   const [isDisconnectingStrava, setIsDisconnectingStrava] = useState(false);
   const [isSyncingStrava, setIsSyncingStrava] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [profilePublic, setProfilePublic] = useState(user?.profilePublic !== false);
+  const [profileCopied, setProfileCopied] = useState(false);
+  const [regeneratingTagline, setRegeneratingTagline] = useState(false);
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const [stravaDuplicates, setStravaDuplicates] = useState<any[]>([]);
 
@@ -149,6 +153,50 @@ function SettingsContent() {
     handleSyncStrava(decisions);
   };
 
+  const handleTogglePublicProfile = async (checked: boolean) => {
+    if (!user) return;
+    setProfilePublic(checked);
+    try {
+      const { doc, updateDoc } = await import('firebase/firestore');
+      const { getDbInstance } = await import('@/lib/firebase/config');
+      await updateDoc(doc(getDbInstance(), 'users', user.username), { profilePublic: checked });
+      setUser({ ...user, profilePublic: checked });
+      toast.success(checked ? 'Profile is now public' : 'Profile is now private');
+    } catch {
+      setProfilePublic(!checked);
+      toast.error('Failed to update profile visibility');
+    }
+  };
+
+  const handleCopyProfileUrl = () => {
+    if (!user) return;
+    const url = `${window.location.origin}/athlete/${user.username}`;
+    navigator.clipboard.writeText(url);
+    setProfileCopied(true);
+    toast.success('Profile link copied!');
+    setTimeout(() => setProfileCopied(false), 2000);
+  };
+
+  const handleRegenerateTagline = async () => {
+    if (!user) return;
+    setRegeneratingTagline(true);
+    try {
+      const res = await fetch('/api/ai/profile-tagline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user.username, force: true }),
+      });
+      const data = await res.json();
+      if (data.tagline) {
+        setUser({ ...user, profileTagline: data.tagline });
+        toast.success('New tagline generated!');
+      }
+    } catch {
+      toast.error('Failed to generate tagline');
+    }
+    setRegeneratingTagline(false);
+  };
+
   const handleLogout = async () => { await signOut(); router.push('/login'); };
 
   return (
@@ -230,6 +278,39 @@ function SettingsContent() {
           </CardContent>
         </Card>
       )}
+
+      {/* Public Profile */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2"><Globe className="h-4 w-4 text-primary" />Public Profile</CardTitle>
+          <CardDescription>Share your training stats at /athlete/{user?.username}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-sm">Profile visibility</p>
+              <p className="text-xs text-muted-foreground">When enabled, anyone can view your profile</p>
+            </div>
+            <Switch checked={profilePublic} onCheckedChange={handleTogglePublicProfile} />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={handleCopyProfileUrl}>
+              {profileCopied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+              {profileCopied ? 'Copied!' : 'Copy Link'}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleRegenerateTagline} disabled={regeneratingTagline}>
+              {regeneratingTagline ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+              {regeneratingTagline ? 'Generating...' : 'New Tagline'}
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/athlete/${user?.username}`} target="_blank"><ExternalLink className="h-4 w-4 mr-2" />View Profile</Link>
+            </Button>
+          </div>
+          {user?.profileTagline && (
+            <p className="text-sm text-muted-foreground italic">&ldquo;{user.profileTagline}&rdquo;</p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Account */}
       <Card>
