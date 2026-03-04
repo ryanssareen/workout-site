@@ -25,6 +25,7 @@ export function RegisterForm() {
   const [usernameError, setUsernameError] = useState('');
   const [usernameChecking, setUsernameChecking] = useState(false);
   const router = useRouter();
+  const setUser = useAuthStore((s) => s.setUser);
   const setNeedsUsername = useAuthStore((s) => s.setNeedsUsername);
 
   const handleGoogleSignUp = async () => {
@@ -120,13 +121,18 @@ export function RegisterForm() {
     }
 
     try {
-      await createUser(
+      const user = await createUser(
         formData.email,
         formData.password,
         trimmedName,
         formData.username,
         'athlete'
       );
+
+      // Update store before navigating — prevents race with onAuthStateChanged
+      // which fires before the Firestore batch commits and sets needsUsername: true
+      setUser(user);
+      setNeedsUsername(false);
 
       toast.success('Account created successfully');
       router.push('/onboarding');
