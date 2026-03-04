@@ -20,8 +20,13 @@ export function LoginForm() {
   const [waitingForAuth, setWaitingForAuth] = useState(false);
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
+  const needsUsername = useAuthStore((state) => state.needsUsername);
 
   useEffect(() => {
+    if (waitingForAuth && needsUsername) {
+      router.replace('/choose-username');
+      return;
+    }
     if (waitingForAuth && user) {
       if (user.onboardingCompleted === false) {
         router.replace('/onboarding');
@@ -29,7 +34,7 @@ export function LoginForm() {
         router.replace('/dashboard');
       }
     }
-  }, [waitingForAuth, user, router]);
+  }, [waitingForAuth, user, needsUsername, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

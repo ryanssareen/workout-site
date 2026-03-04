@@ -10,8 +10,13 @@ export default function LoginPage() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const loading = useAuthStore((state) => state.loading);
+  const needsUsername = useAuthStore((state) => state.needsUsername);
 
   useEffect(() => {
+    if (!loading && needsUsername) {
+      router.replace('/choose-username');
+      return;
+    }
     if (!loading && user) {
       if (user.onboardingCompleted === false) {
         router.replace('/onboarding');
@@ -19,7 +24,7 @@ export default function LoginPage() {
         router.replace('/dashboard');
       }
     }
-  }, [user, loading, router]);
+  }, [user, loading, needsUsername, router]);
 
   if (loading || user) {
     return (
