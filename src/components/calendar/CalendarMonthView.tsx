@@ -74,9 +74,9 @@ export function CalendarMonthView({
       </div>
 
       {/* Calendar grid */}
-      <div className="flex-1 grid grid-rows-[repeat(auto-fill,minmax(0,1fr))]">
+      <div className="flex-1 flex flex-col">
         {weeks.map((week, weekIdx) => (
-          <div key={weekIdx} className="grid grid-cols-7 border-b last:border-b-0">
+          <div key={weekIdx} className="flex-1 grid grid-cols-7 border-b last:border-b-0 min-h-0">
             {week.map((day) => {
               const dateKey = format(day, 'yyyy-MM-dd');
               const dayWorkouts = (workoutsByDate.get(dateKey) || []).filter((w) =>
@@ -93,7 +93,7 @@ export function CalendarMonthView({
                   key={dateKey}
                   onClick={() => onSelectDate(day)}
                   className={cn(
-                    'border-r last:border-r-0 px-1.5 py-1.5 cursor-pointer transition-colors min-h-0 overflow-hidden flex flex-col',
+                    'border-r last:border-r-0 px-1.5 py-1.5 cursor-pointer transition-colors overflow-hidden flex flex-col',
                     !inMonth && 'bg-muted/10',
                     selected && 'bg-primary/5 ring-1 ring-inset ring-primary/30',
                     today && !selected && 'bg-red-500/[0.03]',
@@ -115,7 +115,7 @@ export function CalendarMonthView({
                   </div>
 
                   {/* Workout mini-pills */}
-                  <div className="flex-1 space-y-0.5 min-h-0 overflow-hidden">
+                  <div className="flex-1 space-y-0.5 min-h-0 overflow-y-auto">
                     {visibleWorkouts.map((workout) => (
                       <CalendarWorkoutCard
                         key={workout.id}
