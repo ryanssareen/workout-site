@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { getUserWorkouts } from '@/lib/firebase/firestore';
 import { Workout } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -64,15 +63,9 @@ function calculateStreak(workouts: Workout[]): number {
 
 export default function DashboardPage() {
   const user = useAuthStore((state) => state.user);
-  const router = useRouter();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
   const [ready, setReady] = useState(false);
-  const searchParams = useSearchParams();
-  const redirectedRef = useRef(false);
-
-  // Detect if arriving from onboarding Strava connect
-  const fromOnboarding = searchParams.get('strava') === 'connected';
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -88,16 +81,8 @@ export default function DashboardPage() {
     setWorkouts(workoutData);
   }, [user]);
 
-  // After first sync phase (week data), redirect to calendar so user sees recent workouts
-  // The async sync function continues running in the background (month/year phases)
-  const handleFirstPhaseComplete = useCallback(() => {
-    if (!fromOnboarding || redirectedRef.current) return;
-    redirectedRef.current = true;
-    router.push('/calendar');
-  }, [fromOnboarding, router]);
-
-  // Auto-sync Strava in background on login
-  useStravaAutoSync(user, refreshWorkouts, fromOnboarding ? handleFirstPhaseComplete : undefined);
+  // Auto-sync Strava in background on regular login
+  useStravaAutoSync(user, refreshWorkouts);
 
   useEffect(() => {
     async function loadData() {

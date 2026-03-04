@@ -347,7 +347,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate time range based on period parameter
-    const periodDays = period === 'week' ? 7 : period === 'month' ? 30 : 365;
+    const PERIOD_DAYS: Record<string, number> = {
+      '2days': 2, 'week': 7, 'month': 30, '2months': 60, '6months': 180, 'year': 365,
+    };
+    const periodDays = (period && PERIOD_DAYS[period]) || 365;
     const afterTimestamp = Math.floor(Date.now() / 1000) - (periodDays * 24 * 60 * 60);
     console.log(`📡 Fetching activities from the last ${period || 'year'} (${periodDays} days)...`);
 
