@@ -107,7 +107,7 @@ export function useStravaAutoSync(
 
     hasFired.current = true;
     console.log('[auto-sync] firing background Strava sync');
-    runSync(user.uid);
+    runSync(user.username);
   }, [user, runSync]);
 
   return { syncing, syncResult };
