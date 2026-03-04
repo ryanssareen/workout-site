@@ -20,11 +20,11 @@ function getISTStartOfDay(date: Date): Date {
 }
 
 interface UserData {
-  uid: string;
+  username: string;
   email: string;
   displayName: string;
   lastSummaryDate?: admin.firestore.Timestamp;
-  coachId?: string;
+  coachUsername?: string;
   stravaConnected?: boolean;
   createdAt?: admin.firestore.Timestamp;
 }
@@ -39,9 +39,9 @@ interface WorkoutData {
   };
 }
 
-async function getCoachEmail(coachId: string): Promise<string | null> {
+async function getCoachEmail(coachUsername: string): Promise<string | null> {
   try {
-    const coachDoc = await adminDb.collection('users').doc(coachId).get();
+    const coachDoc = await adminDb.collection('users').doc(coachUsername).get();
     if (coachDoc.exists) {
       return coachDoc.data()?.email || null;
     }
@@ -114,8 +114,8 @@ export async function GET(request: NextRequest) {
     const eligibleUsers: UserData[] = [];
 
     for (const doc of allUserDocs) {
-      const userData = doc.data() as Omit<UserData, 'uid'>;
-      const user: UserData = { uid: doc.id, ...userData };
+      const userData = doc.data() as Omit<UserData, 'username'>;
+      const user: UserData = { username: doc.id, ...userData };
 
       // Skip if no email
       if (!user.email) continue;
@@ -156,10 +156,9 @@ export async function GET(request: NextRequest) {
 
     for (const user of eligibleUsers) {
       try {
-        // Get user's workouts from the period
+        // Get user's workouts from the period (subcollection scoped to user)
         const workoutsSnapshot = await adminDb
-          .collection('workouts')
-          .where('assignedTo', '==', user.uid)
+          .collection('users').doc(user.username).collection('workouts')
           .where('date', '>=', admin.firestore.Timestamp.fromDate(periodStart))
           .where('date', '<=', admin.firestore.Timestamp.fromDate(now))
           .get();
@@ -207,8 +206,8 @@ export async function GET(request: NextRequest) {
 
         // Get coach email for CC
         let coachEmail: string | null = null;
-        if (user.coachId) {
-          coachEmail = await getCoachEmail(user.coachId);
+        if (user.coachUsername) {
+          coachEmail = await getCoachEmail(user.coachUsername);
         }
 
         // Prepare summary data
@@ -228,7 +227,7 @@ export async function GET(request: NextRequest) {
 
         if (sent) {
           // Update lastSummaryDate
-          await adminDb.collection('users').doc(user.uid).update({
+          await adminDb.collection('users').doc(user.username).update({
             lastSummaryDate: admin.firestore.FieldValue.serverTimestamp(),
           });
 

@@ -13,8 +13,8 @@ export async function POST(request: NextRequest) {
 
     const groq = new Groq({ apiKey: process.env.GROQ_API_KEY.trim() });
 
-    // Find all workouts with route data but no AI comment
-    const snapshot = await adminDb.collection('workouts')
+    // Find all workouts with route data but no AI comment (collectionGroup for subcollections)
+    const snapshot = await adminDb.collectionGroup('workouts')
       .where('routeData.polyline', '!=', null)
       .get();
 
@@ -71,7 +71,9 @@ Return ONLY a JSON object: {"comment": "your fun comment here"}`;
         const comment = parsed.comment?.slice(0, 100);
 
         if (comment) {
-          await adminDb.collection('workouts').doc(doc.id).update({
+          // Use ownerUsername from workout data to construct subcollection path
+          const ownerUsername = workout.ownerUsername || workout.assignedTo;
+          await adminDb.collection('users').doc(ownerUsername).collection('workouts').doc(doc.id).update({
             'routeData.aiComment': comment,
           });
           success++;

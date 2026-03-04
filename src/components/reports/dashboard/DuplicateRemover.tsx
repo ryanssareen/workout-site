@@ -27,10 +27,10 @@ export function DuplicateRemover({ workouts, onWorkoutsChanged }: DuplicateRemov
   const groups = detectDuplicates(workouts);
   const visibleGroups = groups.filter((_, i) => !dismissed.has(i));
 
-  const handleDelete = async (workoutId: string) => {
+  const handleDelete = async (ownerUsername: string, workoutId: string) => {
     setDeleting(prev => new Set(prev).add(workoutId));
     try {
-      await deleteWorkout(workoutId);
+      await deleteWorkout(ownerUsername, workoutId);
       toast.success('Duplicate workout removed');
       onWorkoutsChanged();
     } catch (err: any) {
@@ -51,7 +51,7 @@ export function DuplicateRemover({ workouts, onWorkoutsChanged }: DuplicateRemov
       setDeleting(prev => new Set(prev).add(w.id));
     }
     try {
-      await Promise.all(toDelete.map(w => deleteWorkout(w.id)));
+      await Promise.all(toDelete.map(w => deleteWorkout(w.ownerUsername, w.id)));
       toast.success(`Removed ${toDelete.length} duplicate(s)`);
       onWorkoutsChanged();
     } catch (err: any) {
@@ -173,7 +173,7 @@ export function DuplicateRemover({ workouts, onWorkoutsChanged }: DuplicateRemov
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDelete(w.id)}
+                        onClick={() => handleDelete(w.ownerUsername, w.id)}
                         disabled={deleting.has(w.id)}
                         className="text-red-500 hover:text-red-600 hover:bg-red-500/10 shrink-0"
                       >

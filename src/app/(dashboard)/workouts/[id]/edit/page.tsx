@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { getWorkout, updateWorkout, getCoachStudents } from '@/lib/firebase/firestore';
 import { WorkoutForm } from '@/components/workouts/WorkoutForm';
@@ -77,6 +77,7 @@ function ensureTypeData(workout: any): Record<string, any> {
 export default function EditWorkoutPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const user = useAuthStore((state) => state.user);
   const loading = useAuthStore((state) => state.loading);
   const [workout, setWorkout] = useState<Workout | null>(null);
@@ -102,25 +103,26 @@ export default function EditWorkoutPage() {
       setDataLoading(true);
       
       // Load workout
-      const workoutData = await getWorkout(params.id);
-      
+      const ownerUsername = searchParams.get('owner') || user!.username;
+      const workoutData = await getWorkout(ownerUsername, params.id);
+
       if (!workoutData) {
         toast.error('Workout not found');
         router.push('/workouts');
         return;
       }
-      
+
       // Verify ownership
       if (workoutData.createdBy !== user.uid) {
         toast.error('You can only edit your own workouts');
         router.push('/workouts');
         return;
       }
-      
+
       setWorkout(workoutData);
-      
+
       // Load students
-      const studentsList = await getCoachStudents(user.uid);
+      const studentsList = await getCoachStudents(user.username);
       setStudents(studentsList);
       
       setDataLoading(false);
@@ -129,14 +131,15 @@ export default function EditWorkoutPage() {
     if (user?.role === 'coach') {
       loadData();
     }
-  }, [user, loading, router, params.id]);
+  }, [user, loading, router, params.id, searchParams]);
 
   const handleSubmit = async (data: WorkoutSchema) => {
     if (!params.id || typeof params.id !== 'string') return;
 
     setSubmitting(true);
     try {
-      await updateWorkout(params.id, data);
+      const ownerUsername = workout?.ownerUsername || searchParams.get('owner') || user!.username;
+      await updateWorkout(ownerUsername, params.id, data);
       toast.success('Workout updated successfully');
       router.push(`/workouts/${params.id}`);
     } catch (error: any) {

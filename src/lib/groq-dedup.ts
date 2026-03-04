@@ -62,10 +62,9 @@ If no duplicates found, respond: {"duplicates":[]}`;
 /**
  * Fetch all workouts for a user, formatted for Groq analysis
  */
-async function fetchUserWorkouts(userId: string): Promise<WorkoutSummary[]> {
+async function fetchUserWorkouts(username: string): Promise<WorkoutSummary[]> {
   const snapshot = await adminDb
-    .collection('workouts')
-    .where('assignedTo', '==', userId)
+    .collection('users').doc(username).collection('workouts')
     .orderBy('date', 'desc')
     .limit(200) // Cap to keep under token limits
     .get();
@@ -221,11 +220,11 @@ function deterministicDedup(workouts: WorkoutSummary[]): DedupResult {
  * Main dedup pipeline: Groq first, deterministic fallback.
  * Returns structured result. Does NOT delete — caller decides.
  */
-export async function runDedupPipeline(userId: string): Promise<{
+export async function runDedupPipeline(username: string): Promise<{
   workouts: WorkoutSummary[];
   result: DedupResult;
 }> {
-  const workouts = await fetchUserWorkouts(userId);
+  const workouts = await fetchUserWorkouts(username);
   if (workouts.length < 2) {
     return {
       workouts,
@@ -253,12 +252,12 @@ export async function runDedupPipeline(userId: string): Promise<{
 /**
  * Execute deletions from a dedup result
  */
-export async function executeDedupDeletions(result: DedupResult): Promise<number> {
+export async function executeDedupDeletions(result: DedupResult, username: string): Promise<number> {
   if (result.deletions.length === 0) return 0;
 
   const batch = adminDb.batch();
   for (const d of result.deletions) {
-    batch.delete(adminDb.collection('workouts').doc(d.deleteId));
+    batch.delete(adminDb.collection('users').doc(username).collection('workouts').doc(d.deleteId));
   }
   await batch.commit();
   return result.deletions.length;

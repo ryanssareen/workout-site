@@ -5,7 +5,7 @@ export async function GET() {
   const snap = await adminDb.collection('users').get();
   const users = snap.docs.map(d => {
     const data = d.data();
-    return { uid: d.id, email: data.email, role: data.role, strava: !!data.stravaId };
+    return { username: d.id, email: data.email, role: data.role, strava: !!data.stravaId };
   });
   return NextResponse.json(users);
 }

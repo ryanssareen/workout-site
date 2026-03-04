@@ -7,6 +7,7 @@ interface WorkoutDoc {
   name: string;
   type: string;
   assignedTo: string;
+  ownerUsername: string;
   source?: string;
   date: any;
   duration?: number;
@@ -168,13 +169,14 @@ export async function POST(request: NextRequest) {
     const { userId } = await request.json();
     if (!userId) return NextResponse.json({ error: 'userId required' }, { status: 400 });
 
-    // Fetch all workouts for this user
-    const snapshot = await adminDb.collection('workouts')
-      .where('assignedTo', '==', userId)
+    // userId is now a username — fetch workouts from user's subcollection
+    const snapshot = await adminDb
+      .collection('users').doc(userId).collection('workouts')
       .get();
 
     const workouts: WorkoutDoc[] = snapshot.docs.map(doc => ({
       id: doc.id,
+      ownerUsername: userId,
       ...doc.data(),
     } as WorkoutDoc));
 
@@ -185,12 +187,13 @@ export async function POST(request: NextRequest) {
     const userData = userDoc.data();
     if (userData?.role === 'coach') {
       const studentsSnap = await adminDb.collection('users')
-        .where('coachId', '==', userId).get();
+        .where('coachUsername', '==', userId).get();
       for (const student of studentsSnap.docs) {
-        const studentWorkouts = await adminDb.collection('workouts')
-          .where('assignedTo', '==', student.id).get();
+        const studentWorkouts = await adminDb
+          .collection('users').doc(student.id).collection('workouts')
+          .get();
         studentWorkouts.docs.forEach(doc => {
-          workouts.push({ id: doc.id, ...doc.data() } as WorkoutDoc);
+          workouts.push({ id: doc.id, ownerUsername: student.id, ...doc.data() } as WorkoutDoc);
         });
       }
     }
@@ -209,7 +212,9 @@ export async function POST(request: NextRequest) {
 
     for (const group of dupGroups) {
       for (const dup of group.delete) {
-        batch.delete(adminDb.collection('workouts').doc(dup.id));
+        batch.delete(
+          adminDb.collection('users').doc(dup.ownerUsername).collection('workouts').doc(dup.id)
+        );
         deletedIds.push(dup.id);
       }
       groupSummaries.push(

@@ -31,7 +31,7 @@ function mapStravaType(stravaType: string): 'swim' | 'run' | 'bike' | 'strength'
   return typeMap[stravaType] || 'strength';
 }
 
-async function refreshStravaToken(userId: string, refreshToken: string): Promise<string | null> {
+async function refreshStravaToken(username: string, refreshToken: string): Promise<string | null> {
   try {
     const response = await fetch('https://www.strava.com/oauth/token', {
       method: 'POST',
@@ -48,7 +48,7 @@ async function refreshStravaToken(userId: string, refreshToken: string): Promise
 
     const data = await response.json();
 
-    await adminDb.collection('users').doc(userId).update({
+    await adminDb.collection('users').doc(username).update({
       stravaAccessToken: data.access_token,
       stravaRefreshToken: data.refresh_token,
       stravaTokenExpiresAt: data.expires_at,
@@ -62,12 +62,12 @@ async function refreshStravaToken(userId: string, refreshToken: string): Promise
   }
 }
 
-async function getAccessToken(userId: string, userData: any): Promise<string | null> {
+async function getAccessToken(username: string, userData: any): Promise<string | null> {
   let accessToken = userData.stravaAccessToken;
   const currentTime = Math.floor(Date.now() / 1000);
 
   if (userData.stravaTokenExpiresAt && userData.stravaTokenExpiresAt < currentTime) {
-    const newToken = await refreshStravaToken(userId, userData.stravaRefreshToken);
+    const newToken = await refreshStravaToken(username, userData.stravaRefreshToken);
     if (!newToken) return null;
     accessToken = newToken;
   }
@@ -76,7 +76,7 @@ async function getAccessToken(userId: string, userData: any): Promise<string | n
 }
 
 async function findMatchingWorkout(
-  userId: string,
+  username: string,
   activityDate: Date,
   activityType: 'swim' | 'run' | 'bike' | 'strength',
   stravaActivityId: string
@@ -87,9 +87,9 @@ async function findMatchingWorkout(
   const endOfDay = new Date(activityDate);
   endOfDay.setHours(23, 59, 59, 999);
 
-  // Check if already linked
+  // Check if already linked (search across all user subcollections)
   const existingLinkSnapshot = await adminDb
-    .collection('workouts')
+    .collectionGroup('workouts')
     .where('stravaActivityId', '==', stravaActivityId)
     .limit(1)
     .get();
@@ -98,10 +98,9 @@ async function findMatchingWorkout(
     return { alreadyLinked: true, workoutId: existingLinkSnapshot.docs[0].id };
   }
 
-  // Find uncompleted workouts for this day
+  // Find uncompleted workouts for this day in user's subcollection
   const workoutsSnapshot = await adminDb
-    .collection('workouts')
-    .where('assignedTo', '==', userId)
+    .collection('users').doc(username).collection('workouts')
     .where('date', '>=', admin.firestore.Timestamp.fromDate(startOfDay))
     .where('date', '<=', admin.firestore.Timestamp.fromDate(endOfDay))
     .where('completed', '==', false)
@@ -132,15 +131,15 @@ async function findMatchingWorkout(
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    const username = searchParams.get('userId'); // param name kept for backward compat, value is now username
     const activityId = searchParams.get('activityId');
 
-    if (!userId) {
+    if (!username) {
       return NextResponse.json({ error: 'userId required' }, { status: 400 });
     }
 
-    // Get user data
-    const userDoc = await adminDb.collection('users').doc(userId).get();
+    // Get user data (doc.id is now username)
+    const userDoc = await adminDb.collection('users').doc(username).get();
     if (!userDoc.exists) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
@@ -152,7 +151,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get access token
-    const accessToken = await getAccessToken(userId, userData);
+    const accessToken = await getAccessToken(username, userData);
     if (!accessToken) {
       return NextResponse.json({ error: 'Failed to get access token' }, { status: 401 });
     }
@@ -197,7 +196,7 @@ export async function GET(request: NextRequest) {
     const activityDate = new Date(activity.start_date_local);
 
     // Find matching workout
-    const match = await findMatchingWorkout(userId, activityDate, workoutType, String(activity.id));
+    const match = await findMatchingWorkout(username, activityDate, workoutType, String(activity.id));
 
     return NextResponse.json({
       activity: {
@@ -230,14 +229,14 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { userId, activityId, dryRun = false } = body;
+    const { userId: username, activityId, dryRun = false } = body; // userId value is now username
 
-    if (!userId) {
+    if (!username) {
       return NextResponse.json({ error: 'userId required' }, { status: 400 });
     }
 
-    // Get user data
-    const userDoc = await adminDb.collection('users').doc(userId).get();
+    // Get user data (doc.id is now username)
+    const userDoc = await adminDb.collection('users').doc(username).get();
     if (!userDoc.exists) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
@@ -248,7 +247,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get access token
-    const accessToken = await getAccessToken(userId, userData);
+    const accessToken = await getAccessToken(username, userData);
     if (!accessToken) {
       return NextResponse.json({ error: 'Failed to get access token' }, { status: 401 });
     }
@@ -286,7 +285,7 @@ export async function POST(request: NextRequest) {
     const activityDate = new Date(activity.start_date_local);
 
     // Find matching workout
-    const match = await findMatchingWorkout(userId, activityDate, workoutType, String(activity.id));
+    const match = await findMatchingWorkout(username, activityDate, workoutType, String(activity.id));
 
     if (match.alreadyLinked || match.noWorkouts || match.noMatch) {
       return NextResponse.json({
@@ -316,7 +315,7 @@ export async function POST(request: NextRequest) {
     if (activity.max_speed) actualStats.maxSpeed = activity.max_speed;
     if (activity.total_elevation_gain) actualStats.elevationGain = activity.total_elevation_gain;
 
-    await adminDb.collection('workouts').doc(match.workoutId).update({
+    await adminDb.collection('users').doc(username).collection('workouts').doc(match.workoutId).update({
       completed: true,
       completedAt: admin.firestore.FieldValue.serverTimestamp(),
       completionStatus: 'completed',

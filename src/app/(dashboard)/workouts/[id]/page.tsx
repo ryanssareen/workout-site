@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { getWorkout, completeWorkout } from '@/lib/firebase/firestore';
 import { Workout } from '@/types';
@@ -52,6 +52,7 @@ import {
 export default function WorkoutDetailPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const user = useAuthStore((state) => state.user);
   const loading = useAuthStore((state) => state.loading);
   const [workout, setWorkout] = useState<Workout | null>(null);
@@ -75,7 +76,8 @@ export default function WorkoutDetailPage() {
       if (!params.id || typeof params.id !== 'string') return;
 
       setDataLoading(true);
-      const data = await getWorkout(params.id);
+      const ownerUsername = searchParams.get('owner') || user!.username;
+      const data = await getWorkout(ownerUsername, params.id);
 
       if (!data) {
         toast.error('Workout not found');
@@ -90,14 +92,14 @@ export default function WorkoutDetailPage() {
     if (user) {
       loadWorkout();
     }
-  }, [user, loading, router, params.id]);
+  }, [user, loading, router, params.id, searchParams]);
 
   const handleComplete = async (notes?: string) => {
     if (!workout) return;
 
     setIsUpdating(true);
     try {
-      await completeWorkout(workout.id, true, notes);
+      await completeWorkout(workout.ownerUsername, workout.id, true, notes);
       setWorkout({
         ...workout,
         completed: true,
@@ -118,7 +120,7 @@ export default function WorkoutDetailPage() {
 
     setIsUpdating(true);
     try {
-      await completeWorkout(workout.id, false);
+      await completeWorkout(workout.ownerUsername, workout.id, false);
       setWorkout({
         ...workout,
         completed: false,
@@ -476,6 +478,7 @@ export default function WorkoutDetailPage() {
       <CommentSection
         workoutId={workout.id}
         workoutName={workout.name}
+        ownerUsername={workout.ownerUsername}
         currentUserId={user.uid}
         currentUserName={user.displayName}
         currentUserRole={user.role}

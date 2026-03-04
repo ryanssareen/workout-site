@@ -44,13 +44,13 @@ function SettingsContent() {
     }
   }, [searchParams, router]);
 
-  const handleConnectStrava = () => { setIsConnectingStrava(true); window.location.href = `/api/auth/strava/authorize?userId=${user?.uid}`; };
+  const handleConnectStrava = () => { setIsConnectingStrava(true); window.location.href = `/api/auth/strava/authorize?userId=${user?.username}`; };
 
   const handleDisconnectStrava = async () => {
     if (!user) return;
     setIsDisconnectingStrava(true);
     try {
-      const response = await fetch('/api/auth/strava/disconnect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: user.uid }) });
+      const response = await fetch('/api/auth/strava/disconnect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: user.username }) });
       if (!response.ok) throw new Error('Failed to disconnect');
       setUser({ ...user, stravaId: undefined, stravaAccessToken: undefined, stravaRefreshToken: undefined, stravaConnectedAt: undefined });
       toast.success('Strava disconnected');
@@ -65,7 +65,7 @@ function SettingsContent() {
       // First, check for duplicates (unless we already have decisions)
       if (!decisions) {
         const checkResponse = await fetch(
-          `/api/strava/sync?userId=${user.uid}&checkDuplicates=true`,
+          `/api/strava/sync?userId=${user.username}&checkDuplicates=true`,
           { headers: { 'Accept': 'application/json' } }
         );
 
@@ -102,7 +102,7 @@ function SettingsContent() {
       // Perform the actual sync with decisions
       const decisionsParam = decisions ? `&decisions=${encodeURIComponent(JSON.stringify(decisions))}` : '';
       const response = await fetch(
-        `/api/strava/sync?userId=${user.uid}${decisionsParam}`,
+        `/api/strava/sync?userId=${user.username}${decisionsParam}`,
         { headers: { 'Accept': 'application/json' } }
       );
 

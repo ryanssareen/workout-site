@@ -212,8 +212,7 @@ async function findMatchingWorkout(
   // Query for workouts assigned to this user, same type, same day
   // that are NOT from Strava and NOT completed
   const workoutsSnapshot = await adminDb
-    .collection('workouts')
-    .where('assignedTo', '==', userId)
+    .collection('users').doc(userId).collection('workouts')
     .where('type', '==', workoutType)
     .where('completed', '==', false)
     .get();
@@ -250,8 +249,7 @@ async function findDuplicatesByName(
 
     // Query for workouts assigned to this user with the same type
     const workoutsSnapshot = await adminDb
-      .collection('workouts')
-      .where('assignedTo', '==', userId)
+      .collection('users').doc(userId).collection('workouts')
       .where('type', '==', workoutType)
       .get();
 
@@ -436,8 +434,7 @@ export async function GET(request: NextRequest) {
 
     // Get existing Strava workout IDs to avoid duplicates
     const existingWorkoutsSnapshot = await adminDb
-      .collection('workouts')
-      .where('assignedTo', '==', userId)
+      .collection('users').doc(userId).collection('workouts')
       .where('source', '==', 'strava')
       .get();
 
@@ -551,7 +548,7 @@ export async function GET(request: NextRequest) {
 
       // Double-check this activity doesn't already exist (real-time check)
       const existingCheck = await adminDb
-        .collection('workouts')
+        .collection('users').doc(userId).collection('workouts')
         .where('stravaActivityId', '==', stravaId)
         .limit(1)
         .get();
@@ -592,7 +589,7 @@ export async function GET(request: NextRequest) {
         // User chose to merge with existing workout
         console.log(`  🔗 Merging: ${activity.name}`);
 
-        await adminDb.collection('workouts').doc(decision.workoutId).update({
+        await adminDb.collection('users').doc(userId).collection('workouts').doc(decision.workoutId).update({
           completed: true,
           completedAt: admin.firestore.Timestamp.fromDate(activityDate),
           completedBy: 'strava',
@@ -609,7 +606,7 @@ export async function GET(request: NextRequest) {
           // Auto-merge with date-matched workout
           console.log(`  🔗 Auto-merge: ${activity.name} → ${matchingWorkout.data.name}`);
 
-          await adminDb.collection('workouts').doc(matchingWorkout.id).update({
+          await adminDb.collection('users').doc(userId).collection('workouts').doc(matchingWorkout.id).update({
             completed: true,
             completedAt: admin.firestore.Timestamp.fromDate(activityDate),
             completedBy: 'strava',
@@ -623,8 +620,7 @@ export async function GET(request: NextRequest) {
           const thirtyMinBefore = new Date(activityDate.getTime() - 30 * 60 * 1000);
           const thirtyMinAfter = new Date(activityDate.getTime() + 30 * 60 * 1000);
           const proximitySnap = await adminDb
-            .collection('workouts')
-            .where('assignedTo', '==', userId)
+            .collection('users').doc(userId).collection('workouts')
             .where('type', '==', workoutType)
             .where('source', '==', 'strava')
             .where('date', '>=', admin.firestore.Timestamp.fromDate(thirtyMinBefore))
@@ -662,6 +658,7 @@ export async function GET(request: NextRequest) {
             description: `Imported from Strava\nDistance: ${((activity.distance || 0) / 1000).toFixed(2)} km\nMoving time: ${Math.round((activity.moving_time || 0) / 60)} min`,
             date: admin.firestore.Timestamp.fromDate(activityDate),
             duration: Math.round((activity.moving_time || 0) / 60),
+            ownerUsername: userId,
             createdBy: userId,
             assignedTo: userId,
             completed: true,
@@ -723,7 +720,7 @@ export async function GET(request: NextRequest) {
             };
           }
 
-          await adminDb.collection('workouts').doc(`strava_${stravaId}`).set(newWorkoutData);
+          await adminDb.collection('users').doc(userId).collection('workouts').doc(`strava_${stravaId}`).set(newWorkoutData);
           newWorkoutsCount++;
           }
         }
@@ -748,7 +745,7 @@ export async function GET(request: NextRequest) {
       const { result: dedupResult } = await runDedupPipeline(userId);
       if (dedupResult.duplicatesFound > 0) {
         console.log(`🗑️ Groq found ${dedupResult.duplicatesFound} duplicates — auto-deleting`);
-        const deleted = await executeDedupDeletions(dedupResult);
+        const deleted = await executeDedupDeletions(dedupResult, userId);
         console.log(`✅ Deleted ${deleted} duplicate workouts`);
         dedupInfo = { duplicatesRemoved: deleted, model: dedupResult.model };
       } else {

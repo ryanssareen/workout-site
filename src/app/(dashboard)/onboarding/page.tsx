@@ -93,7 +93,7 @@ export default function OnboardingPage() {
         updatedAt: serverTimestamp(),
       };
 
-      await updateDoc(doc(getDbInstance(), 'users', user.uid), updateData);
+      await updateDoc(doc(getDbInstance(), 'users', user.username), updateData);
 
       completingRef.current = true;
       setUser({
@@ -106,7 +106,7 @@ export default function OnboardingPage() {
       if (connectStrava) {
         // Redirect to Strava OAuth — it will come back to /settings?strava=connected
         // then user lands on dashboard
-        window.location.href = `/api/auth/strava/authorize?userId=${user.uid}`;
+        window.location.href = `/api/auth/strava/authorize?userId=${user.username}`;
         return;
       }
 

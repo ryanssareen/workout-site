@@ -10,36 +10,87 @@ import {
   browserLocalPersistence,
   browserSessionPersistence,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { getAuthInstance, getDbInstance } from './config';
 import { User, UserRole } from '@/types';
+import { getUsernameFromUid } from './userMapping';
+
+// Result type for Google Sign-In (may need username selection)
+export type GoogleSignInResult =
+  | { type: 'existing'; user: User }
+  | { type: 'needs_username'; uid: string; email: string; displayName: string; photoURL?: string };
 
 export async function createUser(
   email: string,
   password: string,
   displayName: string,
+  username: string,
   role: UserRole,
-  coachId?: string
+  coachUsername?: string
 ): Promise<User> {
   try {
     const userCredential = await createUserWithEmailAndPassword(getAuthInstance(), email, password);
     const { uid } = userCredential.user;
 
-    const userProfile: Omit<User, 'createdAt' | 'updatedAt'> & { createdAt: any; updatedAt: any; } = {
+    const userProfile: Record<string, any> = {
       uid,
+      username,
       email,
       displayName,
       role,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       onboardingCompleted: false,
-      ...(coachId ? { coachId } : {}),
     };
 
-    await setDoc(doc(getDbInstance(), 'users', uid), userProfile);
+    if (coachUsername) userProfile.coachUsername = coachUsername;
+
+    // Atomic write: user doc keyed by username + UID mapping
+    const db = getDbInstance();
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'users', username), userProfile);
+    batch.set(doc(db, 'userMappings', uid), { username });
+    await batch.commit();
+
     return userProfile as User;
   } catch (error: any) {
     throw new Error(error.message || 'Failed to create user');
+  }
+}
+
+/**
+ * Create user doc for Google Sign-In users after they pick a username.
+ */
+export async function createGoogleUser(
+  uid: string,
+  email: string,
+  displayName: string,
+  username: string,
+  photoURL?: string,
+): Promise<User> {
+  try {
+    const db = getDbInstance();
+    const userProfile: Record<string, any> = {
+      uid,
+      username,
+      email,
+      displayName,
+      role: 'athlete' as UserRole,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      onboardingCompleted: false,
+    };
+
+    if (photoURL) userProfile.photoURL = photoURL;
+
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'users', username), userProfile);
+    batch.set(doc(db, 'userMappings', uid), { username });
+    await batch.commit();
+
+    return userProfile as User;
+  } catch (error: any) {
+    throw new Error(error.message || 'Failed to create Google user');
   }
 }
 
@@ -62,41 +113,15 @@ export async function signOut(): Promise<void> {
   }
 }
 
-// Hardcoded coach config — rsareen@gmail.com auto-connects as coach to these athletes
-const AUTO_COACH_EMAIL = 'rsareen@gmail.com';
-const AUTO_COACH_ATHLETES = [
-  'rsareen+hetal@gmail.com',
-  'rsareen+rohin@gmail.com',
-  'rsareen+rupesh@gmail.com',
-];
-
 export async function getUserProfile(uid: string): Promise<User | null> {
   try {
-    const docRef = doc(getDbInstance(), 'users', uid);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      const data = docSnap.data() as User;
+    // Look up username from UID mapping
+    const username = await getUsernameFromUid(uid);
+    if (!username) return null;
 
-      // Auto-promote rsareen@gmail.com to coach
-      if (data.email === AUTO_COACH_EMAIL && data.role !== 'coach') {
-        await setDoc(docRef, { role: 'coach', updatedAt: serverTimestamp() }, { merge: true });
-        return { ...data, role: 'coach' };
-      }
-
-      // Auto-assign athletes to their coach
-      if (AUTO_COACH_ATHLETES.includes(data.email || '') && !data.coachId) {
-        const coachSnap = await getDocs(query(
-          collection(getDbInstance(), 'users'),
-          where('email', '==', AUTO_COACH_EMAIL),
-        ));
-        if (!coachSnap.empty) {
-          const coachId = coachSnap.docs[0].id;
-          await setDoc(docRef, { coachId, role: 'athlete', updatedAt: serverTimestamp() }, { merge: true });
-          return { ...data, coachId, role: 'athlete' };
-        }
-      }
-
-      return data;
+    const userDoc = await getDoc(doc(getDbInstance(), 'users', username));
+    if (userDoc.exists()) {
+      return { username: userDoc.id, ...userDoc.data() } as User;
     }
     return null;
   } catch (error) {
@@ -109,8 +134,12 @@ export function onAuthChange(callback: (user: FirebaseUser | null) => void) {
   return onAuthStateChanged(getAuthInstance(), callback);
 }
 
-// Sign in with Google
-export async function signInWithGoogle(): Promise<User> {
+/**
+ * Google Sign-In with split flow:
+ * - Existing users: returns their profile
+ * - New users: returns pending data so they can pick a username
+ */
+export async function signInWithGoogle(): Promise<GoogleSignInResult> {
   try {
     const provider = new GoogleAuthProvider();
     const result = await signInWithPopup(getAuthInstance(), provider);
@@ -120,47 +149,24 @@ export async function signInWithGoogle(): Promise<User> {
       throw new Error('Google account does not have an email address');
     }
 
-    // Check if user already exists in Firestore
-    const existingUser = await getUserProfile(uid);
-
-    if (existingUser) {
-      // User exists, just return their profile
-      console.log('✅ Existing Google user signed in:', existingUser.displayName);
-      return existingUser;
+    // Check if user already has a mapping (existing user)
+    const username = await getUsernameFromUid(uid);
+    if (username) {
+      const profile = await getUserProfile(uid);
+      if (profile) {
+        return { type: 'existing', user: profile };
+      }
     }
 
-    // New user - create profile
-    const isAutoCoach = email === AUTO_COACH_EMAIL;
-    const isAutoAthlete = AUTO_COACH_ATHLETES.includes(email);
-
-    // If auto-athlete, find coach uid
-    let autoCoachId: string | undefined;
-    if (isAutoAthlete) {
-      const coachSnap = await getDocs(query(
-        collection(getDbInstance(), 'users'),
-        where('email', '==', AUTO_COACH_EMAIL),
-      ));
-      if (!coachSnap.empty) autoCoachId = coachSnap.docs[0].id;
-    }
-
-    const userProfile: Omit<User, 'createdAt' | 'updatedAt'> & { createdAt: any; updatedAt: any; photoURL?: string; coachId?: string } = {
+    // New user — needs to choose a username
+    return {
+      type: 'needs_username',
       uid,
       email,
       displayName: displayName || email.split('@')[0],
-      role: isAutoCoach ? 'coach' : 'athlete',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      onboardingCompleted: false,
-      ...(photoURL ? { photoURL } : {}),
-      ...(autoCoachId ? { coachId: autoCoachId } : {}),
+      photoURL: photoURL || undefined,
     };
-
-    await setDoc(doc(getDbInstance(), 'users', uid), userProfile);
-    console.log('✅ New Google user created:', userProfile.displayName);
-
-    return userProfile as User;
   } catch (error: any) {
-    // Handle specific popup errors
     if (error.code === 'auth/popup-closed-by-user') {
       throw new Error('Sign-in cancelled');
     }

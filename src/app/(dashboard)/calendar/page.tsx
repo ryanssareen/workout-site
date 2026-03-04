@@ -116,12 +116,12 @@ export default function CalendarPage() {
 
   useEffect(() => {
     if (!user) return;
-    getUserWorkouts(user.uid, user.role).then(data => {
+    getUserWorkouts(user.username, user.role).then(data => {
       setWorkouts(data);
       setLoading(false);
     });
     if (isCoach) {
-      getCoachStudents(user.uid).then(data => {
+      getCoachStudents(user.username).then(data => {
         setAthletes(data.map((a: any) => ({ uid: a.uid, displayName: a.displayName || a.email || 'Unknown' })));
       });
     }
@@ -176,8 +176,8 @@ export default function CalendarPage() {
     e.preventDefault();
     e.stopPropagation();
     try {
-      await completeWorkout(workout.id, !workout.completed);
-      const data = await getUserWorkouts(user!.uid, user!.role);
+      await completeWorkout(workout.ownerUsername, workout.id, !workout.completed);
+      const data = await getUserWorkouts(user!.username, user!.role);
       setWorkouts(data);
       toast.success(workout.completed ? 'Marked incomplete' : 'Marked complete!');
     } catch (err: any) {

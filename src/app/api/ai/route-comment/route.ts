@@ -6,17 +6,17 @@ import Groq from 'groq-sdk';
 
 export async function POST(request: NextRequest) {
   try {
-    const { workoutId } = await request.json();
+    const { workoutId, ownerUsername } = await request.json();
 
-    if (!workoutId) {
-      return NextResponse.json({ error: 'workoutId required' }, { status: 400 });
+    if (!workoutId || !ownerUsername) {
+      return NextResponse.json({ error: 'workoutId and ownerUsername required' }, { status: 400 });
     }
 
     if (!process.env.GROQ_API_KEY) {
       return NextResponse.json({ error: 'GROQ_API_KEY not configured' }, { status: 500 });
     }
 
-    const doc = await adminDb.collection('workouts').doc(workoutId).get();
+    const doc = await adminDb.collection('users').doc(ownerUsername).collection('workouts').doc(workoutId).get();
     if (!doc.exists) {
       return NextResponse.json({ error: 'Workout not found' }, { status: 404 });
     }
@@ -72,7 +72,7 @@ Return ONLY a JSON object: {"comment": "your fun comment here"}`;
       : null;
 
     if (comment) {
-      await adminDb.collection('workouts').doc(workoutId).update({
+      await adminDb.collection('users').doc(ownerUsername).collection('workouts').doc(workoutId).update({
         'routeData.aiComment': comment,
       });
     }

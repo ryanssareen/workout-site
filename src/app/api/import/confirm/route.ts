@@ -3,6 +3,7 @@ import { getAdminDb } from '@/lib/firebase/admin';
 import { SerializedWorkout } from '@/lib/import/types';
 import { enrichWorkouts } from '@/lib/import/enricher';
 import * as admin from 'firebase-admin';
+import { adminResolveUsername } from '@/lib/firebase/adminUserMapping';
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,6 +20,9 @@ export async function POST(request: NextRequest) {
     }
 
     const db = getAdminDb();
+
+    // Resolve UID to username
+    const username = await adminResolveUsername(userId);
     const sessionDoc = await db.collection('importSessions').doc(sessionId).get();
 
     if (!sessionDoc.exists) {
@@ -56,7 +60,7 @@ export async function POST(request: NextRequest) {
       const batch = db.batch();
 
       for (const workout of chunk) {
-        const ref = db.collection('workouts').doc();
+        const ref = db.collection('users').doc(username).collection('workouts').doc();
         createdIds.push(ref.id);
 
         // Apply Groq enrichments (better names, descriptions, tags)
@@ -76,8 +80,9 @@ export async function POST(request: NextRequest) {
             completedBy: 'import',
           } : {}),
           source: 'import',
-          createdBy: userId,
-          assignedTo: userId,
+          ownerUsername: username,
+          createdBy: username,
+          assignedTo: username,
           assignedToName: userName || '',
           tags: enriched?.tags?.length ? enriched.tags : (workout.tags || []),
           createdAt: admin.firestore.FieldValue.serverTimestamp(),

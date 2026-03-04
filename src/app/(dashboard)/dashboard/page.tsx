@@ -77,7 +77,7 @@ export default function DashboardPage() {
   // Refresh workouts from Firestore (used by auto-sync callback)
   const refreshWorkouts = useCallback(async () => {
     if (!user) return;
-    const workoutData = await getUserWorkouts(user.uid, user.role);
+    const workoutData = await getUserWorkouts(user.username, user.role);
     setWorkouts(workoutData);
   }, [user]);
 
@@ -87,7 +87,7 @@ export default function DashboardPage() {
   useEffect(() => {
     async function loadData() {
       if (!user) return;
-      const workoutData = await getUserWorkouts(user.uid, user.role);
+      const workoutData = await getUserWorkouts(user.username, user.role);
       setWorkouts(workoutData);
       setLoading(false);
       setTimeout(() => setReady(true), 100);

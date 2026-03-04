@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 import { adminDb } from '@/lib/firebase/admin';
+import { adminResolveUsername } from '@/lib/firebase/adminUserMapping';
 
 interface StudentStats {
   name: string;
@@ -36,7 +37,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log('📊 Generating suggestions for coach:', coachId);
+    // Resolve coach UID to username
+    const coachUsername = await adminResolveUsername(coachId);
+    console.log('📊 Generating suggestions for coach:', coachUsername);
 
     // Get athletes assigned to this coach
     console.log('1️⃣ Fetching athletes...');
@@ -45,7 +48,7 @@ export async function POST(req: NextRequest) {
       // Coach sees only their athletes
       const coachAthletesSnapshot = await adminDb
         .collection('users')
-        .where('coachId', '==', coachId)
+        .where('coachUsername', '==', coachUsername)
         .get();
       allAthleteDocs = coachAthletesSnapshot.docs;
     }
@@ -64,33 +67,26 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Get workouts
-    console.log('2️⃣ Fetching workouts...');
-    let workoutsSnapshot;
-    workoutsSnapshot = await adminDb
-      .collection('workouts')
-      .where('createdBy', '==', coachId)
-      .get();
-    console.log('   Found workouts:', workoutsSnapshot.size);
-
-    // Analyze each student
-    console.log('3️⃣ Analyzing student data...');
+    // Analyze each student by querying their workout subcollections
+    console.log('2️⃣ Analyzing student data...');
     const studentStats: StudentStats[] = [];
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     for (const studentDoc of allAthleteDocs) {
       const student = studentDoc.data();
-      const studentId = studentDoc.id;
-      console.log(`   Processing student: ${student.displayName || 'Unnamed'} (${studentId})`);
+      const studentUsername = studentDoc.id;
+      console.log(`   Processing student: ${student.displayName || 'Unnamed'} (${studentUsername})`);
 
-      // Get student's workouts with proper typing
-      const studentWorkouts = workoutsSnapshot.docs
+      // Get student's workouts from subcollection
+      const studentWorkoutsSnapshot = await adminDb
+        .collection('users').doc(studentUsername).collection('workouts')
+        .get();
+      const studentWorkouts = studentWorkoutsSnapshot.docs
         .map(doc => ({
           id: doc.id,
           ...doc.data(),
-        }))
-        .filter((w: any) => w.assignedTo === studentId) as any[];
+        })) as any[];
       console.log(`     -> ${studentWorkouts.length} workouts assigned`);
 
       const recentWorkouts = studentWorkouts.filter((w: any) => {

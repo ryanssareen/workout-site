@@ -23,6 +23,7 @@ import Link from 'next/link';
 
 interface PreviewWorkout {
   id: string;
+  ownerUsername: string;
   name: string;
   type: string;
   description: string;
@@ -76,7 +77,11 @@ export function PreviewClient({ workout }: { workout: PreviewWorkout }) {
       const res = await fetch('/api/workouts/copy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workoutId: workout.id, userId: user.uid }),
+        body: JSON.stringify({
+          ownerUsername: workout.ownerUsername,
+          workoutId: workout.id,
+          userId: user.username,
+        }),
       });
       if (!res.ok) throw new Error('Failed to copy workout');
       toast.success('Workout added to your list!');

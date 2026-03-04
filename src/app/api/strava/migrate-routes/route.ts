@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
 
     // Get all Strava workouts WITHOUT routeData, limited
     const workoutsSnapshot = await adminDb
-      .collection('workouts')
+      .collectionGroup('workouts')
       .where('source', '==', 'strava')
       .limit(500) // Get more to filter
       .get();
@@ -80,13 +80,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Group by user to reuse tokens
+    // Group by user (ownerUsername) to reuse tokens
     const byUser: Record<string, any[]> = {};
     for (const doc of workoutsToUpdate) {
       const data = doc.data();
-      const userId = data.assignedTo;
-      if (!byUser[userId]) byUser[userId] = [];
-      byUser[userId].push({ id: doc.id, ...data });
+      const ownerUsername = data.ownerUsername || data.assignedTo;
+      if (!byUser[ownerUsername]) byUser[ownerUsername] = [];
+      byUser[ownerUsername].push({ id: doc.id, ref: doc.ref, ...data });
     }
 
     let updated = 0;
@@ -124,8 +124,8 @@ export async function POST(request: NextRequest) {
             
             // Mark as failed so we don't retry forever (except rate limits)
             if (response.status !== 429) {
-              await adminDb.collection('workouts').doc(workout.id).update({ 
-                routeData: { failed: true, error: response.status } 
+              await workout.ref.update({
+                routeData: { failed: true, error: response.status }
               });
             }
             
@@ -152,13 +152,13 @@ export async function POST(request: NextRequest) {
           }
 
           if (routeData.polyline) {
-            await adminDb.collection('workouts').doc(workout.id).update({ routeData });
+            await workout.ref.update({ routeData });
             updated++;
             console.log(`✅ ${workout.name}`);
           } else {
             // No GPS data for this activity
-            await adminDb.collection('workouts').doc(workout.id).update({ 
-              routeData: { noGPS: true } 
+            await workout.ref.update({
+              routeData: { noGPS: true }
             });
             console.log(`⚠️ No GPS: ${workout.name}`);
           }
@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
 
     // Count remaining (exclude processed ones)
     const remainingSnapshot = await adminDb
-      .collection('workouts')
+      .collectionGroup('workouts')
       .where('source', '==', 'strava')
       .limit(500)
       .get();
