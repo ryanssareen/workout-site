@@ -37,6 +37,8 @@ interface CalendarWorkoutCardProps {
   workout: Workout;
   /** true = mobile compact list card, false = month grid mini-pill */
   compact?: boolean;
+  /** true = ultra-compact pill for month view (emoji + name only, no stats line) */
+  micro?: boolean;
   onToggleComplete?: (e: React.MouseEvent, workout: Workout) => void;
   /** Called when the pill is clicked in month view */
   onSelect?: (workoutId: string) => void;
@@ -262,16 +264,71 @@ function CompactCard({
 }
 
 /**
- * CalendarWorkoutCard — renders as mini-pill (month grid) or compact card (mobile list).
+ * MicroPill: Ultra-compact pill for full-month view.
+ * Shows only emoji + truncated name + status icon. No second line.
+ */
+function MicroPillCard({ workout, onSelect }: { workout: Workout; onSelect?: (id: string) => void }) {
+  const cfg = TYPE_CONFIG[workout.type] || TYPE_CONFIG.other;
+  const status = getWorkoutStatus(workout);
+
+  const bgTint = status.isCompletedManual || status.isMatchedByStrava
+    ? 'bg-green-500/5'
+    : status.isStravaStandalone
+      ? 'bg-orange-500/5'
+      : status.isMissed
+        ? 'bg-red-500/5'
+        : '';
+
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelect?.(workout.id);
+      }}
+      className={cn(
+        'w-full text-left rounded border-l-2 px-1.5 py-0.5 transition-all',
+        'hover:bg-muted/60 cursor-pointer',
+        bgTint || 'bg-card/80',
+        cfg.border,
+        status.isMissed && 'opacity-50',
+      )}
+    >
+      <div className="flex items-center gap-1 min-w-0">
+        <span className="text-[10px] shrink-0">{cfg.emoji}</span>
+        <span
+          className={cn(
+            'text-[10px] font-semibold truncate flex-1',
+            status.isMissed && 'line-through text-muted-foreground',
+          )}
+        >
+          {workout.name}
+        </span>
+        {(status.isCompletedManual || status.isMatchedByStrava) && (
+          <CheckCircle2 className="h-2.5 w-2.5 text-green-500 shrink-0" />
+        )}
+        {status.isStravaStandalone && (
+          <StravaIcon className="h-2.5 w-2.5 text-[#FC4C02] shrink-0" />
+        )}
+      </div>
+    </button>
+  );
+}
+
+/**
+ * CalendarWorkoutCard — renders as micro-pill, mini-pill, or compact card.
  */
 export function CalendarWorkoutCard({
   workout,
   compact = false,
+  micro = false,
   onToggleComplete,
   onSelect,
 }: CalendarWorkoutCardProps) {
   if (compact) {
     return <CompactCard workout={workout} onToggleComplete={onToggleComplete} />;
+  }
+  if (micro) {
+    return <MicroPillCard workout={workout} onSelect={onSelect} />;
   }
   return <MiniPill workout={workout} onSelect={onSelect} />;
 }

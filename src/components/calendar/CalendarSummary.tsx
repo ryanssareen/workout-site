@@ -9,6 +9,7 @@ interface CalendarSummaryProps {
   totalDuration: number;
   totalDistance: number;
   byType: Record<string, { count: number; duration: number; distance: number }>;
+  periodLabel?: string;
 }
 
 export function CalendarSummary({
@@ -17,11 +18,22 @@ export function CalendarSummary({
   totalDuration,
   totalDistance,
   byType,
+  periodLabel,
 }: CalendarSummaryProps) {
   const completionPct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return (
     <div className="flex items-center gap-4 md:gap-6 px-4 md:px-5 py-2.5 md:py-3 rounded-xl border bg-muted/20 overflow-x-auto">
+      {/* Period label */}
+      {periodLabel && (
+        <>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0">
+            {periodLabel}
+          </span>
+          <div className="h-8 w-px bg-border shrink-0" />
+        </>
+      )}
+
       {/* Completion ring */}
       <div className="flex items-center gap-2 shrink-0">
         <div className="relative w-9 h-9 md:w-10 md:h-10">

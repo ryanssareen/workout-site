@@ -1,5 +1,8 @@
 import { Workout } from '@/types';
 
+// ── Calendar view modes ─────────────────────────────────────────────────
+export type CalendarViewMode = 'day' | 'week' | 'month' | 'year';
+
 // ── Type configuration (colors, emoji per workout type) ──────────────────
 export const TYPE_CONFIG: Record<string, { emoji: string; color: string; border: string; bg: string }> = {
   run: { emoji: '🏃', color: 'text-red-500', border: 'border-l-red-500', bg: 'bg-red-500/8' },

@@ -5,23 +5,36 @@ import { useAuthStore } from '@/lib/stores/authStore';
 import { useSearchParams } from 'next/navigation';
 import { getUserWorkouts, completeWorkout, getCoachStudents } from '@/lib/firebase/firestore';
 import { Workout } from '@/types';
+import { CalendarViewMode } from '@/components/calendar/types';
 import { useStravaAutoSync } from '@/hooks/useStravaAutoSync';
 import { Loader2 } from 'lucide-react';
 import {
   format,
   startOfWeek,
+  endOfWeek,
   addDays,
+  subDays,
   addWeeks,
   subWeeks,
+  addMonths,
+  subMonths,
+  addYears,
+  subYears,
   startOfMonth,
   endOfMonth,
+  startOfDay,
+  endOfDay,
+  startOfYear,
+  endOfYear,
   isSameDay,
 } from 'date-fns';
 import { toast } from 'sonner';
 
 // Calendar components
 import { CalendarHeader } from '@/components/calendar/CalendarHeader';
-import { CalendarMonthView } from '@/components/calendar/CalendarMonthView';
+import { CalendarWeekView } from '@/components/calendar/CalendarWeekView';
+import { CalendarFullMonthView } from '@/components/calendar/CalendarFullMonthView';
+import { CalendarYearView } from '@/components/calendar/CalendarYearView';
 import { MobileWeekStrip } from '@/components/calendar/MobileWeekStrip';
 import { CalendarDayWorkouts } from '@/components/calendar/CalendarDayWorkouts';
 import { WorkoutDetailPanel } from '@/components/calendar/WorkoutDetailPanel';
@@ -33,7 +46,10 @@ export default function CalendarPage() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Desktop: month navigation
+  // View mode
+  const [viewMode, setViewMode] = useState<CalendarViewMode>('week');
+
+  // Navigation anchor date (drives all views)
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   // Mobile: week navigation
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
@@ -106,26 +122,39 @@ export default function CalendarPage() {
     return map;
   }, [workouts, activeTypes, isCoach, selectedAthlete]);
 
-  // ── Summary computation ──────────────────────────────────────────────
+  // ── Visible date range (for summary computation) ─────────────────────
+  const visibleRange = useMemo(() => {
+    switch (viewMode) {
+      case 'day':
+        return { start: startOfDay(selectedDate), end: endOfDay(selectedDate) };
+      case 'week': {
+        const ws = startOfWeek(currentMonth, { weekStartsOn: 0 });
+        return { start: ws, end: endOfWeek(ws, { weekStartsOn: 0 }) };
+      }
+      case 'month':
+        return { start: startOfMonth(currentMonth), end: endOfMonth(currentMonth) };
+      case 'year':
+        return { start: startOfYear(currentMonth), end: endOfYear(currentMonth) };
+    }
+  }, [viewMode, currentMonth, selectedDate]);
+
+  // ── Summary computation (based on visible range) ─────────────────────
   const summary = useMemo(() => {
-    // For desktop: compute for entire visible month
-    // For mobile: compute for current week
-    // We'll compute for the current week for the summary bar (consistent with previous behavior)
-    const weekEnd = addDays(weekStart, 6);
-    const weekWorkouts = workouts.filter((w) => {
+    const rangeWorkouts = workouts.filter((w) => {
       const d = w.date.toDate();
-      if (!(d >= weekStart && d <= weekEnd && activeTypes.has(w.type))) return false;
+      if (!(d >= visibleRange.start && d <= visibleRange.end && activeTypes.has(w.type)))
+        return false;
       if (isCoach && selectedAthlete !== 'all' && w.assignedTo !== selectedAthlete) return false;
       return true;
     });
 
-    const completed = weekWorkouts.filter((w) => w.completed).length;
-    const total = weekWorkouts.length;
+    const completed = rangeWorkouts.filter((w) => w.completed).length;
+    const total = rangeWorkouts.length;
     let totalDuration = 0;
     let totalDistance = 0;
     const byType: Record<string, { count: number; duration: number; distance: number }> = {};
 
-    weekWorkouts.forEach((w) => {
+    rangeWorkouts.forEach((w) => {
       const dur = w.duration || 0;
       totalDuration += dur;
       let dist = 0;
@@ -141,9 +170,66 @@ export default function CalendarPage() {
     });
 
     return { completed, total, totalDuration, totalDistance, byType };
-  }, [workouts, weekStart, activeTypes, selectedAthlete, isCoach]);
+  }, [workouts, visibleRange, activeTypes, selectedAthlete, isCoach]);
 
-  // ── Handlers ─────────────────────────────────────────────────────────
+  // ── Period label for summary ─────────────────────────────────────────
+  const periodLabel = useMemo(() => {
+    switch (viewMode) {
+      case 'day':
+        return format(selectedDate, 'MMM d');
+      case 'week':
+        return 'This Week';
+      case 'month':
+        return format(currentMonth, 'MMMM');
+      case 'year':
+        return format(currentMonth, 'yyyy');
+    }
+  }, [viewMode, currentMonth, selectedDate]);
+
+  // ── Navigation handlers ──────────────────────────────────────────────
+  const handlePrev = () => {
+    switch (viewMode) {
+      case 'day':
+        setCurrentMonth((prev) => subDays(prev, 1));
+        setSelectedDate((prev) => subDays(prev, 1));
+        break;
+      case 'week':
+        setCurrentMonth((prev) => subWeeks(prev, 1));
+        break;
+      case 'month':
+        setCurrentMonth((prev) => subMonths(prev, 1));
+        break;
+      case 'year':
+        setCurrentMonth((prev) => subYears(prev, 1));
+        break;
+    }
+  };
+
+  const handleNext = () => {
+    switch (viewMode) {
+      case 'day':
+        setCurrentMonth((prev) => addDays(prev, 1));
+        setSelectedDate((prev) => addDays(prev, 1));
+        break;
+      case 'week':
+        setCurrentMonth((prev) => addWeeks(prev, 1));
+        break;
+      case 'month':
+        setCurrentMonth((prev) => addMonths(prev, 1));
+        break;
+      case 'year':
+        setCurrentMonth((prev) => addYears(prev, 1));
+        break;
+    }
+  };
+
+  const handleToday = () => {
+    const now = new Date();
+    setCurrentMonth(now);
+    setWeekStart(startOfWeek(now, { weekStartsOn: 1 }));
+    setSelectedDate(now);
+  };
+
   const handleToggleComplete = async (e: React.MouseEvent, workout: Workout) => {
     e.preventDefault();
     e.stopPropagation();
@@ -162,13 +248,6 @@ export default function CalendarPage() {
     if (activeTypes.has(type) && activeTypes.size > 1) next.delete(type);
     else next.add(type);
     setActiveTypes(next);
-  };
-
-  const handleToday = () => {
-    const now = new Date();
-    setCurrentMonth(now);
-    setWeekStart(startOfWeek(now, { weekStartsOn: 1 }));
-    setSelectedDate(now);
   };
 
   const handleSendReport = async () => {
@@ -191,7 +270,6 @@ export default function CalendarPage() {
   };
 
   const generateICS = () => {
-    // Export current month's workouts
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
     const monthWorkouts = workouts.filter((w) => {
@@ -241,11 +319,40 @@ export default function CalendarPage() {
     ? workouts.find((w) => w.id === selectedWorkoutId) || null
     : null;
 
-  // Workouts for selected date (mobile)
+  // Workouts for selected date (day view / mobile)
   const selectedDateWorkouts = useMemo(() => {
     const key = format(selectedDate, 'yyyy-MM-dd');
     return workoutsByDate.get(key) || [];
   }, [selectedDate, workoutsByDate]);
+
+  // ── Shared header props ────────────────────────────────────────────────
+  const headerProps = {
+    currentMonth,
+    onPrev: handlePrev,
+    onNext: handleNext,
+    onToday: handleToday,
+    viewMode,
+    onViewModeChange: setViewMode,
+    activeTypes,
+    onToggleType: handleToggleType,
+    isCoach,
+    athletes,
+    selectedAthlete,
+    onSelectAthlete: setSelectedAthlete,
+    onExport: generateICS,
+    onSendReport: handleSendReport,
+    sendingReport,
+  };
+
+  // ── Strava sync indicator ──────────────────────────────────────────────
+  const syncIndicator = syncing && (
+    <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-orange-500/20 bg-orange-500/5">
+      <Loader2 className="h-4 w-4 animate-spin text-orange-500 shrink-0" />
+      <p className="text-sm text-orange-600 dark:text-orange-400">
+        Syncing Strava workouts{syncPhaseLabel ? ` — ${syncPhaseLabel}` : ''}...
+      </p>
+    </div>
+  );
 
   // ── Loading state ────────────────────────────────────────────────────
   if (loading) {
@@ -256,108 +363,153 @@ export default function CalendarPage() {
     );
   }
 
+  // ── Render desktop view based on viewMode ────────────────────────────
+  const renderDesktopView = () => {
+    switch (viewMode) {
+      case 'day':
+        return (
+          <div className="max-w-2xl">
+            <CalendarDayWorkouts
+              date={selectedDate}
+              workouts={selectedDateWorkouts}
+              onToggleComplete={handleToggleComplete}
+            />
+          </div>
+        );
+      case 'week':
+        return (
+          <CalendarWeekView
+            currentMonth={currentMonth}
+            workoutsByDate={workoutsByDate}
+            selectedDate={selectedDate}
+            onSelectDate={(date) => {
+              setSelectedDate(date);
+              const key = format(date, 'yyyy-MM-dd');
+              const dayWorkouts = workoutsByDate.get(key) || [];
+              if (dayWorkouts.length === 1) {
+                setSelectedWorkoutId(dayWorkouts[0].id);
+              } else {
+                setSelectedWorkoutId(null);
+              }
+            }}
+            onSelectWorkout={(id) => setSelectedWorkoutId(id)}
+            activeTypes={activeTypes}
+          />
+        );
+      case 'month':
+        return (
+          <CalendarFullMonthView
+            currentMonth={currentMonth}
+            workoutsByDate={workoutsByDate}
+            selectedDate={selectedDate}
+            onSelectDate={(date) => {
+              setSelectedDate(date);
+              const key = format(date, 'yyyy-MM-dd');
+              const dayWorkouts = workoutsByDate.get(key) || [];
+              if (dayWorkouts.length === 1) {
+                setSelectedWorkoutId(dayWorkouts[0].id);
+              } else {
+                setSelectedWorkoutId(null);
+              }
+            }}
+            onSelectWorkout={(id) => setSelectedWorkoutId(id)}
+            activeTypes={activeTypes}
+          />
+        );
+      case 'year':
+        return (
+          <CalendarYearView
+            currentMonth={currentMonth}
+            workoutsByDate={workoutsByDate}
+            selectedDate={selectedDate}
+            onSelectDate={(date) => {
+              setSelectedDate(date);
+              setCurrentMonth(date);
+            }}
+            onViewModeChange={setViewMode}
+          />
+        );
+    }
+  };
+
+  // ── Render mobile view based on viewMode ─────────────────────────────
+  const renderMobileView = () => {
+    switch (viewMode) {
+      case 'day':
+      case 'week':
+        return (
+          <>
+            <MobileWeekStrip
+              weekStart={weekStart}
+              selectedDate={selectedDate}
+              onSelectDate={setSelectedDate}
+              onWeekChange={setWeekStart}
+              workoutsByDate={workoutsByDate}
+            />
+            <CalendarDayWorkouts
+              date={selectedDate}
+              workouts={selectedDateWorkouts}
+              onToggleComplete={handleToggleComplete}
+            />
+          </>
+        );
+      case 'month':
+        return (
+          <CalendarFullMonthView
+            currentMonth={currentMonth}
+            workoutsByDate={workoutsByDate}
+            selectedDate={selectedDate}
+            onSelectDate={(date) => {
+              setSelectedDate(date);
+              setViewMode('day');
+              setCurrentMonth(date);
+            }}
+            onSelectWorkout={() => {}}
+            activeTypes={activeTypes}
+          />
+        );
+      case 'year':
+        return (
+          <CalendarYearView
+            currentMonth={currentMonth}
+            workoutsByDate={workoutsByDate}
+            selectedDate={selectedDate}
+            onSelectDate={(date) => {
+              setSelectedDate(date);
+              setCurrentMonth(date);
+            }}
+            onViewModeChange={setViewMode}
+          />
+        );
+    }
+  };
+
   return (
     <div className="space-y-3">
       {/* ═══ MOBILE LAYOUT (below md:) ═══ */}
       <div className="md:hidden space-y-3">
-        <CalendarHeader
-          currentMonth={currentMonth}
-          onMonthChange={setCurrentMonth}
-          onToday={handleToday}
-          activeTypes={activeTypes}
-          onToggleType={handleToggleType}
-          isCoach={isCoach}
-          athletes={athletes}
-          selectedAthlete={selectedAthlete}
-          onSelectAthlete={setSelectedAthlete}
-          onExport={generateICS}
-          onSendReport={handleSendReport}
-          sendingReport={sendingReport}
-        />
-
-        <MobileWeekStrip
-          weekStart={weekStart}
-          selectedDate={selectedDate}
-          onSelectDate={setSelectedDate}
-          onWeekChange={setWeekStart}
-          workoutsByDate={workoutsByDate}
-        />
-
-        <CalendarSummary {...summary} />
-
-        {/* Strava sync indicator */}
-        {syncing && (
-          <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-orange-500/20 bg-orange-500/5">
-            <Loader2 className="h-4 w-4 animate-spin text-orange-500 shrink-0" />
-            <p className="text-sm text-orange-600 dark:text-orange-400">
-              Syncing Strava workouts{syncPhaseLabel ? ` — ${syncPhaseLabel}` : ''}...
-            </p>
-          </div>
-        )}
-
-        <CalendarDayWorkouts
-          date={selectedDate}
-          workouts={selectedDateWorkouts}
-          onToggleComplete={handleToggleComplete}
-        />
+        <CalendarHeader {...headerProps} />
+        <CalendarSummary {...summary} periodLabel={periodLabel} />
+        {syncIndicator}
+        {renderMobileView()}
       </div>
 
       {/* ═══ DESKTOP LAYOUT (md: and above) ═══ */}
       <div className="hidden md:block">
         <div className="space-y-3">
-          <CalendarHeader
-            currentMonth={currentMonth}
-            onMonthChange={setCurrentMonth}
-            onToday={handleToday}
-            activeTypes={activeTypes}
-            onToggleType={handleToggleType}
-            isCoach={isCoach}
-            athletes={athletes}
-            selectedAthlete={selectedAthlete}
-            onSelectAthlete={setSelectedAthlete}
-            onExport={generateICS}
-            onSendReport={handleSendReport}
-            sendingReport={sendingReport}
-          />
-
-          <CalendarSummary {...summary} />
-
-          {/* Strava sync indicator */}
-          {syncing && (
-            <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-orange-500/20 bg-orange-500/5">
-              <Loader2 className="h-4 w-4 animate-spin text-orange-500 shrink-0" />
-              <p className="text-sm text-orange-600 dark:text-orange-400">
-                Syncing Strava workouts{syncPhaseLabel ? ` — ${syncPhaseLabel}` : ''}...
-              </p>
-            </div>
-          )}
+          <CalendarHeader {...headerProps} />
+          <CalendarSummary {...summary} periodLabel={periodLabel} />
+          {syncIndicator}
         </div>
 
-        {/* Month grid + detail panel side by side */}
+        {/* View + detail panel side by side */}
         <div className="flex gap-0 mt-3">
           <div className="flex-1 min-w-0">
-            <CalendarMonthView
-              currentMonth={currentMonth}
-              workoutsByDate={workoutsByDate}
-              selectedDate={selectedDate}
-              onSelectDate={(date) => {
-                setSelectedDate(date);
-                // If there's only one workout on that day, auto-select it
-                const key = format(date, 'yyyy-MM-dd');
-                const dayWorkouts = workoutsByDate.get(key) || [];
-                if (dayWorkouts.length === 1) {
-                  setSelectedWorkoutId(dayWorkouts[0].id);
-                } else {
-                  setSelectedWorkoutId(null);
-                }
-              }}
-              onSelectWorkout={(id) => setSelectedWorkoutId(id)}
-              activeTypes={activeTypes}
-            />
+            {renderDesktopView()}
           </div>
 
-          {/* Detail panel */}
-          {selectedWorkout && (
+          {/* Detail panel (not shown in year view) */}
+          {selectedWorkout && viewMode !== 'year' && (
             <WorkoutDetailPanel
               workout={selectedWorkout}
               onClose={() => setSelectedWorkoutId(null)}
