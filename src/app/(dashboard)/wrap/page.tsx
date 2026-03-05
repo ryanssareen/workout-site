@@ -9,7 +9,6 @@ import {
   startOfWeek, endOfWeek, subWeeks, isWithinInterval, format,
 } from 'date-fns';
 import { Share2, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
 // ── Helpers ──
@@ -231,40 +230,40 @@ export default function WrapPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
+      <div className="flex items-center justify-center min-h-screen bg-black">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <p className="text-muted-foreground animate-pulse">Loading your wrap...</p>
+          <Loader2 className="h-10 w-10 animate-spin text-white" />
+          <p className="text-gray-500 animate-pulse">Loading your wrap...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-lg mx-auto space-y-6 pb-8">
+    <div className="min-h-screen bg-black flex flex-col">
       {/* Week nav */}
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" size="icon" onClick={() => setWeekOffset(o => o + 1)}>
-          <ChevronLeft className="h-5 w-5" />
-        </Button>
+      <div className="flex items-center justify-between px-4 pt-4 pb-2 max-w-lg mx-auto w-full">
+        <button onClick={() => setWeekOffset(o => o + 1)} className="p-2 rounded-full hover:bg-white/10 transition-colors">
+          <ChevronLeft className="h-5 w-5 text-gray-400" />
+        </button>
         <div className="text-center">
-          <h1 className="text-xl font-bold">Weekly Wrap</h1>
-          <p className="text-xs text-muted-foreground">{weekLabel}</p>
+          <h1 className="text-lg font-bold text-white">Weekly Wrap</h1>
+          <p className="text-xs text-gray-500">{weekLabel}</p>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
+        <button
           disabled={isCurrentWeek}
           onClick={() => setWeekOffset(o => Math.max(0, o - 1))}
+          className="p-2 rounded-full hover:bg-white/10 transition-colors disabled:opacity-30"
         >
-          <ChevronRight className="h-5 w-5" />
-        </Button>
+          <ChevronRight className="h-5 w-5 text-gray-400" />
+        </button>
       </div>
 
       {/* ── THE CAPSULE CARD ── */}
+      <div className="flex-1 flex flex-col items-center justify-center px-4 py-4 max-w-lg mx-auto w-full">
       <div
         ref={cardRef}
-        className="rounded-3xl overflow-hidden shadow-2xl"
+        className="rounded-3xl overflow-hidden shadow-2xl w-full"
         style={{ background: 'linear-gradient(145deg, #0f0f0f 0%, #1a1a2e 50%, #16213e 100%)' }}
       >
         {/* Header */}
@@ -366,6 +365,7 @@ export default function WrapPage() {
       </div>
 
       {/* Share button / panel */}
+      <div className="mt-6 w-full">
       {showShare ? (
         <ShareButtons
           title="Share Your Wrap"
@@ -376,20 +376,22 @@ export default function WrapPage() {
           onClose={() => setShowShare(false)}
         />
       ) : (
-        <Button
+        <button
           onClick={() => setShowShare(true)}
-          className="w-full gap-2 h-12 rounded-2xl text-base font-medium bg-white text-black hover:bg-gray-100"
+          className="w-full flex items-center justify-center gap-2 h-14 rounded-2xl text-base font-semibold bg-white text-black hover:bg-gray-100 transition-colors"
         >
           <Share2 className="h-5 w-5" />
           Send to friends
-        </Button>
+        </button>
       )}
+      </div>
 
       {/* Back link */}
-      <div className="text-center">
-        <Button asChild variant="link" className="text-muted-foreground text-sm">
-          <Link href="/dashboard">← Back to dashboard</Link>
-        </Button>
+      <div className="mt-4 mb-8">
+        <Link href="/dashboard" className="text-gray-600 text-sm hover:text-gray-400 transition-colors">
+          ← Back to dashboard
+        </Link>
+      </div>
       </div>
     </div>
   );
