@@ -11,7 +11,6 @@ import { Loader2 } from 'lucide-react';
 import {
   format,
   startOfWeek,
-  endOfWeek,
   addDays,
   subDays,
   addWeeks,
@@ -22,10 +21,6 @@ import {
   subYears,
   startOfMonth,
   endOfMonth,
-  startOfDay,
-  endOfDay,
-  startOfYear,
-  endOfYear,
 } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -37,7 +32,6 @@ import { CalendarYearView } from '@/components/calendar/CalendarYearView';
 import { MobileWeekStrip } from '@/components/calendar/MobileWeekStrip';
 import { CalendarDayWorkouts } from '@/components/calendar/CalendarDayWorkouts';
 import { WorkoutDetailPanel } from '@/components/calendar/WorkoutDetailPanel';
-import { CalendarSummary } from '@/components/calendar/CalendarSummary';
 
 export default function CalendarPage() {
   const user = useAuthStore((s) => s.user);
@@ -113,71 +107,6 @@ export default function CalendarPage() {
     });
     return map;
   }, [workouts, isCoach, selectedAthlete]);
-
-  // ── Visible date range (for summary computation) ─────────────────────
-  const visibleRange = useMemo(() => {
-    switch (viewMode) {
-      case 'day':
-        return { start: startOfDay(selectedDate), end: endOfDay(selectedDate) };
-      case 'week': {
-        const ws = startOfWeek(currentMonth, { weekStartsOn: 0 });
-        return { start: ws, end: endOfWeek(ws, { weekStartsOn: 0 }) };
-      }
-      case 'month':
-        return { start: startOfMonth(currentMonth), end: endOfMonth(currentMonth) };
-      case 'year':
-        return { start: startOfYear(currentMonth), end: endOfYear(currentMonth) };
-    }
-  }, [viewMode, currentMonth, selectedDate]);
-
-  // ── Summary computation (based on visible range) ─────────────────────
-  const summary = useMemo(() => {
-    const rangeWorkouts = workouts.filter((w) => {
-      const d = w.date.toDate();
-      if (!(d >= visibleRange.start && d <= visibleRange.end)) return false;
-      if (isCoach && selectedAthlete !== 'all' && w.assignedTo !== selectedAthlete) return false;
-      return true;
-    });
-
-    // Only count planned workouts (not Strava imports) for completion %
-    const plannedWorkouts = rangeWorkouts.filter((w) => w.source !== 'strava');
-    const completed = plannedWorkouts.filter((w) => w.completed).length;
-    const total = plannedWorkouts.length;
-    let totalDuration = 0;
-    let totalDistance = 0;
-    const byType: Record<string, { count: number; duration: number; distance: number }> = {};
-
-    rangeWorkouts.forEach((w) => {
-      const dur = w.duration || 0;
-      totalDuration += dur;
-      let dist = 0;
-      if (w.run?.distance) dist = w.run.distance;
-      else if (w.bike?.distance) dist = w.bike.distance;
-      else if (w.swim?.distance) dist = w.swim.distance / 1000;
-      totalDistance += dist;
-
-      if (!byType[w.type]) byType[w.type] = { count: 0, duration: 0, distance: 0 };
-      byType[w.type].count++;
-      byType[w.type].duration += dur;
-      byType[w.type].distance += dist;
-    });
-
-    return { completed, total, totalDuration, totalDistance, byType };
-  }, [workouts, visibleRange, selectedAthlete, isCoach]);
-
-  // ── Period label for summary ─────────────────────────────────────────
-  const periodLabel = useMemo(() => {
-    switch (viewMode) {
-      case 'day':
-        return format(selectedDate, 'MMM d');
-      case 'week':
-        return 'This Week';
-      case 'month':
-        return format(currentMonth, 'MMMM');
-      case 'year':
-        return format(currentMonth, 'yyyy');
-    }
-  }, [viewMode, currentMonth, selectedDate]);
 
   // ── Navigation handlers ──────────────────────────────────────────────
   const handlePrev = () => {
@@ -484,7 +413,6 @@ export default function CalendarPage() {
       {/* ═══ MOBILE LAYOUT (below md:) ═══ */}
       <div className="md:hidden space-y-3">
         <CalendarHeader {...headerProps} />
-        <CalendarSummary {...summary} periodLabel={periodLabel} />
         {syncIndicator}
         {renderMobileView()}
       </div>
@@ -493,7 +421,6 @@ export default function CalendarPage() {
       <div className="hidden md:block">
         <div className="space-y-3">
           <CalendarHeader {...headerProps} />
-          <CalendarSummary {...summary} periodLabel={periodLabel} />
           {syncIndicator}
         </div>
 
