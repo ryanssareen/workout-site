@@ -4,7 +4,6 @@ import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { getUserWorkouts } from '@/lib/firebase/firestore';
 import { Workout, WorkoutType } from '@/types';
-import { ShareButtons } from '@/components/workouts/ShareWorkoutCard';
 import {
   startOfMonth, endOfMonth, subMonths, isWithinInterval, format,
   eachDayOfInterval, isSameDay, getDay, startOfWeek, endOfWeek,
@@ -15,7 +14,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
   AreaChart, Area,
 } from 'recharts';
-import { Share2, Loader2, ChevronLeft, ChevronRight, X, TrendingUp, TrendingDown, Minus, Instagram, Calendar, Clock, Flame, MapPin } from 'lucide-react';
+import { Send, Loader2, ChevronLeft, ChevronRight, X, TrendingUp, TrendingDown, Minus, Calendar, Clock, Flame, MapPin } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/dashboard/ThemeToggle';
@@ -175,11 +174,9 @@ export default function MonthlyReviewPage() {
   const user = useAuthStore((s) => s.user);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showShare, setShowShare] = useState(false);
   const [monthOffset, setMonthOffset] = useState(0);
   const cardRef = useRef<HTMLDivElement>(null);
-  const storyRef = useRef<HTMLDivElement>(null);
-  const [generatingStory, setGeneratingStory] = useState(false);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -265,28 +262,42 @@ export default function MonthlyReviewPage() {
   const activeDays = calendarDays.filter(d => d.count > 0).length;
   const totalDays = calendarDays.length;
   const firstName = user?.displayName?.split(' ')[0] || 'Athlete';
-  const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/review` : '';
-  const shareText = `${rating.emoji} My month in review: ${totalWorkouts} workouts, ${totalDistanceKm}km, ${totalDurationHrs}hrs.\n\nTracked on The Daily Athlete`;
   const tooltipStyle = { backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--card-foreground))', fontSize: '11px', padding: '6px 10px' };
 
   const prevDistKm = Math.round(lastMonthWorkouts.reduce((s, w) => s + (w.actualStats?.distance || 0), 0) / 100) / 10;
   const prevDurMin = Math.round(lastMonthWorkouts.reduce((s, w) => { if (w.actualStats?.duration) return s + w.actualStats.duration / 60; if (w.duration) return s + w.duration; return s; }, 0));
 
-  const handleStoryExport = useCallback(async () => {
-    if (!storyRef.current) return;
-    setGeneratingStory(true);
+  const handleSend = useCallback(async () => {
+    if (!cardRef.current) return;
+    setSending(true);
     try {
-      const dataUrl = await toPng(storyRef.current, { quality: 0.95, pixelRatio: 2, width: 1080, height: 1920, style: { transform: 'scale(1)', transformOrigin: 'top left' } });
-      const link = document.createElement('a');
-      link.download = `monthly-review-story-${format(targetMonthStart, 'yyyy-MM')}.png`;
-      link.href = dataUrl;
-      link.click();
-      toast.success('Story image saved! Open Instagram and share it.', { icon: '📸', duration: 5000 });
-    } catch (err) {
-      console.error('Story export failed:', err);
-      toast.error('Failed to generate story image');
-    } finally { setGeneratingStory(false); }
-  }, [targetMonthStart]);
+      const dataUrl = await toPng(cardRef.current, { quality: 0.95, pixelRatio: 2 });
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const file = new File([blob], `monthly-review-${format(targetMonthStart, 'yyyy-MM')}.png`, { type: 'image/png' });
+
+      // Use native share sheet (opens Instagram, WhatsApp, etc. on mobile)
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `${format(targetMonthStart, 'MMMM yyyy')} Review`,
+          text: `${rating.emoji} My ${format(targetMonthStart, 'MMMM')} in review: ${totalWorkouts} workouts, ${totalDistanceKm}km, ${totalDurationHrs}hrs — The Daily Athlete`,
+        });
+      } else {
+        // Fallback: download the image
+        const link = document.createElement('a');
+        link.download = file.name;
+        link.href = dataUrl;
+        link.click();
+        toast.success('Image saved! Share it to your Instagram Story.', { icon: '📸', duration: 4000 });
+      }
+    } catch (err: any) {
+      // User cancelled share sheet — not an error
+      if (err?.name === 'AbortError') return;
+      console.error('Send failed:', err);
+      toast.error('Failed to generate image');
+    } finally { setSending(false); }
+  }, [targetMonthStart, rating.emoji, totalWorkouts, totalDistanceKm, totalDurationHrs]);
 
   if (loading) {
     return (
@@ -553,69 +564,17 @@ export default function MonthlyReviewPage() {
         )}
       </div>
 
-      {/* ═══ Sticky share bar ═══ */}
+      {/* ═══ Sticky send bar ═══ */}
       <div className="sticky bottom-0 z-20 px-4 py-2 bg-background/80 backdrop-blur-xl border-t border-border/30">
-        <div className="max-w-6xl mx-auto flex items-center gap-2">
-          {showShare ? (
-            <div className="flex-1"><ShareButtons title="Share Monthly Review" shareText={shareText} shareUrl={shareUrl} fileName={`review-${format(targetMonthStart, 'yyyy-MM')}`} cardRef={cardRef} onClose={() => setShowShare(false)} /></div>
-          ) : (
-            <>
-              <button onClick={() => setShowShare(true)} className="flex-1 flex items-center justify-center gap-2 h-10 rounded-lg text-sm font-semibold bg-foreground text-background hover:opacity-90 active:scale-[0.98] transition-all">
-                <Share2 className="h-4 w-4" /> Share
-              </button>
-              <button onClick={handleStoryExport} disabled={generatingStory}
-                className="flex items-center justify-center gap-2 h-10 px-4 rounded-lg text-sm font-semibold bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 text-white hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50">
-                {generatingStory ? <Loader2 className="h-4 w-4 animate-spin" /> : <Instagram className="h-4 w-4" />}
-                Insta Story
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* ═══ Hidden Instagram Story template ═══ */}
-      <div className="fixed -left-[9999px] top-0">
-        <div ref={storyRef} style={{ width: 1080, height: 1920, padding: 80, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: 'linear-gradient(145deg, #0f0f0f 0%, #1a0a2e 50%, #0f0f0f 100%)', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#fff' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 60 }}>
-              <div style={{ width: 56, height: 56, borderRadius: 14, background: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: 20, fontWeight: 800 }}>CT</span>
-              </div>
-              <span style={{ fontSize: 24, fontWeight: 500, color: '#888', letterSpacing: 4, textTransform: 'uppercase' as const }}>Month in Review</span>
-            </div>
-            <div style={{ fontSize: 72, fontWeight: 800, lineHeight: 1.1, marginBottom: 16 }}>
-              {format(targetMonthStart, 'MMMM')}<br /><span style={{ color: '#a855f7' }}>{format(targetMonthStart, 'yyyy')}</span>
-            </div>
-            <div style={{ fontSize: 36, color: '#aaa' }}>This was <span style={{ color: '#fff', fontWeight: 700 }}>{rating.word}</span> {rating.emoji}</div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-            <div style={{ display: 'flex', gap: 24 }}>
-              {[{ l: 'WORKOUTS', v: String(totalWorkouts) }, { l: 'DISTANCE', v: `${totalDistanceKm}km` }, { l: 'TIME', v: `${totalDurationHrs}h` }, { l: 'ACTIVE', v: `${activeDays}d` }].map(s => (
-                <div key={s.l} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', borderRadius: 20, padding: '28px 20px', textAlign: 'center' as const }}>
-                  <div style={{ fontSize: 56, fontWeight: 800 }}>{s.v}</div>
-                  <div style={{ fontSize: 18, color: '#888', marginTop: 8, letterSpacing: 2 }}>{s.l}</div>
-                </div>
-              ))}
-            </div>
-            {sportStats.slice(0, 3).map(stat => (
-              <div key={stat.type} style={{ display: 'flex', alignItems: 'center', gap: 20, background: 'rgba(255,255,255,0.04)', borderRadius: 16, padding: '20px 24px' }}>
-                <span style={{ fontSize: 48 }}>{TYPE_EMOJI[stat.type]}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 32, fontWeight: 700 }}><span style={{ color: TYPE_COLOR[stat.type] }}>{TYPE_LABEL[stat.type]} {stat.distanceKm > 0 ? `${stat.distanceKm}km` : stat.durationMin > 0 ? `${stat.durationMin}min` : `${stat.count}x`}</span></div>
-                  <div style={{ fontSize: 20, color: '#888' }}>{stat.count} sessions</div>
-                </div>
-              </div>
-            ))}
-            {highlight && (
-              <div style={{ background: 'rgba(168,85,247,0.1)', borderRadius: 16, padding: '24px 28px', border: '1px solid rgba(168,85,247,0.2)' }}>
-                <div style={{ fontSize: 28, fontWeight: 600 }}>{highlight.emoji} {highlight.label}</div>
-                <div style={{ fontSize: 20, color: '#aaa', marginTop: 8 }}>{highlight.detail}</div>
-              </div>
-            )}
-          </div>
-          <div style={{ textAlign: 'center' as const }}>
-            <div style={{ fontSize: 22, color: '#555', letterSpacing: 3 }}>THE DAILY ATHLETE</div>
-          </div>
+        <div className="max-w-6xl mx-auto">
+          <button
+            onClick={handleSend}
+            disabled={sending}
+            className="w-full flex items-center justify-center gap-2 h-11 rounded-xl text-sm font-semibold bg-foreground text-background hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
+          >
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            Send
+          </button>
         </div>
       </div>
     </div>
