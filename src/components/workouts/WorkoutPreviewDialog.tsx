@@ -48,6 +48,7 @@ export function WorkoutPreviewDialog({ open, onClose, onConfirm, data, athleteNa
     if (typeData.time) stats.push({ label: 'Duration', value: `${typeData.time} min` });
     if (typeData.pace) stats.push({ label: 'Target Pace', value: `${typeData.pace} /km` });
     if (typeData.terrain) stats.push({ label: 'Terrain', value: typeData.terrain });
+    if (typeData.elevationGain) stats.push({ label: 'Elevation', value: `${typeData.elevationGain}m` });
   } else if (data.type === 'swim' && typeData) {
     if (typeData.distance) stats.push({ label: 'Distance', value: `${typeData.distance} m` });
     if (typeData.time) stats.push({ label: 'Duration', value: `${typeData.time} min` });
@@ -57,11 +58,15 @@ export function WorkoutPreviewDialog({ open, onClose, onConfirm, data, athleteNa
     if (typeData.distance) stats.push({ label: 'Distance', value: `${typeData.distance} ${typeData.distanceUnit || 'km'}` });
     if (typeData.time) stats.push({ label: 'Duration', value: `${typeData.time} min` });
     if (typeData.terrain) stats.push({ label: 'Terrain', value: typeData.terrain });
+    if (typeData.elevationGain) stats.push({ label: 'Elevation', value: `${typeData.elevationGain}m` });
   } else if (data.type === 'strength' && typeData) {
-    if (typeData.exercises) stats.push({ label: 'Exercises', value: String(typeData.exercises) });
-    if (typeData.sets) stats.push({ label: 'Sets', value: String(typeData.sets) });
-    if (typeData.reps) stats.push({ label: 'Reps', value: String(typeData.reps) });
-    if (typeData.duration) stats.push({ label: 'Duration', value: `${typeData.duration} min` });
+    if (Array.isArray(typeData.exercises) && typeData.exercises.length > 0) {
+      stats.push({ label: 'Exercises', value: `${typeData.exercises.length} exercises` });
+      const totalSets = typeData.exercises.reduce((s: number, e: any) => s + (e.sets || 0), 0);
+      if (totalSets > 0) stats.push({ label: 'Total Sets', value: String(totalSets) });
+    }
+    if (typeData.totalTime) stats.push({ label: 'Duration', value: `${typeData.totalTime} min` });
+    if (typeData.rpe) stats.push({ label: 'RPE', value: `${typeData.rpe}/10` });
   }
 
   return (
@@ -107,6 +112,21 @@ export function WorkoutPreviewDialog({ open, onClose, onConfirm, data, athleteNa
             <div className="rounded-xl border bg-card p-4">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Details</p>
               {stats.map(s => <StatRow key={s.label} label={s.label} value={s.value} />)}
+            </div>
+          )}
+
+          {/* Strength Exercises List */}
+          {data.type === 'strength' && typeData?.exercises && Array.isArray(typeData.exercises) && typeData.exercises.length > 0 && (
+            <div className="rounded-xl border bg-card p-4">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Exercises</p>
+              {typeData.exercises.map((ex: any, i: number) => (
+                <div key={i} className="flex justify-between py-1.5 border-b border-border/50 last:border-0">
+                  <span className="text-sm font-medium">{ex.name}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {ex.sets}×{ex.reps}{ex.weight ? ` @ ${ex.weight}${ex.weightUnit || 'kg'}` : ''}
+                  </span>
+                </div>
+              ))}
             </div>
           )}
 
