@@ -61,38 +61,35 @@ function ShareButtons({ title, shareText, shareUrl, fileName, cardRef, onClose, 
   const generateImage = useCallback(async (): Promise<string | null> => {
     if (!cardRef.current) return null;
     setIsGenerating(true);
-    try {
-      // Try up to 3 times — html-to-image can be flaky on first attempt
-      for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-          return await toPng(cardRef.current, {
-            quality: 0.95,
-            pixelRatio: 2,
-            cacheBust: true,
-            skipFonts: true,
-            includeQueryParams: true,
-            imagePlaceholder: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-            ...(captureBg ? { backgroundColor: captureBg } : {}),
-            filter: (node: HTMLElement) => {
-              // Skip cross-origin images that cause CORS failures
-              if (node.tagName === 'IMG') {
-                const src = (node as HTMLImageElement).src || '';
-                if (src && !src.startsWith('data:') && !src.startsWith(window.location.origin)) return false;
-              }
-              return true;
-            },
-          });
-        } catch {
-          if (attempt === 2) throw new Error('Image generation failed after retries');
-          await new Promise(r => setTimeout(r, 300));
-        }
+
+    // Hide cross-origin images before capture to prevent CORS errors
+    const imgs = cardRef.current.querySelectorAll('img');
+    const hidden: { el: HTMLImageElement; display: string }[] = [];
+    imgs.forEach((img) => {
+      const src = img.src || '';
+      if (src && !src.startsWith('data:') && !src.startsWith(window.location.origin) && !src.startsWith('blob:')) {
+        hidden.push({ el: img, display: img.style.display });
+        img.style.display = 'none';
       }
-      return null;
+    });
+
+    try {
+      const result = await toPng(cardRef.current, {
+        quality: 0.95,
+        pixelRatio: 2,
+        cacheBust: true,
+        skipFonts: true,
+        imagePlaceholder: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        ...(captureBg ? { backgroundColor: captureBg } : {}),
+      });
+      return result;
     } catch (err) {
       console.error('Failed to generate image:', err);
       toast.error('Failed to generate share image');
       return null;
     } finally {
+      // Restore hidden images
+      hidden.forEach(({ el, display }) => { el.style.display = display; });
       setIsGenerating(false);
     }
   }, [cardRef, captureBg]);
