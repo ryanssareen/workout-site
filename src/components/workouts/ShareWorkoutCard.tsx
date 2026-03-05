@@ -3,7 +3,7 @@
 import { useRef, useState, useCallback } from 'react';
 import { toPng } from 'html-to-image';
 import { format } from 'date-fns';
-import { Share2, Download, Send, Copy, Check, X } from 'lucide-react';
+import { Share2, Download, Copy, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -119,46 +119,38 @@ function ShareButtons({ title, shareText, shareUrl, fileName, cardRef, onClose, 
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
   };
 
-  const handleIMessage = () => {
-    window.open(`sms:&body=${encodeURIComponent(shareText + '\n' + shareUrl)}`, '_blank');
+  const handleInstagramStory = async () => {
+    // Save image + copy caption in background
+    const dataUrl = await generateImage();
+    if (dataUrl) {
+      const dl = document.createElement('a');
+      dl.download = `${fileName}.png`;
+      dl.href = dataUrl;
+      dl.click();
+    }
+    const caption = `${shareText}\n\n${shareUrl}`;
+    try { await navigator.clipboard.writeText(caption); } catch { /* ignore */ }
+
+    // Open Instagram — app on mobile, website on desktop
+    window.location.href = 'https://www.instagram.com/';
   };
 
-  const handleInstagramStory = async () => {
+  const handleIMessageShare = async () => {
+    // Try sharing the image via native share (works great on iOS for iMessage)
     const dataUrl = await generateImage();
     if (!dataUrl) return;
     try {
       const blob = await (await fetch(dataUrl)).blob();
       const file = new File([blob], `${fileName}.png`, { type: 'image/png' });
       if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title, text: shareText });
-      } else {
-        // Fallback: download so user can manually add to story
-        const link = document.createElement('a');
-        link.download = file.name;
-        link.href = dataUrl;
-        link.click();
-        toast.success('Image saved — open Instagram and add to your Story', { icon: '📸', duration: 4000 });
+        await navigator.share({ files: [file] });
+        return;
       }
     } catch (err: any) {
-      if (err?.name === 'AbortError') return; // user cancelled
-      console.error('Instagram share failed:', err);
-      toast.error('Failed to share');
+      if (err?.name === 'AbortError') return;
     }
-  };
-
-  const handleNativeShare = async () => {
-    const dataUrl = await generateImage();
-    if (navigator.share && dataUrl) {
-      try {
-        const blob = await (await fetch(dataUrl)).blob();
-        const file = new File([blob], `${fileName}.png`, { type: 'image/png' });
-        await navigator.share({ title, text: shareText, files: [file] });
-      } catch {
-        try { await navigator.share({ title, text: shareText, url: shareUrl }); } catch { /* cancelled */ }
-      }
-    } else if (navigator.share) {
-      try { await navigator.share({ title, text: shareText, url: shareUrl }); } catch { /* cancelled */ }
-    }
+    // Fallback to sms: link
+    window.open(`sms:&body=${encodeURIComponent(shareText + '\n' + shareUrl)}`, '_blank');
   };
 
   return (
@@ -205,7 +197,7 @@ function ShareButtons({ title, shareText, shareUrl, fileName, cardRef, onClose, 
             <span className="text-[10px] font-medium">X</span>
           </button>
           {/* iMessage */}
-          <button onClick={handleIMessage}
+          <button onClick={handleIMessageShare}
             className="flex flex-col items-center gap-2 p-3 rounded-xl bg-[#34C759]/10 hover:bg-[#34C759]/20 border border-[#34C759]/20 transition-all group">
             <div className="w-11 h-11 rounded-full bg-[#34C759] flex items-center justify-center shadow-lg shadow-[#34C759]/30 group-hover:scale-110 transition-transform">
               <IMessageIcon className="h-5 w-5 text-white" />
@@ -225,12 +217,6 @@ function ShareButtons({ title, shareText, shareUrl, fileName, cardRef, onClose, 
             {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
             {copied ? 'Copied!' : 'Copy Link'}
           </Button>
-          {typeof navigator !== 'undefined' && 'share' in navigator && (
-            <Button variant="outline" size="sm" onClick={handleNativeShare} className="gap-2">
-              <Send className="h-4 w-4" />
-              More
-            </Button>
-          )}
         </div>
       </div>
     </div>

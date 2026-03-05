@@ -166,8 +166,19 @@ export async function generateMetadata({ params }: WrappedPageProps): Promise<Me
     return { title: '2025 Wrapped | The Daily Athlete' };
   }
 
+  // Quick stats for description
+  const year = 2025;
+  const yearWorkouts = data.workouts.filter(w => new Date(w.date).getFullYear() === year);
+  const count = yearWorkouts.length;
+  let distKm = 0;
+  for (const w of yearWorkouts) {
+    const d = w.actualStats?.distance || w.stravaData?.distance || 0;
+    if (d > 0) distKm += d;
+  }
+  distKm = Math.round(distKm > 100 ? distKm / 1000 : distKm); // normalize if meters
+
   const title = `${data.displayName}'s 2025 Wrapped | The Daily Athlete`;
-  const description = `Check out ${data.displayName}'s 2025 year in review on The Daily Athlete.`;
+  const description = `${data.displayName} crushed ${count} workouts${distKm > 0 ? ` and ${distKm.toLocaleString()}km` : ''} in 2025. Check out the full breakdown!`;
 
   return {
     title,
@@ -179,7 +190,7 @@ export async function generateMetadata({ params }: WrappedPageProps): Promise<Me
       siteName: 'The Daily Athlete',
     },
     twitter: {
-      card: 'summary',
+      card: 'summary_large_image',
       title,
       description,
     },

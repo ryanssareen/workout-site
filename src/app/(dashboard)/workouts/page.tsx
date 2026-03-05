@@ -120,22 +120,22 @@ function WorkoutRow({ workout }: { workout: Workout }) {
             </>
           )}
         </div>
-        {/* Garmin-style extra stat chips */}
-        {extraStats.length > 0 && (
-          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-            {extraStats.map((chip, i) => (
-              <span
-                key={i}
-                className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground bg-muted/50 rounded-md px-1.5 py-0.5"
-              >
-                {chip.icon}
-                <span className="font-semibold text-foreground/60">{chip.value}</span>
-                {chip.label && <span className="text-muted-foreground/60">{chip.label}</span>}
-              </span>
-            ))}
-          </div>
-        )}
       </div>
+      {/* Garmin-style extra stat chips — right side */}
+      {extraStats.length > 0 && (
+        <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+          {extraStats.map((chip, i) => (
+            <span
+              key={i}
+              className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground bg-muted/50 rounded-md px-1.5 py-0.5"
+            >
+              {chip.icon}
+              <span className="font-semibold text-foreground/60">{chip.value}</span>
+              {chip.label && <span className="text-muted-foreground/60">{chip.label}</span>}
+            </span>
+          ))}
+        </div>
+      )}
       <div className="shrink-0">
         {workout.completed ? (
           <CheckCircle2 className={cn('h-4.5 w-4.5', isLate ? 'text-amber-500' : 'text-green-500')} />
