@@ -10,7 +10,7 @@ import Link from 'next/link';
 import {
   Calendar, TrendingUp, Target, Zap,
   CheckCircle2, Clock, UserCircle, Flame, BarChart3,
-  Plus, Activity, Trophy, ChevronRight, Gift, X,
+  Plus, Activity, Trophy, ChevronRight, Gift, X, CalendarRange,
 } from 'lucide-react';
 import { format, startOfWeek, endOfWeek, subWeeks, isWithinInterval, differenceInDays, isSameDay, subDays, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -503,6 +503,22 @@ export default function DashboardPage() {
                   <p className="text-[10px] text-muted-foreground">Your week&apos;s capsule</p>
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground/40 ml-auto group-hover:text-red-500 transition-colors" />
+              </div>
+            </Card>
+          </Link>
+
+          {/* Monthly Review CTA */}
+          <Link href="/review" className="block">
+            <Card className="p-4 hover:border-blue-500/30 transition-all group cursor-pointer bg-gradient-to-br from-card to-blue-500/[0.03]">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+                  <CalendarRange className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold group-hover:text-blue-500 transition-colors">Monthly Review</p>
+                  <p className="text-[10px] text-muted-foreground">Your month in review</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground/40 ml-auto group-hover:text-blue-500 transition-colors" />
               </div>
             </Card>
           </Link>
