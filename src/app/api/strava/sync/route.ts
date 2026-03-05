@@ -346,96 +346,87 @@ export async function GET(request: NextRequest) {
       console.log('✅ Token refreshed');
     }
 
-    // Calculate time range based on period parameter
+    // Calculate time range based on period parameter or explicit 'after' date
     const PERIOD_DAYS: Record<string, number> = {
       '2days': 2, 'week': 7, 'month': 30, '2months': 60, '6months': 180, 'year': 365,
     };
-    const periodDays = (period && PERIOD_DAYS[period]) || 365;
-    const afterTimestamp = Math.floor(Date.now() / 1000) - (periodDays * 24 * 60 * 60);
-    console.log(`📡 Fetching activities from the last ${period || 'year'} (${periodDays} days)...`);
+    const afterParam = searchParams.get('after'); // ISO date string e.g. '2025-01-01'
+    let afterTimestamp: number;
+    if (afterParam) {
+      afterTimestamp = Math.floor(new Date(afterParam).getTime() / 1000);
+      console.log(`📡 Fetching activities after ${afterParam}...`);
+    } else {
+      const periodDays = (period && PERIOD_DAYS[period]) || 365;
+      afterTimestamp = Math.floor(Date.now() / 1000) - (periodDays * 24 * 60 * 60);
+      console.log(`📡 Fetching activities from the last ${period || 'year'} (${periodDays} days)...`);
+    }
 
-    let activitiesResponse = await fetch(
-      `https://www.strava.com/api/v3/athlete/activities?after=${afterTimestamp}&per_page=200`,
-      {
-        headers: { Authorization: `Bearer ${accessToken}` },
+    // Fetch activities with pagination (Strava max 200 per page)
+    async function fetchAllActivities(token: string): Promise<{ activities: any[] | null; error?: Response }> {
+      const all: any[] = [];
+      let page = 1;
+      while (true) {
+        const resp = await fetch(
+          `https://www.strava.com/api/v3/athlete/activities?after=${afterTimestamp}&per_page=200&page=${page}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!resp.ok) {
+          if (page === 1) return { activities: null, error: resp };
+          break; // stop paginating on later page errors
+        }
+        const data = await resp.json();
+        if (!Array.isArray(data) || data.length === 0) break;
+        all.push(...data);
+        if (data.length < 200) break;
+        page++;
       }
-    );
+      return { activities: all };
+    }
+
+    let result = await fetchAllActivities(accessToken);
 
     // Handle authorization errors with token refresh and retry
-    if (!activitiesResponse.ok && (activitiesResponse.status === 401 || activitiesResponse.status === 403)) {
-      const errorData = await activitiesResponse.json().catch(() => ({ message: 'Authorization Error' }));
-      console.error('❌ Strava API authorization error:', {
-        status: activitiesResponse.status,
-        error: errorData
-      });
+    if (!result.activities && result.error && (result.error.status === 401 || result.error.status === 403)) {
+      const errorData = await result.error.json().catch(() => ({ message: 'Authorization Error' }));
+      console.error('❌ Strava API authorization error:', { status: result.error.status, error: errorData });
 
-      // Token is invalid or revoked - try to refresh it
       console.log('🔄 Authorization failed, attempting token refresh...');
       const newToken = await refreshStravaToken(userId, userData.stravaRefreshToken);
 
       if (!newToken) {
         console.error('❌ Token refresh failed - user needs to reconnect');
         return NextResponse.json(
-          {
-            error: 'Strava authorization failed. Please disconnect and reconnect your Strava account.',
-            needsReconnect: true
-          },
+          { error: 'Strava authorization failed. Please disconnect and reconnect your Strava account.', needsReconnect: true },
           { status: 401 }
         );
       }
 
-      // Retry with new token
       console.log('✅ Token refreshed, retrying request...');
-      activitiesResponse = await fetch(
-        `https://www.strava.com/api/v3/athlete/activities?after=${afterTimestamp}&per_page=200`,
-        {
-          headers: { Authorization: `Bearer ${newToken}` },
-        }
-      );
+      result = await fetchAllActivities(newToken);
 
-      if (!activitiesResponse.ok) {
-        const retryErrorData = await activitiesResponse.json().catch(() => ({ message: 'Unknown error' }));
+      if (!result.activities) {
+        const retryErrorData = result.error ? await result.error.json().catch(() => ({ message: 'Unknown error' })) : {};
         console.error('❌ Retry failed:', retryErrorData);
         return NextResponse.json(
-          {
-            error: 'Strava authorization failed after token refresh. Please disconnect and reconnect your Strava account.',
-            needsReconnect: true
-          },
+          { error: 'Strava authorization failed after token refresh. Please disconnect and reconnect your Strava account.', needsReconnect: true },
           { status: 401 }
         );
       }
-
       console.log('✅ Successfully retried after token refresh');
     }
 
     // Handle other errors
-    if (!activitiesResponse.ok) {
-      const errorData = await activitiesResponse.json().catch(() => ({ message: 'Unknown error' }));
-      console.error('❌ Strava API error:', {
-        status: activitiesResponse.status,
-        statusText: activitiesResponse.statusText,
-        error: errorData
-      });
+    if (!result.activities && result.error) {
+      const errorData = await result.error.json().catch(() => ({ message: 'Unknown error' }));
+      console.error('❌ Strava API error:', { status: result.error.status, error: errorData });
       return NextResponse.json(
-        {
-          error: `Failed to fetch Strava activities: ${errorData.message || 'Unknown error'}`,
-          details: errorData
-        },
+        { error: `Failed to fetch Strava activities: ${errorData.message || 'Unknown error'}`, details: errorData },
         { status: 500 }
       );
     }
 
-    const activities = await activitiesResponse.json();
-
-    if (!Array.isArray(activities)) {
-      console.error('❌ Unexpected Strava response format:', activities);
-      return NextResponse.json(
-        { error: 'Unexpected response from Strava. Please try again.' },
-        { status: 502 }
-      );
-    }
-
-    console.log(`✅ Fetched ${activities.length} activities from last ${period || 'year'}`);
+    const activities = result.activities || [];
+    console.log(`✅ Fetched ${activities.length} activities`);
 
     // Get existing Strava workout IDs to avoid duplicates
     const existingWorkoutsSnapshot = await adminDb
