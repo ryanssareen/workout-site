@@ -265,7 +265,7 @@ export default function YearlyWrappedPage() {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-black">
+      <div className="dark min-h-screen flex items-center justify-center bg-black">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-red-500" />
           <p className="text-red-400/60 animate-pulse text-sm">Loading your year...</p>
@@ -298,9 +298,9 @@ export default function YearlyWrappedPage() {
   );
 
   return (
-    <div className="fixed inset-0 bg-black text-white overflow-hidden">
+    <div className="dark min-h-screen bg-black text-white relative">
       {/* Top bar */}
-      <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3">
+      <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-black/80 backdrop-blur-xl">
         <Link href="/dashboard" className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors">
           <X className="h-5 w-5 text-white/60" />
         </Link>
@@ -313,19 +313,11 @@ export default function YearlyWrappedPage() {
         <div className="w-9" />
       </div>
 
-      {/* Click zones for navigation */}
-      {!isFirst && (
-        <button onClick={goPrev} className="absolute left-0 top-16 bottom-20 w-1/4 z-20" aria-label="Previous" />
-      )}
-      {!isLast && guessSubmitted && (
-        <button onClick={goNext} className="absolute right-0 top-16 bottom-20 w-1/4 z-20" aria-label="Next" />
-      )}
-
       {/* Slide content */}
       <div
         ref={cardRef}
         className={cn(
-          'h-full flex flex-col justify-center px-6 sm:px-12 md:px-20 pt-16 pb-24 transition-all duration-500',
+          'min-h-[calc(100vh-120px)] flex flex-col justify-center px-6 sm:px-12 md:px-20 py-8 transition-all duration-500',
           animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4',
         )}
       >
@@ -727,7 +719,7 @@ export default function YearlyWrappedPage() {
       </div>
 
       {/* Bottom bar */}
-      <div className="absolute bottom-0 left-0 right-0 z-30 px-4 pb-6 pt-3 bg-gradient-to-t from-black via-black/80 to-transparent">
+      <div className="sticky bottom-0 z-30 px-4 pb-6 pt-3 bg-gradient-to-t from-black via-black/80 to-transparent">
         {progressBar}
 
         {/* Nav buttons or share */}

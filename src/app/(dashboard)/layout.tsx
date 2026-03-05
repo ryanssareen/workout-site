@@ -53,11 +53,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isCalendar = pathname === '/calendar';
   const isWrap = pathname === '/wrap';
   const isReview = pathname === '/review';
+  const isWrapped = pathname === '/wrapped';
   const isOnboardingPage = pathname === '/onboarding';
   const isWide = isReports || isCalendar;
 
-  // Wrap & Review get their own immersive full-screen layout
-  if (isWrap || isReview) {
+  // Wrap, Review & Wrapped get their own immersive full-screen layout
+  if (isWrap || isReview || isWrapped) {
     return (
       <div className="min-h-screen bg-background text-foreground">
         {children}
