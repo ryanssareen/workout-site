@@ -9,11 +9,13 @@ import { AIWorkoutSuggestions } from '@/components/workouts/AIWorkoutSuggestions
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { Plus, ListChecks, Loader2, CheckCircle2, Circle, AlertCircle, Heart, Mountain, Flame, Gauge, Zap } from 'lucide-react';
+import { Plus, ListChecks, Loader2, CheckCircle2, Circle, AlertCircle, Heart, Mountain, Flame, Gauge, Zap, Calendar, History, CalendarClock } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { TYPE_CONFIG, getTypeData, formatDur } from '@/components/calendar/types';
-import { format, isPast, isToday } from 'date-fns';
+import { format, isPast, isToday, isFuture, startOfDay } from 'date-fns';
+
+type TimeFilter = 'all' | 'planned' | 'past';
 
 const FILTER_OPTIONS: { value: WorkoutType | 'all'; label: string; emoji?: string }[] = [
   { value: 'all', label: 'All' },
@@ -156,48 +158,61 @@ function WorkoutsContent() {
   const [loading, setLoading] = useState(true);
   const [ready, setReady] = useState(false);
   const [activeFilter, setActiveFilter] = useState<WorkoutType | 'all'>('all');
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
 
   const loadWorkouts = useCallback(async () => {
     if (!user) return;
     const data = await getUserWorkouts(user.username, user.role);
-    // Filter out future workouts — those only show in calendar
-    const now = new Date();
-    now.setHours(23, 59, 59, 999);
-    setWorkouts(data.filter(w => {
-      try {
-        const d = w.date?.toDate?.() ?? new Date(w.date as any);
-        return d <= now;
-      } catch {
-        return true; // Show workouts with invalid dates rather than hiding them
-      }
-    }));
+    setWorkouts(data);
     setLoading(false);
     setTimeout(() => setReady(true), 120);
   }, [user]);
 
   useEffect(() => { loadWorkouts(); }, [loadWorkouts]);
 
-  // Filtered workouts
+  // Helper: get workout date
+  const getDate = (w: Workout) => {
+    try { return w.date?.toDate?.() ?? new Date(w.date as any); }
+    catch { return new Date(); }
+  };
+
+  // Time filter
+  const today = startOfDay(new Date());
+  const timeFiltered = workouts.filter(w => {
+    if (timeFilter === 'all') return true;
+    const d = getDate(w);
+    if (timeFilter === 'planned') return d >= today && !w.completed;
+    return d < today || w.completed; // past
+  });
+
+  // Type filter
   const filteredWorkouts = activeFilter === 'all'
-    ? workouts
-    : workouts.filter(w => w.type === activeFilter);
+    ? timeFiltered
+    : timeFiltered.filter(w => w.type === activeFilter);
 
-  // Sorted by date descending
-  const sortedWorkouts = [...filteredWorkouts].sort(
-    (a, b) => {
-      const da = a.date?.toDate?.() ?? new Date(a.date as any);
-      const db = b.date?.toDate?.() ?? new Date(b.date as any);
-      return db.getTime() - da.getTime();
-    }
-  );
+  // Sorted: planned = ascending (soonest first), past/all = descending (newest first)
+  const sortedWorkouts = [...filteredWorkouts].sort((a, b) => {
+    const da = getDate(a);
+    const db = getDate(b);
+    return timeFilter === 'planned'
+      ? da.getTime() - db.getTime()
+      : db.getTime() - da.getTime();
+  });
 
-  // Counts per type
-  const workoutCounts: Record<string, number> = { all: workouts.length };
+  // Counts per type (based on time-filtered set)
+  const workoutCounts: Record<string, number> = { all: timeFiltered.length };
   for (const cat of FILTER_OPTIONS) {
     if (cat.value !== 'all') {
-      workoutCounts[cat.value] = workouts.filter(w => w.type === cat.value).length;
+      workoutCounts[cat.value] = timeFiltered.filter(w => w.type === cat.value).length;
     }
   }
+
+  // Counts per time filter
+  const timeCounts: Record<TimeFilter, number> = {
+    all: workouts.length,
+    planned: workouts.filter(w => getDate(w) >= today && !w.completed).length,
+    past: workouts.filter(w => getDate(w) < today || w.completed).length,
+  };
 
   const canManageWorkouts = user?.role === 'coach' || ((user?.role === 'athlete' || user?.role === 'student') && !user?.coachUsername);
 
@@ -239,7 +254,36 @@ function WorkoutsContent() {
         )}
       </div>
 
-      {/* Filter Tags */}
+      {/* Time Filter Tabs */}
+      <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/50 border w-fit">
+        {([
+          { value: 'planned' as TimeFilter, label: 'Planned', icon: <CalendarClock className="h-3.5 w-3.5" /> },
+          { value: 'past' as TimeFilter, label: 'Past', icon: <History className="h-3.5 w-3.5" /> },
+          { value: 'all' as TimeFilter, label: 'All', icon: <Calendar className="h-3.5 w-3.5" /> },
+        ]).map((tab) => (
+          <button
+            key={tab.value}
+            onClick={() => setTimeFilter(tab.value)}
+            className={cn(
+              'flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all',
+              timeFilter === tab.value
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {tab.icon}
+            {tab.label}
+            <span className={cn(
+              'text-xs tabular-nums',
+              timeFilter === tab.value ? 'text-foreground/50' : 'text-muted-foreground/50',
+            )}>
+              {timeCounts[tab.value]}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Type Filter Tags */}
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
         {FILTER_OPTIONS.map((opt) => (
           <button
