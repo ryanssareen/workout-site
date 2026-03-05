@@ -17,21 +17,37 @@ const MAX_RETRIES = 1;
 
 function buildFallback(logicOutput: LogicOutput): EnhancedWorkout[] {
   const { plan, athlete } = logicOutput;
-  return plan.map((p) => ({
-    ...p,
-    name: `${p.intensity.charAt(0).toUpperCase() + p.intensity.slice(1)} ${p.type.charAt(0).toUpperCase() + p.type.slice(1)} Session`,
-    description: `${athlete.deload ? '[DELOAD] ' : ''}A ${p.intensity} ${p.type} session focused on ${p.focus}.${athlete.phase !== 'general' ? ` (${athlete.phase} phase${athlete.weeksOut ? `, ${athlete.weeksOut}w to event` : ''})` : ''}`,
-    rationale: '',
-    benefits: [],
-    tags: [p.intensity],
-    warmup: '',
-    mainSet: '',
-    cooldown: '',
-    sessionType: p.focus,
-    aiModified: false,
-    changesCount: 0,
-    loadDeltaPercent: 0,
-  }));
+  return plan.map((p) => {
+    const capIntensity = p.intensity.charAt(0).toUpperCase() + p.intensity.slice(1);
+    const capType = p.type.charAt(0).toUpperCase() + p.type.slice(1);
+    const capFocus = p.focus.charAt(0).toUpperCase() + p.focus.slice(1);
+
+    // Build basic warmup/mainSet/cooldown per type
+    const warmup = p.type === 'strength'
+      ? '5-10 min light cardio, dynamic stretches'
+      : `10 min easy ${p.type}, dynamic stretches`;
+    const cooldown = p.type === 'strength'
+      ? '5 min light cardio, static stretches'
+      : `5-10 min easy ${p.type}, static stretching`;
+    const mainDur = Math.max(p.durationMin - 15, 10);
+    const mainSet = `${mainDur} min ${p.intensity} ${p.focus}`;
+
+    return {
+      ...p,
+      name: `${capIntensity} ${capType} — ${capFocus}`,
+      description: `${athlete.deload ? '[DELOAD] ' : ''}A ${p.intensity} ${p.type} session focused on ${p.focus}. ${p.durationMin} minutes total.${athlete.phase !== 'general' ? ` (${athlete.phase} phase${athlete.weeksOut ? `, ${athlete.weeksOut}w to event` : ''})` : ''}`,
+      rationale: `Planned based on your training history and ${athlete.phase} phase.`,
+      benefits: [`Develops ${p.focus}`, `Maintains ${p.type} fitness`],
+      tags: [p.intensity],
+      warmup,
+      mainSet,
+      cooldown,
+      sessionType: p.focus,
+      aiModified: false,
+      changesCount: 0,
+      loadDeltaPercent: 0,
+    };
+  });
 }
 
 /* ── Build GROQ prompt ────────────────────────────────────────────────── */
@@ -267,7 +283,7 @@ export async function POST(request: NextRequest) {
             { role: 'user', content: userMsg },
           ],
           temperature: attempt === 0 ? 0.7 : 0.4, // lower temp on retry
-          max_tokens: 3000,
+          max_tokens: 8000,
           response_format: { type: 'json_object' },
         });
 
