@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { format, startOfWeek, endOfWeek, subWeeks, isWithinInterval, differenceInDays, isSameDay, subDays, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { ProgressRing } from '@/components/dashboard/stats/ProgressRing';
 import { cn } from '@/lib/utils';
 import { useStravaAutoSync } from '@/hooks/useStravaAutoSync';
 import { ProfileCompletionBar } from '@/components/dashboard/ProfileCompletionBar';
@@ -119,7 +118,6 @@ export default function DashboardPage() {
   const showWrapBanner = lastWeekWorkouts.length > 0 && !wrapBannerDismissed;
 
   const completedCount = workouts.filter(w => w.completed).length;
-  const completionRate = workouts.length > 0 ? Math.round((completedCount / workouts.length) * 100) : 0;
   const streak = useMemo(() => calculateStreak(workouts), [workouts]);
 
   const upcomingWorkouts = workouts
@@ -280,13 +278,15 @@ export default function DashboardPage() {
           </div>
         </Card>
 
-        {/* Completion Rate */}
+        {/* Total Workouts */}
         <Card className="p-4 hover:border-red-500/20 transition-all">
           <div className="flex items-center gap-3">
-            <ProgressRing progress={completionRate} size="sm" strokeWidth={4} />
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-sm">
+              <Activity className="h-5 w-5 text-white" />
+            </div>
             <div>
-              <p className="text-2xl font-bold leading-none">{completionRate}%</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Completion rate</p>
+              <p className="text-2xl font-bold leading-none">{workouts.length}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Total workouts</p>
             </div>
           </div>
         </Card>
