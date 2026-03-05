@@ -17,6 +17,7 @@ import {
 } from 'recharts';
 import { Share2, Loader2, ChevronLeft, ChevronRight, X, TrendingUp, TrendingDown, Minus, Instagram, Calendar, Clock, Flame, MapPin } from 'lucide-react';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/dashboard/ThemeToggle';
 import { toPng } from 'html-to-image';
 import { toast } from 'sonner';
@@ -118,46 +119,51 @@ function pctChange(curr: number, prev: number): { text: string; positive: boolea
 function ActivityCalendar({ days, monthStart }: { days: { date: Date; count: number }[]; monthStart: Date }) {
   const firstDayOfWeek = getDay(monthStart); // 0=Sun
   const blanks = Array.from({ length: firstDayOfWeek });
+  const today = new Date();
+
   return (
     <div>
-      <div className="grid grid-cols-7 gap-1 mb-1">
+      {/* Day-of-week headers */}
+      <div className="grid grid-cols-7 gap-px mb-1">
         {DAY_LABELS.map((d, i) => (
-          <div key={i} className="text-[9px] text-muted-foreground/50 text-center font-medium">{d}</div>
+          <div key={i} className="text-[10px] text-muted-foreground/60 text-center font-semibold py-1">{d}</div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-1">
-        {blanks.map((_, i) => <div key={`b-${i}`} className="aspect-square" />)}
-        {days.map((d, i) => {
-          const intensity = d.count === 0 ? 0 : d.count === 1 ? 1 : d.count === 2 ? 2 : 3;
-          const bg = intensity === 0
-            ? 'bg-muted/30'
-            : intensity === 1
-              ? 'bg-emerald-500/30'
-              : intensity === 2
-                ? 'bg-emerald-500/60'
-                : 'bg-emerald-500';
+      {/* Calendar grid */}
+      <div className="grid grid-cols-7 gap-px">
+        {blanks.map((_, i) => <div key={`b-${i}`} className="h-9" />)}
+        {days.map((d) => {
+          const isToday = isSameDay(d.date, today);
+          const active = d.count > 0;
           return (
             <div
-              key={i}
-              className={`aspect-square rounded-[3px] ${bg} transition-colors relative group`}
+              key={format(d.date, 'd')}
+              className={cn(
+                'h-9 flex flex-col items-center justify-center rounded-lg relative transition-colors',
+                active
+                  ? 'bg-emerald-500/15'
+                  : 'bg-transparent',
+                isToday && 'ring-1 ring-primary/50',
+              )}
               title={`${format(d.date, 'MMM d')}: ${d.count} workout${d.count !== 1 ? 's' : ''}`}
             >
-              {d.count > 0 && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-[8px] font-bold text-white/80">{d.count}</span>
+              <span className={cn(
+                'text-xs font-semibold leading-none',
+                active ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground/60',
+                isToday && 'text-primary',
+              )}>
+                {format(d.date, 'd')}
+              </span>
+              {active && (
+                <div className="flex items-center gap-0.5 mt-0.5">
+                  {Array.from({ length: Math.min(d.count, 3) }).map((_, i) => (
+                    <div key={i} className="w-1 h-1 rounded-full bg-emerald-500" />
+                  ))}
                 </div>
               )}
             </div>
           );
         })}
-      </div>
-      <div className="flex items-center gap-1.5 mt-2 justify-end">
-        <span className="text-[8px] text-muted-foreground/50">Less</span>
-        <div className="w-2.5 h-2.5 rounded-[2px] bg-muted/30" />
-        <div className="w-2.5 h-2.5 rounded-[2px] bg-emerald-500/30" />
-        <div className="w-2.5 h-2.5 rounded-[2px] bg-emerald-500/60" />
-        <div className="w-2.5 h-2.5 rounded-[2px] bg-emerald-500" />
-        <span className="text-[8px] text-muted-foreground/50">More</span>
       </div>
     </div>
   );
