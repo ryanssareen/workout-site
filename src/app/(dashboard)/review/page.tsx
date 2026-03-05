@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { getUserWorkouts } from '@/lib/firebase/firestore';
 import { Workout, WorkoutType } from '@/types';
@@ -14,12 +14,11 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
   AreaChart, Area,
 } from 'recharts';
-import { Send, Loader2, ChevronLeft, ChevronRight, X, TrendingUp, TrendingDown, Minus, Calendar, Clock, Flame, MapPin } from 'lucide-react';
+import { ShareButtons } from '@/components/workouts/ShareWorkoutCard';
+import { Share2, Loader2, ChevronLeft, ChevronRight, X, TrendingUp, TrendingDown, Minus, Calendar, Clock, Flame, MapPin } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/dashboard/ThemeToggle';
-import { toPng } from 'html-to-image';
-import { toast } from 'sonner';
 
 // ── Constants ──
 
@@ -176,7 +175,7 @@ export default function MonthlyReviewPage() {
   const [loading, setLoading] = useState(true);
   const [monthOffset, setMonthOffset] = useState(0);
   const cardRef = useRef<HTMLDivElement>(null);
-  const [sending, setSending] = useState(false);
+  const [showShare, setShowShare] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -262,42 +261,12 @@ export default function MonthlyReviewPage() {
   const activeDays = calendarDays.filter(d => d.count > 0).length;
   const totalDays = calendarDays.length;
   const firstName = user?.displayName?.split(' ')[0] || 'Athlete';
+  const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/review` : '';
+  const shareText = `${rating.emoji} My ${format(targetMonthStart, 'MMMM')} in review: ${totalWorkouts} workouts, ${totalDistanceKm}km, ${totalDurationHrs}hrs — The Daily Athlete`;
   const tooltipStyle = { backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--card-foreground))', fontSize: '11px', padding: '6px 10px' };
 
   const prevDistKm = Math.round(lastMonthWorkouts.reduce((s, w) => s + (w.actualStats?.distance || 0), 0) / 100) / 10;
   const prevDurMin = Math.round(lastMonthWorkouts.reduce((s, w) => { if (w.actualStats?.duration) return s + w.actualStats.duration / 60; if (w.duration) return s + w.duration; return s; }, 0));
-
-  const handleSend = useCallback(async () => {
-    if (!cardRef.current) return;
-    setSending(true);
-    try {
-      const dataUrl = await toPng(cardRef.current, { quality: 0.95, pixelRatio: 2 });
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
-      const file = new File([blob], `monthly-review-${format(targetMonthStart, 'yyyy-MM')}.png`, { type: 'image/png' });
-
-      // Use native share sheet (opens Instagram, WhatsApp, etc. on mobile)
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: `${format(targetMonthStart, 'MMMM yyyy')} Review`,
-          text: `${rating.emoji} My ${format(targetMonthStart, 'MMMM')} in review: ${totalWorkouts} workouts, ${totalDistanceKm}km, ${totalDurationHrs}hrs — The Daily Athlete`,
-        });
-      } else {
-        // Fallback: download the image
-        const link = document.createElement('a');
-        link.download = file.name;
-        link.href = dataUrl;
-        link.click();
-        toast.success('Image saved! Share it to your Instagram Story.', { icon: '📸', duration: 4000 });
-      }
-    } catch (err: any) {
-      // User cancelled share sheet — not an error
-      if (err?.name === 'AbortError') return;
-      console.error('Send failed:', err);
-      toast.error('Failed to generate image');
-    } finally { setSending(false); }
-  }, [targetMonthStart, rating.emoji, totalWorkouts, totalDistanceKm, totalDurationHrs]);
 
   if (loading) {
     return (
@@ -564,17 +533,27 @@ export default function MonthlyReviewPage() {
         )}
       </div>
 
-      {/* ═══ Sticky send bar ═══ */}
+      {/* ═══ Share ═══ */}
       <div className="sticky bottom-0 z-20 px-4 py-2 bg-background/80 backdrop-blur-xl border-t border-border/30">
         <div className="max-w-6xl mx-auto">
-          <button
-            onClick={handleSend}
-            disabled={sending}
-            className="w-full flex items-center justify-center gap-2 h-11 rounded-xl text-sm font-semibold bg-foreground text-background hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
-          >
-            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Send
-          </button>
+          {showShare ? (
+            <ShareButtons
+              title={`${format(targetMonthStart, 'MMMM yyyy')} Review`}
+              shareText={shareText}
+              shareUrl={shareUrl}
+              fileName={`monthly-review-${format(targetMonthStart, 'yyyy-MM')}`}
+              cardRef={cardRef}
+              onClose={() => setShowShare(false)}
+            />
+          ) : (
+            <button
+              onClick={() => setShowShare(true)}
+              className="w-full flex items-center justify-center gap-2 h-11 rounded-xl text-sm font-semibold bg-foreground text-background hover:opacity-90 active:scale-[0.98] transition-all"
+            >
+              <Share2 className="h-4 w-4" />
+              Share
+            </button>
+          )}
         </div>
       </div>
     </div>

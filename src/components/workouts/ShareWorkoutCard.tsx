@@ -33,6 +33,14 @@ function IMessageIcon({ className }: { className?: string }) {
   );
 }
 
+function InstagramIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
+    </svg>
+  );
+}
+
 // ── Share Buttons Component (reusable) ──
 
 interface ShareButtonsProps {
@@ -42,9 +50,11 @@ interface ShareButtonsProps {
   fileName: string;
   cardRef: React.RefObject<HTMLDivElement | null>;
   onClose: () => void;
+  /** Override the background color for the captured image. Defaults to '#0a0a0a'. */
+  captureBg?: string;
 }
 
-function ShareButtons({ title, shareText, shareUrl, fileName, cardRef, onClose }: ShareButtonsProps) {
+function ShareButtons({ title, shareText, shareUrl, fileName, cardRef, onClose, captureBg }: ShareButtonsProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -52,7 +62,7 @@ function ShareButtons({ title, shareText, shareUrl, fileName, cardRef, onClose }
     if (!cardRef.current) return null;
     setIsGenerating(true);
     try {
-      return await toPng(cardRef.current, { quality: 0.95, pixelRatio: 2, backgroundColor: '#0a0a0a' });
+      return await toPng(cardRef.current, { quality: 0.95, pixelRatio: 2, ...(captureBg ? { backgroundColor: captureBg } : {}) });
     } catch (err) {
       console.error('Failed to generate image:', err);
       toast.error('Failed to generate share image');
@@ -60,7 +70,7 @@ function ShareButtons({ title, shareText, shareUrl, fileName, cardRef, onClose }
     } finally {
       setIsGenerating(false);
     }
-  }, [cardRef]);
+  }, [cardRef, captureBg]);
 
   const handleDownload = async () => {
     const dataUrl = await generateImage();
@@ -89,6 +99,29 @@ function ShareButtons({ title, shareText, shareUrl, fileName, cardRef, onClose }
 
   const handleIMessage = () => {
     window.open(`sms:&body=${encodeURIComponent(shareText + '\n' + shareUrl)}`, '_blank');
+  };
+
+  const handleInstagramStory = async () => {
+    const dataUrl = await generateImage();
+    if (!dataUrl) return;
+    try {
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], `${fileName}.png`, { type: 'image/png' });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title, text: shareText });
+      } else {
+        // Fallback: download so user can manually add to story
+        const link = document.createElement('a');
+        link.download = file.name;
+        link.href = dataUrl;
+        link.click();
+        toast.success('Image saved — open Instagram and add to your Story', { icon: '📸', duration: 4000 });
+      }
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return; // user cancelled
+      console.error('Instagram share failed:', err);
+      toast.error('Failed to share');
+    }
   };
 
   const handleNativeShare = async () => {
@@ -124,30 +157,38 @@ function ShareButtons({ title, shareText, shareUrl, fileName, cardRef, onClose }
       {/* Share targets — big icon buttons */}
       <div className="p-5 space-y-4">
         <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Share to</p>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-4 gap-2">
+          {/* Instagram Story */}
+          <button onClick={handleInstagramStory} disabled={isGenerating}
+            className="flex flex-col items-center gap-2 p-3 rounded-xl bg-gradient-to-br from-purple-500/10 via-pink-500/10 to-orange-500/10 hover:from-purple-500/20 hover:via-pink-500/20 hover:to-orange-500/20 border border-pink-500/20 transition-all group">
+            <div className="w-11 h-11 rounded-full bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 flex items-center justify-center shadow-lg shadow-pink-500/30 group-hover:scale-110 transition-transform">
+              <InstagramIcon className="h-5 w-5 text-white" />
+            </div>
+            <span className="text-[10px] font-medium">Story</span>
+          </button>
           {/* WhatsApp */}
           <button onClick={handleWhatsApp}
-            className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-[#25D366]/10 hover:bg-[#25D366]/20 border border-[#25D366]/20 transition-all group">
-            <div className="w-12 h-12 rounded-full bg-[#25D366] flex items-center justify-center shadow-lg shadow-[#25D366]/30 group-hover:scale-110 transition-transform">
-              <WhatsAppIcon className="h-6 w-6 text-white" />
+            className="flex flex-col items-center gap-2 p-3 rounded-xl bg-[#25D366]/10 hover:bg-[#25D366]/20 border border-[#25D366]/20 transition-all group">
+            <div className="w-11 h-11 rounded-full bg-[#25D366] flex items-center justify-center shadow-lg shadow-[#25D366]/30 group-hover:scale-110 transition-transform">
+              <WhatsAppIcon className="h-5 w-5 text-white" />
             </div>
-            <span className="text-xs font-medium">WhatsApp</span>
+            <span className="text-[10px] font-medium">WhatsApp</span>
           </button>
           {/* X / Twitter */}
           <button onClick={handleTwitter}
-            className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-foreground/5 hover:bg-foreground/10 border border-foreground/10 transition-all group">
-            <div className="w-12 h-12 rounded-full bg-foreground flex items-center justify-center shadow-lg shadow-foreground/20 group-hover:scale-110 transition-transform">
-              <XIcon className="h-5 w-5 text-background" />
+            className="flex flex-col items-center gap-2 p-3 rounded-xl bg-foreground/5 hover:bg-foreground/10 border border-foreground/10 transition-all group">
+            <div className="w-11 h-11 rounded-full bg-foreground flex items-center justify-center shadow-lg shadow-foreground/20 group-hover:scale-110 transition-transform">
+              <XIcon className="h-4.5 w-4.5 text-background" />
             </div>
-            <span className="text-xs font-medium">X / Twitter</span>
+            <span className="text-[10px] font-medium">X</span>
           </button>
           {/* iMessage */}
           <button onClick={handleIMessage}
-            className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-[#34C759]/10 hover:bg-[#34C759]/20 border border-[#34C759]/20 transition-all group">
-            <div className="w-12 h-12 rounded-full bg-[#34C759] flex items-center justify-center shadow-lg shadow-[#34C759]/30 group-hover:scale-110 transition-transform">
-              <IMessageIcon className="h-6 w-6 text-white" />
+            className="flex flex-col items-center gap-2 p-3 rounded-xl bg-[#34C759]/10 hover:bg-[#34C759]/20 border border-[#34C759]/20 transition-all group">
+            <div className="w-11 h-11 rounded-full bg-[#34C759] flex items-center justify-center shadow-lg shadow-[#34C759]/30 group-hover:scale-110 transition-transform">
+              <IMessageIcon className="h-5 w-5 text-white" />
             </div>
-            <span className="text-xs font-medium">iMessage</span>
+            <span className="text-[10px] font-medium">iMessage</span>
           </button>
         </div>
 
