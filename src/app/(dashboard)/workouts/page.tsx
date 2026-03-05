@@ -254,6 +254,25 @@ function WorkoutsContent() {
         )}
       </div>
 
+      {/* AI Workout Suggestions - coaches and self-training athletes (no coach) */}
+      {user && (user.role === 'coach' || !user.coachUsername) && (
+        <AIWorkoutSuggestions
+          userId={user.uid}
+          recentWorkouts={workouts}
+          athleteProfile={{
+            sportPreferences: user.sportPreferences,
+            fitnessGoals: user.fitnessGoals,
+            trainingFor: user.trainingFor,
+            experienceLevel: user.experienceLevel,
+            ageRange: user.ageRange,
+            eventDate: user.eventDate,
+            weeklyAvailability: user.weeklyAvailability,
+            bio: user.bio,
+            timezone: user.timezone,
+          }}
+        />
+      )}
+
       {/* Time Filter Tabs */}
       <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/50 border w-fit">
         {([
@@ -331,24 +350,6 @@ function WorkoutsContent() {
         )}
       </div>
 
-      {/* AI Workout Suggestions - coaches and self-training athletes (no coach) */}
-      {user && (user.role === 'coach' || !user.coachUsername) && (
-        <AIWorkoutSuggestions
-          userId={user.uid}
-          recentWorkouts={workouts}
-          athleteProfile={{
-            sportPreferences: user.sportPreferences,
-            fitnessGoals: user.fitnessGoals,
-            trainingFor: user.trainingFor,
-            experienceLevel: user.experienceLevel,
-            ageRange: user.ageRange,
-            eventDate: user.eventDate,
-            weeklyAvailability: user.weeklyAvailability,
-            bio: user.bio,
-            timezone: user.timezone,
-          }}
-        />
-      )}
     </div>
   );
 }
