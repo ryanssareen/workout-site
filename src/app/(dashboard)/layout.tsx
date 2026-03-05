@@ -58,7 +58,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Wrap gets its own immersive full-screen layout
   if (isWrap) {
     return (
-      <div className="min-h-screen bg-black text-white">
+      <div className="min-h-screen bg-background text-foreground">
         {children}
       </div>
     );

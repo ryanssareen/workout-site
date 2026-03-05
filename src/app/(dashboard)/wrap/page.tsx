@@ -204,63 +204,62 @@ export default function WrapPage() {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-black">
+      <div className="fixed inset-0 flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-10 w-10 animate-spin text-white" />
-          <p className="text-gray-500 animate-pulse">Loading your wrap...</p>
+          <Loader2 className="h-10 w-10 animate-spin text-foreground" />
+          <p className="text-muted-foreground animate-pulse">Loading your wrap...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 bg-black overflow-y-auto">
+    <div className="fixed inset-0 bg-background overflow-y-auto">
       {/* Top bar */}
-      <div className="sticky top-0 z-20 flex items-center justify-between px-5 py-3 bg-black/80 backdrop-blur-xl">
-        <Link href="/dashboard" className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors">
-          <X className="h-5 w-5 text-gray-400" />
+      <div className="sticky top-0 z-20 flex items-center justify-between px-5 py-3 bg-background/80 backdrop-blur-xl">
+        <Link href="/dashboard" className="p-2 -ml-2 rounded-full hover:bg-muted transition-colors">
+          <X className="h-5 w-5 text-muted-foreground" />
         </Link>
         <div className="flex items-center gap-2">
-          <button onClick={() => setWeekOffset(o => o + 1)} className="p-2 rounded-full hover:bg-white/10 transition-colors">
-            <ChevronLeft className="h-4 w-4 text-gray-400" />
+          <button onClick={() => setWeekOffset(o => o + 1)} className="p-2 rounded-full hover:bg-muted transition-colors">
+            <ChevronLeft className="h-4 w-4 text-muted-foreground" />
           </button>
-          <span className="text-xs text-gray-500 min-w-[140px] text-center">{weekLabel}</span>
+          <span className="text-xs text-muted-foreground min-w-[140px] text-center">{weekLabel}</span>
           <button disabled={isCurrentWeek} onClick={() => setWeekOffset(o => Math.max(0, o - 1))}
-            className="p-2 rounded-full hover:bg-white/10 transition-colors disabled:opacity-20">
-            <ChevronRight className="h-4 w-4 text-gray-400" />
+            className="p-2 rounded-full hover:bg-muted transition-colors disabled:opacity-20">
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
           </button>
         </div>
         <ThemeToggle />
       </div>
 
       {/* Full-screen capsule content */}
-      <div ref={cardRef} className="min-h-[calc(100vh-60px)] flex flex-col justify-center px-6 sm:px-10 md:px-16 lg:px-24 py-10"
-        style={{ background: 'linear-gradient(165deg, #0a0a0a 0%, #0f1729 40%, #1a1a2e 70%, #16213e 100%)' }}>
+      <div ref={cardRef} className="min-h-[calc(100vh-60px)] flex flex-col justify-center px-6 sm:px-10 md:px-16 lg:px-24 py-10">
 
         {/* Brand */}
         <div className="flex items-center gap-2.5 mb-10">
           <div className="w-9 h-9 rounded-xl bg-red-600 flex items-center justify-center">
             <span className="text-white font-bold text-sm">CT</span>
           </div>
-          <span className="text-gray-500 text-sm font-medium tracking-widest uppercase">
+          <span className="text-muted-foreground text-sm font-medium tracking-widest uppercase">
             Your Week&apos;s Capsule
           </span>
         </div>
 
         {/* Greeting */}
-        <h1 className="text-white text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-2">
+        <h1 className="text-foreground text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-2">
           Dear {firstName},
         </h1>
-        <p className="text-gray-400 text-xl sm:text-2xl mb-12">
-          this week was <span className="text-white font-semibold">{rating.word}</span> {rating.emoji}
+        <p className="text-muted-foreground text-xl sm:text-2xl mb-12">
+          this week was <span className="text-foreground font-semibold">{rating.word}</span> {rating.emoji}
         </p>
 
         {/* Sport stats */}
         <div className="space-y-6 mb-12">
           {sportStats.length === 0 ? (
             <div className="py-12">
-              <p className="text-gray-500 text-lg">No workouts logged this week.</p>
-              <p className="text-gray-700 text-base mt-2">Next week is a fresh start!</p>
+              <p className="text-muted-foreground text-lg">No workouts logged this week.</p>
+              <p className="text-muted-foreground/60 text-base mt-2">Next week is a fresh start!</p>
             </div>
           ) : (
             sportStats.map(stat => {
@@ -282,14 +281,14 @@ export default function WrapPage() {
                 <div key={stat.type} className="flex items-start gap-4">
                   <span className="text-3xl sm:text-4xl mt-1">{TYPE_EMOJI[stat.type]}</span>
                   <div>
-                    <p className="text-white text-xl sm:text-2xl">
+                    <p className="text-foreground text-xl sm:text-2xl">
                       You{' '}
                       <span style={{ color: TYPE_COLOR[stat.type] }} className="font-bold">
                         {TYPE_LABEL[stat.type] || 'trained'} {mainMetric}
                       </span>
                     </p>
                     {compVal && (
-                      <p className={`text-base mt-1 ${isPositive ? 'text-emerald-400' : 'text-gray-500'}`}>
+                      <p className={`text-base mt-1 ${isPositive ? 'text-emerald-400' : 'text-muted-foreground'}`}>
                         {isPositive ? '↑' : '↓'} {compVal}
                       </p>
                     )}
@@ -302,8 +301,7 @@ export default function WrapPage() {
 
         {/* Highlight */}
         {highlight && (
-          <div className="rounded-2xl overflow-hidden mb-12 max-w-2xl"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="rounded-2xl overflow-hidden mb-12 max-w-2xl bg-muted/30 border border-border/40">
             {highlight.photo && (
               <div className="h-48 sm:h-64 overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -311,19 +309,19 @@ export default function WrapPage() {
               </div>
             )}
             <div className="p-6">
-              <p className="text-gray-500 text-xs uppercase tracking-widest font-medium mb-3">
+              <p className="text-muted-foreground text-xs uppercase tracking-widest font-medium mb-3">
                 This week&apos;s highlight
               </p>
-              <p className="text-white text-xl sm:text-2xl font-medium">
+              <p className="text-foreground text-xl sm:text-2xl font-medium">
                 {highlight.emoji} {highlight.label}
               </p>
-              <p className="text-gray-500 text-base mt-2">{highlight.detail}</p>
+              <p className="text-muted-foreground text-base mt-2">{highlight.detail}</p>
             </div>
           </div>
         )}
 
         {/* Footer stats */}
-        <div className="flex items-center gap-4 text-sm text-gray-600">
+        <div className="flex items-center gap-4 text-sm text-muted-foreground/60">
           <span>{thisWeekWorkouts.length} workout{thisWeekWorkouts.length !== 1 ? 's' : ''}</span>
           <span>·</span>
           <span>{thisWeekWorkouts.filter(w => w.completed).length} completed</span>
@@ -333,7 +331,7 @@ export default function WrapPage() {
       </div>
 
       {/* Sticky share bar */}
-      <div className="sticky bottom-0 z-20 p-4 bg-black/80 backdrop-blur-xl border-t border-white/5">
+      <div className="sticky bottom-0 z-20 p-4 bg-background/80 backdrop-blur-xl border-t border-border/30">
         <div className="max-w-lg mx-auto">
           {showShare ? (
             <ShareButtons
@@ -347,7 +345,7 @@ export default function WrapPage() {
           ) : (
             <button
               onClick={() => setShowShare(true)}
-              className="w-full flex items-center justify-center gap-2.5 h-14 rounded-2xl text-base font-semibold bg-white text-black hover:bg-gray-100 active:scale-[0.98] transition-all"
+              className="w-full flex items-center justify-center gap-2.5 h-14 rounded-2xl text-base font-semibold bg-foreground text-background hover:opacity-90 active:scale-[0.98] transition-all"
             >
               <Share2 className="h-5 w-5" />
               Send to friends
