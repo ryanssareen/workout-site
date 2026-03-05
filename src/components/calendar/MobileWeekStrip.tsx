@@ -12,7 +12,6 @@ import {
   isSameDay,
   isToday,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MobileWeekStripProps {
@@ -57,26 +56,7 @@ export function MobileWeekStrip({
   );
 
   return (
-    <div className="space-y-3">
-      {/* Week date range + navigation */}
-      <div className="flex items-center justify-between px-1">
-        <button
-          onClick={() => onWeekChange(subWeeks(weekStart, 1))}
-          className="p-2 rounded-xl border hover:bg-muted transition-colors"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
-        <h2 className="text-base font-bold">
-          {format(weekStart, 'MMM d')} - {format(weekEnd, 'd')}
-        </h2>
-        <button
-          onClick={() => onWeekChange(addWeeks(weekStart, 1))}
-          className="p-2 rounded-xl border hover:bg-muted transition-colors"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
-      </div>
-
+    <div>
       {/* Day circles */}
       <div
         className="grid grid-cols-7 gap-1"

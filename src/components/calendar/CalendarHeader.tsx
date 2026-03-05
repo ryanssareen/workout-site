@@ -108,10 +108,8 @@ export function CalendarHeader({
           <span className="hidden md:inline">
             {getDateLabel(viewMode, currentMonth)}
           </span>
-          <span className="md:hidden">
-            {viewMode === 'year'
-              ? format(currentMonth, 'yyyy')
-              : format(currentMonth, 'MMMM yyyy')}
+          <span className="md:hidden text-base">
+            {getDateLabel(viewMode, currentMonth)}
           </span>
         </h1>
 

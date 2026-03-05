@@ -12,6 +12,7 @@ import {
   format,
   startOfWeek,
   endOfWeek,
+  eachDayOfInterval,
   addDays,
   subDays,
   addWeeks,
@@ -52,7 +53,7 @@ export default function CalendarPage() {
   // Navigation anchor date (drives all views)
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   // Mobile: week navigation
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 0 }));
   // Selected day (both mobile + desktop)
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   // Selected workout for detail panel (desktop)
@@ -195,6 +196,7 @@ export default function CalendarPage() {
         break;
       case 'week':
         setCurrentMonth((prev) => subWeeks(prev, 1));
+        setWeekStart((prev) => subWeeks(prev, 1));
         break;
       case 'month':
         setCurrentMonth((prev) => subMonths(prev, 1));
@@ -213,6 +215,7 @@ export default function CalendarPage() {
         break;
       case 'week':
         setCurrentMonth((prev) => addWeeks(prev, 1));
+        setWeekStart((prev) => addWeeks(prev, 1));
         break;
       case 'month':
         setCurrentMonth((prev) => addMonths(prev, 1));
@@ -436,7 +439,17 @@ export default function CalendarPage() {
   const renderMobileView = () => {
     switch (viewMode) {
       case 'day':
-      case 'week':
+        return (
+          <CalendarDayWorkouts
+            date={selectedDate}
+            workouts={selectedDateWorkouts}
+            onToggleComplete={handleToggleComplete}
+          />
+        );
+      case 'week': {
+        const ws = startOfWeek(currentMonth, { weekStartsOn: 0 });
+        const we = endOfWeek(currentMonth, { weekStartsOn: 0 });
+        const weekDays = eachDayOfInterval({ start: ws, end: we });
         return (
           <>
             <MobileWeekStrip
@@ -446,13 +459,23 @@ export default function CalendarPage() {
               onWeekChange={setWeekStart}
               workoutsByDate={workoutsByDate}
             />
-            <CalendarDayWorkouts
-              date={selectedDate}
-              workouts={selectedDateWorkouts}
-              onToggleComplete={handleToggleComplete}
-            />
+            <div className="space-y-4 mt-2">
+              {weekDays.map((day) => {
+                const key = format(day, 'yyyy-MM-dd');
+                const dayWorkouts = workoutsByDate.get(key) || [];
+                return (
+                  <CalendarDayWorkouts
+                    key={key}
+                    date={day}
+                    workouts={dayWorkouts}
+                    onToggleComplete={handleToggleComplete}
+                  />
+                );
+              })}
+            </div>
           </>
         );
+      }
       case 'month':
         return (
           <CalendarFullMonthView

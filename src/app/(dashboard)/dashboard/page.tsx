@@ -10,7 +10,7 @@ import Link from 'next/link';
 import {
   Calendar, TrendingUp, Target, Zap,
   CheckCircle2, Clock, UserCircle, Flame, BarChart3,
-  Plus, Activity, Trophy, ChevronRight,
+  Plus, Activity, Trophy, ChevronRight, Gift,
 } from 'lucide-react';
 import { format, startOfWeek, endOfWeek, isWithinInterval, differenceInDays, isSameDay, subDays, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -454,6 +454,22 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           )}
+
+          {/* Weekly Wrap CTA */}
+          <Link href="/wrap" className="block">
+            <Card className="p-4 hover:border-red-500/30 transition-all group cursor-pointer bg-gradient-to-br from-card to-red-500/[0.03]">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+                  <Gift className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold group-hover:text-red-500 transition-colors">Weekly Wrap</p>
+                  <p className="text-[10px] text-muted-foreground">Your week&apos;s capsule</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground/40 ml-auto group-hover:text-red-500 transition-colors" />
+              </div>
+            </Card>
+          </Link>
 
           {/* Quick Links */}
           <Card className="p-4">

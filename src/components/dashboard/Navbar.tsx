@@ -5,16 +5,15 @@ import { signOut } from '@/lib/firebase/auth';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
-import { Dumbbell, LogOut, LayoutDashboard, Calendar as CalendarIcon, ListChecks, Menu, X, BarChart3, UserCircle, Settings } from 'lucide-react';
+import { Dumbbell, LogOut, LayoutDashboard, Calendar as CalendarIcon, ListChecks, BarChart3, UserCircle, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 
 export function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
-  const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = async () => { await signOut(); router.push('/login'); };
 
@@ -63,41 +62,8 @@ export function Navbar() {
             )}
             <ThemeToggle />
             <Button variant="outline" size="sm" onClick={handleLogout} className="hidden md:flex h-9"><LogOut className="h-4 w-4 mr-2" />Logout</Button>
-            <Button variant="ghost" size="sm" className="lg:hidden h-9 w-9 p-0" onClick={() => setMobileOpen(!mobileOpen)}>
-              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </Button>
           </div>
         </div>
-
-        {mobileOpen && (
-          <div className="lg:hidden pb-4 border-t mt-2 pt-4 animate-in slide-in-from-top-2 duration-200 border-border/60">
-            <div className="grid grid-cols-4 gap-2 mb-4">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
-                return (
-                  <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)}>
-                    <div className={cn('flex flex-col items-center gap-1 p-3 rounded-xl transition-all border border-transparent', isActive ? 'bg-primary/15 text-primary border-primary/40' : 'hover:bg-muted')}>
-                      <Icon className="h-5 w-5" /><span className="text-xs font-medium">{item.label}</span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-            <div className="flex items-center justify-between pt-3 border-t">
-              {user && (
-                <>
-                  <div className="flex items-center gap-2">
-                    <Link href="/profile"><Button variant="ghost" size="icon" className="h-8 w-8"><UserCircle className="h-4 w-4" /></Button></Link>
-                    <Link href="/settings"><Button variant="ghost" size="icon" className="h-8 w-8"><Settings className="h-4 w-4" /></Button></Link>
-                    <div><p className="text-sm font-medium">{user.displayName}</p><p className="text-xs text-muted-foreground capitalize">{user.role === 'student' ? 'athlete' : user.role || 'Athlete'}</p></div>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={handleLogout}><LogOut className="h-4 w-4 mr-2" />Logout</Button>
-                </>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     </nav>
   );
