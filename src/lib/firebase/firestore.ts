@@ -146,23 +146,13 @@ export async function getUserWorkouts(username: string, role: 'coach' | 'athlete
 
       const allWorkouts: Workout[] = [];
 
-      // For each student, query their workout subcollection
+      // For each student, get ALL their workouts
       for (const student of students) {
         const studentUsername = student.uid; // uid field contains username (doc.id)
         const studentWorkoutsRef = collection(db, 'users', studentUsername, 'workouts');
+        const snap = await getDocs(query(studentWorkoutsRef, orderBy('date', 'desc')));
 
-        // Get strava and import source workouts
-        const [stravaDocs, importDocs, coachCreatedDocs] = await Promise.all([
-          getDocs(query(studentWorkoutsRef, where('source', '==', 'strava'))),
-          getDocs(query(studentWorkoutsRef, where('source', '==', 'import'))),
-          getDocs(query(studentWorkoutsRef, where('createdBy', '==', username))),
-        ]);
-
-        const studentWorkouts = [
-          ...stravaDocs.docs.map(d => ({ id: d.id, ...d.data() }) as Workout),
-          ...importDocs.docs.map(d => ({ id: d.id, ...d.data() }) as Workout),
-          ...coachCreatedDocs.docs.map(d => ({ id: d.id, ...d.data() }) as Workout),
-        ];
+        const studentWorkouts = snap.docs.map(d => ({ id: d.id, ...d.data() }) as Workout);
 
         // Enrich with athlete name
         for (const w of studentWorkouts) {
@@ -174,10 +164,7 @@ export async function getUserWorkouts(username: string, role: 'coach' | 'athlete
         allWorkouts.push(...studentWorkouts);
       }
 
-      // Remove duplicates by ID
-      const uniqueWorkouts = Array.from(
-        new Map(allWorkouts.map(w => [w.id, w])).values()
-      );
+      const uniqueWorkouts = allWorkouts;
 
       // Sort by date descending
       uniqueWorkouts.sort((a, b) => {

@@ -27,7 +27,7 @@ const FILTER_OPTIONS: { value: WorkoutType | 'all'; label: string; emoji?: strin
 function WorkoutRow({ workout }: { workout: Workout }) {
   const cfg = TYPE_CONFIG[workout.type] || TYPE_CONFIG.other;
   const stats = getTypeData(workout);
-  const workoutDate = workout.date.toDate();
+  const workoutDate = workout.date?.toDate?.() ?? new Date(workout.date as any);
   const dateStr = format(workoutDate, 'MMM d');
   const past = isPast(workoutDate) && !isToday(workoutDate);
   const isMissed = past && !workout.completed && workout.source !== 'strava';
@@ -106,7 +106,14 @@ function WorkoutsContent() {
     // Filter out future workouts — those only show in calendar
     const now = new Date();
     now.setHours(23, 59, 59, 999);
-    setWorkouts(data.filter(w => w.date.toDate() <= now));
+    setWorkouts(data.filter(w => {
+      try {
+        const d = w.date?.toDate?.() ?? new Date(w.date as any);
+        return d <= now;
+      } catch {
+        return true; // Show workouts with invalid dates rather than hiding them
+      }
+    }));
     setLoading(false);
     setTimeout(() => setReady(true), 120);
   }, [user]);
@@ -120,7 +127,11 @@ function WorkoutsContent() {
 
   // Sorted by date descending
   const sortedWorkouts = [...filteredWorkouts].sort(
-    (a, b) => b.date.toDate().getTime() - a.date.toDate().getTime()
+    (a, b) => {
+      const da = a.date?.toDate?.() ?? new Date(a.date as any);
+      const db = b.date?.toDate?.() ?? new Date(b.date as any);
+      return db.getTime() - da.getTime();
+    }
   );
 
   // Counts per type
