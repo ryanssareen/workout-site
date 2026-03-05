@@ -229,7 +229,7 @@ export default function CalendarPage() {
   const handleToday = () => {
     const now = new Date();
     setCurrentMonth(now);
-    setWeekStart(startOfWeek(now, { weekStartsOn: 1 }));
+    setWeekStart(startOfWeek(now, { weekStartsOn: 0 }));
     setSelectedDate(now);
   };
 
