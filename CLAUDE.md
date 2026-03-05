@@ -79,12 +79,23 @@ npx tsc --noEmit     # Type check without building
 - Onboarding flow at `/onboarding/profile` — 3 steps: Sports, Goals (with event name/date), About You
 
 ## Page Architecture
+- `/` — Landing page: centered hero ("Your training, all in one place"), sport pills, how-it-works steps, 6-card features grid (Strava Sync, Visual Calendar, Progress Tracking, AI Coach, Multi-Sport, Email Reminders), FAQ, CTA. Dark theme, simplified design.
 - `/profile` — Read-only public-style profile view (stats, pie chart, recent workouts, PRs). "Edit Profile" links to `/settings`
 - `/settings` — Full profile edit form (name, bio, timezone, age, experience, height/weight, sports, training goals with event name/date), Strava integration, public profile toggle, account management
-- `/workouts` — Flat list of all workouts with horizontal type filter tags (All/Run/Bike/Swim/Strength/Other), compact single-row per workout
+- `/workouts` — AI Workout Suggestions at top, time filter tabs (Planned/Past/All), horizontal type filter tags (All/Run/Bike/Swim/Strength/Other), compact single-row workout list with Garmin-style stat chips (HR, elevation, calories, pace, power)
+- `/workouts/new` — Create workout form with type-specific sub-forms, supports AI-generated templates (via sessionStorage) and saved templates. Preview dialog before creation.
 - `/athlete/[username]` — Public athlete profile (SSR), shares components with `/profile` via ProfileComponents.tsx
 - `/onboarding/profile` — 3-step onboarding: pick sports → pick goals (with event details) → about you (age, experience, height, weight)
 - `/calendar` — Calendar view with workout type differentiation, 2-week desktop view
+
+## AI Workout Suggestions
+- 3-tier pipeline: Logic Engine (periodization, fatigue, deload) → Groq LLaMA 3.3 70B enhancement → Validator with retry
+- `src/lib/training/logicEngine.ts` — generates base plan from athlete profile + recent history
+- `src/lib/training/constraints.ts` — defines `PlannedWorkout`, `EnhancedWorkout`, load constraints
+- `src/lib/training/validator.ts` — validates AI modifications stay within bounds
+- `src/app/api/ai/workout-suggestions/route.ts` — orchestrator API (max_tokens: 8000)
+- `src/components/workouts/AIWorkoutSuggestions.tsx` — UI component, normalizes `specs` → flat type keys for form compatibility
+- Flow: AI generates → user clicks "Use Workout" → data stored in sessionStorage → navigates to `/workouts/new?aiGenerated=true` → form pre-fills via `key` prop remount
 
 ## Known Issues & Active Work
 - Strava webhook subscription needs proper registration (webhook code exists but auto-sync requires env vars + API call setup)

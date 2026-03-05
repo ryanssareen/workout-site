@@ -12,9 +12,10 @@
 | Area | Assessment | Notes |
 |------|-----------|-------|
 | **Strava Sync** | Production-ready | OAuth + webhooks + dedup + photos + routes. Well-executed. |
-| **AI Suggestions** | Genuinely advanced | 3-tier pipeline (logic engine → Groq → validator), periodization-aware, fatigue-aware. Better than Final Surge, TrainingPeaks. |
+| **AI Suggestions** | Genuinely advanced | 3-tier pipeline (logic engine → Groq → validator), periodization-aware, fatigue-aware, deload-aware. `max_tokens: 8000` for full workout details. Better than Final Surge, TrainingPeaks. |
 | **Report Engine** | Solid foundation | 6 section types, Recharts charts, AI-generated reports via Groq, PNG/PDF/email export. |
 | **Onboarding** | Streamlined | Simplified to 3 steps (Sports → Goals with event name/date → About You). Profile completion bar on dashboard for deferred fields. |
+| **Landing Page** | Polished | Simplified dark-themed design: centered hero, sport pills, 3-step how-it-works, 6-card feature grid, FAQ, CTA. Welcoming tone, no aggressive branding. |
 | **Multi-Sport** | Complete | Swim, bike, run, strength, triathlon, other — all with sport-specific fields. |
 | **Email System** | Working | Brevo for transactional, cron for reminders/summaries. |
 
@@ -23,6 +24,7 @@
 | Area | Gap | Impact |
 |------|-----|--------|
 | **Report sharing UX** | Reports can export PNG/PDF but there's no beautiful, branded "year in review" or "weekly wrap" shareable card | HIGH — this is the viral opportunity |
+| **Workouts UX** | ✅ IMPROVED — AI suggestions at top of workouts page, time filter tabs (Planned/Past/All), Garmin-style stat chips, workout preview dialog with full details | ~~MEDIUM~~ |
 | ~~**Public athlete profiles**~~ | ✅ DONE — `/athlete/[username]` with stats, pie chart, recent workouts, PRs, AI tagline | ~~HIGH~~ |
 | **Product analytics** | Zero tracking of user behavior (no PostHog, no Amplitude, nothing) | HIGH — can't improve what you can't measure |
 | **PWA / mobile install** | No manifest.json, no service worker, no "Add to Home Screen" | MEDIUM — athletes use phones |
@@ -45,7 +47,7 @@
 | Garmin Connect | Basic insights | Device-locked | $7/mo | Walled garden, no sharing culture |
 | Final Surge | None | None | Free | Zero AI, zero reports |
 
-**Our edge:** Beautiful AI-powered reports that athletes actually want to share. No one does this well.
+**Our edge:** Beautiful AI-powered reports that athletes actually want to share + AI workout suggestions with full periodization awareness. No one does this well.
 
 ---
 

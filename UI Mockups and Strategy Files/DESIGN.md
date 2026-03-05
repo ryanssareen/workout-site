@@ -366,15 +366,14 @@ src/
 
 ### Landing Page (`/`)
 
-- Navigation bar with branding + Login/Register buttons
-- Hero: "OWN YOUR DAY. EVERY DAY." with animated workout card stack
-- Sports strip: Swimming, Running, Cycling, Ironman
-- Benefits grid (6 cards): Smartphone, Activity, CheckCircle2, TrendingUp, Calendar, Target
-- How It Works (3 steps): Create Account → Connect Gear → Train & Track
-- Strava integration callout
-- FAQ accordion (4 questions)
-- Final CTA + footer
-- Dark theme: black background, red (#ef4444) accent
+- **Navigation:** Minimal nav — logo + "Sign In" + "Get Started" buttons
+- **Hero:** Centered layout with headline "Your training, all in one place", subtitle about tracking/Strava/no coach needed, two CTAs ("Start for free" + "I have an account"), inline sport pills (Running, Swimming, Cycling, Strength, Triathlon)
+- **How It Works:** 3 simple steps with numbered circles — Create your account → Connect Strava → Train & improve
+- **Features grid:** 6-card grid — Strava Sync, Visual Calendar, Progress Tracking, AI Coach, Multi-Sport, Email Reminders
+- **FAQ:** 4 cards — Is it free? / Need a coach? / Watch compatibility? / Sports supported?
+- **Final CTA:** "Ready to start training?" with signup button
+- **Footer:** Logo + Contact link + copyright
+- **Theme:** Dark (black bg), red (#ef4444) accent, minimal glow effects, welcoming tone (no aggressive ALL CAPS)
 
 ### Auth
 
@@ -416,15 +415,19 @@ Progress dots, back/continue navigation, "Skip for now" option. Data saved to Fi
 
 ### Workouts (`/workouts`)
 
-**Main View:** Flat list of all workouts with horizontal type filter tags at the top.
+**Layout (top to bottom):**
+1. **Header:** Title + "Create Workout" button
+2. **AI Workout Suggestions** — Collapsible section for coaches and self-training athletes. Generates personalized workout plans via 3-tier AI pipeline (logic engine → Groq → validator). Each suggestion shows name, type badge, intensity, specs summary, description, warmup/mainSet/cooldown. "Use Workout" pre-fills the create form.
+3. **Time Filter Tabs:** Planned | Past | All — segmented control with counts. "Planned" shows future uncompleted (ascending), "Past" shows completed/past (descending), "All" shows everything (descending).
+4. **Type Filter Tags:** All | Run | Bike | Swim | Strength | Other — horizontal pill row with counts. Filters applied on top of time filter.
 
-**Type Filter Tags:** All | Run | Bike | Swim | Strength | Other — horizontal row of clickable tag pills. Active tag is highlighted. Clicking filters the list in real-time (client-side state, no URL params).
-
-**Workout List:** Single-column compact rows, each showing:
-- Type emoji + workout name + type badge + date + key stat (distance/duration) + completion status icon (✓ or ○)
-- Each row links to `/workouts/[id]` detail page
-- Sorted by date descending
-- AI Workout Suggestions section at bottom
+**Workout Rows:** Compact single-row cards with:
+- Type emoji + workout name + type badge + optional "Late" badge
+- Date + primary stat (distance) + duration + assigned athlete name (coach view)
+- Garmin-style stat chips on right (HR bpm, elevation m, calories, pace /km, power W, sets/exercises for strength)
+- Completion status icon: ✓ green (completed), ✓ amber (late), ⚠ red (missed), ○ gray (pending)
+- Missed workouts shown with opacity + strikethrough name
+- Each row links to `/workouts/[id]`
 
 **Create Workout** (`/workouts/new`):
 1. WorkoutForm with type-specific sub-forms (SwimForm, RunForm, BikeForm, StrengthForm, OtherForm)
@@ -668,6 +671,7 @@ Coach-athlete connections work via **unique 6-letter coach codes**.
 ## AI Features
 
 ### Groq (LLaMA 3.3 70B)
+- **AI Workout Suggestions:** 3-tier pipeline — Logic Engine (periodization, fatigue detection, deload awareness) → Groq enhancement (names, descriptions, warmup/mainSet/cooldown, coaching rationale) → Validator (enforces load bounds, intensity limits, max modifications). Retry on validation failure. Fallback to logic-only if AI fails. `max_tokens: 8000`.
 - **Workout tagging:** Analyzes activity name, type, distance, duration, pace, HR, elevation, location, terrain → assigns 1-3 tags
 - **Route comments:** Generates playful 1-sentence location-based comments with emoji
 - **Profanity check:** Validates display names and comments
@@ -675,7 +679,6 @@ Coach-athlete connections work via **unique 6-letter coach codes**.
 - **Format assistance:** Cleans up imported workout descriptions
 
 ### OpenAI
-- **Workout suggestions:** Personalized recommendations based on history, goals, experience
 - **Training reports:** AI-generated weekly/monthly training analysis with insights
 - **Chat:** Interactive AI coach conversation
 
