@@ -303,64 +303,64 @@ export default function MonthlyReviewPage() {
   return (
     <div className="fixed inset-0 bg-background overflow-y-auto">
       {/* Top bar */}
-      <div className="sticky top-0 z-20 flex items-center justify-between px-5 py-3 bg-background/80 backdrop-blur-xl border-b border-border/20">
-        <Link href="/dashboard" className="p-2 -ml-2 rounded-full hover:bg-muted transition-colors">
-          <X className="h-5 w-5 text-muted-foreground" />
+      <div className="sticky top-0 z-20 flex items-center justify-between px-3 py-2.5 bg-background/80 backdrop-blur-xl border-b border-border/20">
+        <Link href="/dashboard" className="p-1.5 -ml-1 rounded-full hover:bg-muted transition-colors">
+          <X className="h-4 w-4 text-muted-foreground" />
         </Link>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setMonthOffset(o => o + 1)} className="p-2 rounded-full hover:bg-muted transition-colors">
-            <ChevronLeft className="h-4 w-4 text-muted-foreground" />
+        <div className="flex items-center gap-1.5">
+          <button onClick={() => setMonthOffset(o => o + 1)} className="p-1.5 rounded-full hover:bg-muted transition-colors">
+            <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
-          <span className="text-xs font-medium text-muted-foreground min-w-[120px] text-center">{monthLabel}</span>
+          <span className="text-xs font-medium text-muted-foreground min-w-[110px] text-center">{monthLabel}</span>
           <button disabled={isCurrentMonth} onClick={() => setMonthOffset(o => Math.max(0, o - 1))}
-            className="p-2 rounded-full hover:bg-muted transition-colors disabled:opacity-20">
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            className="p-1.5 rounded-full hover:bg-muted transition-colors disabled:opacity-20">
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
         </div>
         <ThemeToggle />
       </div>
 
       {/* Content */}
-      <div ref={cardRef} className="max-w-3xl mx-auto px-5 sm:px-8 py-10 space-y-12">
+      <div ref={cardRef} className="max-w-md mx-auto px-4 py-6 space-y-8">
 
         {/* ── Title + Rating ── */}
         <div>
-          <div className="flex items-center gap-2.5 mb-6">
-            <div className="w-9 h-9 rounded-xl bg-red-600 flex items-center justify-center">
-              <span className="text-white font-bold text-sm">CT</span>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center">
+              <span className="text-white font-bold text-xs">CT</span>
             </div>
-            <span className="text-muted-foreground text-sm font-medium tracking-widest uppercase">
+            <span className="text-muted-foreground text-xs font-medium tracking-widest uppercase">
               Your Month in Review
             </span>
           </div>
-          <h1 className="text-foreground text-3xl sm:text-4xl md:text-5xl font-bold leading-tight mb-2">
+          <h1 className="text-foreground text-2xl sm:text-3xl font-bold leading-tight mb-1">
             Dear {firstName},
           </h1>
-          <p className="text-muted-foreground text-lg sm:text-xl">
+          <p className="text-muted-foreground text-base">
             this was <span className="text-foreground font-semibold">{rating.word}</span> {rating.emoji}
           </p>
         </div>
 
         {/* ── Summary Cards ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-2.5">
           {[
             { label: 'Workouts', value: totalWorkouts, sub: `${totalCompleted} completed` },
             { label: 'Distance', value: `${totalDistanceKm}km`, sub: totalDistanceKm > 0 ? 'total' : 'no distance logged' },
             { label: 'Time', value: `${totalDurationHrs}h`, sub: `${totalDurationMin} min total` },
             { label: 'Active Days', value: activeDays, sub: `of ${totalDays} days` },
           ].map(card => (
-            <div key={card.label} className="rounded-2xl bg-muted/30 border border-border/30 p-4">
-              <p className="text-2xl sm:text-3xl font-bold text-foreground">{card.value}</p>
-              <p className="text-xs font-medium text-muted-foreground mt-1">{card.label}</p>
-              <p className="text-[10px] text-muted-foreground/60 mt-0.5">{card.sub}</p>
+            <div key={card.label} className="rounded-xl bg-muted/30 border border-border/30 p-3">
+              <p className="text-xl font-bold text-foreground">{card.value}</p>
+              <p className="text-[11px] font-medium text-muted-foreground mt-0.5">{card.label}</p>
+              <p className="text-[10px] text-muted-foreground/60">{card.sub}</p>
             </div>
           ))}
         </div>
 
         {/* ── Per-Sport Stats ── */}
         {sportStats.length > 0 && (
-          <div className="space-y-5">
-            <h2 className="text-lg font-semibold text-foreground">By Sport</h2>
+          <div className="space-y-3">
+            <h2 className="text-sm font-semibold text-foreground">By Sport</h2>
             {sportStats.map(stat => {
               const mainMetric = stat.distanceKm > 0
                 ? `${stat.distanceKm}km`
@@ -375,26 +375,25 @@ export default function MonthlyReviewPage() {
                   : pctChange(stat.count, stat.prevCount);
 
               return (
-                <div key={stat.type} className="flex items-center gap-4 rounded-2xl bg-muted/20 border border-border/20 p-4">
-                  <span className="text-3xl">{TYPE_EMOJI[stat.type]}</span>
+                <div key={stat.type} className="flex items-center gap-3 rounded-xl bg-muted/20 border border-border/20 p-3">
+                  <span className="text-2xl">{TYPE_EMOJI[stat.type]}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-foreground text-lg sm:text-xl font-medium">
+                    <p className="text-foreground text-sm font-medium">
                       You{' '}
                       <span style={{ color: TYPE_COLOR[stat.type] }} className="font-bold">
                         {TYPE_LABEL[stat.type] || 'trained'} {mainMetric}
                       </span>
                     </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs text-muted-foreground">{stat.count} session{stat.count !== 1 ? 's' : ''}</span>
-                      {stat.durationMin > 0 && <span className="text-xs text-muted-foreground">· {stat.durationMin} min</span>}
-                      {stat.calories > 0 && <span className="text-xs text-muted-foreground">· {stat.calories} cal</span>}
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[11px] text-muted-foreground">{stat.count} session{stat.count !== 1 ? 's' : ''}</span>
+                      {stat.durationMin > 0 && <span className="text-[11px] text-muted-foreground">· {stat.durationMin} min</span>}
+                      {stat.calories > 0 && <span className="text-[11px] text-muted-foreground">· {stat.calories} cal</span>}
                     </div>
                   </div>
                   {comp && (
-                    <div className={`flex items-center gap-1 text-xs font-medium shrink-0 ${comp.positive ? 'text-emerald-500' : 'text-muted-foreground'}`}>
-                      {comp.positive ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
-                      <span className="hidden sm:inline">{comp.text}</span>
-                      <span className="sm:hidden">
+                    <div className={`flex items-center gap-1 text-[11px] font-medium shrink-0 ${comp.positive ? 'text-emerald-500' : 'text-muted-foreground'}`}>
+                      {comp.positive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                      <span>
                         {comp.text.includes('more') ? `+${comp.text.split('%')[0]}%` :
                          comp.text.includes('less') ? `-${comp.text.split('%')[0]}%` :
                          comp.text === 'new this month' ? 'New' : '='}
@@ -409,19 +408,19 @@ export default function MonthlyReviewPage() {
 
         {/* ── Workout Breakdown Pie Chart ── */}
         {pieData.length > 0 && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">Workout Breakdown</h2>
-            <div className="rounded-2xl bg-muted/20 border border-border/20 p-5">
-              <div className="flex flex-col sm:flex-row items-center gap-6">
-                <div className="w-48 h-48 shrink-0">
+          <div className="space-y-3">
+            <h2 className="text-sm font-semibold text-foreground">Workout Breakdown</h2>
+            <div className="rounded-xl bg-muted/20 border border-border/20 p-4">
+              <div className="flex items-center gap-4">
+                <div className="w-32 h-32 shrink-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
                         data={pieData}
                         cx="50%"
                         cy="50%"
-                        innerRadius={45}
-                        outerRadius={80}
+                        innerRadius={30}
+                        outerRadius={58}
                         paddingAngle={3}
                         dataKey="value"
                         stroke="none"
@@ -433,12 +432,12 @@ export default function MonthlyReviewPage() {
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="flex-1 space-y-2.5 w-full">
+                <div className="flex-1 space-y-2">
                   {pieData.map((entry) => (
-                    <div key={entry.type} className="flex items-center gap-3">
-                      <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: TYPE_COLOR[entry.type] || '#6b7280' }} />
-                      <span className="text-sm text-foreground font-medium capitalize flex-1">{entry.name}</span>
-                      <span className="text-sm text-muted-foreground">{entry.value} · {entry.pct}%</span>
+                    <div key={entry.type} className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: TYPE_COLOR[entry.type] || '#6b7280' }} />
+                      <span className="text-xs text-foreground font-medium capitalize flex-1">{entry.name}</span>
+                      <span className="text-xs text-muted-foreground">{entry.value} · {entry.pct}%</span>
                     </div>
                   ))}
                 </div>
@@ -449,17 +448,17 @@ export default function MonthlyReviewPage() {
 
         {/* ── Daily Activity Chart ── */}
         {dailyData.length > 0 && (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">Daily Activity</h2>
+              <h2 className="text-sm font-semibold text-foreground">Daily Activity</h2>
               {bestDay && (
-                <span className="text-xs text-muted-foreground">
-                  Best day: <span className="text-foreground font-medium">{bestDay.date}</span> ({bestDay.count} workout{bestDay.count > 1 ? 's' : ''})
+                <span className="text-[11px] text-muted-foreground">
+                  Best: <span className="text-foreground font-medium">{bestDay.date}</span>
                 </span>
               )}
             </div>
-            <div className="rounded-2xl bg-muted/20 border border-border/20 p-5">
-              <div className="h-[180px]">
+            <div className="rounded-xl bg-muted/20 border border-border/20 p-3">
+              <div className="h-[140px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={dailyData} barCategoryGap="15%">
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} vertical={false} />
@@ -498,14 +497,14 @@ export default function MonthlyReviewPage() {
 
         {/* ── Weekly Volume Trend ── */}
         {weeklyTrend.length > 1 && (weeklyTrend.some(w => w.distance > 0) || weeklyTrend.some(w => w.duration > 0)) && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">Weekly Volume Trend</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-3">
+            <h2 className="text-sm font-semibold text-foreground">Weekly Volume</h2>
+            <div className="grid grid-cols-1 gap-3">
               {/* Distance trend */}
               {weeklyTrend.some(w => w.distance > 0) && (
-                <div className="rounded-2xl bg-muted/20 border border-border/20 p-5">
-                  <p className="text-xs text-muted-foreground font-medium mb-3">Distance (km)</p>
-                  <div className="h-[140px]">
+                <div className="rounded-xl bg-muted/20 border border-border/20 p-3">
+                  <p className="text-[11px] text-muted-foreground font-medium mb-2">Distance (km)</p>
+                  <div className="h-[120px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={weeklyTrend}>
                         <defs>
@@ -531,9 +530,9 @@ export default function MonthlyReviewPage() {
 
               {/* Duration trend */}
               {weeklyTrend.some(w => w.duration > 0) && (
-                <div className="rounded-2xl bg-muted/20 border border-border/20 p-5">
-                  <p className="text-xs text-muted-foreground font-medium mb-3">Duration (min)</p>
-                  <div className="h-[140px]">
+                <div className="rounded-xl bg-muted/20 border border-border/20 p-3">
+                  <p className="text-[11px] text-muted-foreground font-medium mb-2">Duration (min)</p>
+                  <div className="h-[120px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={weeklyTrend}>
                         <defs>
@@ -562,10 +561,10 @@ export default function MonthlyReviewPage() {
 
         {/* ── Month-over-Month Comparison ── */}
         {prevTotalWorkouts > 0 && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">vs Last Month</h2>
-            <div className="rounded-2xl bg-muted/20 border border-border/20 p-5">
-              <div className="grid grid-cols-3 gap-4 text-center">
+          <div className="space-y-3">
+            <h2 className="text-sm font-semibold text-foreground">vs Last Month</h2>
+            <div className="rounded-xl bg-muted/20 border border-border/20 p-4">
+              <div className="grid grid-cols-3 gap-3 text-center">
                 {[
                   {
                     label: 'Workouts',
@@ -592,7 +591,7 @@ export default function MonthlyReviewPage() {
                   const isDown = diff < 0;
                   return (
                     <div key={item.label}>
-                      <div className={`text-2xl font-bold ${isUp ? 'text-emerald-500' : isDown ? 'text-red-400' : 'text-foreground'}`}>
+                      <div className={`text-xl font-bold ${isUp ? 'text-emerald-500' : isDown ? 'text-red-400' : 'text-foreground'}`}>
                         {isUp ? '+' : ''}{diff}%
                       </div>
                       <div className="flex items-center justify-center gap-1 mt-1">
@@ -611,27 +610,27 @@ export default function MonthlyReviewPage() {
 
         {/* ── Monthly Highlight ── */}
         {highlight && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">Monthly Highlight</h2>
-            <div className="rounded-2xl overflow-hidden bg-muted/30 border border-border/40">
+          <div className="space-y-3">
+            <h2 className="text-sm font-semibold text-foreground">Monthly Highlight</h2>
+            <div className="rounded-xl overflow-hidden bg-muted/30 border border-border/40">
               {highlight.photo && (
-                <div className="h-48 sm:h-64 overflow-hidden">
+                <div className="h-40 overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={highlight.photo} alt="Highlight" className="w-full h-full object-cover" />
                 </div>
               )}
-              <div className="p-6">
-                <p className="text-foreground text-xl sm:text-2xl font-medium">
+              <div className="p-4">
+                <p className="text-foreground text-base font-medium">
                   {highlight.emoji} {highlight.label}
                 </p>
-                <p className="text-muted-foreground text-base mt-2">{highlight.detail}</p>
+                <p className="text-muted-foreground text-sm mt-1">{highlight.detail}</p>
               </div>
             </div>
           </div>
         )}
 
         {/* ── Footer ── */}
-        <div className="flex items-center gap-4 text-sm text-muted-foreground/60 pb-4">
+        <div className="flex items-center gap-3 text-xs text-muted-foreground/60 pb-2">
           <span>{totalWorkouts} workout{totalWorkouts !== 1 ? 's' : ''}</span>
           <span>·</span>
           <span>{totalCompleted} completed</span>
@@ -641,8 +640,8 @@ export default function MonthlyReviewPage() {
       </div>
 
       {/* Sticky share bar */}
-      <div className="sticky bottom-0 z-20 p-4 bg-background/80 backdrop-blur-xl border-t border-border/30">
-        <div className="max-w-lg mx-auto">
+      <div className="sticky bottom-0 z-20 px-4 py-3 bg-background/80 backdrop-blur-xl border-t border-border/30">
+        <div className="max-w-md mx-auto">
           {showShare ? (
             <ShareButtons
               title="Share Your Monthly Review"
@@ -655,9 +654,9 @@ export default function MonthlyReviewPage() {
           ) : (
             <button
               onClick={() => setShowShare(true)}
-              className="w-full flex items-center justify-center gap-2.5 h-14 rounded-2xl text-base font-semibold bg-foreground text-background hover:opacity-90 active:scale-[0.98] transition-all"
+              className="w-full flex items-center justify-center gap-2 h-12 rounded-xl text-sm font-semibold bg-foreground text-background hover:opacity-90 active:scale-[0.98] transition-all"
             >
-              <Share2 className="h-5 w-5" />
+              <Share2 className="h-4 w-4" />
               Send to friends
             </button>
           )}
