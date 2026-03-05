@@ -17,9 +17,9 @@ export const YEAR = 2025;
 export const TYPE_EMOJI: Record<string, string> = { run: '🏃', bike: '🚴', swim: '🏊', strength: '💪', other: '🏋️' };
 export const TYPE_LABEL: Record<string, string> = { run: 'Run', bike: 'Bike', swim: 'Swim', strength: 'Strength', other: 'Other' };
 export const TYPE_COLOR: Record<string, string> = {
-  run: '#ef4444', bike: '#f97316', swim: '#dc2626', strength: '#b91c1c', other: '#991b1b',
+  run: '#ef4444', bike: '#f59e0b', swim: '#06b6d4', strength: '#a855f7', other: '#6b7280',
 };
-export const PIE_COLORS_RED = ['#ef4444', '#f97316', '#dc2626', '#b91c1c', '#991b1b', '#7f1d1d'];
+export const PIE_COLORS = ['#ef4444', '#f59e0b', '#06b6d4', '#a855f7', '#6b7280', '#ec4899'];
 
 // ── Helpers ────────────────────────────────────────────────────────
 
@@ -296,7 +296,7 @@ export function BreakdownSlide({ stats, animateIn }: { stats: YearStats; animate
                 animationDuration={1000}
               >
                 {pieData.map((entry, i) => (
-                  <Cell key={entry.type} fill={TYPE_COLOR[entry.type] || PIE_COLORS_RED[i % PIE_COLORS_RED.length]} />
+                  <Cell key={entry.type} fill={TYPE_COLOR[entry.type] || PIE_COLORS[i % PIE_COLORS.length]} />
                 ))}
               </Pie>
             </PieChart>

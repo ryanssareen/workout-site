@@ -9,10 +9,10 @@ import { AIWorkoutSuggestions } from '@/components/workouts/AIWorkoutSuggestions
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { Plus, ListChecks, Loader2, CheckCircle2, Circle, AlertCircle } from 'lucide-react';
+import { Plus, ListChecks, Loader2, CheckCircle2, Circle, AlertCircle, Heart, Mountain, Flame, Gauge, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { TYPE_CONFIG, getTypeData } from '@/components/calendar/types';
+import { TYPE_CONFIG, getTypeData, formatDur } from '@/components/calendar/types';
 import { format, isPast, isToday } from 'date-fns';
 
 const FILTER_OPTIONS: { value: WorkoutType | 'all'; label: string; emoji?: string }[] = [
@@ -24,6 +24,47 @@ const FILTER_OPTIONS: { value: WorkoutType | 'all'; label: string; emoji?: strin
   { value: 'other', label: 'Other', emoji: '📋' },
 ];
 
+/** Build extra stats chips from Strava actualStats or type-specific data */
+function getExtraStats(workout: Workout): { icon: React.ReactNode; value: string; label: string }[] {
+  const chips: { icon: React.ReactNode; value: string; label: string }[] = [];
+  const as = workout.actualStats;
+
+  // Heart rate
+  const hr = as?.avgHeartRate || workout.run?.avgHeartRate || workout.bike?.avgHeartRate || workout.stravaData?.avgHeartRate;
+  if (hr) chips.push({ icon: <Heart className="h-3 w-3 text-red-400" />, value: `${Math.round(hr)}`, label: 'bpm' });
+
+  // Elevation
+  const elev = as?.elevationGain || workout.stravaData?.elevationGain || workout.run?.elevationGain || workout.bike?.elevationGain;
+  if (elev && elev > 0) chips.push({ icon: <Mountain className="h-3 w-3 text-emerald-400" />, value: `${Math.round(elev)}`, label: 'm' });
+
+  // Calories
+  const cal = as?.calories;
+  if (cal && cal > 0) chips.push({ icon: <Flame className="h-3 w-3 text-orange-400" />, value: `${Math.round(cal)}`, label: 'cal' });
+
+  // Pace (runs)
+  if (workout.type === 'run' && workout.run?.pace) {
+    chips.push({ icon: <Gauge className="h-3 w-3 text-blue-400" />, value: workout.run.pace, label: '' });
+  } else if (workout.type === 'run' && as?.distance && as?.duration && as.distance > 0 && as.duration > 0) {
+    const paceMinPerKm = (as.duration / 60) / (as.distance / 1000);
+    const pMin = Math.floor(paceMinPerKm);
+    const pSec = Math.round((paceMinPerKm - pMin) * 60);
+    chips.push({ icon: <Gauge className="h-3 w-3 text-blue-400" />, value: `${pMin}:${pSec.toString().padStart(2, '0')}`, label: '/km' });
+  }
+
+  // Power (bikes)
+  const power = workout.stravaData?.avgPower || workout.bike?.avgPower;
+  if (power && power > 0) chips.push({ icon: <Zap className="h-3 w-3 text-yellow-400" />, value: `${Math.round(power)}`, label: 'W' });
+
+  // Strength extras
+  if (workout.type === 'strength' && workout.strength?.exercises?.length) {
+    const totalSets = workout.strength.exercises.reduce((s, e) => s + (e.sets || 0), 0);
+    if (totalSets > 0) chips.push({ icon: <span className="text-[10px]">🏋️</span>, value: `${totalSets}`, label: 'sets' });
+    chips.push({ icon: <span className="text-[10px]">💪</span>, value: `${workout.strength.exercises.length}`, label: 'exercises' });
+  }
+
+  return chips;
+}
+
 function WorkoutRow({ workout }: { workout: Workout }) {
   const cfg = TYPE_CONFIG[workout.type] || TYPE_CONFIG.other;
   const stats = getTypeData(workout);
@@ -32,6 +73,7 @@ function WorkoutRow({ workout }: { workout: Workout }) {
   const past = isPast(workoutDate) && !isToday(workoutDate);
   const isMissed = past && !workout.completed && workout.source !== 'strava';
   const isLate = workout.completedLate === true;
+  const extraStats = getExtraStats(workout);
 
   return (
     <Link
@@ -62,7 +104,7 @@ function WorkoutRow({ workout }: { workout: Workout }) {
           {stats.primary !== '--' && (
             <>
               <span className="opacity-40">·</span>
-              <span>{stats.primary}</span>
+              <span className="font-medium text-foreground/70">{stats.primary}</span>
             </>
           )}
           {stats.time && stats.time !== '0:00' && (
@@ -78,6 +120,21 @@ function WorkoutRow({ workout }: { workout: Workout }) {
             </>
           )}
         </div>
+        {/* Garmin-style extra stat chips */}
+        {extraStats.length > 0 && (
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+            {extraStats.map((chip, i) => (
+              <span
+                key={i}
+                className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground bg-muted/50 rounded-md px-1.5 py-0.5"
+              >
+                {chip.icon}
+                <span className="font-semibold text-foreground/60">{chip.value}</span>
+                {chip.label && <span className="text-muted-foreground/60">{chip.label}</span>}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
       <div className="shrink-0">
         {workout.completed ? (

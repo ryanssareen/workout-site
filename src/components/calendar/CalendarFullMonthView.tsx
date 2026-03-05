@@ -15,6 +15,7 @@ import {
   format,
 } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { CalendarAddDropdown } from './CalendarAddDropdown';
 
 const DAY_HEADERS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -88,14 +89,14 @@ export function CalendarFullMonthView({
                   key={dateKey}
                   onClick={() => onSelectDate(day)}
                   className={cn(
-                    'border-r last:border-r-0 px-1 py-1 cursor-pointer transition-colors overflow-hidden flex flex-col',
+                    'group/cell border-r last:border-r-0 px-1 py-1 cursor-pointer transition-colors overflow-hidden flex flex-col',
                     selected && 'bg-primary/5 ring-1 ring-inset ring-primary/30',
                     today && !selected && 'bg-red-500/[0.03]',
                     !inMonth && 'opacity-35',
                     'hover:bg-muted/30',
                   )}
                 >
-                  {/* Date number */}
+                  {/* Date number + add button */}
                   <div className="flex items-center gap-1 mb-0.5">
                     <span
                       className={cn(
@@ -106,6 +107,8 @@ export function CalendarFullMonthView({
                     >
                       {format(day, 'd')}
                     </span>
+                    <span className="flex-1" />
+                    <CalendarAddDropdown date={day} className="opacity-0 group-hover/cell:opacity-100 transition-opacity" />
                   </div>
 
                   {/* Workout micro-pills */}

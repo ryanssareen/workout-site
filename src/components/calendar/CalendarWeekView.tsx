@@ -12,6 +12,7 @@ import {
   format,
 } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { CalendarAddDropdown } from './CalendarAddDropdown';
 
 const DAY_HEADERS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -74,13 +75,13 @@ export function CalendarWeekView({
               key={dateKey}
               onClick={() => onSelectDate(day)}
               className={cn(
-                'border-r last:border-r-0 px-2 py-2 cursor-pointer transition-colors overflow-hidden flex flex-col',
+                'group/cell border-r last:border-r-0 px-2 py-2 cursor-pointer transition-colors overflow-hidden flex flex-col',
                 selected && 'bg-primary/5 ring-1 ring-inset ring-primary/30',
                 today && !selected && 'bg-red-500/[0.03]',
                 'hover:bg-muted/30',
               )}
             >
-              {/* Date number + month */}
+              {/* Date number + month + add button */}
               <div className="flex items-center gap-1.5 mb-1.5">
                 <span
                   className={cn(
@@ -91,9 +92,10 @@ export function CalendarWeekView({
                 >
                   {format(day, 'd')}
                 </span>
-                <span className="text-[10px] font-medium text-muted-foreground uppercase truncate">
+                <span className="text-[10px] font-medium text-muted-foreground uppercase truncate flex-1">
                   {format(day, 'MMM')}
                 </span>
+                <CalendarAddDropdown date={day} className="opacity-0 group-hover/cell:opacity-100 transition-opacity" />
               </div>
 
               {/* Workout pills */}
