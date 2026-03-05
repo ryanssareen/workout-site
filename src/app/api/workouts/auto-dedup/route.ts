@@ -101,9 +101,9 @@ function detectDuplicates(workouts: WorkoutDoc[]): DupGroup[] {
       const distM = getDistanceMeters(manual);
       const distS = getDistanceMeters(strava);
       const distanceClose = distM > 0 && distS > 0 && Math.abs(distM - distS) / Math.max(distM, distS) < 0.15;
-      const manualNoStats = durM === 0 && distM === 0;
 
-      if (durationClose || distanceClose || manualNoStats) {
+      // Only dedup when we have strong evidence — require matching stats, not just "no stats"
+      if (durationClose || distanceClose) {
         groups.push({
           reason: `Manual+Strava overlap: "${manual.name}" on ${format(toDate(manual), 'MMM d')}`,
           keep: strava, // Strava has richer data
@@ -137,7 +137,8 @@ function detectDuplicates(workouts: WorkoutDoc[]): DupGroup[] {
         if (durA > 0 && durB > 0 && Math.abs(durA - durB) / Math.max(durA, durB) < 0.15) {
           matches.push(b);
         }
-      } else if (sameUser && isSameDay(toDate(a), toDate(b))) {
+      } else if (sameType && sameUser && isSameDay(toDate(a), toDate(b))) {
+        // Must also be same type — don't merge a run and a bike on the same day
         const distA = getDistanceMeters(a), distB = getDistanceMeters(b);
         if (distA > 0 && distB > 0 && Math.abs(distA - distB) / Math.max(distA, distB) < 0.05) {
           matches.push(b);
