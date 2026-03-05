@@ -230,10 +230,19 @@ export default function NewWorkoutPage() {
 
   const formDefaultValues = useMemo(() => {
     if (templateData) {
+      // Safely parse date — AI sends "YYYY-MM-DD", templates may send ISO strings
+      let parsedDate = new Date();
+      try {
+        if (templateData.date) {
+          const d = new Date(templateData.date);
+          if (!isNaN(d.getTime())) parsedDate = d;
+        }
+      } catch { /* use default */ }
+
       return {
-        name: templateData.name,
+        name: templateData.name || '',
         type: templateData.type,
-        date: templateData.date ? new Date(templateData.date + 'T00:00:00') : new Date(),
+        date: parsedDate,
         description: templateData.description
           || [templateData.warmup, templateData.mainSet, templateData.cooldown].filter(Boolean).join('\n\n')
           || '',
@@ -272,6 +281,7 @@ export default function NewWorkoutPage() {
         </CardHeader>
         <CardContent>
           <WorkoutForm
+            key={templateData ? `template-${templateData.type}-${templateData.name}` : 'blank'}
             onSubmit={handleSubmit}
             athletes={students}
             loading={loading || loadingTemplate}
