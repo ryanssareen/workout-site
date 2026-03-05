@@ -1,6 +1,6 @@
 'use client';
 
-import { TYPE_CONFIG, CalendarViewMode } from './types';
+import { CalendarViewMode } from './types';
 import { CalendarViewSelector } from './CalendarViewSelector';
 import {
   ChevronLeft,
@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
 import Link from 'next/link';
-import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,8 +26,6 @@ interface CalendarHeaderProps {
   onToday: () => void;
   viewMode: CalendarViewMode;
   onViewModeChange: (mode: CalendarViewMode) => void;
-  activeTypes: Set<string>;
-  onToggleType: (type: string) => void;
   // Coach features
   isCoach?: boolean;
   athletes?: { uid: string; displayName: string }[];
@@ -63,8 +60,6 @@ export function CalendarHeader({
   onToday,
   viewMode,
   onViewModeChange,
-  activeTypes,
-  onToggleType,
   isCoach,
   athletes = [],
   selectedAthlete = 'all',
@@ -115,30 +110,6 @@ export function CalendarHeader({
 
         {/* Right: Actions */}
         <div className="flex items-center gap-2">
-          {/* Type filters — desktop only (hidden in year view) */}
-          {viewMode !== 'year' && (
-            <div className="hidden lg:flex items-center gap-1.5 mr-2">
-              {(['run', 'bike', 'swim', 'strength', 'other'] as const).map((type) => {
-                const active = activeTypes.has(type);
-                const cfg = TYPE_CONFIG[type];
-                return (
-                  <button
-                    key={type}
-                    onClick={() => onToggleType(type)}
-                    className={cn(
-                      'px-3 py-1.5 rounded-full text-xs font-semibold border transition-all',
-                      active
-                        ? `${cfg.bg} ${cfg.color} border-current/20`
-                        : 'border-border text-muted-foreground/40',
-                    )}
-                  >
-                    {cfg.emoji} {type}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
           {/* Coach athlete picker */}
           {isCoach && athletes.length > 0 && (
             <select
@@ -213,42 +184,21 @@ export function CalendarHeader({
         <CalendarViewSelector viewMode={viewMode} onViewModeChange={onViewModeChange} />
       </div>
 
-      {/* Mobile filter pills — horizontally scrollable (hidden in year view) */}
-      {viewMode !== 'year' && (
-        <div className="flex lg:hidden items-center gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
-          {(['run', 'bike', 'swim', 'strength', 'other'] as const).map((type) => {
-            const active = activeTypes.has(type);
-            const cfg = TYPE_CONFIG[type];
-            return (
-              <button
-                key={type}
-                onClick={() => onToggleType(type)}
-                className={cn(
-                  'shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all',
-                  active
-                    ? `${cfg.bg} ${cfg.color} border-current/20`
-                    : 'border-border text-muted-foreground/40',
-                )}
-              >
-                {cfg.emoji} {type}
-              </button>
-            );
-          })}
-          {/* Mobile athlete picker inline */}
-          {isCoach && athletes.length > 0 && (
-            <select
-              value={selectedAthlete}
-              onChange={(e) => onSelectAthlete?.(e.target.value)}
-              className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold border bg-background cursor-pointer"
-            >
-              <option value="all">All Athletes</option>
-              {athletes.map((a) => (
-                <option key={a.uid} value={a.uid}>
-                  {a.displayName}
-                </option>
-              ))}
-            </select>
-          )}
+      {/* Mobile athlete picker */}
+      {isCoach && athletes.length > 0 && (
+        <div className="flex md:hidden items-center gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+          <select
+            value={selectedAthlete}
+            onChange={(e) => onSelectAthlete?.(e.target.value)}
+            className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold border bg-background cursor-pointer"
+          >
+            <option value="all">All Athletes</option>
+            {athletes.map((a) => (
+              <option key={a.uid} value={a.uid}>
+                {a.displayName}
+              </option>
+            ))}
+          </select>
         </div>
       )}
     </div>

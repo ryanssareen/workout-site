@@ -12,7 +12,6 @@ import {
   format,
   startOfWeek,
   endOfWeek,
-  eachDayOfInterval,
   addDays,
   subDays,
   addWeeks,
@@ -27,7 +26,6 @@ import {
   endOfDay,
   startOfYear,
   endOfYear,
-  isSameDay,
 } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -58,11 +56,6 @@ export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   // Selected workout for detail panel (desktop)
   const [selectedWorkoutId, setSelectedWorkoutId] = useState<string | null>(null);
-
-  // Filters
-  const [activeTypes, setActiveTypes] = useState<Set<string>>(
-    new Set(['swim', 'bike', 'run', 'strength', 'other']),
-  );
 
   // Coach features
   const [athletes, setAthletes] = useState<{ uid: string; displayName: string }[]>([]);
@@ -111,9 +104,7 @@ export default function CalendarPage() {
   const workoutsByDate = useMemo(() => {
     const map = new Map<string, Workout[]>();
     workouts.forEach((w) => {
-      // Apply type filter
-      if (!activeTypes.has(w.type)) return;
-      // Apply athlete filter
+      // Apply athlete filter (coaches only)
       if (isCoach && selectedAthlete !== 'all' && w.assignedTo !== selectedAthlete) return;
 
       const key = format(w.date.toDate(), 'yyyy-MM-dd');
@@ -121,7 +112,7 @@ export default function CalendarPage() {
       map.get(key)!.push(w);
     });
     return map;
-  }, [workouts, activeTypes, isCoach, selectedAthlete]);
+  }, [workouts, isCoach, selectedAthlete]);
 
   // ── Visible date range (for summary computation) ─────────────────────
   const visibleRange = useMemo(() => {
@@ -143,14 +134,15 @@ export default function CalendarPage() {
   const summary = useMemo(() => {
     const rangeWorkouts = workouts.filter((w) => {
       const d = w.date.toDate();
-      if (!(d >= visibleRange.start && d <= visibleRange.end && activeTypes.has(w.type)))
-        return false;
+      if (!(d >= visibleRange.start && d <= visibleRange.end)) return false;
       if (isCoach && selectedAthlete !== 'all' && w.assignedTo !== selectedAthlete) return false;
       return true;
     });
 
-    const completed = rangeWorkouts.filter((w) => w.completed).length;
-    const total = rangeWorkouts.length;
+    // Only count planned workouts (not Strava imports) for completion %
+    const plannedWorkouts = rangeWorkouts.filter((w) => w.source !== 'strava');
+    const completed = plannedWorkouts.filter((w) => w.completed).length;
+    const total = plannedWorkouts.length;
     let totalDuration = 0;
     let totalDistance = 0;
     const byType: Record<string, { count: number; duration: number; distance: number }> = {};
@@ -171,7 +163,7 @@ export default function CalendarPage() {
     });
 
     return { completed, total, totalDuration, totalDistance, byType };
-  }, [workouts, visibleRange, activeTypes, selectedAthlete, isCoach]);
+  }, [workouts, visibleRange, selectedAthlete, isCoach]);
 
   // ── Period label for summary ─────────────────────────────────────────
   const periodLabel = useMemo(() => {
@@ -244,13 +236,6 @@ export default function CalendarPage() {
     } catch (err: any) {
       toast.error(err.message || 'Failed to update');
     }
-  };
-
-  const handleToggleType = (type: string) => {
-    const next = new Set(activeTypes);
-    if (activeTypes.has(type) && activeTypes.size > 1) next.delete(type);
-    else next.add(type);
-    setActiveTypes(next);
   };
 
   const handleSendReport = async () => {
@@ -336,8 +321,6 @@ export default function CalendarPage() {
     onToday: handleToday,
     viewMode,
     onViewModeChange: setViewMode,
-    activeTypes,
-    onToggleType: handleToggleType,
     isCoach,
     athletes,
     selectedAthlete,
@@ -396,7 +379,7 @@ export default function CalendarPage() {
               }
             }}
             onSelectWorkout={(id) => setSelectedWorkoutId(id)}
-            activeTypes={activeTypes}
+            activeTypes={new Set(['swim', 'bike', 'run', 'strength', 'other'])}
           />
         );
       case 'month':
@@ -416,7 +399,7 @@ export default function CalendarPage() {
               }
             }}
             onSelectWorkout={(id) => setSelectedWorkoutId(id)}
-            activeTypes={activeTypes}
+            activeTypes={new Set(['swim', 'bike', 'run', 'strength', 'other'])}
           />
         );
       case 'year':
@@ -446,10 +429,7 @@ export default function CalendarPage() {
             onToggleComplete={handleToggleComplete}
           />
         );
-      case 'week': {
-        const ws = startOfWeek(currentMonth, { weekStartsOn: 0 });
-        const we = endOfWeek(currentMonth, { weekStartsOn: 0 });
-        const weekDays = eachDayOfInterval({ start: ws, end: we });
+      case 'week':
         return (
           <>
             <MobileWeekStrip
@@ -459,23 +439,15 @@ export default function CalendarPage() {
               onWeekChange={setWeekStart}
               workoutsByDate={workoutsByDate}
             />
-            <div className="space-y-4 mt-2">
-              {weekDays.map((day) => {
-                const key = format(day, 'yyyy-MM-dd');
-                const dayWorkouts = workoutsByDate.get(key) || [];
-                return (
-                  <CalendarDayWorkouts
-                    key={key}
-                    date={day}
-                    workouts={dayWorkouts}
-                    onToggleComplete={handleToggleComplete}
-                  />
-                );
-              })}
+            <div className="mt-2">
+              <CalendarDayWorkouts
+                date={selectedDate}
+                workouts={selectedDateWorkouts}
+                onToggleComplete={handleToggleComplete}
+              />
             </div>
           </>
         );
-      }
       case 'month':
         return (
           <CalendarFullMonthView
@@ -488,7 +460,7 @@ export default function CalendarPage() {
               setCurrentMonth(date);
             }}
             onSelectWorkout={() => {}}
-            activeTypes={activeTypes}
+            activeTypes={new Set(['swim', 'bike', 'run', 'strength', 'other'])}
           />
         );
       case 'year':
