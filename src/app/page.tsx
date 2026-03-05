@@ -1,42 +1,13 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Dumbbell, Calendar, TrendingUp, ArrowRight, Activity, CheckCircle2, Target, Bike, Waves, Zap, Shield, Clock, Smartphone, HelpCircle, Flame } from 'lucide-react';
+import { Dumbbell, Calendar, TrendingUp, ArrowRight, Activity, CheckCircle2, Target, Bike, Waves, Zap, Clock, Smartphone, HelpCircle, Flame, Sparkles } from 'lucide-react';
 import { AuthRedirect } from '@/components/auth/AuthRedirect';
 
 export default function Home() {
-  const benefits = [
-    { icon: Smartphone, text: 'See all your workouts in one place' },
-    { icon: Activity, text: 'Auto-sync from Strava or Garmin' },
-    { icon: CheckCircle2, text: 'Mark workouts complete with notes' },
-    { icon: TrendingUp, text: 'Track personal records over time' },
-    { icon: Calendar, text: 'Visual calendar to plan your week' },
-    { icon: Target, text: 'Set goals and crush them daily' },
-  ];
-
-  const features = [
-    { icon: Activity, title: 'Strava Sync', description: 'Connect Strava and your workouts auto-complete when you train.' },
-    { icon: Clock, title: 'Smart Reminders', description: 'Get email reminders so you never miss a scheduled session.' },
-    { icon: Shield, title: 'Private & Secure', description: 'Your workout data stays yours. Always.' },
-    { icon: Target, title: 'Goal Tracking', description: 'Set race goals and watch your progress build week over week.' },
-  ];
-
-  const sports = [
-    { icon: Waves, name: 'Swimming', color: 'bg-red-600' },
-    { icon: Activity, name: 'Running', color: 'bg-red-700' },
-    { icon: Bike, name: 'Cycling', color: 'bg-red-800' },
-    { icon: Dumbbell, name: 'Ironman', color: 'bg-red-600' },
-  ];
-
-  const faqs = [
-    { q: 'Is The Daily Athlete free?', a: 'Yes — completely free during early access. Paid plans will come later, and early users get the best deal.' },
-    { q: 'Do I need a coach?', a: 'No. The Daily Athlete is built for self-coached athletes who want structure and accountability.' },
-    { q: 'Does it work with my watch?', a: 'If your device syncs to Strava, it syncs to The Daily Athlete automatically.' },
-    { q: 'What sports does it support?', a: 'Running, swimming, cycling, triathlon, Ironman, and strength training.' },
-  ];
-
   return (
     <div className="min-h-screen bg-black text-white">
       <AuthRedirect />
+
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-black/80 backdrop-blur-xl">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
@@ -47,12 +18,6 @@ export default function Home() {
             <span className="font-bold text-lg text-white">The Daily Athlete</span>
           </Link>
           <div className="flex gap-2 items-center">
-            <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex text-white/70 hover:text-white hover:bg-white/10">
-              <Link href="/features">Features</Link>
-            </Button>
-            <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex text-white/70 hover:text-white hover:bg-white/10">
-              <Link href="/contact">Contact</Link>
-            </Button>
             <Button variant="ghost" size="sm" asChild className="text-white/70 hover:text-white hover:bg-white/10">
               <Link href="/login">Sign In</Link>
             </Button>
@@ -64,173 +29,80 @@ export default function Home() {
       </nav>
 
       <main className="pt-16">
-        {/* Hero Section */}
+        {/* Hero */}
         <section className="relative overflow-hidden">
           <div className="absolute inset-0 -z-10">
-            <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-red-600/15 rounded-full blur-[120px]" />
-            <div className="absolute top-1/2 -left-40 w-[400px] h-[400px] bg-red-900/10 rounded-full blur-[100px]" />
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-red-600/5 rounded-full blur-[80px]" />
+            <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-red-600/10 rounded-full blur-[120px]" />
+            <div className="absolute bottom-0 left-1/4 w-[400px] h-[300px] bg-red-900/8 rounded-full blur-[100px]" />
           </div>
-          <div className="absolute inset-0 -z-10 opacity-[0.03]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'1\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }} />
 
-          <div className="container mx-auto px-4 py-20 md:py-32">
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
-              <div className="space-y-8">
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-600/10 border border-red-600/20 text-red-400 text-sm font-medium">
-                  <Flame className="h-3.5 w-3.5" />
-                  Free During Early Access
-                </div>
-                <h1 className="text-5xl sm:text-6xl md:text-7xl font-black tracking-tight leading-[0.9]">
-                  OWN
-                  <span className="block bg-gradient-to-r from-red-400 via-red-500 to-red-300 bg-clip-text text-transparent">YOUR DAY.</span>
-                  <span className="block text-white/40 text-4xl sm:text-5xl md:text-6xl mt-2">EVERY DAY.</span>
-                </h1>
-                <p className="text-lg md:text-xl text-white/50 max-w-lg">
-                  The training app for self-disciplined athletes. Track workouts, build streaks, sync with Strava, and stay accountable to yourself.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Button asChild size="lg" className="h-13 px-8 bg-red-600 hover:bg-red-700 text-white shadow-xl shadow-red-600/25 border-0 font-bold text-base">
-                    <Link href="/register">
-                      START TRAINING
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <Button asChild variant="outline" size="lg" className="h-13 px-8 border-white/20 text-white hover:bg-white/5 hover:text-white font-bold text-base">
-                    <Link href="/login">I have an account</Link>
-                  </Button>
-                </div>
-                <div className="grid grid-cols-3 gap-4 max-w-lg pt-2">
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-xs text-white/40 uppercase tracking-wider">Completion</p>
-                    <p className="text-2xl font-black text-red-400">82%</p>
-                  </div>
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-xs text-white/40 uppercase tracking-wider">Setup</p>
-                    <p className="text-2xl font-black text-white">&lt; 1 min</p>
-                  </div>
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-xs text-white/40 uppercase tracking-wider">Price</p>
-                    <p className="text-2xl font-black text-red-400">$0</p>
-                  </div>
-                </div>
+          <div className="container mx-auto px-4 py-24 md:py-36">
+            <div className="max-w-3xl mx-auto text-center space-y-8">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-600/10 border border-red-600/20 text-red-400 text-sm font-medium">
+                <Flame className="h-3.5 w-3.5" />
+                Free during early access
               </div>
 
-              {/* Hero visual - workout card stack (desktop) */}
-              <div className="relative hidden lg:block">
-                <div className="absolute -inset-8 bg-gradient-to-br from-red-600/10 via-transparent to-red-900/10 blur-3xl rounded-3xl" />
-                <div className="relative space-y-4">
-                  {[
-                    { type: 'RUN', name: 'Morning 5K', stat: '5.0 km · 24:30', icon: Activity, accent: 'bg-red-500' },
-                    { type: 'SWIM', name: 'Endurance Set', stat: '2000m · 35:00', icon: Waves, accent: 'bg-red-600' },
-                    { type: 'BIKE', name: 'Hill Intervals', stat: '30 km · 55:00', icon: Bike, accent: 'bg-red-800' },
-                    { type: 'STRENGTH', name: 'Upper Body', stat: '45 min · 6 sets', icon: Dumbbell, accent: 'bg-red-600' },
-                  ].map((workout, i) => (
-                    <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-white shadow-lg shadow-black/10 transition-all duration-300" style={{ transform: `translateX(${i * 12}px)` }}>
-                      <div className={`p-2.5 rounded-lg ${workout.accent}`}>
-                        <workout.icon className="h-5 w-5 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <span className="text-[10px] font-bold tracking-widest text-red-600">{workout.type}</span>
-                        <p className="font-semibold text-gray-900">{workout.name}</p>
-                        <p className="text-sm text-gray-400">{workout.stat}</p>
-                      </div>
-                      <CheckCircle2 className="h-5 w-5 text-red-500" />
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-tight">
+                Your training,{' '}
+                <span className="bg-gradient-to-r from-red-400 via-red-500 to-red-300 bg-clip-text text-transparent">
+                  all in one place
+                </span>
+              </h1>
 
-              {/* Mobile hero cards */}
-              <div className="lg:hidden -mx-4 px-4 overflow-x-auto scrollbar-hide">
-                <div className="flex gap-3 pb-2" style={{ width: 'max-content' }}>
-                  {[
-                    { type: 'RUN', name: 'Morning 5K', stat: '5.0 km · 24:30', icon: Activity, accent: 'bg-red-500' },
-                    { type: 'SWIM', name: 'Endurance Set', stat: '2000m · 35:00', icon: Waves, accent: 'bg-red-600' },
-                    { type: 'BIKE', name: 'Hill Intervals', stat: '30 km · 55:00', icon: Bike, accent: 'bg-red-800' },
-                    { type: 'STRENGTH', name: 'Upper Body', stat: '45 min · 6 sets', icon: Dumbbell, accent: 'bg-red-600' },
-                  ].map((workout, i) => (
-                    <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm min-w-[200px]">
-                      <div className={`p-2 rounded-lg ${workout.accent} flex-shrink-0`}>
-                        <workout.icon className="h-4 w-4 text-white" />
-                      </div>
-                      <div className="min-w-0">
-                        <span className="text-[9px] font-bold tracking-widest text-red-400">{workout.type}</span>
-                        <p className="font-semibold text-sm text-white">{workout.name}</p>
-                        <p className="text-xs text-white/40">{workout.stat}</p>
-                      </div>
-                      <CheckCircle2 className="h-4 w-4 text-red-500 flex-shrink-0" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Sports Strip */}
-        <section className="py-8 border-y border-white/10 bg-white/[0.02]">
-          <div className="container mx-auto px-4">
-            <div className="flex justify-center items-center gap-8 md:gap-12">
-              <span className="text-sm text-white/30 hidden sm:block uppercase tracking-wider">Built for</span>
-              {sports.map((sport, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <div className={`p-2 rounded-lg ${sport.color} shadow-lg`}>
-                    <sport.icon className="h-4 w-4 text-white" />
-                  </div>
-                  <span className="text-sm font-medium text-white/60 hidden md:block">{sport.name}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Why Athletes Use It */}
-        <section className="py-20 md:py-28 relative">
-          <div className="absolute inset-0 -z-10">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-red-600/5 rounded-full blur-[120px]" />
-          </div>
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-14">
-              <h2 className="text-3xl md:text-4xl font-black mb-3 uppercase tracking-tight">Built for the Self-Coached Athlete</h2>
-              <p className="text-white/40 max-w-xl mx-auto">
-                No coach required. Just you, your plan, and the discipline to show up every day.
+              <p className="text-lg md:text-xl text-white/50 max-w-xl mx-auto leading-relaxed">
+                Track workouts across every sport, sync with Strava, and stay on top of your training — no coach required.
               </p>
-            </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
-              {benefits.map((item, i) => (
-                <div key={i} className="flex items-start gap-3 p-5 rounded-2xl border border-white/10 bg-white/[0.02] hover:border-red-500/30 transition-all duration-300">
-                  <div className="p-2 rounded-lg bg-red-600/10 mt-0.5">
-                    <item.icon className="h-4 w-4 text-red-400" />
+
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button asChild size="lg" className="h-13 px-8 bg-red-600 hover:bg-red-700 text-white shadow-xl shadow-red-600/25 border-0 font-semibold text-base">
+                  <Link href="/register">
+                    Start for free
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="lg" className="h-13 px-8 border-white/20 text-white hover:bg-white/5 hover:text-white font-semibold text-base">
+                  <Link href="/login">I have an account</Link>
+                </Button>
+              </div>
+
+              {/* Sport pills */}
+              <div className="flex justify-center items-center gap-3 pt-4 flex-wrap">
+                {[
+                  { icon: Activity, name: 'Running' },
+                  { icon: Waves, name: 'Swimming' },
+                  { icon: Bike, name: 'Cycling' },
+                  { icon: Dumbbell, name: 'Strength' },
+                  { icon: Target, name: 'Triathlon' },
+                ].map((sport, i) => (
+                  <div key={i} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-sm text-white/50">
+                    <sport.icon className="h-3.5 w-3.5 text-red-400" />
+                    {sport.name}
                   </div>
-                  <span className="text-sm text-white/70">{item.text}</span>
-                </div>
-              ))}
-            </div>
-            <div className="text-center mt-10">
-              <Button asChild size="lg" className="bg-red-600 hover:bg-red-700 text-white border-0 font-bold shadow-lg shadow-red-600/25">
-                <Link href="/register">Start Training Free <ArrowRight className="ml-2 h-4 w-4" /></Link>
-              </Button>
+                ))}
+              </div>
             </div>
           </div>
         </section>
 
-        {/* How It Works */}
+        {/* How it works */}
         <section className="py-20 md:py-24 border-y border-white/10 bg-white/[0.02]">
           <div className="container mx-auto px-4">
-            <div className="text-center mb-14">
-              <h2 className="text-3xl md:text-4xl font-black mb-3 uppercase tracking-tight">3 Steps. That&apos;s It.</h2>
-              <p className="text-white/40">No complicated setup. No learning curve.</p>
-            </div>
-            <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            <h2 className="text-2xl md:text-3xl font-bold text-center mb-14">
+              Get started in minutes
+            </h2>
+            <div className="grid md:grid-cols-3 gap-10 max-w-3xl mx-auto">
               {[
-                { step: '01', title: 'Create Account', desc: 'Sign up in 30 seconds. Pick your sport and goal.' },
-                { step: '02', title: 'Connect Your Gear', desc: 'Link Strava so workouts auto-sync from your watch.' },
-                { step: '03', title: 'Train & Track', desc: 'Log sessions, build streaks, and watch your progress grow.' },
+                { step: '1', title: 'Create your account', desc: 'Sign up free and pick your sports and goals.' },
+                { step: '2', title: 'Connect Strava', desc: 'Link your watch so workouts sync automatically.' },
+                { step: '3', title: 'Train & improve', desc: 'Log sessions, track PRs, and build consistency.' },
               ].map((item) => (
-                <div key={item.step} className="text-center group">
-                  <div className="text-5xl font-black text-red-600/20 group-hover:text-red-600/40 transition-colors mb-4">{item.step}</div>
-                  <h3 className="font-bold text-lg mb-2 text-white">{item.title}</h3>
-                  <p className="text-sm text-white/40">{item.desc}</p>
+                <div key={item.step} className="text-center">
+                  <div className="w-10 h-10 rounded-full bg-red-600/15 border border-red-600/30 flex items-center justify-center mx-auto mb-4">
+                    <span className="text-sm font-bold text-red-400">{item.step}</span>
+                  </div>
+                  <h3 className="font-semibold text-lg mb-2">{item.title}</h3>
+                  <p className="text-sm text-white/40 leading-relaxed">{item.desc}</p>
                 </div>
               ))}
             </div>
@@ -238,86 +110,51 @@ export default function Home() {
         </section>
 
         {/* Features */}
-        <section className="py-20 md:py-24 relative">
-          <div className="absolute inset-0 -z-10">
-            <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-red-600/5 rounded-full blur-[100px]" />
-          </div>
+        <section className="py-20 md:py-24">
           <div className="container mx-auto px-4">
-            <div className="text-center mb-14">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/10 border border-red-600/20 text-red-400 text-sm font-medium mb-4">
-                <Zap className="h-3.5 w-3.5" />
-                Features
-              </div>
-              <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tight">Simple but Powerful</h2>
-            </div>
-            <div className="grid sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
-              {features.map((feature, i) => (
-                <div key={i} className="p-6 rounded-2xl border border-white/10 bg-white/[0.02] hover:border-red-500/30 transition-all duration-300">
-                  <div className="flex items-start gap-4">
-                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-red-600 to-red-900 text-white shadow-lg shadow-red-600/20 flex-shrink-0">
-                      <feature.icon className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold mb-1 text-white">{feature.title}</h3>
-                      <p className="text-sm text-white/40">{feature.description}</p>
-                    </div>
+            <h2 className="text-2xl md:text-3xl font-bold text-center mb-4">
+              Everything you need to train smarter
+            </h2>
+            <p className="text-white/40 text-center mb-14 max-w-md mx-auto">
+              Simple tools that help you stay consistent and see progress over time.
+            </p>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-4xl mx-auto">
+              {[
+                { icon: Activity, title: 'Strava Sync', desc: 'Workouts auto-complete when you train. Garmin, Apple Watch, any Strava-connected device.' },
+                { icon: Calendar, title: 'Visual Calendar', desc: 'See your whole week at a glance. Plan ahead and never miss a session.' },
+                { icon: TrendingUp, title: 'Progress Tracking', desc: 'Track personal records, view trends, and watch your fitness build over time.' },
+                { icon: Sparkles, title: 'AI Coach', desc: 'Get personalized workout suggestions based on your history and goals.' },
+                { icon: Smartphone, title: 'Multi-Sport', desc: 'Running, swimming, cycling, strength — all your training in one app.' },
+                { icon: Clock, title: 'Email Reminders', desc: 'Get notified about upcoming workouts so you never miss a planned session.' },
+              ].map((feature, i) => (
+                <div key={i} className="p-5 rounded-2xl border border-white/10 bg-white/[0.02] hover:border-red-500/20 transition-colors">
+                  <div className="p-2 rounded-lg bg-red-600/10 w-fit mb-3">
+                    <feature.icon className="h-4.5 w-4.5 text-red-400" />
                   </div>
+                  <h3 className="font-semibold mb-1.5">{feature.title}</h3>
+                  <p className="text-sm text-white/40 leading-relaxed">{feature.desc}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* Strava Integration */}
-        <section className="py-20 md:py-24 border-y border-white/10 bg-white/[0.02]">
-          <div className="container mx-auto px-4">
-            <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-10 items-center">
-              <div className="space-y-5">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-500 text-sm font-medium">
-                  <Activity className="h-3.5 w-3.5" />
-                  Strava Integration
-                </div>
-                <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tight">Works With Your Gear</h2>
-                <p className="text-white/40">
-                  Use a Garmin, Apple Watch, or any device that syncs to Strava? Your workouts will automatically appear in The Daily Athlete.
-                </p>
-                <ul className="space-y-3">
-                  {['One-click Strava connection', 'Workouts auto-mark as complete', 'See distance, pace, heart rate', 'Your data stays private'].map((item, i) => (
-                    <li key={i} className="flex items-center gap-2 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-red-500 flex-shrink-0" />
-                      <span className="text-white/60">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="flex items-center justify-center">
-                <div className="relative w-48 h-48">
-                  <div className="absolute inset-0 bg-gradient-to-br from-red-600/20 to-red-900/20 rounded-full animate-pulse" />
-                  <div className="absolute inset-6 bg-gradient-to-br from-red-600/30 to-red-900/30 rounded-full" />
-                  <div className="absolute inset-12 bg-gradient-to-br from-red-600 to-red-900 rounded-full flex items-center justify-center shadow-2xl shadow-red-600/40">
-                    <Activity className="h-12 w-12 text-white" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
         {/* FAQ */}
-        <section className="py-20 md:py-24 relative">
+        <section className="py-20 md:py-24 border-t border-white/10 bg-white/[0.02]">
           <div className="container mx-auto px-4">
-            <div className="text-center mb-14">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/10 border border-red-600/20 text-red-400 text-sm font-medium mb-4">
-                <HelpCircle className="h-3.5 w-3.5" />
-                FAQ
-              </div>
-              <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tight">Common Questions</h2>
-            </div>
-            <div className="grid sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
-              {faqs.map((faq, i) => (
+            <h2 className="text-2xl md:text-3xl font-bold text-center mb-14">
+              Frequently asked questions
+            </h2>
+            <div className="grid sm:grid-cols-2 gap-5 max-w-3xl mx-auto">
+              {[
+                { q: 'Is it really free?', a: 'Yes — completely free during early access. Paid plans will come later, and early users get the best deal.' },
+                { q: 'Do I need a coach?', a: 'Nope. The Daily Athlete is built for self-coached athletes who want structure and accountability.' },
+                { q: 'Does it work with my watch?', a: 'If your device syncs to Strava, your workouts will appear automatically.' },
+                { q: 'What sports are supported?', a: 'Running, swimming, cycling, triathlon, and strength training.' },
+              ].map((faq, i) => (
                 <div key={i} className="p-5 rounded-2xl border border-white/10 bg-white/[0.02]">
-                  <h3 className="font-bold mb-2 text-white">{faq.q}</h3>
-                  <p className="text-sm text-white/40">{faq.a}</p>
+                  <h3 className="font-semibold mb-2">{faq.q}</h3>
+                  <p className="text-sm text-white/40 leading-relaxed">{faq.a}</p>
                 </div>
               ))}
             </div>
@@ -325,29 +162,23 @@ export default function Home() {
         </section>
 
         {/* Final CTA */}
-        <section className="py-20 md:py-28 relative overflow-hidden">
+        <section className="py-20 md:py-28 relative">
           <div className="absolute inset-0 -z-10">
-            <div className="absolute inset-0 bg-gradient-to-t from-red-600/10 via-transparent to-transparent" />
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-red-600/10 rounded-full blur-[100px]" />
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[500px] h-[250px] bg-red-600/8 rounded-full blur-[100px]" />
           </div>
-          <div className="container mx-auto px-4 max-w-2xl text-center space-y-8">
-            <Flame className="h-12 w-12 text-red-400 mx-auto" />
-            <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight">
-              No Excuses.<br />
-              <span className="bg-gradient-to-r from-red-400 to-red-200 bg-clip-text text-transparent">Just Results.</span>
+          <div className="container mx-auto px-4 max-w-xl text-center space-y-6">
+            <h2 className="text-3xl md:text-4xl font-bold">
+              Ready to start training?
             </h2>
             <p className="text-white/40 text-lg">
-              Join athletes who train with purpose. Track every session. Build the habit. Become the athlete you want to be.
+              Join athletes who track every session and build the habit. Free to use, no credit card needed.
             </p>
-            <Button asChild size="lg" className="h-14 px-10 bg-red-600 hover:bg-red-700 text-white shadow-xl shadow-red-600/30 border-0 font-bold text-lg">
+            <Button asChild size="lg" className="h-13 px-10 bg-red-600 hover:bg-red-700 text-white shadow-xl shadow-red-600/25 border-0 font-semibold text-lg">
               <Link href="/register">
-                Get Started Free
+                Get started free
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
             </Button>
-            <p className="text-base text-white/50 font-medium">
-              Free during early access. No credit card required.
-            </p>
           </div>
         </section>
       </main>
@@ -362,7 +193,6 @@ export default function Home() {
             <span className="font-bold text-white">The Daily Athlete</span>
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/features" className="text-sm text-white/30 hover:text-white/60 transition-colors">Features</Link>
             <Link href="/contact" className="text-sm text-white/30 hover:text-white/60 transition-colors">Contact</Link>
             <p className="text-sm text-white/30">&copy; {new Date().getFullYear()} The Daily Athlete</p>
           </div>
