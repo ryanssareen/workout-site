@@ -8,8 +8,9 @@ import { ShareButtons } from '@/components/workouts/ShareWorkoutCard';
 import {
   startOfWeek, endOfWeek, subWeeks, isWithinInterval, format,
 } from 'date-fns';
-import { Share2, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Share2, Loader2, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import Link from 'next/link';
+import { ThemeToggle } from '@/components/dashboard/ThemeToggle';
 
 // ── Helpers ──
 
@@ -85,11 +86,8 @@ function computeWeeklySportStats(
 function detectHighlight(workouts: Workout[]): WeekHighlight | null {
   if (workouts.length === 0) return null;
 
-  // Find longest continuous workout (by duration)
   let longest: Workout | null = null;
   let longestDur = 0;
-
-  // Find furthest distance
   let furthest: Workout | null = null;
   let furthestDist = 0;
 
@@ -97,18 +95,11 @@ function detectHighlight(workouts: Workout[]): WeekHighlight | null {
     const dur = w.actualStats?.duration
       ? w.actualStats.duration / 60
       : w.duration || 0;
-    if (dur > longestDur) {
-      longestDur = dur;
-      longest = w;
-    }
+    if (dur > longestDur) { longestDur = dur; longest = w; }
     const dist = (w.actualStats?.distance || 0) / 1000;
-    if (dist > furthestDist) {
-      furthestDist = dist;
-      furthest = w;
-    }
+    if (dist > furthestDist) { furthestDist = dist; furthest = w; }
   }
 
-  // Pick the most impressive highlight
   if (longestDur >= 60 && longest) {
     const hours = Math.floor(longestDur / 60);
     const mins = Math.round(longestDur % 60);
@@ -132,7 +123,6 @@ function detectHighlight(workouts: Workout[]): WeekHighlight | null {
     };
   }
 
-  // Fallback: most workouts completed
   const completedCount = workouts.filter(w => w.completed).length;
   if (completedCount > 0) {
     return {
@@ -141,14 +131,12 @@ function detectHighlight(workouts: Workout[]): WeekHighlight | null {
       emoji: '🔥',
     };
   }
-
   return null;
 }
 
 function getWeekRating(stats: SportStat[]): { word: string; emoji: string } {
   const totalCount = stats.reduce((s, st) => s + st.count, 0);
   const totalPrev = stats.reduce((s, st) => s + st.prevCount, 0);
-
   if (totalCount === 0) return { word: 'quiet', emoji: '😴' };
   if (totalPrev === 0) return { word: 'a great start', emoji: '🚀' };
   const ratio = totalCount / totalPrev;
@@ -195,32 +183,18 @@ export default function WrapPage() {
   const prevWeekEnd = subWeeks(targetWeekEnd, 1);
 
   const thisWeekWorkouts = useMemo(
-    () => workouts.filter(w => {
-      const d = toDate(w);
-      return isWithinInterval(d, { start: targetWeekStart, end: targetWeekEnd });
-    }),
+    () => workouts.filter(w => isWithinInterval(toDate(w), { start: targetWeekStart, end: targetWeekEnd })),
     [workouts, targetWeekStart, targetWeekEnd],
   );
-
   const lastWeekWorkouts = useMemo(
-    () => workouts.filter(w => {
-      const d = toDate(w);
-      return isWithinInterval(d, { start: prevWeekStart, end: prevWeekEnd });
-    }),
+    () => workouts.filter(w => isWithinInterval(toDate(w), { start: prevWeekStart, end: prevWeekEnd })),
     [workouts, prevWeekStart, prevWeekEnd],
   );
 
-  const sportStats = useMemo(
-    () => computeWeeklySportStats(thisWeekWorkouts, lastWeekWorkouts),
-    [thisWeekWorkouts, lastWeekWorkouts],
-  );
-
-  const highlight = useMemo(
-    () => detectHighlight(thisWeekWorkouts),
-    [thisWeekWorkouts],
-  );
-
+  const sportStats = useMemo(() => computeWeeklySportStats(thisWeekWorkouts, lastWeekWorkouts), [thisWeekWorkouts, lastWeekWorkouts]);
+  const highlight = useMemo(() => detectHighlight(thisWeekWorkouts), [thisWeekWorkouts]);
   const rating = useMemo(() => getWeekRating(sportStats), [sportStats]);
+
   const firstName = user?.displayName?.split(' ')[0] || 'Athlete';
   const weekLabel = `${format(targetWeekStart, 'MMM d')} – ${format(targetWeekEnd, 'MMM d, yyyy')}`;
   const isCurrentWeek = weekOffset === 0;
@@ -230,7 +204,7 @@ export default function WrapPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-black">
+      <div className="fixed inset-0 flex items-center justify-center bg-black">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-white" />
           <p className="text-gray-500 animate-pulse">Loading your wrap...</p>
@@ -240,57 +214,53 @@ export default function WrapPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black flex flex-col">
-      {/* Week nav */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-2 max-w-lg mx-auto w-full">
-        <button onClick={() => setWeekOffset(o => o + 1)} className="p-2 rounded-full hover:bg-white/10 transition-colors">
-          <ChevronLeft className="h-5 w-5 text-gray-400" />
-        </button>
-        <div className="text-center">
-          <h1 className="text-lg font-bold text-white">Weekly Wrap</h1>
-          <p className="text-xs text-gray-500">{weekLabel}</p>
+    <div className="fixed inset-0 bg-black overflow-y-auto">
+      {/* Top bar */}
+      <div className="sticky top-0 z-20 flex items-center justify-between px-5 py-3 bg-black/80 backdrop-blur-xl">
+        <Link href="/dashboard" className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors">
+          <X className="h-5 w-5 text-gray-400" />
+        </Link>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setWeekOffset(o => o + 1)} className="p-2 rounded-full hover:bg-white/10 transition-colors">
+            <ChevronLeft className="h-4 w-4 text-gray-400" />
+          </button>
+          <span className="text-xs text-gray-500 min-w-[140px] text-center">{weekLabel}</span>
+          <button disabled={isCurrentWeek} onClick={() => setWeekOffset(o => Math.max(0, o - 1))}
+            className="p-2 rounded-full hover:bg-white/10 transition-colors disabled:opacity-20">
+            <ChevronRight className="h-4 w-4 text-gray-400" />
+          </button>
         </div>
-        <button
-          disabled={isCurrentWeek}
-          onClick={() => setWeekOffset(o => Math.max(0, o - 1))}
-          className="p-2 rounded-full hover:bg-white/10 transition-colors disabled:opacity-30"
-        >
-          <ChevronRight className="h-5 w-5 text-gray-400" />
-        </button>
+        <ThemeToggle />
       </div>
 
-      {/* ── THE CAPSULE CARD ── */}
-      <div className="flex-1 flex flex-col items-center justify-center px-4 py-4 max-w-lg mx-auto w-full">
-      <div
-        ref={cardRef}
-        className="rounded-3xl overflow-hidden shadow-2xl w-full"
-        style={{ background: 'linear-gradient(145deg, #0f0f0f 0%, #1a1a2e 50%, #16213e 100%)' }}
-      >
-        {/* Header */}
-        <div className="px-6 pt-6 pb-4">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-7 h-7 rounded-lg bg-red-600 flex items-center justify-center">
-              <span className="text-white font-bold text-xs">CT</span>
-            </div>
-            <span className="text-gray-500 text-xs font-medium tracking-wider uppercase">
-              Your Week&apos;s Capsule
-            </span>
-          </div>
+      {/* Full-screen capsule content */}
+      <div ref={cardRef} className="min-h-[calc(100vh-60px)] flex flex-col justify-center px-6 sm:px-10 md:px-16 lg:px-24 py-10"
+        style={{ background: 'linear-gradient(165deg, #0a0a0a 0%, #0f1729 40%, #1a1a2e 70%, #16213e 100%)' }}>
 
-          <h2 className="text-white text-2xl font-bold leading-tight mb-1">
-            Dear {firstName},
-          </h2>
-          <p className="text-gray-400 text-base">
-            this week was <span className="text-white font-semibold">{rating.word}</span> {rating.emoji}
-          </p>
+        {/* Brand */}
+        <div className="flex items-center gap-2.5 mb-10">
+          <div className="w-9 h-9 rounded-xl bg-red-600 flex items-center justify-center">
+            <span className="text-white font-bold text-sm">CT</span>
+          </div>
+          <span className="text-gray-500 text-sm font-medium tracking-widest uppercase">
+            Your Week&apos;s Capsule
+          </span>
         </div>
 
+        {/* Greeting */}
+        <h1 className="text-white text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-2">
+          Dear {firstName},
+        </h1>
+        <p className="text-gray-400 text-xl sm:text-2xl mb-12">
+          this week was <span className="text-white font-semibold">{rating.word}</span> {rating.emoji}
+        </p>
+
         {/* Sport stats */}
-        <div className="px-6 space-y-4 pb-5">
+        <div className="space-y-6 mb-12">
           {sportStats.length === 0 ? (
-            <div className="py-8 text-center">
-              <p className="text-gray-500 text-sm">No workouts logged this week.</p>
-              <p className="text-gray-600 text-xs mt-1">Next week is a fresh start!</p>
+            <div className="py-12">
+              <p className="text-gray-500 text-lg">No workouts logged this week.</p>
+              <p className="text-gray-700 text-base mt-2">Next week is a fresh start!</p>
             </div>
           ) : (
             sportStats.map(stat => {
@@ -309,17 +279,17 @@ export default function WrapPage() {
               const isPositive = compVal?.includes('more') || compVal === 'new this week';
 
               return (
-                <div key={stat.type} className="flex items-start gap-3">
-                  <span className="text-2xl mt-0.5">{TYPE_EMOJI[stat.type]}</span>
+                <div key={stat.type} className="flex items-start gap-4">
+                  <span className="text-3xl sm:text-4xl mt-1">{TYPE_EMOJI[stat.type]}</span>
                   <div>
-                    <p className="text-white text-base">
+                    <p className="text-white text-xl sm:text-2xl">
                       You{' '}
-                      <span style={{ color: TYPE_COLOR[stat.type] }} className="font-semibold">
+                      <span style={{ color: TYPE_COLOR[stat.type] }} className="font-bold">
                         {TYPE_LABEL[stat.type] || 'trained'} {mainMetric}
                       </span>
                     </p>
                     {compVal && (
-                      <p className={`text-sm mt-0.5 ${isPositive ? 'text-emerald-400' : 'text-gray-500'}`}>
+                      <p className={`text-base mt-1 ${isPositive ? 'text-emerald-400' : 'text-gray-500'}`}>
                         {isPositive ? '↑' : '↓'} {compVal}
                       </p>
                     )}
@@ -332,66 +302,58 @@ export default function WrapPage() {
 
         {/* Highlight */}
         {highlight && (
-          <div className="mx-6 mb-5 rounded-2xl overflow-hidden"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="rounded-2xl overflow-hidden mb-12 max-w-2xl"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
             {highlight.photo && (
-              <div className="h-40 overflow-hidden">
+              <div className="h-48 sm:h-64 overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={highlight.photo} alt="Highlight" className="w-full h-full object-cover" />
               </div>
             )}
-            <div className="p-4">
-              <p className="text-gray-500 text-[10px] uppercase tracking-widest font-medium mb-2">
+            <div className="p-6">
+              <p className="text-gray-500 text-xs uppercase tracking-widest font-medium mb-3">
                 This week&apos;s highlight
               </p>
-              <p className="text-white text-base font-medium">
+              <p className="text-white text-xl sm:text-2xl font-medium">
                 {highlight.emoji} {highlight.label}
               </p>
-              <p className="text-gray-500 text-sm mt-1">{highlight.detail}</p>
+              <p className="text-gray-500 text-base mt-2">{highlight.detail}</p>
             </div>
           </div>
         )}
 
-        {/* Summary strip */}
-        <div className="px-6 pb-6">
-          <div className="flex items-center gap-4 text-xs text-gray-600">
-            <span>{thisWeekWorkouts.length} workout{thisWeekWorkouts.length !== 1 ? 's' : ''}</span>
-            <span>·</span>
-            <span>{thisWeekWorkouts.filter(w => w.completed).length} completed</span>
-            <span>·</span>
-            <span>{weekLabel}</span>
-          </div>
+        {/* Footer stats */}
+        <div className="flex items-center gap-4 text-sm text-gray-600">
+          <span>{thisWeekWorkouts.length} workout{thisWeekWorkouts.length !== 1 ? 's' : ''}</span>
+          <span>·</span>
+          <span>{thisWeekWorkouts.filter(w => w.completed).length} completed</span>
+          <span>·</span>
+          <span>{weekLabel}</span>
         </div>
       </div>
 
-      {/* Share button / panel */}
-      <div className="mt-6 w-full">
-      {showShare ? (
-        <ShareButtons
-          title="Share Your Wrap"
-          shareText={shareText}
-          shareUrl={shareUrl}
-          fileName={`weekly-wrap-${format(targetWeekStart, 'yyyy-MM-dd')}`}
-          cardRef={cardRef}
-          onClose={() => setShowShare(false)}
-        />
-      ) : (
-        <button
-          onClick={() => setShowShare(true)}
-          className="w-full flex items-center justify-center gap-2 h-14 rounded-2xl text-base font-semibold bg-white text-black hover:bg-gray-100 transition-colors"
-        >
-          <Share2 className="h-5 w-5" />
-          Send to friends
-        </button>
-      )}
-      </div>
-
-      {/* Back link */}
-      <div className="mt-4 mb-8">
-        <Link href="/dashboard" className="text-gray-600 text-sm hover:text-gray-400 transition-colors">
-          ← Back to dashboard
-        </Link>
-      </div>
+      {/* Sticky share bar */}
+      <div className="sticky bottom-0 z-20 p-4 bg-black/80 backdrop-blur-xl border-t border-white/5">
+        <div className="max-w-lg mx-auto">
+          {showShare ? (
+            <ShareButtons
+              title="Share Your Wrap"
+              shareText={shareText}
+              shareUrl={shareUrl}
+              fileName={`weekly-wrap-${format(targetWeekStart, 'yyyy-MM-dd')}`}
+              cardRef={cardRef}
+              onClose={() => setShowShare(false)}
+            />
+          ) : (
+            <button
+              onClick={() => setShowShare(true)}
+              className="w-full flex items-center justify-center gap-2.5 h-14 rounded-2xl text-base font-semibold bg-white text-black hover:bg-gray-100 active:scale-[0.98] transition-all"
+            >
+              <Share2 className="h-5 w-5" />
+              Send to friends
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

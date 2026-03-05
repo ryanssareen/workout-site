@@ -10,9 +10,9 @@ import Link from 'next/link';
 import {
   Calendar, TrendingUp, Target, Zap,
   CheckCircle2, Clock, UserCircle, Flame, BarChart3,
-  Plus, Activity, Trophy, ChevronRight, Gift,
+  Plus, Activity, Trophy, ChevronRight, Gift, X,
 } from 'lucide-react';
-import { format, startOfWeek, endOfWeek, isWithinInterval, differenceInDays, isSameDay, subDays, parseISO } from 'date-fns';
+import { format, startOfWeek, endOfWeek, subWeeks, isWithinInterval, differenceInDays, isSameDay, subDays, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { ProgressRing } from '@/components/dashboard/stats/ProgressRing';
 import { cn } from '@/lib/utils';
@@ -66,6 +66,7 @@ export default function DashboardPage() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
   const [ready, setReady] = useState(false);
+  const [wrapBannerDismissed, setWrapBannerDismissed] = useState(false);
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -107,6 +108,15 @@ export default function DashboardPage() {
 
   const thisWeekCompleted = thisWeekWorkouts.filter(w => w.completed).length;
   const thisWeekTotal = thisWeekWorkouts.length;
+
+  // Last week's workouts for wrap banner
+  const lastWeekStart = subWeeks(weekStart, 1);
+  const lastWeekEnd = subWeeks(weekEnd, 1);
+  const lastWeekWorkouts = workouts.filter(w => {
+    const d = getWorkoutDate(w);
+    return isWithinInterval(d, { start: lastWeekStart, end: lastWeekEnd });
+  });
+  const showWrapBanner = lastWeekWorkouts.length > 0 && !wrapBannerDismissed;
 
   const completedCount = workouts.filter(w => w.completed).length;
   const completionRate = workouts.length > 0 ? Math.round((completedCount / workouts.length) * 100) : 0;
@@ -181,6 +191,32 @@ export default function DashboardPage() {
 
       {/* ── PROFILE COMPLETION BAR ──────────────────────────────── */}
       {user && <ProfileCompletionBar user={user} />}
+
+      {/* ── WEEKLY WRAP BANNER ────────────────────────────────── */}
+      {showWrapBanner && (
+        <Link href="/wrap" className="block group">
+          <div className="relative overflow-hidden rounded-2xl border border-red-500/20 bg-gradient-to-r from-red-500/10 via-orange-500/10 to-red-500/10 p-4 transition-all hover:border-red-500/40 hover:shadow-lg hover:shadow-red-500/5">
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setWrapBannerDismissed(true); }}
+              className="absolute top-3 right-3 p-1 rounded-full hover:bg-white/10 transition-colors z-10"
+            >
+              <X className="h-4 w-4 text-muted-foreground" />
+            </button>
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                <Gift className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-bold group-hover:text-red-500 transition-colors">Your Weekly Wrap is ready!</p>
+                <p className="text-xs text-muted-foreground">
+                  You logged {lastWeekWorkouts.length} workout{lastWeekWorkouts.length !== 1 ? 's' : ''} last week — tap to see your capsule
+                </p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-muted-foreground/40 ml-auto group-hover:text-red-500 transition-colors shrink-0" />
+            </div>
+          </div>
+        </Link>
+      )}
 
       {/* ── HERO HEADER ────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
