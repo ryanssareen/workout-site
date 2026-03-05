@@ -455,7 +455,7 @@ export default function MonthlyReviewPage() {
                 {highlight.photo && (
                   <div className="h-20 overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={highlight.photo} alt="" className="w-full h-full object-cover" />
+                    <img src={highlight.photo} alt="" className="w-full h-full object-cover" crossOrigin="anonymous" />
                   </div>
                 )}
                 <div className="p-3">
