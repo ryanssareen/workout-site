@@ -77,7 +77,7 @@ export function CalendarDayWorkouts({
       {/* + Add Plan button */}
       <Link
         href={`/workouts/new?date=${dateStr}`}
-        className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-dashed border-muted-foreground/30 text-sm font-medium text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors"
+        className="flex items-center justify-center gap-2 w-full py-2.5 rounded-2xl border border-dashed border-muted-foreground/20 text-sm font-medium text-muted-foreground hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all duration-200"
       >
         <Plus className="h-4 w-4" />
         Add Plan

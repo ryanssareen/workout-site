@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { Navbar } from '@/components/dashboard/Navbar';
+import { MobileBottomNav } from '@/components/dashboard/MobileBottomNav';
 import { Loader2 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -68,7 +69,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen relative overflow-hidden bg-background text-foreground">
       <div className="absolute inset-0 bg-energy -z-10 pointer-events-none" aria-hidden />
       <Navbar />
-      <main className={`relative container mx-auto px-3 sm:px-6 py-4 sm:py-8 ${isWide ? 'max-w-[1920px]' : 'max-w-[1440px]'}`}>
+      <MobileBottomNav />
+      <main className={`relative container mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-20 lg:pb-8 ${isWide ? 'max-w-[1920px]' : 'max-w-[1440px]'}`}>
         <div className={`panel-glow rounded-2xl sm:rounded-3xl ${isWide ? 'p-3 sm:p-4 md:p-6' : 'p-4 sm:p-6 md:p-8'}`}>
           {children}
         </div>

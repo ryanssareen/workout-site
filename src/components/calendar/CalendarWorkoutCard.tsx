@@ -101,9 +101,10 @@ function MiniPill({ workout, onSelect }: { workout: Workout; onSelect?: (id: str
         onSelect?.(workout.id);
       }}
       className={cn(
-        'w-full text-left rounded-md border-l-[3px] px-2 py-1 transition-all',
-        'hover:bg-muted/60 cursor-pointer',
-        bgTint || 'bg-card/80',
+        'w-full text-left rounded-lg border-l-[3px] px-2 py-1.5 transition-all duration-200',
+        'hover:bg-muted/50 hover:shadow-sm cursor-pointer',
+        'backdrop-blur-sm',
+        bgTint || 'bg-card/60',
         cfg.border,
         status.isMissed && 'opacity-50',
       )}
@@ -171,12 +172,17 @@ function CompactCard({
     <Link
       href={`/workouts/${workout.id}`}
       className={cn(
-        'block rounded-xl border transition-all hover:shadow-sm',
-        'bg-card',
+        'block rounded-2xl border border-border/40 transition-all duration-200',
+        'bg-card/70 backdrop-blur-sm',
+        'shadow-sm hover:shadow-md hover:shadow-black/5',
+        'hover:scale-[1.01] active:scale-[0.99]',
         status.isMissed && 'opacity-60',
       )}
     >
-      <div className="flex items-start gap-3 p-3.5">
+      <div className="flex overflow-hidden rounded-2xl">
+        {/* Left color accent */}
+        <div className={cn('w-1 shrink-0', cfg.border.replace('border-l-', 'bg-'))} />
+        <div className="flex items-start gap-3 p-3.5 flex-1 min-w-0">
         {/* Emoji */}
         <span className="text-xl mt-0.5 shrink-0">{cfg.emoji}</span>
 
@@ -258,6 +264,7 @@ function CompactCard({
             </button>
           )}
         </div>
+        </div>
       </div>
     </Link>
   );
@@ -286,9 +293,10 @@ function MicroPillCard({ workout, onSelect }: { workout: Workout; onSelect?: (id
         onSelect?.(workout.id);
       }}
       className={cn(
-        'w-full text-left rounded border-l-2 px-1.5 py-0.5 transition-all',
-        'hover:bg-muted/60 cursor-pointer',
-        bgTint || 'bg-card/80',
+        'w-full text-left rounded-md border-l-2 px-1.5 py-0.5 transition-all duration-200',
+        'hover:bg-muted/50 cursor-pointer',
+        'backdrop-blur-sm',
+        bgTint || 'bg-card/60',
         cfg.border,
         status.isMissed && 'opacity-50',
       )}
