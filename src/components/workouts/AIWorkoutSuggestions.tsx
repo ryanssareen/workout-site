@@ -195,20 +195,20 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
   };
 
   return (
-    <Card className="border-red-200 dark:border-red-900 bg-gradient-to-br from-red-50 to-neutral-50 dark:from-red-950/20 dark:to-neutral-950/20">
-      <CardHeader>
+    <Card className="border bg-card">
+      <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-red-600" />
-            <CardTitle className="text-lg">AI Workout Suggestions</CardTitle>
+            <Sparkles className="h-4 w-4 text-orange-500" />
+            <CardTitle className="text-base">AI Suggestions</CardTitle>
           </div>
           {suggestions.length === 0 && (
-            <Button onClick={loadSuggestions} disabled={loading} size="sm" className="bg-red-600 hover:bg-red-700">
-              {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Generating...</> : <><Sparkles className="h-4 w-4 mr-2" />Get Suggestions</>}
+            <Button onClick={loadSuggestions} disabled={loading} size="sm">
+              {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Generating...</> : 'Generate'}
             </Button>
           )}
         </div>
-        <CardDescription>Personalized workouts based on your history, level, and goals — logic engine + AI coaching</CardDescription>
+        <CardDescription className="text-xs">Personalized workouts based on your history, level, and goals</CardDescription>
       </CardHeader>
 
       {error && (
@@ -222,7 +222,7 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
           {/* Validation Status */}
           <div className="flex items-center gap-2">
             {aiEnhanced ? (
-              <Badge className="bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/30">✓ AI-Enhanced & Validated</Badge>
+              <Badge className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30">✓ AI-Enhanced</Badge>
             ) : (
               <Badge variant="outline" className="text-xs">Logic-Only (AI skipped or failed validation)</Badge>
             )}
@@ -230,8 +230,8 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
 
           {/* Training Snapshot */}
           {analysis && (
-            <div className="rounded-lg border border-red-200 dark:border-red-800 bg-white/70 dark:bg-red-950/20 p-3 space-y-2">
-              <div className="flex items-center gap-2 text-sm font-semibold text-red-700 dark:text-red-400">
+            <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
                 <Info className="h-4 w-4" />Training Snapshot
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-muted-foreground">
@@ -256,7 +256,7 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
           {suggestions.map((s, index) => {
             const isExpanded = expandedIndex === index;
             return (
-              <Card key={index} className="border-red-200 hover:border-red-400 dark:border-red-800 dark:hover:border-red-600 transition-all hover:shadow-md">
+              <Card key={index} className="border hover:border-primary/30 transition-all hover:shadow-md">
                 <CardContent className="p-4 space-y-3">
                   {/* Header */}
                   <div className="flex items-start justify-between gap-3">
@@ -265,7 +265,7 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
                         <h4 className="font-semibold text-base">{s.name}</h4>
                         <Badge className={`capitalize border ${getTypeColor(s.type)}`}>{s.type}</Badge>
                         {s.intensity && <Badge className={`text-xs ${getIntensityColor(s.intensity)}`}>{s.intensity}</Badge>}
-                        {s.aiModified && <Badge variant="outline" className="text-xs border-red-400 text-red-600">AI-adjusted</Badge>}
+                        {s.aiModified && <Badge variant="outline" className="text-xs border-orange-400 text-orange-600 dark:text-orange-400">AI-adjusted</Badge>}
                       </div>
                       {/* Date + Specs line */}
                       <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
@@ -300,7 +300,7 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
                       {/* Rationale */}
                       {s.rationale && (
                         <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-sm font-semibold text-red-700 dark:text-red-400"><Target className="h-4 w-4" />Why This Workout?</div>
+                          <div className="flex items-center gap-2 text-sm font-semibold text-foreground"><Target className="h-4 w-4" />Why This Workout?</div>
                           <p className="text-sm text-muted-foreground pl-6">{s.rationale}</p>
                         </div>
                       )}
@@ -308,9 +308,9 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
                       {/* Benefits */}
                       {s.benefits && s.benefits.length > 0 && (
                         <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-sm font-semibold text-red-700 dark:text-red-400"><TrendingUp className="h-4 w-4" />Benefits</div>
+                          <div className="flex items-center gap-2 text-sm font-semibold text-foreground"><TrendingUp className="h-4 w-4" />Benefits</div>
                           <ul className="text-sm text-muted-foreground space-y-1 pl-6">
-                            {s.benefits.map((b, i) => <li key={i} className="flex items-start gap-2"><CheckCircle2 className="h-3 w-3 mt-0.5 text-red-500 shrink-0" />{b}</li>)}
+                            {s.benefits.map((b, i) => <li key={i} className="flex items-start gap-2"><CheckCircle2 className="h-3 w-3 mt-0.5 text-green-500 shrink-0" />{b}</li>)}
                           </ul>
                         </div>
                       )}
@@ -318,7 +318,7 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
                       {/* Structure */}
                       {(s.warmup || s.mainSet || s.cooldown) && (
                         <div className="space-y-2">
-                          <div className="flex items-center gap-2 text-sm font-semibold text-red-700 dark:text-red-400"><Zap className="h-4 w-4" />Workout Structure</div>
+                          <div className="flex items-center gap-2 text-sm font-semibold text-foreground"><Zap className="h-4 w-4" />Workout Structure</div>
                           <div className="space-y-2 pl-6 text-sm">
                             {s.warmup && <div><span className="font-medium">Warmup:</span><p className="text-muted-foreground">{s.warmup}</p></div>}
                             {s.mainSet && <div><span className="font-medium">Main Set:</span><p className="text-muted-foreground">{s.mainSet}</p></div>}
@@ -328,7 +328,7 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
                       )}
 
                       {/* Use Button */}
-                      <Button onClick={() => handleUseWorkout(s)} className="w-full bg-red-600 hover:bg-red-700">
+                      <Button onClick={() => handleUseWorkout(s)} className="w-full bg-primary hover:bg-primary/90">
                         Use This Workout <ChevronRight className="h-4 w-4 ml-1" />
                       </Button>
                     </div>

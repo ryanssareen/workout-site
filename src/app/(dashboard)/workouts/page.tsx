@@ -9,7 +9,7 @@ import { AIWorkoutSuggestions } from '@/components/workouts/AIWorkoutSuggestions
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { Plus, ListChecks, Loader2, CheckCircle2, Circle, AlertCircle, Heart, Mountain, Flame, Gauge, Zap, Calendar, History, CalendarClock } from 'lucide-react';
+import { Plus, Loader2, CheckCircle2, Circle, AlertCircle, Heart, Mountain, Flame, Gauge, Zap, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { TYPE_CONFIG, getTypeData, formatDur } from '@/components/calendar/types';
@@ -81,7 +81,7 @@ function WorkoutRow({ workout }: { workout: Workout }) {
     <Link
       href={`/workouts/${workout.id}`}
       className={cn(
-        'flex items-center gap-3 p-3.5 rounded-xl border bg-card transition-all hover:shadow-sm hover:border-primary/20',
+        'flex items-center gap-3 p-3 rounded-xl border bg-card transition-all hover:shadow-sm hover:border-primary/20',
         isMissed && 'opacity-50',
       )}
     >
@@ -159,6 +159,7 @@ function WorkoutsContent() {
   const [ready, setReady] = useState(false);
   const [activeFilter, setActiveFilter] = useState<WorkoutType | 'all'>('all');
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
+  const [showAI, setShowAI] = useState(false);
 
   const loadWorkouts = useCallback(async () => {
     if (!user) return;
@@ -228,107 +229,117 @@ function WorkoutsContent() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary to-primary/80 shadow-lg shadow-primary/20">
-            <ListChecks className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">
-              {user?.role === 'coach' ? 'My Workouts' : 'Workouts'}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {filteredWorkouts.length} workout{filteredWorkouts.length !== 1 ? 's' : ''}
-            </p>
-          </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold">
+            {user?.role === 'coach' ? 'My Workouts' : 'Workouts'}
+          </h1>
+          <p className="text-xs text-muted-foreground">
+            {filteredWorkouts.length} workout{filteredWorkouts.length !== 1 ? 's' : ''}
+          </p>
         </div>
         {canManageWorkouts && (
-          <Button asChild className="shadow-lg shadow-primary/20">
+          <Button size="sm" asChild>
             <Link href="/workouts/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Create Workout
+              <Plus className="h-4 w-4 sm:mr-1.5" />
+              <span className="hidden sm:inline">Create Workout</span>
             </Link>
           </Button>
         )}
       </div>
 
-      {/* AI Workout Suggestions - coaches and self-training athletes (no coach) */}
+      {/* AI Workout Suggestions — collapsed by default */}
       {user && (user.role === 'coach' || !user.coachUsername) && (
-        <AIWorkoutSuggestions
-          userId={user.uid}
-          recentWorkouts={workouts}
-          athleteProfile={{
-            sportPreferences: user.sportPreferences,
-            fitnessGoals: user.fitnessGoals,
-            trainingFor: user.trainingFor,
-            experienceLevel: user.experienceLevel,
-            ageRange: user.ageRange,
-            eventDate: user.eventDate,
-            weeklyAvailability: user.weeklyAvailability,
-            bio: user.bio,
-            timezone: user.timezone,
-          }}
-        />
+        showAI ? (
+          <AIWorkoutSuggestions
+            userId={user.uid}
+            recentWorkouts={workouts}
+            athleteProfile={{
+              sportPreferences: user.sportPreferences,
+              fitnessGoals: user.fitnessGoals,
+              trainingFor: user.trainingFor,
+              experienceLevel: user.experienceLevel,
+              ageRange: user.ageRange,
+              eventDate: user.eventDate,
+              weeklyAvailability: user.weeklyAvailability,
+              bio: user.bio,
+              timezone: user.timezone,
+            }}
+          />
+        ) : (
+          <button
+            onClick={() => setShowAI(true)}
+            className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl border bg-card hover:bg-muted/50 transition-colors"
+          >
+            <div className="flex items-center gap-2 text-sm">
+              <Sparkles className="h-4 w-4 text-orange-500" />
+              <span className="font-medium">AI Workout Suggestions</span>
+            </div>
+            <span className="text-xs text-muted-foreground">Generate →</span>
+          </button>
+        )
       )}
 
-      {/* Time Filter Tabs */}
-      <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/50 border w-fit">
-        {([
-          { value: 'planned' as TimeFilter, label: 'Planned', icon: <CalendarClock className="h-3.5 w-3.5" /> },
-          { value: 'past' as TimeFilter, label: 'Past', icon: <History className="h-3.5 w-3.5" /> },
-          { value: 'all' as TimeFilter, label: 'All', icon: <Calendar className="h-3.5 w-3.5" /> },
-        ]).map((tab) => (
-          <button
-            key={tab.value}
-            onClick={() => setTimeFilter(tab.value)}
-            className={cn(
-              'flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all',
-              timeFilter === tab.value
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {tab.icon}
-            {tab.label}
-            <span className={cn(
-              'text-xs tabular-nums',
-              timeFilter === tab.value ? 'text-foreground/50' : 'text-muted-foreground/50',
-            )}>
-              {timeCounts[tab.value]}
-            </span>
-          </button>
-        ))}
-      </div>
+      {/* Filters */}
+      <div className="space-y-2">
+        {/* Time Filter Tabs */}
+        <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-muted/50 w-fit">
+          {([
+            { value: 'planned' as TimeFilter, label: 'Planned' },
+            { value: 'past' as TimeFilter, label: 'Past' },
+            { value: 'all' as TimeFilter, label: 'All' },
+          ]).map((tab) => (
+            <button
+              key={tab.value}
+              onClick={() => setTimeFilter(tab.value)}
+              className={cn(
+                'px-3 py-1 rounded-md text-xs font-medium transition-all',
+                timeFilter === tab.value
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {tab.label}
+              <span className={cn(
+                'ml-1 tabular-nums',
+                timeFilter === tab.value ? 'text-foreground/50' : 'text-muted-foreground/50',
+              )}>
+                {timeCounts[tab.value]}
+              </span>
+            </button>
+          ))}
+        </div>
 
-      {/* Type Filter Tags */}
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-        {FILTER_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            onClick={() => setActiveFilter(opt.value)}
-            className={cn(
-              'flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all border shrink-0',
-              activeFilter === opt.value
-                ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                : 'bg-card border-border text-muted-foreground hover:border-primary/40 hover:text-foreground',
-            )}
-          >
-            {opt.emoji && <span className="text-xs">{opt.emoji}</span>}
-            {opt.label}
-            <span className={cn(
-              'text-xs tabular-nums ml-0.5',
-              activeFilter === opt.value ? 'text-primary-foreground/70' : 'text-muted-foreground/50',
-            )}>
-              {workoutCounts[opt.value] || 0}
-            </span>
-          </button>
-        ))}
+        {/* Type Filter Tags */}
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5 -mx-1 px-1">
+          {FILTER_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setActiveFilter(opt.value)}
+              className={cn(
+                'flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all border shrink-0',
+                activeFilter === opt.value
+                  ? 'bg-foreground text-background border-foreground'
+                  : 'bg-card border-border text-muted-foreground hover:border-foreground/20 hover:text-foreground',
+              )}
+            >
+              {opt.emoji && <span className="text-[11px]">{opt.emoji}</span>}
+              {opt.label}
+              <span className={cn(
+                'tabular-nums',
+                activeFilter === opt.value ? 'text-background/60' : 'text-muted-foreground/50',
+              )}>
+                {workoutCounts[opt.value] || 0}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Workout List */}
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {sortedWorkouts.length === 0 ? (
           <div className="text-center py-16 space-y-2">
             <p className="text-muted-foreground">
