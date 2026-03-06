@@ -180,13 +180,14 @@ export default function MonthlyReviewPage() {
   useEffect(() => {
     async function load() {
       if (!user) return;
-      setLoading(true);
+      if (workouts.length === 0) setLoading(true);
       const data = await getUserWorkouts(user.username, user.role);
       setWorkouts(data);
       setLoading(false);
     }
     load();
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.username]);
 
   const now = new Date();
   const targetMonthStart = startOfMonth(subMonths(now, monthOffset));

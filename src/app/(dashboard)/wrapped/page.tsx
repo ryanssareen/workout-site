@@ -30,13 +30,15 @@ export default function YearlyWrappedPage() {
   useEffect(() => {
     async function load() {
       if (!user) return;
-      setLoading(true);
+      // Only show loading spinner on initial load, not re-fetches
+      if (workouts.length === 0) setLoading(true);
       const data = await getUserWorkouts(user.username, user.role);
       setWorkouts(data);
       setLoading(false);
     }
     load();
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.username]);
 
   const stats = useMemo(() => computeYearStats(workouts), [workouts]);
   const firstName = user?.displayName?.split(' ')[0] || 'Athlete';
