@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Sparkles, Trophy, Clock, MapPin, Dumbbell,
-  Activity, UserPlus, LogIn, Lock, Share2,
+  Activity, UserPlus, LogIn, Lock, Share2, Flame,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuthStore } from '@/lib/stores/authStore';
@@ -272,7 +272,11 @@ export function AthleteProfileClient({ profile }: { profile: AthleteProfileData 
                 )}
 
                 {hasWorkouts && (
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Streak</p>
+                      <p className="text-white text-xl font-bold">{summary.currentStreak} <span className="text-base">🔥</span></p>
+                    </div>
                     <div>
                       <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Workouts</p>
                       <p className="text-white text-xl font-bold">{summary.completedWorkouts}</p>
@@ -295,7 +299,8 @@ export function AthleteProfileClient({ profile }: { profile: AthleteProfileData 
         {/* ── Stats Grid ── */}
         {hasWorkouts && (
           <section>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+              <StatCard value={`${summary.currentStreak}`} label="Day Streak" icon={<Flame className="w-3.5 h-3.5 text-orange-500" />} />
               <StatCard value={String(summary.completedWorkouts)} label="Workouts" icon={<Dumbbell className="w-3.5 h-3.5" />} />
               <StatCard value={formatHours(summary.totalHours)} label="Hours Trained" icon={<Clock className="w-3.5 h-3.5" />} />
               <StatCard value={formatDistance(summary.totalDistanceKm)} label="Distance" icon={<MapPin className="w-3.5 h-3.5" />} />

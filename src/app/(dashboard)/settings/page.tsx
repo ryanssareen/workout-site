@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Select,
   SelectContent,
@@ -33,16 +34,19 @@ import {
   RefreshCw,
   Pencil,
   Save,
+  Eye,
 } from 'lucide-react';
 import { signOut } from '@/lib/firebase/auth';
 import Link from 'next/link';
 import { StravaDuplicateDialog } from '@/components/strava/DuplicateDialog';
+import { PhotoUpload } from '@/components/profile/PhotoUpload';
 import {
   SPORT_OPTIONS,
   TRAINING_FOR_OPTIONS,
   AGE_RANGE_OPTIONS,
   EXPERIENCE_LEVEL_OPTIONS,
 } from '@/lib/schemas/profile';
+import { cn } from '@/lib/utils';
 import type { User as UserType } from '@/types';
 
 function SettingsContent() {
@@ -65,6 +69,34 @@ function SettingsContent() {
   const [trainingFor, setTrainingFor] = useState<string[]>(user?.trainingFor || []);
   const [events, setEvents] = useState<Array<{ goal: string; eventName: string; eventDate?: string }>>(user?.events || []);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  // ── Unsaved changes tracking ──
+  const initialValues = useRef({
+    displayName: user?.displayName || '',
+    bio: user?.bio || '',
+    timezone: user?.timezone || '',
+    ageRange: user?.ageRange || '',
+    experienceLevel: user?.experienceLevel || '',
+    height: user?.height ? String(user.height) : '',
+    weight: user?.weight ? String(user.weight) : '',
+    sportPreferences: user?.sportPreferences || [],
+    trainingFor: user?.trainingFor || [],
+  });
+
+  const hasUnsavedChanges = useMemo(() => {
+    const iv = initialValues.current;
+    return (
+      displayName !== iv.displayName ||
+      bio !== iv.bio ||
+      timezone !== iv.timezone ||
+      ageRange !== iv.ageRange ||
+      experienceLevel !== iv.experienceLevel ||
+      height !== iv.height ||
+      weight !== iv.weight ||
+      JSON.stringify(sportPreferences) !== JSON.stringify(iv.sportPreferences) ||
+      JSON.stringify(trainingFor) !== JSON.stringify(iv.trainingFor)
+    );
+  }, [displayName, bio, timezone, ageRange, experienceLevel, height, weight, sportPreferences, trainingFor]);
 
   const toggleArrayItem = (arr: string[], item: string) =>
     arr.includes(item) ? arr.filter(i => i !== item) : [...arr, item];
@@ -118,6 +150,18 @@ function SettingsContent() {
         ...updates,
         updatedAt: new Date() as any,
       } as UserType);
+      // Reset initial values after save
+      initialValues.current = {
+        displayName: displayName.trim(),
+        bio: bio.trim(),
+        timezone,
+        ageRange,
+        experienceLevel,
+        height,
+        weight,
+        sportPreferences: [...sportPreferences],
+        trainingFor: [...trainingFor],
+      };
       toast.success('Profile updated!');
     } catch (error: any) {
       toast.error(error.message || 'Failed to save profile');
@@ -128,7 +172,6 @@ function SettingsContent() {
   const [isConnectingStrava, setIsConnectingStrava] = useState(false);
   const [isDisconnectingStrava, setIsDisconnectingStrava] = useState(false);
   const [isSyncingStrava, setIsSyncingStrava] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [profilePublic, setProfilePublic] = useState(user?.profilePublic !== false);
   const [profileCopied, setProfileCopied] = useState(false);
   const [regeneratingTagline, setRegeneratingTagline] = useState(false);
@@ -171,7 +214,6 @@ function SettingsContent() {
     if (!user) return;
     setIsSyncingStrava(true);
     try {
-      // First, check for duplicates (unless we already have decisions)
       if (!decisions) {
         const checkResponse = await fetch(
           `/api/strava/sync?userId=${user.username}&checkDuplicates=true`,
@@ -182,12 +224,9 @@ function SettingsContent() {
           const errorData = await checkResponse.json().catch(() => ({ error: 'Unknown error' }));
           console.error('Duplicate check failed:', errorData);
 
-          // Handle authorization errors that need reconnection
           if (errorData.needsReconnect) {
             throw new Error(errorData.error || 'Please reconnect your Strava account');
           }
-
-          // Provide more helpful error messages
           if (errorData.hint) {
             throw new Error(`${errorData.error}: ${errorData.hint}`);
           } else if (errorData.details) {
@@ -200,7 +239,6 @@ function SettingsContent() {
         const checkData = await checkResponse.json();
 
         if (checkData.hasDuplicates && checkData.duplicates?.length > 0) {
-          // Show duplicate dialog
           setStravaDuplicates(checkData.duplicates);
           setShowDuplicateDialog(true);
           setIsSyncingStrava(false);
@@ -208,7 +246,6 @@ function SettingsContent() {
         }
       }
 
-      // Perform the actual sync with decisions
       const decisionsParam = decisions ? `&decisions=${encodeURIComponent(JSON.stringify(decisions))}` : '';
       const response = await fetch(
         `/api/strava/sync?userId=${user.username}${decisionsParam}`,
@@ -218,12 +255,9 @@ function SettingsContent() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.error('Sync failed:', errorData);
-
-        // Handle authorization errors that need reconnection
         if (errorData.needsReconnect) {
           throw new Error(errorData.error || 'Please reconnect your Strava account');
         }
-
         throw new Error(errorData.error || 'Failed to sync');
       }
 
@@ -304,8 +338,11 @@ function SettingsContent() {
 
   const handleLogout = async () => { await signOut(); router.push('/login'); };
 
+  const getInitials = (name: string) =>
+    name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+
   return (
-    <div className="space-y-6 pb-8 max-w-2xl mx-auto">
+    <div className={cn("space-y-6 max-w-2xl mx-auto", hasUnsavedChanges ? "pb-24" : "pb-8")}>
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary to-primary/80 shadow-lg shadow-primary/20">
@@ -317,46 +354,46 @@ function SettingsContent() {
         </div>
       </div>
 
-      {/* Edit Profile */}
+      {/* ═══════════════════ Edit Profile ═══════════════════ */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2"><Pencil className="h-4 w-4 text-primary" />Edit Profile</CardTitle>
           <CardDescription>Update your personal information and training preferences</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Basic Info */}
-          <div className="space-y-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Basic Info</p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="displayName" className="text-xs">Display Name</Label>
-                <Input id="displayName" value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Your name" />
+
+          {/* ── Section 1: Profile Header ── */}
+          <div className="flex flex-col sm:flex-row gap-5 items-center sm:items-start">
+            {user && <PhotoUpload user={user} size={80} />}
+            <div className="flex-1 w-full space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="displayName" className="text-xs">Display Name</Label>
+                  <Input id="displayName" value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Your name" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Username</Label>
+                  <Input value={`@${user?.username || ''}`} disabled className="opacity-60 font-mono" />
+                </div>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Email</Label>
-                <Input value={user?.email || ''} disabled className="opacity-60" />
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="bio" className="text-xs">Bio</Label>
+                  <span className={cn(
+                    "text-xs",
+                    300 - bio.length < 30 ? "text-orange-500" : "text-muted-foreground"
+                  )}>
+                    {300 - bio.length} remaining
+                  </span>
+                </div>
+                <Textarea id="bio" value={bio} onChange={e => setBio(e.target.value.slice(0, 300))} placeholder="Tell us about yourself..." rows={2} />
               </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="bio" className="text-xs">Bio <span className="text-muted-foreground font-normal">({bio.length}/300)</span></Label>
-              <Textarea id="bio" value={bio} onChange={e => setBio(e.target.value.slice(0, 300))} placeholder="Tell us about yourself..." rows={2} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Timezone</Label>
-              <Select value={timezone} onValueChange={setTimezone}>
-                <SelectTrigger><SelectValue placeholder="Select timezone" /></SelectTrigger>
-                <SelectContent>
-                  {Intl.supportedValuesOf('timeZone').filter(tz => tz.includes('/')).slice(0, 100).map(tz => (
-                    <SelectItem key={tz} value={tz}>{tz.replace(/_/g, ' ')}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
           </div>
 
-          {/* About You */}
-          <div className="space-y-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">About You</p>
+          {/* ── Section 2: Personal Details ── */}
+          <div className="border-t pt-6 space-y-3">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Personal Details</p>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label className="text-xs">Age Range</Label>
@@ -409,79 +446,148 @@ function SettingsContent() {
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Sports */}
-          <div className="space-y-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sports</p>
-            <div className="flex flex-wrap gap-1.5">
-              {SPORT_OPTIONS.map(sport => (
-                <Badge
-                  key={sport}
-                  variant={sportPreferences.includes(sport) ? 'default' : 'outline'}
-                  className="cursor-pointer text-xs transition-all"
-                  onClick={() => toggleSport(sport)}
-                >
-                  {sport}
-                </Badge>
-              ))}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Timezone</Label>
+              <Select value={timezone} onValueChange={setTimezone}>
+                <SelectTrigger><SelectValue placeholder="Select timezone" /></SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  {Intl.supportedValuesOf('timeZone').filter(tz => tz.includes('/')).map(tz => (
+                    <SelectItem key={tz} value={tz}>{tz.replace(/_/g, ' ')}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          {/* Training For */}
-          <div className="space-y-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Training For</p>
-            <div className="flex flex-wrap gap-1.5">
-              {TRAINING_FOR_OPTIONS.map(goal => (
-                <Badge
-                  key={goal}
-                  variant={trainingFor.includes(goal) ? 'default' : 'outline'}
-                  className="cursor-pointer text-xs transition-all"
-                  onClick={() => toggleGoal(goal)}
-                >
-                  {goal}
-                </Badge>
-              ))}
-            </div>
-            {/* Event details for selected goals */}
-            {events.filter(e => trainingFor.includes(e.goal)).length > 0 && (
-              <div className="space-y-2 pt-1">
-                {events.filter(e => trainingFor.includes(e.goal)).map(evt => (
-                  <div key={evt.goal} className="flex flex-col sm:flex-row gap-2 p-2.5 rounded-lg border bg-muted/30">
-                    <span className="text-xs font-medium text-muted-foreground shrink-0 pt-1.5">{evt.goal}</span>
-                    <Input
-                      placeholder="Event name (optional)"
-                      value={evt.eventName}
-                      onChange={e => updateEvent(evt.goal, 'eventName', e.target.value)}
-                      className="h-8 text-xs flex-1"
-                    />
-                    <Input
-                      type="date"
-                      value={evt.eventDate || ''}
-                      onChange={e => updateEvent(evt.goal, 'eventDate', e.target.value)}
-                      className="h-8 text-xs w-36"
-                    />
-                  </div>
-                ))}
+          {/* ── Section 3: Sports & Goals ── */}
+          <div className="border-t pt-6 space-y-4">
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sports</p>
+              <div className="flex flex-wrap gap-1.5">
+                {SPORT_OPTIONS.map(sport => {
+                  const selected = sportPreferences.includes(sport);
+                  return (
+                    <Badge
+                      key={sport}
+                      variant={selected ? 'default' : 'outline'}
+                      className={cn(
+                        "cursor-pointer text-xs transition-all gap-1",
+                        selected && "shadow-sm"
+                      )}
+                      onClick={() => toggleSport(sport)}
+                    >
+                      {selected && <Check className="h-3 w-3" />}
+                      {sport}
+                    </Badge>
+                  );
+                })}
               </div>
-            )}
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Training For</p>
+              <div className="flex flex-wrap gap-1.5">
+                {TRAINING_FOR_OPTIONS.map(goal => {
+                  const selected = trainingFor.includes(goal);
+                  return (
+                    <Badge
+                      key={goal}
+                      variant={selected ? 'default' : 'outline'}
+                      className={cn(
+                        "cursor-pointer text-xs transition-all gap-1",
+                        selected && "shadow-sm"
+                      )}
+                      onClick={() => toggleGoal(goal)}
+                    >
+                      {selected && <Check className="h-3 w-3" />}
+                      {goal}
+                    </Badge>
+                  );
+                })}
+              </div>
+              {events.filter(e => trainingFor.includes(e.goal)).length > 0 && (
+                <div className="space-y-2 pt-1">
+                  <p className="text-xs font-medium text-muted-foreground">Event Details</p>
+                  {events.filter(e => trainingFor.includes(e.goal)).map(evt => (
+                    <div key={evt.goal} className="flex flex-col sm:flex-row gap-2 p-3 rounded-lg border bg-muted/30">
+                      <span className="text-xs font-semibold text-foreground shrink-0 pt-1.5 min-w-[100px]">{evt.goal}</span>
+                      <Input
+                        placeholder="Event name (optional)"
+                        value={evt.eventName}
+                        onChange={e => updateEvent(evt.goal, 'eventName', e.target.value)}
+                        className="h-8 text-xs flex-1"
+                      />
+                      <Input
+                        type="date"
+                        value={evt.eventDate || ''}
+                        onChange={e => updateEvent(evt.goal, 'eventDate', e.target.value)}
+                        className="h-8 text-xs w-36"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Role + Save */}
-          <div className="flex items-center justify-between pt-2 border-t">
+          {/* ── Role + Save ── */}
+          <div className="flex items-center justify-between pt-4 border-t">
             <div className="flex items-center gap-2">
               <p className="text-xs text-muted-foreground">Role</p>
               <Badge variant="secondary" className="capitalize text-xs">{user?.role === 'student' ? 'athlete' : user?.role}</Badge>
             </div>
-            <Button size="sm" onClick={handleSaveProfile} disabled={isSavingProfile}>
+            <Button size="sm" onClick={handleSaveProfile} disabled={isSavingProfile || !hasUnsavedChanges}>
               {isSavingProfile ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Save className="h-4 w-4 mr-1.5" />}
-              {isSavingProfile ? 'Saving...' : 'Save Changes'}
+              {isSavingProfile ? 'Saving...' : hasUnsavedChanges ? 'Save Changes' : 'Saved'}
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Strava */}
+      {/* ═══════════════════ Profile Preview ═══════════════════ */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2"><Eye className="h-4 w-4 text-primary" />Profile Preview</CardTitle>
+          <CardDescription>This is how your profile appears to others</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4 mb-3">
+            <Avatar className="w-14 h-14 border-2 border-background shadow-md">
+              {user?.photoURL && <AvatarImage src={user.photoURL} alt={displayName} />}
+              <AvatarFallback className="text-lg font-bold bg-gradient-to-br from-primary/20 to-orange-500/20">
+                {displayName ? getInitials(displayName) : '?'}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <p className="font-semibold truncate">{displayName || 'Your Name'}</p>
+              <p className="text-sm text-muted-foreground font-mono">@{user?.username}</p>
+            </div>
+          </div>
+          {bio && <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{bio}</p>}
+          {sportPreferences.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {sportPreferences.map(sport => (
+                <Badge key={sport} variant="secondary" className="text-xs">{sport}</Badge>
+              ))}
+              {experienceLevel && (
+                <Badge variant="outline" className="text-xs">{experienceLevel}</Badge>
+              )}
+            </div>
+          )}
+          {trainingFor.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {trainingFor.map(t => (
+                <Badge key={t} variant="outline" className="text-xs font-normal">{t}</Badge>
+              ))}
+            </div>
+          )}
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/profile"><ExternalLink className="h-4 w-4 mr-1.5" />View Full Profile</Link>
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* ═══════════════════ Strava ═══════════════════ */}
       {(user?.role === 'athlete' || user?.role === 'student' || user?.role === 'coach') && (
         <Card>
           <CardHeader className="pb-3">
@@ -531,7 +637,7 @@ function SettingsContent() {
         </Card>
       )}
 
-      {/* Public Profile */}
+      {/* ═══════════════════ Public Profile ═══════════════════ */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2"><Globe className="h-4 w-4 text-primary" />Public Profile</CardTitle>
@@ -564,7 +670,7 @@ function SettingsContent() {
         </CardContent>
       </Card>
 
-      {/* Account */}
+      {/* ═══════════════════ Account ═══════════════════ */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2"><Key className="h-4 w-4 text-primary" />Account</CardTitle>
@@ -576,6 +682,22 @@ function SettingsContent() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ═══════════════════ Sticky Save Bar ═══════════════════ */}
+      {hasUnsavedChanges && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-4 py-3">
+          <div className="max-w-2xl mx-auto flex items-center justify-between">
+            <p className="text-sm text-muted-foreground flex items-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+              Unsaved changes
+            </p>
+            <Button size="sm" onClick={handleSaveProfile} disabled={isSavingProfile}>
+              {isSavingProfile ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Save className="h-4 w-4 mr-1.5" />}
+              {isSavingProfile ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Strava Duplicate Dialog */}
       <StravaDuplicateDialog

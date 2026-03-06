@@ -27,6 +27,7 @@ import {
   Activity,
   Trophy,
   Sparkles,
+  Flame,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
@@ -172,7 +173,8 @@ export default function ProfilePage() {
       {/* ── Stats Grid ── */}
       {hasWorkouts && (
         <section>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+            <StatCard value={`${summary.currentStreak}`} label="Day Streak" icon={<Flame className="w-3.5 h-3.5 text-orange-500" />} />
             <StatCard value={String(summary.completedWorkouts)} label="Workouts" icon={<Dumbbell className="w-3.5 h-3.5" />} />
             <StatCard value={formatHours(summary.totalHours)} label="Hours Trained" icon={<Clock className="w-3.5 h-3.5" />} />
             <StatCard value={formatDistance(summary.totalDistanceKm)} label="Distance" icon={<MapPin className="w-3.5 h-3.5" />} />
