@@ -23,7 +23,7 @@
 
 | Area | Gap | Impact |
 |------|-----|--------|
-| **Report sharing UX** | Reports can export PNG/PDF but there's no beautiful, branded "year in review" or "weekly wrap" shareable card | HIGH — this is the viral opportunity |
+| ~~**Report sharing UX**~~ | ✅ DONE — `/wrap` (weekly shareable card), `/review` (monthly shareable card), `/wrapped` (yearly 8-slide interactive with public sharing at `/athlete/[username]/wrapped`). All use ShareButtons (Instagram Story, WhatsApp, X, iMessage, Save Image via html-to-image, Copy Link) | ~~HIGH~~ |
 | **Workouts UX** | ✅ IMPROVED — AI suggestions at top of workouts page, time filter tabs (Planned/Past/All), Garmin-style stat chips, workout preview dialog with full details | ~~MEDIUM~~ |
 | ~~**Public athlete profiles**~~ | ✅ DONE — `/athlete/[username]` with stats, pie chart, recent workouts, PRs, AI tagline | ~~HIGH~~ |
 | **Product analytics** | Zero tracking of user behavior (no PostHog, no Amplitude, nothing) | HIGH — can't improve what you can't measure |
