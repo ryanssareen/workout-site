@@ -18,7 +18,6 @@ import type { Slide } from '@/components/wrapped/WrappedSlides';
 
 export default function YearlyWrappedPage() {
   const user = useAuthStore((s) => s.user);
-  const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [guess, setGuess] = useState('');
@@ -27,21 +26,27 @@ export default function YearlyWrappedPage() {
   const cardRef = useRef<HTMLDivElement>(null);
   const [animateIn, setAnimateIn] = useState(false);
 
+  // Stats computed once and locked — never recomputed even if component re-renders
+  const statsRef = useRef<ReturnType<typeof computeYearStats> | null>(null);
+  const fetchedRef = useRef(false);
+
   useEffect(() => {
     async function load() {
-      if (!user) return;
-      // Only show loading spinner on initial load, not re-fetches
-      if (workouts.length === 0) setLoading(true);
+      if (!user || fetchedRef.current) return;
+      fetchedRef.current = true;
       const data = await getUserWorkouts(user.username, user.role);
-      setWorkouts(data);
+      statsRef.current = computeYearStats(data);
       setLoading(false);
     }
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.username]);
 
-  const stats = useMemo(() => computeYearStats(workouts), [workouts]);
+  const stats = statsRef.current ?? computeYearStats([]);
   const firstName = user?.displayName?.split(' ')[0] || 'Athlete';
+
+  // Lock the guess answer at submission time so it never changes
+  const lockedAnswerRef = useRef<{ actual: number; guessNum: number; response: string; emoji: string } | null>(null);
 
   // Trigger animation on slide change
   useEffect(() => {
@@ -62,37 +67,43 @@ export default function YearlyWrappedPage() {
     }
   }, [currentSlide]);
 
-  // Handle guess submit
+  // Handle guess submit — lock the answer immediately
   const handleGuess = () => {
     if (!guess.trim()) return;
+    const gNum = parseInt(guess) || 0;
+    const act = stats.totalWorkouts;
+    const diff = Math.abs(gNum - act);
+    const pctDiff = act > 0 ? (diff / act) * 100 : 0;
+
+    let response = '';
+    let emoji = '';
+    if (gNum === act) {
+      response = `NO WAY THAT'S INSANEEEEEE! You guessed it exactly right!`;
+      emoji = '🤯';
+    } else if (pctDiff <= 10) {
+      response = `So close! You actually did ${act}. That's impressive!`;
+      emoji = '🔥';
+    } else if (pctDiff <= 25) {
+      response = `Not bad! But you actually did ${act} workouts this year.`;
+      emoji = '💪';
+    } else if (gNum > act) {
+      response = `Not even close. You did ${act}. But still, that's ${act} more than zero!`;
+      emoji = '😅';
+    } else {
+      response = `Way off! You actually crushed ${act} workouts! More than you thought!`;
+      emoji = '🚀';
+    }
+
+    lockedAnswerRef.current = { actual: act, guessNum: gNum, response, emoji };
     setGuessSubmitted(true);
     setTimeout(() => setCurrentSlide(1), 1500);
   };
 
-  // Guess response logic
-  const guessNum = parseInt(guess) || 0;
-  const actual = stats.totalWorkouts;
-  const diff = Math.abs(guessNum - actual);
-  const pctDiff = actual > 0 ? (diff / actual) * 100 : 0;
-
-  let guessResponse = '';
-  let guessEmoji = '';
-  if (guessNum === actual) {
-    guessResponse = `NO WAY THAT'S INSANEEEEEE! You guessed it exactly right!`;
-    guessEmoji = '🤯';
-  } else if (pctDiff <= 10) {
-    guessResponse = `So close! You actually did ${actual}. That's impressive!`;
-    guessEmoji = '🔥';
-  } else if (pctDiff <= 25) {
-    guessResponse = `Not bad! But you actually did ${actual} workouts this year.`;
-    guessEmoji = '💪';
-  } else if (guessNum > actual) {
-    guessResponse = `Not even close 😅 You did ${actual}. But still, that's ${actual} more than zero!`;
-    guessEmoji = '😅';
-  } else {
-    guessResponse = `Way off! You actually crushed ${actual} workouts! More than you thought!`;
-    guessEmoji = '🚀';
-  }
+  // Use locked values after submission, live values before
+  const guessNum = lockedAnswerRef.current?.guessNum ?? (parseInt(guess) || 0);
+  const actual = lockedAnswerRef.current?.actual ?? stats.totalWorkouts;
+  const guessResponse = lockedAnswerRef.current?.response ?? '';
+  const guessEmoji = lockedAnswerRef.current?.emoji ?? '';
 
   const shareText = `🏆 My ${YEAR} Wrapped: ${stats.totalWorkouts} workouts, ${stats.totalDistanceKm}km, ${Math.round(stats.totalDurationMin / 60)}hrs — The Daily Athlete`;
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/athlete/${user?.username}/wrapped` : '';
