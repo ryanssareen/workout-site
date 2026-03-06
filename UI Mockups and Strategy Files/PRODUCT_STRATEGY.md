@@ -30,7 +30,7 @@
 | **PWA / mobile install** | No manifest.json, no service worker, no "Add to Home Screen" | MEDIUM — athletes use phones |
 | **Monetization** | No payment system, no tiers, no pricing page | MEDIUM — not urgent pre-PMF |
 | **Push notifications** | Email-only engagement | MEDIUM |
-| **Month calendar view** | Week-only limits training block planning | LOW-MEDIUM |
+| **Month calendar view** | ✅ DONE — Calendar now has 4 views (day/week/month/year) with heatmap year view | ~~LOW-MEDIUM~~ |
 | **Streak gamification** | No visual streak, no streak notifications | MEDIUM — retention lever |
 
 ### Competitive Position
@@ -90,18 +90,18 @@ Athlete trains → Strava syncs → AI generates report →
 
 ### Feature Ideas (Ranked by Viral Potential × Effort)
 
-| # | Feature | Viral Potential | Effort | Priority |
-|---|---------|----------------|--------|----------|
-| 1 | Weekly Training Wrap card (auto-generated, one-tap share) | Very High | Medium | P0 |
-| 2 | PR Achievement cards (auto-detected, shareable) | Very High | Low-Medium | P0 |
-| 3 | Public athlete profile page (`/athlete/[username]`) | High | Medium | P1 |
-| 4 | Monthly Training Report card | High | Medium | P1 |
-| 5 | Milestone badges (100th workout, 1000km, etc.) | High | Low | P1 |
-| 6 | Race Recap card | High | Medium | P1 |
-| 7 | Year in Review ("Wrapped") | Very High | High | P2 (December) |
-| 8 | Embeddable stats widget (for blogs/Linktree) | Medium | Medium | P2 |
-| 9 | Training block summary | Medium | High | P2 |
-| 10 | Comparison cards ("This month vs last month") | Medium | Low | P2 |
+| # | Feature | Viral Potential | Effort | Priority | Status |
+|---|---------|----------------|--------|----------|--------|
+| 1 | Weekly Training Wrap card (auto-generated, one-tap share) | Very High | Medium | P0 | ✅ DONE — `/wrap` with per-sport stats, week-over-week comparison, highlight, ShareButtons |
+| 2 | PR Achievement cards (auto-detected, shareable) | Very High | Low-Medium | P0 | |
+| 3 | Public athlete profile page (`/athlete/[username]`) | High | Medium | P1 | ✅ DONE — SSR with stats, charts, PRs, AI tagline |
+| 4 | Monthly Training Report card | High | Medium | P1 | ✅ DONE — `/review` with activity calendar, sport stats, pie chart, daily/weekly charts, vs last month, ShareButtons |
+| 5 | Milestone badges (100th workout, 1000km, etc.) | High | Low | P1 | |
+| 6 | Race Recap card | High | Medium | P1 | |
+| 7 | Year in Review ("Wrapped") | Very High | High | P2 (December) | ✅ DONE — `/wrapped` 8-slide carousel, guess game, public sharing at `/athlete/[username]/wrapped` with OG images |
+| 8 | Embeddable stats widget (for blogs/Linktree) | Medium | Medium | P2 | |
+| 9 | Training block summary | Medium | High | P2 | |
+| 10 | Comparison cards ("This month vs last month") | Medium | Low | P2 | ✅ DONE — Built into `/review` as "vs Last Month" section |
 
 ---
 
@@ -111,38 +111,21 @@ Each item below is a standalone implementation task. Pick any one and ask Claude
 
 ---
 
-### Implementation 1: Weekly Training Wrap Card
+### Implementation 1: Weekly Training Wrap Card ✅ DONE
 
-**What:** Every Sunday (or on-demand), generate a beautiful shareable image card summarizing the athlete's training week.
+**Status:** Fully implemented as an immersive full-page experience at `/wrap`.
 
-**Card content:**
-- Week date range header
-- Total workouts completed (with target if set)
-- Total distance (running + cycling combined, in km/mi)
-- Total training time (hours:minutes)
-- Current streak count
-- Workout type breakdown (mini donut or icon row)
-- "Highlight of the week" — best workout by AI analysis
-- AI coach one-liner ("Consistent week! Your Tuesday intervals were fire.")
-- The Daily Athlete branding + signup CTA
-
-**Technical approach:**
-- New component: `src/components/reports/WeeklyWrapCard.tsx` — React component rendering the card
-- New API route: `POST /api/reports/weekly-wrap` — computes week data, generates AI summary via Groq
-- Export via `html-to-image` (already used in ReportContainer)
-- Share via existing `ShareButtons` component (WhatsApp, X, iMessage, download, native share)
-- Auto-trigger: Add to existing `/api/cron/send-summaries` to email the card every Sunday
-- Dashboard widget: Show "Your Week" card on dashboard with share button
-
-**Key files to modify:**
-- `src/lib/analytics.ts` — reuse `computeSummary()`, `computeTimeSeries()`
-- `src/components/reports/ReportContainer.tsx` — reuse PNG/PDF export logic
-- `src/components/workouts/ShareWorkoutCard.tsx` — reuse share modal pattern
-- `src/app/(dashboard)/dashboard/page.tsx` — add weekly wrap widget
-- New: `src/components/reports/WeeklyWrapCard.tsx`
-- New: `src/app/api/reports/weekly-wrap/route.ts`
-
-**Design:** Dark card (slate-900 bg), red accent (#ef4444), white text. 1080x1350px (Instagram Stories ratio). The Daily Athlete logo bottom-right.
+**What was built:**
+- Full-screen "Your Week's Capsule" page at `src/app/(dashboard)/wrap/page.tsx`
+- Week-by-week navigation with offset arrows
+- Per-sport stats rows: emoji + "You {ran/cycled/swam/lifted} {metric}" in sport color, with ↑/↓ % change vs last week
+- Rating system: incredible 🔥 / solid 💪 / consistent ✅ / recovery 🧘 / quiet 😴 / great start 🚀 (based on week-over-week ratio)
+- Highlight of the week: longest workout (≥60 min) or furthest session (≥5km), with Strava photo if available
+- Sticky share bar: ShareButtons integration (Instagram, WhatsApp, X, iMessage, Save Image, Copy Link)
+- Image export via `html-to-image` toPng (pixelRatio 2, quality 0.95)
+- Dashboard CTA: "Weekly Wrap" banner + sidebar card linking to `/wrap`
+- Email template: `src/lib/email/wrapTemplate.ts` for weekly digest
+- Key functions: `computeWeeklySportStats()`, `detectHighlight()`, `getWeekRating()`, `pctChange()`
 
 ---
 
@@ -230,33 +213,21 @@ Each item below is a standalone implementation task. Pick any one and ask Claude
 
 ---
 
-### Implementation 5: Monthly Training Report Card
+### Implementation 5: Monthly Training Report Card ✅ DONE
 
-**What:** A comprehensive monthly report card — a single beautiful image summarizing the entire month of training.
+**Status:** Fully implemented as a rich monthly review page at `/review`.
 
-**Card content:**
-- Month + year header
-- Key stats row: Total workouts, hours, distance, completion rate
-- Week-by-week volume bar chart (4-5 bars)
-- Sport type breakdown (icon row with counts)
-- Top 3 workouts of the month (name + key stat)
-- PRs hit this month (if any)
-- AI monthly summary (2-3 sentences: trends, improvements, recommendations)
-- Month-over-month comparison arrow ("+15% more distance than last month")
-- The Daily Athlete branding
-
-**Technical approach:**
-- New component: `src/components/reports/MonthlyReportCard.tsx`
-- New API route: `POST /api/reports/monthly-report` — computes monthly data + AI summary
-- Reuse `src/lib/analytics.ts` functions with monthly time range filter
-- Auto-generate on 1st of each month, notify via email
-- Accessible from Reports page and dashboard
-
-**Key files to modify:**
-- `src/lib/analytics.ts` — reuse existing computation, may need month-specific helpers
-- `src/components/reports/ReportContainer.tsx` — reuse export logic
-- New: `src/components/reports/MonthlyReportCard.tsx`
-- New: `src/app/api/reports/monthly-report/route.ts`
+**What was built:**
+- Full-page monthly review at `src/app/(dashboard)/review/page.tsx`
+- Month-by-month navigation with "not ready" gate for current/future months
+- ROW 1 — Hero: CT brand + rating + 4 big stat badges (workouts, distance km, time hrs, active days)
+- ROW 2 — 3-column grid: Activity calendar (mini month grid with green dots), By Sport (per-sport cards with ±% vs last month), Pie chart breakdown + vs Last Month (3-col % comparison) + highlight card
+- ROW 3 — Daily activity bar chart (Recharts, one bar per day, green/muted)
+- ROW 4 — Weekly trends: side-by-side area charts for distance (km) and duration (min)
+- Sticky share bar with ShareButtons
+- Dashboard CTA: "Monthly Review" sidebar card linking to `/review`
+- Rating system: incredible 🔥 / productive 💪 / consistent ✅ / recovery 🧘 / quiet 😴 / great start 🚀
+- Key functions: `computeMonthlySportStats()`, `detectMonthHighlight()`, `getMonthRating()`, `ActivityCalendar` component
 
 ---
 
@@ -405,27 +376,50 @@ Progress dots, back/continue navigation, "Skip for now" option. Data saved to Fi
 
 ---
 
+### Implementation 11: Year in Review ("Wrapped") ✅ DONE
+
+**Status:** Fully implemented as an 8-slide interactive carousel at `/wrapped` with public sharing.
+
+**What was built:**
+- 8-slide interactive carousel at `src/app/(dashboard)/wrapped/page.tsx`:
+  - **guess** — Interactive workout count guessing game with slider, emoji reactions based on accuracy
+  - **reveal** — Animated reveal of actual count
+  - **stats** — Key annual stats (total workouts, distance, hours, calories, active days, max streak)
+  - **breakdown** — Recharts pie chart with sport type distribution + per-sport stat rows
+  - **records** — Personal records showcase with trophy badges
+  - **heatmap** — GitHub-style activity heatmap for the year, 12-month grid with intensity colors
+  - **summary** — VeloViewer-style summary with AI-generated narrative
+  - **final** — CTA to share with animated gradient background
+- Progress dots navigation, slide animations
+- **Public sharing route:** `/athlete/[username]/wrapped` — SSR with 6 slides (no guess/reveal), privacy-gated via `profilePublic`, dynamic OG image generation
+- Components: `src/components/wrapped/WrappedSlides.tsx` (6 slide components + `computeYearStats()`)
+- Year currently hardcoded to 2025 (`YEAR` constant)
+
+---
+
 ## Part 4: Recommended Execution Order
 
-**Phase 1 — Foundation (Week 1-2):**
-1. Implementation 7: Product Analytics (PostHog) — measure everything from day one
+**Phase 1 — Foundation:** ✅ COMPLETE
+1. ~~Implementation 7: Product Analytics (PostHog)~~ — still needed
 2. ~~Implementation 6: Simplified Onboarding~~ ✅ DONE — 3-step onboarding + profile completion bar + edit profile in settings
 3. Implementation 8: PWA Support — mobile install capability
 
-**Phase 2 — Viral Reports Core (Week 3-6):**
-4. Implementation 1: Weekly Training Wrap Card — the flagship shareable
-5. Implementation 2: PR Achievement Cards — celebration moments
-6. Implementation 10: Streak System — retention hook
+**Phase 2 — Viral Reports Core:** ✅ MOSTLY COMPLETE
+4. ~~Implementation 1: Weekly Training Wrap~~ ✅ DONE — `/wrap` with per-sport stats, comparison, highlight, share
+5. Implementation 2: PR Achievement Cards — celebration moments (still needed)
+6. Implementation 10: Streak System — retention hook (basic streak exists on dashboard, needs enhancement)
 
-**Phase 3 — Expand Viral Surface (Week 7-10):**
-7. Implementation 4: Milestone Badge System — more share moments
-8. Implementation 5: Monthly Training Report Card — monthly viral loop
-9. Implementation 9: Race Recap Card — high-emotion share moment
+**Phase 3 — Expand Viral Surface:** ✅ PARTIALLY COMPLETE
+7. Implementation 4: Milestone Badge System — more share moments (still needed)
+8. ~~Implementation 5: Monthly Training Report~~ ✅ DONE — `/review` with full monthly analytics + share
+9. Implementation 9: Race Recap Card — high-emotion share moment (still needed)
 
-**Phase 4 — Growth Infrastructure (Week 11-14):**
+**Phase 4 — Growth Infrastructure:** ✅ MOSTLY COMPLETE
 10. ~~Implementation 3: Public Athlete Profile~~ ✅ DONE — `/athlete/[username]` with stats, charts, PRs, AI tagline
+11. ~~Year in Review~~ ✅ DONE — `/wrapped` 8-slide carousel + public sharing at `/athlete/[username]/wrapped`
+12. ~~Comparison Cards~~ ✅ DONE — Built into `/review` as "vs Last Month" section
 
-**Then:** Launch marketing push (Product Hunt, Reddit, Strava clubs), measure viral coefficient, iterate on highest-performing card types, add monetization when hitting 100+ active users.
+**Remaining:** Product Analytics (PostHog), PWA Support, PR Achievement Cards, Milestone Badges, Race Recap Cards, Streak Enhancement, then launch marketing push.
 
 ---
 

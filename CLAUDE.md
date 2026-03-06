@@ -22,7 +22,7 @@ CoachTrack (The Daily Athlete) is a SaaS workout tracking platform connecting co
 src/
 ├── app/
 │   ├── (auth)/          # Login, register, reset-password
-│   ├── (dashboard)/     # Protected routes: dashboard, workouts, calendar, reports, settings, ai-coach, progress, records, profile, onboarding
+│   ├── (dashboard)/     # Protected routes: dashboard, workouts, calendar, reports, settings, ai-coach, progress, records, profile, onboarding, wrap, review, wrapped
 │   ├── athlete/[username]/ # Public athlete profile page (SSR)
 │   ├── api/             # API routes (ai, auth, cron, reports, strava, webhooks, workouts)
 │   └── page.tsx         # Landing page
@@ -31,15 +31,17 @@ src/
 │   ├── calendar/        # Calendar views, workout type config (TYPE_CONFIG, getTypeData)
 │   ├── dashboard/       # Navbar, layout components, ProfileCompletionBar
 │   ├── profile/         # ProfileComponents (shared PieChart, StatCard, helpers), PhotoUpload
-│   ├── reports/         # ReportContainer, ReportRenderer, section components
+│   ├── reports/         # ReportContainer, ReportRenderer, section components, ReportsSections (5 chart/stat sections)
+│   ├── wrapped/         # WrappedSlides (6 slide components + YearStats computation for yearly wrapped)
 │   ├── strava/          # DuplicateDialog for Strava sync conflicts
 │   ├── workouts/        # WorkoutCard, WorkoutForm, AIWorkoutSuggestions, StrengthForm, comments, ShareWorkoutCard
 │   └── ui/              # shadcn/ui primitives
 ├── lib/
-│   ├── analytics.ts     # computeSummary, computeTypeDistribution for workout stats
+│   ├── analytics.ts     # computeSummary, computeTypeDistribution, computeTimeSeries, computeWeeklyRhythm, computeCalendarData, computeInsights, computePRTimeline
 │   ├── firebase/        # config.ts, auth.ts, firestore.ts, admin.ts
-│   ├── email/           # Email templates and sending
+│   ├── email/           # Email templates (summaryTemplate, wrapTemplate) and sending
 │   ├── schemas/         # Zod validation schemas (profile.ts has SPORT_OPTIONS, TRAINING_FOR_OPTIONS, etc.)
+│   ├── training/        # logicEngine.ts, constraints.ts, validator.ts (AI workout pipeline)
 │   └── stores/          # Zustand state stores
 └── types/               # TypeScript types (index.ts, workout.ts, reports.ts, ai.ts)
 ```
@@ -86,7 +88,11 @@ npx tsc --noEmit     # Type check without building
 - `/workouts/new` — Create workout form with type-specific sub-forms, supports AI-generated templates (via sessionStorage) and saved templates. Preview dialog before creation.
 - `/athlete/[username]` — Public athlete profile (SSR), shares components with `/profile` via ProfileComponents.tsx
 - `/onboarding/profile` — 3-step onboarding: pick sports → pick goals (with event details) → about you (age, experience, height, weight)
-- `/calendar` — Calendar view with workout type differentiation, 2-week desktop view
+- `/calendar` — Multi-view calendar (day/week/month/year). Week view: 7-day grid with color-coded workout pills, weekly summary bar. Month view: full month grid with activity dots. Year view: heatmap-style activity density. Supports coach athlete picker, ICS export, email report. Components in `src/components/calendar/`.
+- `/wrap` — Weekly Training Wrap ("Your Week's Capsule"). Immersive full-screen layout with week-by-week navigation. Per-sport stats with week-over-week comparison (% change), highlight of the week (longest/furthest workout with photo), rating system (incredible/solid/consistent/recovery/quiet). Share via ShareButtons (Instagram, WhatsApp, X, iMessage, save image).
+- `/review` — Monthly Review page. Month navigation with "not ready" gate for current month. Hero row with key stats (workouts, distance, time, active days). Activity calendar grid, per-sport stats with month-over-month comparison, pie chart breakdown, vs last month comparison (% change per metric), daily activity bar chart, weekly distance + duration area charts. Share via ShareButtons.
+- `/wrapped` — Yearly Wrapped (2025). 8-slide interactive carousel: guess (interactive workout count guess game) → reveal → stats → breakdown → records → heatmap → summary → final. Public sharing route at `/athlete/[username]/wrapped` with SSR, OG images, privacy gate. Components in `src/components/wrapped/WrappedSlides.tsx`.
+- `/dashboard` — Stats row (streak, this week, all-time, total), weekly activity bar chart, type breakdown, upcoming workouts, recently completed, event countdowns, weekly wrap CTA, monthly review CTA, quick links grid
 
 ## AI Workout Suggestions
 - 3-tier pipeline: Logic Engine (periodization, fatigue, deload) → Groq LLaMA 3.3 70B enhancement → Validator with retry
@@ -96,6 +102,13 @@ npx tsc --noEmit     # Type check without building
 - `src/app/api/ai/workout-suggestions/route.ts` — orchestrator API (max_tokens: 8000)
 - `src/components/workouts/AIWorkoutSuggestions.tsx` — UI component, normalizes `specs` → flat type keys for form compatibility
 - Flow: AI generates → user clicks "Use Workout" → data stored in sessionStorage → navigates to `/workouts/new?aiGenerated=true` → form pre-fills via `key` prop remount
+
+## Training Reviews & Sharing
+- **Weekly Wrap** (`/wrap`) — Per-sport stats with week-over-week comparison, highlight detection (longest/furthest workout), rating system. Share via ShareButtons (Instagram, WhatsApp, X, iMessage, save image). Uses `html-to-image` for card export.
+- **Monthly Review** (`/review`) — Activity calendar, sport stats, pie chart breakdown, vs last month comparison, daily bar chart, weekly trend area charts. Gate prevents viewing current month until it ends.
+- **Yearly Wrapped** (`/wrapped`) — 8-slide interactive carousel with guess game. Public sharing at `/athlete/[username]/wrapped` with SSR + OG images. Privacy-gated via `profilePublic` flag. Components in `src/components/wrapped/WrappedSlides.tsx`.
+- **ShareButtons** component (`src/components/workouts/ShareWorkoutCard.tsx`) — Reusable share UI: Instagram Story, WhatsApp, X/Twitter, iMessage, save image (PNG via `html-to-image`), copy link. Used by wrap, review, wrapped, and workout sharing.
+- **Email system** — Summary emails every 10 days via Brevo cron (`/api/cron/send-summaries`). Wrap email template at `src/lib/email/wrapTemplate.ts`.
 
 ## Known Issues & Active Work
 - Strava webhook subscription needs proper registration (webhook code exists but auto-sync requires env vars + API call setup)

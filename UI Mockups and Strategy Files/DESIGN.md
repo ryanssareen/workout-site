@@ -400,18 +400,21 @@ Progress dots, back/continue navigation, "Skip for now" option. Data saved to Fi
 ### Dashboard (`/dashboard`)
 
 - **Profile completion CTA** — Progress bar, links to finish setup (shown when < 100%)
+- **Weekly Wrap banner** — Dismissible card with gift icon, shows last week's workout count, links to `/wrap`
 - **Hero header** — Time-based greeting, this week's summary, "New Workout" button
-- **Stats grid** (4 cards):
-  - Streak (consecutive completed workout days)
-  - This Week (X/Y completed)
-  - All-Time (total completed)
-  - Completion Rate (circular progress ring)
-- **Weekly chart** (left 3 cols) — Bar chart Mon-Sun showing completed vs pending, today highlighted
-- **Type breakdown** (right 2 cols) — Distribution by sport type with color-coded bars
-- **Upcoming workouts** — Pending workouts sorted by date with quick-complete
-- **Recently completed** — Latest 3 with checkmark indicators
-- **Upcoming events** — Countdown timers with color-coded urgency (red <14d, orange <30d, gray >30d)
-- **Quick links** — Calendar, Reports, Profile, Workouts buttons
+- **Stats row** (4 cards, responsive 2x2 → 1x4):
+  - Streak (consecutive completed workout days, Flame icon)
+  - This Week (completed / total, Zap icon)
+  - All-Time Completed (Trophy icon)
+  - Total Workouts (Activity icon)
+- **Weekly activity chart** (3 cols) — Recharts bar chart Mon-Sun, stacked completed + pending, today highlighted darker
+- **Type breakdown** (2 cols) — Horizontal bars per sport type sorted by frequency, shows count + percentage, only from completed workouts
+- **Upcoming workouts** (2 cols, left) — 4 upcoming incomplete workouts, date labels (Today/Tomorrow/date)
+- **Recently done** (right column) — Last 3 completed workouts with date + checkmark
+- **Event countdowns** (right column, conditional) — Color-coded: red ≤14d, orange ≤30d, gray >30d. Sorted by proximity, max 3.
+- **Weekly Wrap CTA** (right column) — Gift icon, gradient, links to `/wrap`
+- **Monthly Review CTA** (right column) — Calendar icon, blue gradient, links to `/review`
+- **Quick links grid** (right column, 2x2) — Calendar, Reports, Profile, Workouts
 
 ### Workouts (`/workouts`)
 
@@ -452,18 +455,37 @@ Progress dots, back/continue navigation, "Skip for now" option. Data saved to Fi
 
 ### Calendar (`/calendar`)
 
-- 2-week desktop calendar view with workout type differentiation and color coding
-- Navigation (prev/next + "Today" button) with date range display
-- Type filters (Run, Bike, Swim, Strength, Other)
-- Athlete picker dropdown (coaches only)
-- Export ICS + email report buttons
-- Weekly summary bar: completion %, completed/total, total time, total distance, type breakdown
-- 7-day grid (full viewport height):
-  - Day headers (highlight today in red)
-  - Per-day: completion stats, scrollable workout cards
-  - Garmin-style cards: 3px left border (type color), emoji + name + type badge, 2x2 stats grid, status badge
-  - Rest days show leaf emoji
-  - Click to view details, toggle complete
+**Multi-view calendar system** with 4 view modes: day, week, month, year.
+
+- **CalendarHeader** — View mode selector (day/week/month/year buttons), Today/prev/next navigation, coach athlete picker dropdown, "Add Workout" button, Export Calendar (ICS), Send Report button
+- **Strava auto-sync indicator** — Real-time phase label during sync
+
+**Week View** (`CalendarWeekView.tsx`):
+- 7-column grid with day headers, fixed height `calc(100vh - 230px)`
+- Up to 8 workout pills per day (configurable `maxPillsPerCell`), "+X more" overflow
+- Color-coded pills by workout type, today highlighted in red
+- Garmin-style workout cards: 3px left border (type color), emoji + name + type badge, 2x2 stats grid, status badge
+- Rest days show leaf emoji
+- Interactive day selection + click to view details or toggle complete
+
+**Month View** (`CalendarFullMonthView.tsx`):
+- Full month grid with week rows, 3 pills per cell (compact)
+- Grays out non-current-month dates
+- Same height constraint and responsive pill sizing
+
+**Year View** (`CalendarYearView.tsx`):
+- Grid of mini months (2-4 cols depending on screen)
+- Heatmap-style display: intensity by workout count (0, 1, 2, 3+ workouts = green density scale)
+- Legend showing less/more activity
+- Clicking a day switches to day view
+
+**Day View** — `CalendarDayWorkouts.tsx` renders full list for selected date
+
+**Mobile** — `MobileWeekStrip.tsx` for week navigation with scrollable day pills, simplified layouts
+
+**Desktop Detail Panel** — `WorkoutDetailPanel.tsx` right sidebar shows full workout details
+
+**Components directory:** `src/components/calendar/` — types.ts (TYPE_CONFIG, getTypeData with sport-specific stats extraction, duration formatters)
 
 ### Reports (`/reports`)
 
@@ -476,6 +498,55 @@ Progress dots, back/continue navigation, "Skip for now" option. Data saved to Fi
 6. **Duplicates** — DuplicateRemover component to find/merge duplicate workouts
 
 Share Reports button with modal. Time-aware greeting.
+
+### Weekly Wrap (`/wrap`)
+
+Full-screen immersive "Your Week's Capsule" page with week-by-week navigation.
+
+- **Top bar:** Close (X → dashboard), week nav arrows, week date range label, theme toggle
+- **Brand header:** CT red badge + "Your Week's Capsule" label
+- **Greeting:** "Dear {firstName}, this week was {rating}" with emoji
+  - Rating system: incredible 🔥 (≥30% more), solid 💪 (≥10% more), consistent ✅ (±10%), recovery 🧘 (<10% less), quiet 😴 (no workouts), a great start 🚀 (first week)
+- **Per-sport stats:** Each sport row shows emoji + "You {ran/cycled/swam/lifted} {distance/duration}" in sport color, with ↑/↓ % change vs last week
+- **Highlight card:** Longest workout (≥60 min) or furthest session (≥5km), shows photo if available from Strava
+- **Footer stats:** workout count + completed count + week label
+- **Sticky share bar:** "Send to friends" button → ShareButtons (Instagram, WhatsApp, X, iMessage, Save Image, Copy Link)
+- **Image export:** `html-to-image` toPng with pixelRatio 2, captures entire cardRef div
+
+**Key functions:** `computeWeeklySportStats()`, `detectHighlight()`, `getWeekRating()`, `pctChange()`
+
+### Monthly Review (`/review`)
+
+Rich monthly training report with month-by-month navigation.
+
+- **Nav bar:** Close → dashboard, month arrows, month label, theme toggle
+- **"Not ready" gate:** If current/future month, shows lock screen with "View {lastMonth} instead" button
+- **ROW 1 — Hero:** CT brand + "Month in Review" + "Dear {name}, this was {rating}" + 4 big stat badges (workouts, distance km, time hrs, active days of total)
+- **ROW 2 — 3-column grid:**
+  - Activity Calendar: mini month grid with active-day green dots, day-of-week headers
+  - By Sport: per-sport cards with gradient bg, emoji, metric, session count, duration, ±% vs last month
+  - Pie chart breakdown (Recharts) + vs Last Month (3-col % comparison with trend arrows) + highlight card with photo
+- **ROW 3 — Daily Activity:** Full-width Recharts bar chart, one bar per day, green for active, muted for rest, tooltip with date + count
+- **ROW 4 — Weekly Trends:** Side-by-side area charts for weekly distance (km, green) and weekly duration (min, blue)
+- **Sticky share bar:** Same ShareButtons pattern as wrap
+
+**Key functions:** `computeMonthlySportStats()`, `detectMonthHighlight()`, `getMonthRating()`, `ActivityCalendar` component
+
+### Yearly Wrapped (`/wrapped`)
+
+8-slide interactive carousel for annual training review (currently hardcoded to 2025).
+
+- **Slides:** guess → reveal → stats → breakdown → records → heatmap → summary → final
+- **Guess slide:** Interactive workout count guessing game with slider, emoji reactions based on accuracy
+- **Stats slide:** Key annual stats (total workouts, distance, hours, calories, active days, max streak)
+- **Breakdown slide:** Recharts pie chart with sport type distribution + per-sport stat rows
+- **Records slide:** Personal records showcase with trophy badges
+- **Heatmap slide:** GitHub-style activity heatmap for the year, 12-month grid with intensity colors
+- **Summary slide:** VeloViewer-style summary with AI-generated narrative
+- **Final slide:** CTA to share, with animated gradient background
+- **Progress dots** at bottom for slide navigation
+- **Public sharing route:** `/athlete/[username]/wrapped` — SSR, OG image generation, privacy-gated via `profilePublic` flag
+- **Components:** `src/components/wrapped/WrappedSlides.tsx` (6 slide components + `computeYearStats()`)
 
 ### Profile (`/profile`) — Read-Only Public-Style View
 
@@ -536,6 +607,20 @@ Shared components (`PieChart`, `StatCard`, format helpers) live in `src/componen
 - **Share button:** Copy link to clipboard
 - Privacy: Only shows aggregate stats + workout names, not full descriptions or comments
 - Uses shared components from `src/components/profile/ProfileComponents.tsx`
+- **Public Wrapped sub-route:** `/athlete/[username]/wrapped` — SSR public yearly wrapped with 6 slides (no guess game), privacy-gated via `profilePublic`, dynamic OG image generation
+
+### Sharing Infrastructure
+
+**`ShareButtons` component** (`src/components/workouts/ShareWorkoutCard.tsx`) — Reusable share UI used by wrap, review, wrapped, and workout detail pages:
+- **Instagram Story** — generates PNG, downloads to device, opens Instagram, copies caption
+- **WhatsApp** — `wa.me/?text=...` with share text + URL
+- **X/Twitter** — Twitter intent tweet endpoint
+- **iMessage** — Web Share API for files, falls back to `sms:` protocol
+- **Save Image** — `html-to-image` toPng (quality 0.95, pixelRatio 2, cacheBust, skipFonts), downloads PNG
+- **Copy Link** — copies share URL to clipboard with toast
+- Handles CORS by hiding cross-origin images before capture
+
+**`ShareWorkoutCard` component** — Workout-specific wrapper: dark gradient card with workout name, type, stats, AI comment. Share URL: `/preview/{username}/{workoutId}`
 
 ### Other Public Pages
 
@@ -695,9 +780,18 @@ Coach-athlete connections work via **unique 6-letter coach codes**.
 ### Cron Jobs
 - **Daily reminders** (`/api/cron/send-reminders`): Reminds athletes of next-day workouts
   - Tracks `reminderSent` flag to avoid duplicates
-- **Weekly summaries** (`/api/cron/send-summaries`): Training week recap
-  - Completion rate, workout breakdown, distance/time totals
-  - Motivational message based on performance
+- **Training summaries** (`/api/cron/send-summaries`): Sent every 10 days (configurable `SUMMARY_INTERVAL_DAYS`)
+  - Waits 10 days from account creation before first send
+  - Data: userName, totalAssigned/Completed, completionRate, byType breakdown, stravaStats (distance/calories/time)
+  - Subject emoji varies by completion rate (🔥 80%+, 💪 50%+, 📋 <50%)
+  - Dark-themed email: header branding, completion rate %, workout breakdown badges, Strava stats section, CTA → `/calendar`
+  - CC'd to coach if athlete has assigned coach
+  - Max 50 users per run, tracks `lastSummaryDate`
+  - Template: `src/lib/email/summaryTemplate.ts`
+- **Weekly Wrap email** template at `src/lib/email/wrapTemplate.ts`:
+  - Dark theme with "Your Week's Capsule" branding
+  - Per-sport stats with emoji, metrics, comparison arrows (vs last week)
+  - Highlight section (best workout), CTA → `/wrap`
 
 ---
 
