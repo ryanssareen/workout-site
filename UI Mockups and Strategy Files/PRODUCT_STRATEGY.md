@@ -57,21 +57,29 @@
 
 Athletes love sharing training milestones. Strava's "Year in Sport" gets millions of shares. Spotify Wrapped generates massive organic reach. The Daily Athlete can own **training reports that athletes share.**
 
-**Types of shareable reports (brainstorm):**
+**Shareable reports — current state:**
 
-1. **Weekly Training Wrap** — Auto-generated every Sunday. Beautiful card: total distance, hours, workouts completed, streak, top workout, AI coach note. One-tap share to Instagram Stories / WhatsApp / X.
+| Report Type | Status | Route |
+|-------------|--------|-------|
+| Weekly Training Wrap | ✅ DONE | `/wrap` — per-sport stats, week-over-week %, highlight, rating, ShareButtons |
+| Monthly Training Report | ✅ DONE | `/review` — activity calendar, pie chart, daily/weekly charts, vs last month |
+| Year in Review (Wrapped) | ✅ DONE | `/wrapped` — 8-slide carousel, guess game, public sharing + OG images |
+| Comparison Cards | ✅ DONE | Built into `/review` as "vs Last Month" section |
+| Public Athlete Profile | ✅ DONE | `/athlete/[username]` — SSR with stats, charts, PRs, AI tagline |
+| Race Recap Card | Not started | High-emotion share moment after race-tagged workouts |
+| PR Achievement Cards | Not started | Auto-detected celebration cards for personal records |
+| Milestone Badges | Not started | Achievement badges (100th workout, 1000km, streaks) |
+| Training Block Summary | Not started | Pre-event preparation report with volume progression |
 
-2. **Monthly Training Report** — Richer version: progress charts, PR highlights, consistency score, AI insights ("Your running pace improved 8% this month"), type breakdown donut chart. Downloadable as branded PNG.
+**Shareable reports still to build:**
 
-3. **Race Recap Card** — After a tagged "race" workout: finish time, distance, elevation, route map, AI congratulations, pace splits. Designed for immediate social sharing.
+1. **Race Recap Card** — After a tagged "race" workout: finish time, distance, elevation, route map, AI congratulations, pace splits. Designed for immediate post-race social sharing.
 
-4. **Personal Record Cards** — When a PR is hit: bold visual with the record, improvement %, history chart. "New PR: 5K in 22:14 — 45 seconds faster than my previous best!"
+2. **Personal Record Cards** — When a PR is hit: bold visual with the record, improvement %, history chart. "New PR: 5K in 22:14 — 45 seconds faster than my previous best!"
 
-5. **Milestone Cards** — 100th workout, 1000km run, 365-day streak, first triathlon brick session. Auto-detected achievements with beautiful branded cards.
+3. **Milestone Cards** — 100th workout, 1000km run, 365-day streak, first triathlon brick session. Auto-detected achievements with beautiful branded cards.
 
-6. **Training Block Summary** — End-of-training-block report for event prep: "12 weeks to marathon — here's how you prepared." Volume progression, peak week, taper visualization.
-
-7. **Year in Review** — Annual version: total stats, month-by-month heatmap, top achievements, sport breakdown, AI narrative summary. The "Spotify Wrapped" of training.
+4. **Training Block Summary** — End-of-training-block report for event prep: "12 weeks to marathon — here's how you prepared." Volume progression, peak week, taper visualization.
 
 ### Viral Mechanics
 
@@ -81,27 +89,54 @@ Every shared card includes:
 - Beautiful dark theme design (stands out on social feeds)
 - QR code or short link to sign up
 
-**Growth flywheel:**
+**Growth flywheel (proven with wrap/review/wrapped):**
 ```
 Athlete trains → Strava syncs → AI generates report →
   Athlete shares beautiful card → Friends see it →
   Friends sign up → They train → They share → ...
 ```
 
-### Feature Ideas (Ranked by Viral Potential × Effort)
+The sharing infrastructure is fully built: ShareButtons component supports Instagram Story, WhatsApp, X, iMessage, Save Image (html-to-image), Copy Link. Every new card type plugs into this existing system.
 
-| # | Feature | Viral Potential | Effort | Priority | Status |
-|---|---------|----------------|--------|----------|--------|
-| 1 | Weekly Training Wrap card (auto-generated, one-tap share) | Very High | Medium | P0 | ✅ DONE — `/wrap` with per-sport stats, week-over-week comparison, highlight, ShareButtons |
-| 2 | PR Achievement cards (auto-detected, shareable) | Very High | Low-Medium | P0 | |
-| 3 | Public athlete profile page (`/athlete/[username]`) | High | Medium | P1 | ✅ DONE — SSR with stats, charts, PRs, AI tagline |
-| 4 | Monthly Training Report card | High | Medium | P1 | ✅ DONE — `/review` with activity calendar, sport stats, pie chart, daily/weekly charts, vs last month, ShareButtons |
-| 5 | Milestone badges (100th workout, 1000km, etc.) | High | Low | P1 | |
-| 6 | Race Recap card | High | Medium | P1 | |
-| 7 | Year in Review ("Wrapped") | Very High | High | P2 (December) | ✅ DONE — `/wrapped` 8-slide carousel, guess game, public sharing at `/athlete/[username]/wrapped` with OG images |
-| 8 | Embeddable stats widget (for blogs/Linktree) | Medium | Medium | P2 | |
-| 9 | Training block summary | Medium | High | P2 | |
-| 10 | Comparison cards ("This month vs last month") | Medium | Low | P2 | ✅ DONE — Built into `/review` as "vs Last Month" section |
+### Feature Ideas — Next Wave
+
+The viral report core is built. The next wave focuses on **retention** (keeping athletes engaged daily), **growth infrastructure** (analytics, PWA, SEO), and **monetization readiness**.
+
+| # | Feature | Category | Impact | Effort | Priority |
+|---|---------|----------|--------|--------|----------|
+| 1 | Product Analytics (PostHog) | Growth infra | HIGH — can't optimize what you can't measure | Low | **P0** |
+| 2 | PWA Support (Add to Home Screen) | Growth infra | MEDIUM — native-feel = daily habit on phones | Low | **P0** |
+| 3 | PR Achievement Cards (shareable) | Viral / retention | HIGH — celebration moments drive shares + dopamine | Low-Medium | **P0** |
+| 4 | Streak System Enhancement | Retention | HIGH — visual streak + at-risk nudges = daily engagement | Low | **P0** |
+| 5 | Milestone Badge System | Viral / retention | HIGH — auto-detected achievements, collectible + shareable | Medium | **P1** |
+| 6 | Race Recap Card | Viral | HIGH — highest-emotion share moment in endurance sports | Medium | **P1** |
+| 7 | AI Race Predictions | Differentiation | HIGH — predict race times based on training data | Medium | **P1** |
+| 8 | Training Plans / Programs | Core product | HIGH — structured multi-week plans, not just daily suggestions | High | **P1** |
+| 9 | Smart Notifications | Retention | MEDIUM — AI nudges: rest day advice, streak warnings, PR alerts | Medium | **P2** |
+| 10 | Social Feed / Follow Athletes | Growth | HIGH — activity feed, kudos/reactions, follow system | High | **P2** |
+| 11 | Embeddable Stats Widget | Growth | MEDIUM — for blogs, Linktree, personal sites | Medium | **P2** |
+| 12 | Training Block Summary | Viral | MEDIUM — pre-event preparation report | High | **P2** |
+| 13 | Import from Other Platforms | Growth | MEDIUM — Garmin Connect, Apple Health, Wahoo imports | High | **P2** |
+| 14 | Group Challenges | Growth / retention | HIGH — weekly/monthly challenges between friends | High | **P3** |
+| 15 | Coach Marketplace | Monetization | HIGH — coaches advertise, athletes browse and connect | Very High | **P3** |
+| 16 | Advanced Training Load Analytics | Differentiation | MEDIUM — TSS/CTL/ATL fitness-fatigue chart, HR zones | High | **P3** |
+
+### New Feature Concepts (Detailed)
+
+**AI Race Predictions (#7):**
+Based on recent training data (volume, pace trends, long run distances), predict finish times for upcoming events. "Based on your last 8 weeks: predicted marathon time 3:42–3:48." Updates weekly as training progresses. Shareable prediction card with confidence range. Athletes LOVE seeing predicted race times — this is a differentiator no competitor does well.
+
+**Training Plans / Programs (#8):**
+Move beyond single-day AI suggestions to structured multi-week programs. Athlete selects a goal event (already captured in onboarding), AI generates a periodized plan: base → build → peak → taper. Calendar integration shows the full plan. Week-by-week progression with auto-adjustment based on completed workouts. This is the feature that converts casual users to daily users.
+
+**Social Feed / Follow Athletes (#10):**
+Light social layer: follow other athletes, see their completed workouts in a feed, give kudos/reactions. NOT a full social network — just enough to create accountability loops. "Sarah completed a 10K run" → tap to congratulate. Athletes who see friends training are more likely to train themselves. Critical for retention at scale.
+
+**Group Challenges (#14):**
+Time-boxed challenges between friends or public: "Most distance in January", "7-day streak challenge", "Run 100km this month." Leaderboard, progress bars, completion badges. Shareable challenge cards. This is the feature that makes people invite friends — "Join my January challenge!"
+
+**Coach Marketplace (#15):**
+Two-sided marketplace. Coaches create profiles with specialties, pricing, athlete reviews. Athletes browse and connect via the existing coach code system. Revenue model: platform takes 10-15% of coaching fees. This is the long-term monetization play beyond subscriptions.
 
 ---
 
@@ -399,27 +434,48 @@ Progress dots, back/continue navigation, "Skip for now" option. Data saved to Fi
 
 ## Part 4: Recommended Execution Order
 
-**Phase 1 — Foundation:** ✅ COMPLETE
-1. ~~Implementation 7: Product Analytics (PostHog)~~ — still needed
-2. ~~Implementation 6: Simplified Onboarding~~ ✅ DONE — 3-step onboarding + profile completion bar + edit profile in settings
-3. Implementation 8: PWA Support — mobile install capability
+### What's Done (Phases 1–4 Original Roadmap)
 
-**Phase 2 — Viral Reports Core:** ✅ MOSTLY COMPLETE
-4. ~~Implementation 1: Weekly Training Wrap~~ ✅ DONE — `/wrap` with per-sport stats, comparison, highlight, share
-5. Implementation 2: PR Achievement Cards — celebration moments (still needed)
-6. Implementation 10: Streak System — retention hook (basic streak exists on dashboard, needs enhancement)
+| Feature | Status |
+|---------|--------|
+| Simplified Onboarding (3 steps + profile completion bar) | ✅ DONE |
+| Weekly Training Wrap (`/wrap`) | ✅ DONE |
+| Monthly Training Report (`/review`) | ✅ DONE |
+| Year in Review / Wrapped (`/wrapped`) | ✅ DONE |
+| Public Athlete Profile (`/athlete/[username]`) | ✅ DONE |
+| Comparison Cards (vs Last Month in `/review`) | ✅ DONE |
+| Report Sharing UX (ShareButtons on all review pages) | ✅ DONE |
+| Calendar 4-View System (day/week/month/year) | ✅ DONE |
+| Workouts UX (AI suggestions, time filters, stat chips) | ✅ DONE |
+| Landing Page (dark theme, feature grid, FAQ) | ✅ DONE |
 
-**Phase 3 — Expand Viral Surface:** ✅ PARTIALLY COMPLETE
-7. Implementation 4: Milestone Badge System — more share moments (still needed)
-8. ~~Implementation 5: Monthly Training Report~~ ✅ DONE — `/review` with full monthly analytics + share
-9. Implementation 9: Race Recap Card — high-emotion share moment (still needed)
+### What's Next
 
-**Phase 4 — Growth Infrastructure:** ✅ MOSTLY COMPLETE
-10. ~~Implementation 3: Public Athlete Profile~~ ✅ DONE — `/athlete/[username]` with stats, charts, PRs, AI tagline
-11. ~~Year in Review~~ ✅ DONE — `/wrapped` 8-slide carousel + public sharing at `/athlete/[username]/wrapped`
-12. ~~Comparison Cards~~ ✅ DONE — Built into `/review` as "vs Last Month" section
+**Phase 5 — Launch Readiness (P0):**
+1. Product Analytics (PostHog) — can't optimize what you can't measure
+2. PWA Support — "Add to Home Screen" for mobile athletes
+3. PR Achievement Cards — highest-value quick win (shareable, low effort)
+4. Streak System Enhancement — visual streak widget + at-risk email nudges
 
-**Remaining:** Product Analytics (PostHog), PWA Support, PR Achievement Cards, Milestone Badges, Race Recap Cards, Streak Enhancement, then launch marketing push.
+**Phase 6 — Retention & Differentiation (P1):**
+5. Milestone Badge System — collectible achievements, shareable cards
+6. Race Recap Card — high-emotion post-race sharing
+7. AI Race Predictions — predict finish times from training data (unique differentiator)
+8. Training Plans / Programs — structured multi-week periodized programs
+
+**Phase 7 — Scale & Social (P2):**
+9. Smart Notifications — AI-powered nudges based on behavior patterns
+10. Social Feed / Follow Athletes — light social layer for accountability
+11. Embeddable Stats Widget — for blogs and Linktree
+12. Training Block Summary — pre-event preparation report
+13. Import from Other Platforms — Garmin Connect, Apple Health, Wahoo
+
+**Phase 8 — Platform (P3):**
+14. Group Challenges — time-boxed challenges with leaderboards
+15. Coach Marketplace — two-sided marketplace for coaching services
+16. Advanced Training Load Analytics — TSS/CTL/ATL, HR zones, fitness-fatigue
+
+**Immediate next actions:** Phase 5 items are all low-effort, high-impact. PostHog + PWA can be done in a day each. PR cards and streak enhancement build on existing infrastructure.
 
 ---
 
@@ -428,17 +484,32 @@ Progress dots, back/continue navigation, "Skip for now" option. Data saved to Fi
 **Free tier (always):**
 - Strava sync, manual logging, calendar, basic dashboard
 - 3 AI suggestions/week
-- Weekly Wrap card (with The Daily Athlete branding/watermark)
+- Weekly Wrap, Monthly Review, Yearly Wrapped (with The Daily Athlete branding/watermark)
 - All shareable cards (with branding — this IS your marketing)
+- Public athlete profile
+- Basic streak tracking
 
-**Pro tier ($8-12/month, implement after 100+ users):**
+**Pro tier ($8–12/month, implement after 100+ users):**
 - Unlimited AI suggestions + AI chat coach
-- AI-generated reports
-- Monthly/annual report cards
+- AI-generated reports (PDF/email)
+- AI race predictions
+- Structured training plans / programs
 - Remove branding from shared cards (optional)
-- Training plan generation
+- Advanced analytics (training load, HR zones, fitness-fatigue)
 - Data export (CSV/JSON)
-- Advanced analytics
 - Priority support
+
+**Coach tier ($20–30/month, implement after coach marketplace):**
+- Everything in Pro
+- Manage unlimited athletes
+- Assign workouts and training plans
+- View all athlete dashboards
+- Marketplace listing (athletes can find and connect)
+- Team/group management
+
+**Revenue streams:**
+1. Pro subscriptions (primary)
+2. Coach marketplace commission (10-15% of coaching fees)
+3. Team/club plans (flat rate for groups)
 
 **Payment:** LemonSqueezy (simpler than Stripe for indie SaaS, handles global tax).
