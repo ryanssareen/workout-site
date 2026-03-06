@@ -17,7 +17,6 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: 'The Daily Athlete - Train Smarter. Every Day.',
   description: 'Your personal training companion. Track workouts, build discipline, and crush your goals.',
-  manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -34,6 +33,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="manifest" href="/manifest.webmanifest" />
+      </head>
       <body className={inter.className}>
         <ServiceWorkerRegister />
         <ClientProviders>{children}</ClientProviders>
