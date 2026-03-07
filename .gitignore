@@ -49,3 +49,4 @@ firebase-service-account.json
 # SSH keys
 ryan
 ryan.pub
+firebase-debug.log

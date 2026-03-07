@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ available: !doc.exists });
   } catch (error) {
     console.error('Error checking username:', error);
-    return NextResponse.json({ available: false, error: 'Server error' }, { status: 500 });
+    // Return serverError flag so client can distinguish "taken" from "broken"
+    return NextResponse.json({ available: null, serverError: true, error: 'Server error checking username' }, { status: 500 });
   }
 }

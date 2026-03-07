@@ -195,6 +195,9 @@ export interface PersonalRecord {
   updatedAt: Timestamp;
 }
 
+// Achievements
+export type { MilestoneCategory, Milestone, DetectedPR, ConfirmedPR, DetectedMilestone, AchievementResult } from './achievements';
+
 export interface AuthContextType {
   user: User | null;
   loading: boolean;

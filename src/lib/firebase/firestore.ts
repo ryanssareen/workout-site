@@ -3,7 +3,7 @@ import {
   query, where, orderBy, serverTimestamp, Timestamp, writeBatch, deleteField,
 } from 'firebase/firestore';
 import { getDbInstance } from './config';
-import { Workout, WorkoutFormData, WorkoutComment, WorkoutRating, PersonalRecord, PRCategory } from '@/types';
+import { Workout, WorkoutFormData, WorkoutComment, WorkoutRating, PersonalRecord, PRCategory, Milestone } from '@/types';
 import { addDays, addWeeks, addMonths } from 'date-fns';
 
 // Extended form data to include recurring fields
@@ -699,5 +699,60 @@ export async function deletePersonalRecord(recordId: string): Promise<void> {
     await deleteDoc(doc(getDbInstance(), 'personalRecords', recordId));
   } catch (error: any) {
     throw new Error(error.message || 'Failed to delete personal record');
+  }
+}
+
+// Milestone Functions
+export async function getMilestones(username: string): Promise<Milestone[]> {
+  try {
+    const milestonesRef = collection(getDbInstance(), 'users', username, 'milestones');
+    const q = query(milestonesRef, orderBy('date', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Milestone[];
+  } catch (error) {
+    console.error('Error fetching milestones:', error);
+    return [];
+  }
+}
+
+export async function addMilestone(
+  username: string,
+  data: {
+    userId: string;
+    category: string;
+    name: string;
+    description: string;
+    value: number;
+    unit: string;
+    icon: string;
+    date: Date;
+    workoutId?: string;
+  }
+): Promise<string | null> {
+  try {
+    const milestonesRef = collection(getDbInstance(), 'users', username, 'milestones');
+    // Dedup: check if this exact milestone already exists
+    const q = query(milestonesRef, where('category', '==', data.category), where('value', '==', data.value));
+    const existing = await getDocs(q);
+    if (!existing.empty) return null; // Already earned
+
+    const milestoneData: Record<string, any> = {
+      userId: data.userId,
+      category: data.category,
+      name: data.name,
+      description: data.description,
+      value: data.value,
+      unit: data.unit,
+      icon: data.icon,
+      date: Timestamp.fromDate(data.date),
+      createdAt: serverTimestamp(),
+    };
+    if (data.workoutId) milestoneData.workoutId = data.workoutId;
+
+    const docRef = await addDoc(milestonesRef, milestoneData);
+    return docRef.id;
+  } catch (error) {
+    console.error('Error adding milestone:', error);
+    return null;
   }
 }

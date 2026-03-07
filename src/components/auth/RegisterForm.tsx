@@ -82,7 +82,9 @@ export function RegisterForm() {
     setUsernameChecking(true);
     const available = await isUsernameAvailable(lower);
     setUsernameChecking(false);
-    if (!available) {
+    if (available === 'error') {
+      setUsernameError('Could not check username. Please try again.');
+    } else if (!available) {
       setUsernameError('Username is already taken');
     }
   }, []);
@@ -108,6 +110,11 @@ export function RegisterForm() {
     }
 
     const available = await isUsernameAvailable(formData.username);
+    if (available === 'error') {
+      setUsernameError('Could not verify username. Please try again.');
+      setLoading(false);
+      return;
+    }
     if (!available) {
       setUsernameError('Username is already taken');
       setLoading(false);

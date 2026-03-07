@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { getWorkout, completeWorkout } from '@/lib/firebase/firestore';
-import { Workout } from '@/types';
+import { getWorkout, completeWorkout, getUserWorkouts } from '@/lib/firebase/firestore';
+import { Workout, AchievementResult } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +24,8 @@ const RouteMap = dynamic(
 import { CompletionDialog, UncompletionDialog } from '@/components/workouts/CompletionDialog';
 import { WorkoutPhotos } from '@/components/workouts/WorkoutPhotos';
 import { WorkoutRecommendations } from '@/components/ai/WorkoutRecommendations';
+import { CelebrationModal } from '@/components/achievements/CelebrationModal';
+import { checkAchievements } from '@/lib/achievements';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -65,6 +67,8 @@ export default function WorkoutDetailPage() {
   const [templateName, setTemplateName] = useState('');
   const [timeframe, setTimeframe] = useState('');
   const [frequency, setFrequency] = useState('');
+  const [achievements, setAchievements] = useState<AchievementResult | null>(null);
+  const [showCelebration, setShowCelebration] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -95,19 +99,32 @@ export default function WorkoutDetailPage() {
   }, [user, loading, router, params.id, searchParams]);
 
   const handleComplete = async (notes?: string) => {
-    if (!workout) return;
+    if (!workout || !user) return;
 
     setIsUpdating(true);
     try {
       await completeWorkout(workout.ownerUsername, workout.id, true, notes);
-      setWorkout({
+      const updatedWorkout: Workout = {
         ...workout,
         completed: true,
         completedBy: 'manual',
         completionNotes: notes,
-      });
+      };
+      setWorkout(updatedWorkout);
       setShowCompletionDialog(false);
+
+      // Check for achievements (non-blocking — show toast immediately, celebration after)
       toast.success('Workout marked as complete!');
+      try {
+        const allWorkouts = await getUserWorkouts(user.username, user.role);
+        const result = await checkAchievements(user.username, user.uid, updatedWorkout, allWorkouts);
+        if (result.newPRs.length > 0 || result.newMilestones.length > 0) {
+          setAchievements(result);
+          setShowCelebration(true);
+        }
+      } catch (achError) {
+        console.error('Achievement check failed:', achError);
+      }
     } catch (error: any) {
       toast.error(error.message || 'Failed to update workout');
     } finally {

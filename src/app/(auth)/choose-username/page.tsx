@@ -45,7 +45,9 @@ export default function ChooseUsernamePage() {
     setChecking(true);
     const available = await isUsernameAvailable(lower);
     setChecking(false);
-    if (!available) {
+    if (available === 'error') {
+      setUsernameError('Could not check username. Please try again.');
+    } else if (!available) {
       setUsernameError('Username is already taken');
     }
   }, []);
@@ -65,6 +67,11 @@ export default function ChooseUsernamePage() {
     }
 
     const available = await isUsernameAvailable(username);
+    if (available === 'error') {
+      setUsernameError('Could not verify username. Please try again.');
+      setLoading(false);
+      return;
+    }
     if (!available) {
       setUsernameError('Username is already taken');
       setLoading(false);

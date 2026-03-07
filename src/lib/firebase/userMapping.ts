@@ -36,13 +36,14 @@ export async function getUsernameFromUid(uid: string): Promise<string | null> {
   }
 }
 
-export async function isUsernameAvailable(username: string): Promise<boolean> {
+export async function isUsernameAvailable(username: string): Promise<boolean | 'error'> {
   try {
     const res = await fetch(`/api/auth/check-username?username=${encodeURIComponent(username)}`);
     const data = await res.json();
+    if (data.serverError) return 'error';
     return data.available === true;
   } catch (error) {
     console.error('Error checking username availability:', error);
-    return false;
+    return 'error';
   }
 }
