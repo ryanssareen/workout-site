@@ -305,14 +305,19 @@ function SettingsContent() {
   return (
     <div className={cn("space-y-6 max-w-2xl mx-auto", hasUnsavedChanges ? "pb-24" : "pb-8")}>
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary to-primary/80 shadow-lg shadow-primary/20">
-          <Settings className="h-5 w-5 text-primary-foreground" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary to-primary/80 shadow-lg shadow-primary/20">
+            <Settings className="h-5 w-5 text-primary-foreground" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Settings</h1>
+            <p className="text-sm text-muted-foreground">Manage your account</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold">Settings</h1>
-          <p className="text-sm text-muted-foreground">Manage your account</p>
-        </div>
+        <Button variant="outline" size="sm" onClick={handleLogout} className="text-red-500 hover:text-red-600 hover:bg-red-500/10 md:hidden">
+          <LogOut className="h-4 w-4 mr-1.5" />Sign Out
+        </Button>
       </div>
 
       {/* ═══════════════════ Edit Profile ═══════════════════ */}
