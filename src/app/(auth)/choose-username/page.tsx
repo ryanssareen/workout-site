@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createGoogleUser } from '@/lib/firebase/auth';
 import { validateUsername, isUsernameAvailable } from '@/lib/firebase/userMapping';
@@ -22,6 +22,7 @@ export default function ChooseUsernamePage() {
   const needsUsername = useAuthStore((s) => s.needsUsername);
   const setUser = useAuthStore((s) => s.setUser);
   const setNeedsUsername = useAuthStore((s) => s.setNeedsUsername);
+  const usernameCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!needsUsername || !pendingGoogleUser) {
@@ -29,27 +30,43 @@ export default function ChooseUsernamePage() {
     }
   }, [needsUsername, pendingGoogleUser, router]);
 
-  const handleUsernameChange = useCallback(async (value: string) => {
+  const handleUsernameChange = useCallback((value: string) => {
     const lower = value.toLowerCase().replace(/[^a-z0-9_]/g, '');
     setUsername(lower);
     setUsernameError('');
+    setChecking(false);
+
+    // Clear any pending check
+    if (usernameCheckTimer.current) {
+      clearTimeout(usernameCheckTimer.current);
+      usernameCheckTimer.current = null;
+    }
 
     if (!lower) return;
 
+    // Synchronous validation is instant (no network call)
     const validation = validateUsername(lower);
     if (!validation.valid) {
       setUsernameError(validation.error || '');
       return;
     }
 
+    // Debounce the availability check (500ms) to avoid burning Firestore quota
     setChecking(true);
-    const available = await isUsernameAvailable(lower);
-    setChecking(false);
-    if (available === 'error') {
-      setUsernameError('Could not check username. Please try again.');
-    } else if (!available) {
-      setUsernameError('Username is already taken');
-    }
+    usernameCheckTimer.current = setTimeout(async () => {
+      const available = await isUsernameAvailable(lower);
+      // Only update if this is still the current username
+      setUsername((current) => {
+        if (current !== lower) return current;
+        setChecking(false);
+        if (available === 'error') {
+          setUsernameError('Could not check username. Please try again.');
+        } else if (!available) {
+          setUsernameError('Username is already taken');
+        }
+        return current;
+      });
+    }, 500);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
