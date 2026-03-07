@@ -24,6 +24,7 @@ interface CalendarWeekViewProps {
   onSelectWorkout: (workoutId: string) => void;
   activeTypes: Set<string>;
   maxPillsPerCell?: number;
+  onNoteAdded?: () => void;
 }
 
 export function CalendarWeekView({
@@ -34,6 +35,7 @@ export function CalendarWeekView({
   onSelectWorkout,
   activeTypes,
   maxPillsPerCell = 8,
+  onNoteAdded,
 }: CalendarWeekViewProps) {
   const days = useMemo(() => {
     const ws = startOfWeek(currentMonth, { weekStartsOn: 0 });
@@ -95,7 +97,7 @@ export function CalendarWeekView({
                 <span className="text-[10px] font-medium text-muted-foreground uppercase truncate flex-1">
                   {format(day, 'MMM')}
                 </span>
-                <CalendarAddDropdown date={day} className="opacity-0 group-hover/cell:opacity-100 transition-opacity" />
+                <CalendarAddDropdown date={day} onNoteAdded={onNoteAdded} className="opacity-0 group-hover/cell:opacity-100 transition-opacity" />
               </div>
 
               {/* Workout pills */}

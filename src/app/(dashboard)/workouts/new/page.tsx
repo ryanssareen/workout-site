@@ -34,7 +34,6 @@ export default function NewWorkoutPage() {
   const aiGenerated = searchParams.get('aiGenerated') === 'true';
   const dateParam = searchParams.get('date'); // e.g. "2026-03-07" from calendar
   const tagParam = searchParams.get('tag');   // e.g. "race" from calendar event
-  const isNote = searchParams.get('note') === 'true'; // calendar "Add Note"
 
   const isCoach = user?.role === 'coach';
   const isUnconnectedAthlete = (user?.role === 'athlete' || user?.role === 'student') && !user?.coachUsername;
@@ -275,14 +274,8 @@ export default function NewWorkoutPage() {
       defaults.tags = [tagParam];
     }
 
-    // "Add Note" from calendar — pre-fill as other type with note name
-    if (isNote) {
-      defaults.type = 'other';
-      defaults.name = 'Note';
-    }
-
     return Object.keys(defaults).length > 0 ? defaults : undefined;
-  }, [templateData, isUnconnectedAthlete, user?.username, students, dateParam, tagParam, isNote]);
+  }, [templateData, isUnconnectedAthlete, user?.username, students, dateParam, tagParam]);
 
   return (
     <div className="space-y-6">

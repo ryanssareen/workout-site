@@ -309,6 +309,7 @@ export default function CalendarPage() {
             }}
             onSelectWorkout={(id) => setSelectedWorkoutId(id)}
             activeTypes={new Set(['swim', 'bike', 'run', 'strength', 'other'])}
+            onNoteAdded={refreshWorkouts}
           />
         );
       case 'month':
@@ -329,6 +330,7 @@ export default function CalendarPage() {
             }}
             onSelectWorkout={(id) => setSelectedWorkoutId(id)}
             activeTypes={new Set(['swim', 'bike', 'run', 'strength', 'other'])}
+            onNoteAdded={refreshWorkouts}
           />
         );
       case 'year':
@@ -390,6 +392,7 @@ export default function CalendarPage() {
             }}
             onSelectWorkout={() => {}}
             activeTypes={new Set(['swim', 'bike', 'run', 'strength', 'other'])}
+            onNoteAdded={refreshWorkouts}
           />
         );
       case 'year':

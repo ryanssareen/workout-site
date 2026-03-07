@@ -27,6 +27,7 @@ interface CalendarFullMonthViewProps {
   onSelectWorkout: (workoutId: string) => void;
   activeTypes: Set<string>;
   maxPillsPerCell?: number;
+  onNoteAdded?: () => void;
 }
 
 export function CalendarFullMonthView({
@@ -37,6 +38,7 @@ export function CalendarFullMonthView({
   onSelectWorkout,
   activeTypes,
   maxPillsPerCell = 3,
+  onNoteAdded,
 }: CalendarFullMonthViewProps) {
   const weeks = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
@@ -108,7 +110,7 @@ export function CalendarFullMonthView({
                       {format(day, 'd')}
                     </span>
                     <span className="flex-1" />
-                    <CalendarAddDropdown date={day} className="opacity-0 group-hover/cell:opacity-100 transition-opacity" />
+                    <CalendarAddDropdown date={day} onNoteAdded={onNoteAdded} className="opacity-0 group-hover/cell:opacity-100 transition-opacity" />
                   </div>
 
                   {/* Workout micro-pills */}
