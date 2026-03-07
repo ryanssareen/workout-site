@@ -48,8 +48,9 @@ export async function GET(request: NextRequest) {
       username = await adminResolveUsername(uid);
     } catch (e: any) {
       console.error('❌ Failed to resolve username for UID:', uid, e.message);
+      const detail = encodeURIComponent(`UID lookup failed: ${e.message?.slice(0, 150) || 'unknown error'}`);
       return NextResponse.redirect(
-        new URL(`/settings?strava=error&reason=no_user&detail=${encodeURIComponent('Could not find user account. Please log out and log back in, then try again.')}`, baseUrl)
+        new URL(`/settings?strava=error&reason=no_user&detail=${detail}`, baseUrl)
       );
     }
 
