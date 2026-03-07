@@ -58,6 +58,11 @@ export const useStravaSyncStore = create<StravaSyncState>((set, get) => ({
             toast.error('Strava authorization expired', {
               description: 'Disconnect and reconnect your Strava account.',
             });
+          } else if (errorData.isQuota) {
+            set({ status: 'error', error: errorData.error });
+            toast.error('Daily quota reached', {
+              description: 'Try syncing again tomorrow — your data is safe.',
+            });
           } else {
             set({ status: 'error', error: errorData.error || 'Sync failed' });
             toast.error(errorData.error || 'Failed to sync with Strava');

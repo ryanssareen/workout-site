@@ -542,19 +542,8 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
-      // Double-check this activity doesn't already exist (real-time check)
-      const existingCheck = await adminDb
-        .collection('users').doc(userId).collection('workouts')
-        .where('stravaActivityId', '==', stravaId)
-        .limit(1)
-        .get();
-
-      if (!existingCheck.empty) {
-        console.log(`  ⏭️ Already exists: ${activity.name}`);
-        skippedCount++;
-        processedInThisSync.add(stravaId);
-        continue;
-      }
+      // existingStravaIds (built from the batch query above) already filters duplicates —
+      // no need for a per-activity Firestore read here
 
       console.log(`📦 Processing ${i + 1}/${activitiesToProcess.length}: ${activity.name}`);
 
@@ -787,12 +776,18 @@ export async function GET(request: NextRequest) {
       message,
       dedup: dedupInfo,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Strava sync error:', error);
     const errMsg = error instanceof Error ? error.message : 'Failed to sync Strava activities';
+    const isQuota = errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('Quota exceeded') || error.code === 8;
     return NextResponse.json(
-      { error: errMsg },
-      { status: 500 }
+      {
+        error: isQuota
+          ? 'Firebase daily quota reached. Your workouts are safe — try syncing again tomorrow.'
+          : errMsg,
+        isQuota,
+      },
+      { status: isQuota ? 429 : 500 }
     );
   }
 }
