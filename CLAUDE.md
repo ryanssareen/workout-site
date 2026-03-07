@@ -65,6 +65,15 @@ npm run lint         # ESLint
 npx tsc --noEmit     # Type check without building
 ```
 
+## PWA Support
+- **Manifest:** Static `public/manifest.webmanifest` (not Next.js dynamic route — Vercel requires static file)
+- **Service Worker:** `public/sw.js` — cache-first for static assets (`/_next/static/`, `/icons/`, fonts), network-first for navigation (offline fallback), network-only for `/api/`, network-first with cache fallback for everything else
+- **Offline Page:** `public/offline.html` — self-contained dark-themed fallback
+- **Registration:** `src/components/ServiceWorkerRegister.tsx` — client component, registers SW on mount
+- **Icons:** `public/icons/` — `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png`
+- **Layout:** Explicit `<link rel="manifest">` in `<head>` tag (not via `metadata.manifest` — unreliable on Vercel). Viewport has `viewportFit: 'cover'` for safe-area support. Apple web app meta tags via `metadata.appleWebApp`.
+- **Safe Areas:** Navbar uses `pt-[env(safe-area-inset-top)]`, MobileBottomNav uses `pb-[env(safe-area-inset-bottom)]`. Dashboard layout uses `overflow-x-hidden` (not `overflow-hidden` which breaks `position: sticky`).
+
 ## Key Conventions
 - Use `@/` path alias for imports from `src/`
 - Firebase instances accessed via `getAuthInstance()`, `getDbInstance()`, `getStorageInstance()` from `src/lib/firebase/config.ts`
@@ -84,7 +93,7 @@ npx tsc --noEmit     # Type check without building
 - `/` — Landing page: centered hero ("Your training, all in one place"), sport pills, how-it-works steps, 6-card features grid (Strava Sync, Visual Calendar, Progress Tracking, AI Coach, Multi-Sport, Email Reminders), FAQ, CTA. Dark theme, simplified design.
 - `/profile` — Read-only public-style profile view (stats, pie chart, recent workouts, PRs). "Edit Profile" links to `/settings`
 - `/settings` — Full profile edit form (name, bio, timezone, age, experience, height/weight, sports, training goals with event name/date), Strava integration, public profile toggle, account management
-- `/workouts` — AI Workout Suggestions at top, time filter tabs (Planned/Past/All), horizontal type filter tags (All/Run/Bike/Swim/Strength/Other), compact single-row workout list with Garmin-style stat chips (HR, elevation, calories, pace, power)
+- `/workouts` — Compact header, AI Workout Suggestions collapsed by default behind slim trigger bar (expandable), time filter tabs (Planned/Past/All), horizontal type filter tags (All/Run/Bike/Swim/Strength/Other), compact single-row workout list with Garmin-style stat chips (HR, elevation, calories, pace, power). Neutral/orange color scheme (no red).
 - `/workouts/new` — Create workout form with type-specific sub-forms, supports AI-generated templates (via sessionStorage) and saved templates. Preview dialog before creation.
 - `/athlete/[username]` — Public athlete profile (SSR), shares components with `/profile` via ProfileComponents.tsx
 - `/onboarding/profile` — 3-step onboarding: pick sports → pick goals (with event details) → about you (age, experience, height, weight)

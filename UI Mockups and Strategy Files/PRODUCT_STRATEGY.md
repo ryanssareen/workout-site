@@ -27,11 +27,11 @@
 | **Workouts UX** | ✅ IMPROVED — AI suggestions at top of workouts page, time filter tabs (Planned/Past/All), Garmin-style stat chips, workout preview dialog with full details | ~~MEDIUM~~ |
 | ~~**Public athlete profiles**~~ | ✅ DONE — `/athlete/[username]` with stats, pie chart, recent workouts, PRs, AI tagline | ~~HIGH~~ |
 | **Product analytics** | Zero tracking of user behavior (no PostHog, no Amplitude, nothing) | HIGH — can't improve what you can't measure |
-| **PWA / mobile install** | No manifest.json, no service worker, no "Add to Home Screen" | MEDIUM — athletes use phones |
+| ~~**PWA / mobile install**~~ | ✅ DONE — Static manifest, service worker (cache-first static, network-first nav, offline fallback), Apple web app support, safe-area handling, installable on iOS/Android | ~~MEDIUM~~ |
 | **Monetization** | No payment system, no tiers, no pricing page | MEDIUM — not urgent pre-PMF |
 | **Push notifications** | Email-only engagement | MEDIUM |
 | **Month calendar view** | ✅ DONE — Calendar now has 4 views (day/week/month/year) with heatmap year view | ~~LOW-MEDIUM~~ |
-| **Streak gamification** | No visual streak, no streak notifications | MEDIUM — retention lever |
+| **Streak gamification** | ✅ PARTIAL — Streak counter on profile/public profile, dashboard stats row. Still missing: streak notifications, at-risk nudges, visual enhancements | MEDIUM — retention lever |
 
 ### Competitive Position
 
@@ -105,9 +105,9 @@ The viral report core is built. The next wave focuses on **retention** (keeping 
 | # | Feature | Category | Impact | Effort | Priority |
 |---|---------|----------|--------|--------|----------|
 | 1 | Product Analytics (PostHog) | Growth infra | HIGH — can't optimize what you can't measure | Low | **P0** |
-| 2 | PWA Support (Add to Home Screen) | Growth infra | MEDIUM — native-feel = daily habit on phones | Low | **P0** |
+| ~~2~~ | ~~PWA Support (Add to Home Screen)~~ | ~~Growth infra~~ | ✅ DONE | ~~Low~~ | ~~**P0**~~ |
 | 3 | PR Achievement Cards (shareable) | Viral / retention | HIGH — celebration moments drive shares + dopamine | Low-Medium | **P0** |
-| 4 | Streak System Enhancement | Retention | HIGH — visual streak + at-risk nudges = daily engagement | Low | **P0** |
+| 4 | Streak System Enhancement | Retention | HIGH — streak counter done on profiles, still need at-risk nudges + visual enhancements | Low | **P0** |
 | 5 | Milestone Badge System | Viral / retention | HIGH — auto-detected achievements, collectible + shareable | Medium | **P1** |
 | 6 | Race Recap Card | Viral | HIGH — highest-emotion share moment in endurance sports | Medium | **P1** |
 | 7 | AI Race Predictions | Differentiation | HIGH — predict race times based on training data | Medium | **P1** |
@@ -323,28 +323,20 @@ Progress dots, back/continue navigation, "Skip for now" option. Data saved to Fi
 
 ---
 
-### Implementation 8: PWA Support (Add to Home Screen)
+### Implementation 8: PWA Support (Add to Home Screen) ✅ DONE
 
-**What:** Add Progressive Web App manifest and basic service worker so athletes can install the app on their phone home screen.
+**Status:** Fully implemented. Manual approach (no next-pwa/serwist packages).
 
-**What this enables:**
-- "Add to Home Screen" prompt on mobile browsers
-- App icon on phone (looks like native app)
-- Full-screen mode (no browser chrome)
-- Faster loading via service worker caching
+**What was built:**
+- Static `public/manifest.webmanifest` (Vercel requires static file, not Next.js dynamic `manifest.ts` route)
+- `public/sw.js` — Service worker with versioned caches (`static-v1`, `offline-v1`). Cache-first for `/_next/static/`, `/icons/`, fonts. Network-first for navigation (falls back to offline page). Network-only for `/api/`. Network-first with cache fallback for everything else.
+- `public/offline.html` — Self-contained dark-themed offline fallback with "You're offline" message and retry button
+- `src/components/ServiceWorkerRegister.tsx` — Client component that registers SW on mount
+- `public/icons/` — 4 icons: `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png`
+- `src/app/layout.tsx` — Explicit `<link rel="manifest">` in `<head>` tag, viewport with `viewportFit: 'cover'`, Apple web app meta tags (`capable`, `black-translucent` status bar)
+- Safe-area handling: Navbar `pt-[env(safe-area-inset-top)]`, MobileBottomNav `pb-[env(safe-area-inset-bottom)]`, dashboard layout `overflow-x-hidden` (not `overflow-hidden` which breaks `position: sticky`)
 
-**Technical approach:**
-- Add `public/manifest.json` with app name, icons, theme color (#ef4444), display: standalone
-- Add app icons (192x192, 512x512) to `public/`
-- Add `<link rel="manifest">` to `src/app/layout.tsx`
-- Add basic service worker for static asset caching (next-pwa or manual)
-- Add meta tags for iOS (apple-mobile-web-app-capable, status-bar-style)
-
-**Key files to modify:**
-- New: `public/manifest.json`
-- New: `public/icons/` — app icons at multiple sizes
-- `src/app/layout.tsx` — add manifest link + meta tags
-- `next.config.ts` — configure next-pwa if used
+**Key lesson:** On Vercel, static files in `public/` with explicit HTML tags are more reliable than Next.js framework abstractions (`manifest.ts` route, `metadata.manifest` field).
 
 ---
 
@@ -446,16 +438,18 @@ Progress dots, back/continue navigation, "Skip for now" option. Data saved to Fi
 | Comparison Cards (vs Last Month in `/review`) | ✅ DONE |
 | Report Sharing UX (ShareButtons on all review pages) | ✅ DONE |
 | Calendar 4-View System (day/week/month/year) | ✅ DONE |
-| Workouts UX (AI suggestions, time filters, stat chips) | ✅ DONE |
+| Workouts UX (AI suggestions collapsed by default, time filters, stat chips, neutral theme) | ✅ DONE |
 | Landing Page (dark theme, feature grid, FAQ) | ✅ DONE |
+| PWA Support (manifest, service worker, offline fallback, installable, safe-area) | ✅ DONE |
+| Streak Counter (profile + public profile display) | ✅ DONE (partial — notifications pending) |
 
 ### What's Next
 
 **Phase 5 — Launch Readiness (P0):**
 1. Product Analytics (PostHog) — can't optimize what you can't measure
-2. PWA Support — "Add to Home Screen" for mobile athletes
+2. ~~PWA Support~~ ✅ DONE — manifest, service worker, offline fallback, installable, safe-area handling
 3. PR Achievement Cards — highest-value quick win (shareable, low effort)
-4. Streak System Enhancement — visual streak widget + at-risk email nudges
+4. Streak System Enhancement — ✅ counter on profiles, still need at-risk email nudges + visual enhancements
 
 **Phase 6 — Retention & Differentiation (P1):**
 5. Milestone Badge System — collectible achievements, shareable cards
@@ -475,7 +469,7 @@ Progress dots, back/continue navigation, "Skip for now" option. Data saved to Fi
 15. Coach Marketplace — two-sided marketplace for coaching services
 16. Advanced Training Load Analytics — TSS/CTL/ATL, HR zones, fitness-fatigue
 
-**Immediate next actions:** Phase 5 items are all low-effort, high-impact. PostHog + PWA can be done in a day each. PR cards and streak enhancement build on existing infrastructure.
+**Immediate next actions:** PWA is done. Streak counter is on profiles. Remaining Phase 5: PostHog analytics + PR Achievement Cards + streak notifications/at-risk nudges. All low-effort, high-impact.
 
 ---
 

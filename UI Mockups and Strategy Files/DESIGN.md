@@ -419,10 +419,11 @@ Progress dots, back/continue navigation, "Skip for now" option. Data saved to Fi
 ### Workouts (`/workouts`)
 
 **Layout (top to bottom):**
-1. **Header:** Title + "Create Workout" button
-2. **AI Workout Suggestions** — Collapsible section for coaches and self-training athletes. Generates personalized workout plans via 3-tier AI pipeline (logic engine → Groq → validator). Each suggestion shows name, type badge, intensity, specs summary, description, warmup/mainSet/cooldown. "Use Workout" pre-fills the create form.
-3. **Time Filter Tabs:** Planned | Past | All — segmented control with counts. "Planned" shows future uncompleted (ascending), "Past" shows completed/past (descending), "All" shows everything (descending).
-4. **Type Filter Tags:** All | Run | Bike | Swim | Strength | Other — horizontal pill row with counts. Filters applied on top of time filter.
+1. **Header:** Compact — title + small "+" create button (no gradient icon box)
+2. **AI Workout Suggestions** — Collapsed by default behind a slim one-line trigger bar ("AI Workout Suggestions → Generate"). Expands to full suggestions panel on click. Orange sparkles icon, neutral card styling (no red). Each suggestion shows name, type badge, intensity, specs summary, description, warmup/mainSet/cooldown. "Use Workout" pre-fills the create form.
+3. **Time Filter Tabs:** Planned | Past | All — small text-xs pills with counts (no icons). "Planned" shows future uncompleted (ascending), "Past" shows completed/past (descending), "All" shows everything (descending).
+4. **Type Filter Tags:** All | Run | Bike | Swim | Strength | Other — horizontal pill row with counts. Neutral active state (`bg-foreground text-background`). Filters applied on top of time filter.
+5. **Spacing:** Tight `space-y-3` throughout for mobile-first compact layout.
 
 **Workout Rows:** Compact single-row cards with:
 - Type emoji + workout name + type badge + optional "Late" badge
@@ -871,6 +872,44 @@ interface AuthState {
 | `BREVO_API_KEY` | Brevo email service |
 | `NEXT_PUBLIC_APP_URL` | App base URL |
 | `ADMIN_SECRET` | Admin endpoint auth |
+
+---
+
+## PWA Support
+
+The app is installable as a Progressive Web App on iOS and Android.
+
+### Files
+| File | Purpose |
+|------|---------|
+| `public/manifest.webmanifest` | Static manifest (name, icons, display: standalone, theme: #09090b) |
+| `public/sw.js` | Service worker with versioned caches |
+| `public/offline.html` | Dark-themed offline fallback page |
+| `src/components/ServiceWorkerRegister.tsx` | Client component — registers SW on mount |
+| `public/icons/icon-192.png` | App icon 192x192 |
+| `public/icons/icon-512.png` | App icon 512x512 |
+| `public/icons/icon-maskable-512.png` | Maskable icon for Android |
+| `public/icons/apple-touch-icon.png` | iOS home screen icon |
+
+### Caching Strategies
+| Pattern | Strategy |
+|---------|----------|
+| `/_next/static/`, `/icons/`, Google Fonts | Cache-first |
+| Navigation requests | Network-first, falls back to `/offline.html` |
+| `/api/` routes | Network-only (never cached) |
+| Everything else | Network-first with cache fallback |
+
+### Safe-Area Handling
+- **Viewport:** `viewportFit: 'cover'` in root layout — allows content under notch
+- **Navbar:** `pt-[env(safe-area-inset-top)]` — pushes content below status bar
+- **MobileBottomNav:** `pb-[env(safe-area-inset-bottom)]` — accounts for home indicator
+- **Dashboard layout:** `overflow-x-hidden` (NOT `overflow-hidden` — that breaks `position: sticky`)
+- **Status bar:** `black-translucent` via `metadata.appleWebApp`
+
+### Key Lessons
+- Vercel doesn't reliably serve Next.js `manifest.ts` dynamic routes — use static `public/manifest.webmanifest`
+- `metadata.manifest` in Next.js layout doesn't always generate `<link>` tag — use explicit `<head>` tag
+- `overflow: hidden` on parent containers kills `position: sticky` on child elements
 
 ---
 
