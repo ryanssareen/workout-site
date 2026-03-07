@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useStravaAutoSync } from '@/hooks/useStravaAutoSync';
 import { ProfileCompletionBar } from '@/components/dashboard/ProfileCompletionBar';
+import { DashboardAchievements } from '@/components/achievements/DashboardAchievements';
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell,
 } from 'recharts';
@@ -291,6 +292,9 @@ export default function DashboardPage() {
           </div>
         </Card>
       </div>
+
+      {/* ── ACHIEVEMENTS ────────────────────────────────────────── */}
+      {user && <DashboardAchievements username={user.username} />}
 
       {/* ── WEEKLY CHART + UPCOMING ────────────────────────────── */}
       <div className="grid gap-4 lg:grid-cols-5">

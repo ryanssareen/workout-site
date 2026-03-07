@@ -518,6 +518,16 @@ export default function WorkoutDetailPage() {
         isLoading={isUpdating}
       />
 
+      {/* Celebration Modal */}
+      {achievements && (
+        <CelebrationModal
+          achievements={achievements}
+          open={showCelebration}
+          onClose={() => setShowCelebration(false)}
+          userName={user.displayName}
+        />
+      )}
+
       {/* Save as Template dialog */}
       <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
         <DialogContent>

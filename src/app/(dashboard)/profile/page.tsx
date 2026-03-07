@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { getUserWorkouts, getPersonalRecords } from '@/lib/firebase/firestore';
+import { getUserWorkouts, getPersonalRecords, getMilestones } from '@/lib/firebase/firestore';
 import { computeSummary, computeTypeDistribution } from '@/lib/analytics';
 import { PhotoUpload } from '@/components/profile/PhotoUpload';
 import {
@@ -28,15 +28,31 @@ import {
   Trophy,
   Sparkles,
   Flame,
+  Star,
+  Medal,
+  Award,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import type { Workout, PersonalRecord } from '@/types';
+import type { Milestone } from '@/types/achievements';
+
+const MILESTONE_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  star: Star, medal: Medal, award: Award, trophy: Trophy, flame: Flame, dumbbell: Dumbbell,
+};
+
+const MILESTONE_CATEGORY_COLORS: Record<string, string> = {
+  workout_count: 'from-amber-400 to-orange-500',
+  distance: 'from-green-400 to-emerald-500',
+  streak: 'from-orange-400 to-red-500',
+  first_ever: 'from-blue-400 to-cyan-500',
+};
 
 export default function ProfilePage() {
   const user = useAuthStore((s) => s.user);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,9 +60,11 @@ export default function ProfilePage() {
     Promise.all([
       getUserWorkouts(user.username, user.role as 'coach' | 'athlete' | 'student'),
       getPersonalRecords(user.username),
-    ]).then(([w, pr]) => {
+      getMilestones(user.username),
+    ]).then(([w, pr, ms]) => {
       setWorkouts(w);
       setPersonalRecords(pr);
+      setMilestones(ms);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [user]);
@@ -256,6 +274,32 @@ export default function ProfilePage() {
                     {pr.value} <span className="text-xs font-normal text-muted-foreground">{pr.unit}</span>
                   </p>
                   <p className="text-[11px] text-muted-foreground">{format(d, 'MMM d, yyyy')}</p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* ── Milestones ── */}
+      {milestones.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Milestones</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            {milestones.map(ms => {
+              const d = ms.date?.toDate?.() ?? new Date(ms.date as any);
+              const IconComp = MILESTONE_ICON_MAP[ms.icon] || Star;
+              const gradient = MILESTONE_CATEGORY_COLORS[ms.category] || 'from-amber-400 to-orange-500';
+              return (
+                <div key={ms.id} className="rounded-xl border bg-card p-3.5 text-center space-y-2">
+                  <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-sm mx-auto`}>
+                    <IconComp className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold leading-tight">{ms.name}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{ms.description}</p>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">{format(d, 'MMM d, yyyy')}</p>
                 </div>
               );
             })}

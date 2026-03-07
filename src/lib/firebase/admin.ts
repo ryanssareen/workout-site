@@ -41,11 +41,17 @@ function initializeFirebaseAdmin() {
 // Lazy getters that initialize on first access
 export const getAdminAuth = () => {
   initializeFirebaseAdmin();
+  if (!initialized && admin.apps.length === 0) {
+    throw new Error('Firebase Admin SDK failed to initialize. Check FIREBASE_SERVICE_ACCOUNT env var.');
+  }
   return admin.auth();
 };
 
 export const getAdminDb = () => {
   initializeFirebaseAdmin();
+  if (!initialized && admin.apps.length === 0) {
+    throw new Error('Firebase Admin SDK failed to initialize. Check FIREBASE_SERVICE_ACCOUNT env var.');
+  }
   return admin.firestore();
 };
 

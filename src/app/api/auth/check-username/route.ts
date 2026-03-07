@@ -17,9 +17,13 @@ export async function GET(request: NextRequest) {
   try {
     const doc = await adminDb.collection('users').doc(username).get();
     return NextResponse.json({ available: !doc.exists });
-  } catch (error) {
-    console.error('Error checking username:', error);
+  } catch (error: any) {
+    console.error('Error checking username:', error?.message || error);
     // Return serverError flag so client can distinguish "taken" from "broken"
-    return NextResponse.json({ available: null, serverError: true, error: 'Server error checking username' }, { status: 500 });
+    const isInitError = error?.message?.includes('failed to initialize');
+    return NextResponse.json(
+      { available: null, serverError: true, error: isInitError ? 'Server configuration error' : 'Server error checking username' },
+      { status: 500 }
+    );
   }
 }
