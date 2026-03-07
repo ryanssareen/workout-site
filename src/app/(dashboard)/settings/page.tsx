@@ -216,12 +216,22 @@ function SettingsContent() {
     setIsDisconnectingStrava(false);
   };
 
+  // Build tokens payload from user's Strava credentials (enables quota-safe POST mode)
+  const getStravaTokens = () => {
+    if (!user?.stravaAccessToken) return undefined;
+    return {
+      stravaAccessToken: user.stravaAccessToken,
+      stravaRefreshToken: user.stravaRefreshToken,
+      stravaTokenExpiresAt: user.stravaTokenExpiresAt,
+    };
+  };
+
   const handleSyncStrava = async (decisions?: Record<string, { action: 'merge' | 'new'; workoutId?: string }>) => {
     if (!user) return;
 
     // With decisions (from duplicate dialog), go straight to sync via the global store
     if (decisions) {
-      startSync(user.username, decisions);
+      startSync(user.username, decisions, getStravaTokens());
       return;
     }
 
@@ -237,7 +247,7 @@ function SettingsContent() {
       }
 
       // No duplicates — kick off sync via the global store
-      startSync(user.username);
+      startSync(user.username, undefined, getStravaTokens());
     } catch (error: any) {
       if (error.message?.includes('reconnect')) {
         toast.error('Strava authorization expired', {

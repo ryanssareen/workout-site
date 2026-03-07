@@ -290,67 +290,149 @@ async function findDuplicatesByName(
   }
 }
 
-export async function GET(request: NextRequest) {
+// POST handler — accepts tokens in body, works even when Firestore reads are exhausted
+export async function POST(request: NextRequest) {
   try {
-    console.log('🔄 Strava sync requested');
-
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    const checkDuplicates = searchParams.get('checkDuplicates') === 'true';
-    const duplicateDecisions = searchParams.get('decisions');
-    const period = searchParams.get('period'); // 'week' | 'month' | 'year' | null
+    const body = await request.json();
+    const url = new URL(request.url);
+    // Merge body params with query params (query params take precedence for backwards compat)
+    const userId = url.searchParams.get('userId') || body.userId;
+    const accessTokenFromClient = body.stravaAccessToken;
+    const refreshTokenFromClient = body.stravaRefreshToken;
+    const expiresAtFromClient = body.stravaTokenExpiresAt;
 
     if (!userId) {
-      console.error('❌ No userId provided');
+      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+    }
+    if (!accessTokenFromClient) {
+      return NextResponse.json({ error: 'Strava tokens required in POST body' }, { status: 400 });
+    }
+
+    return handleSync(request, {
+      userId,
+      accessTokenOverride: accessTokenFromClient,
+      refreshTokenOverride: refreshTokenFromClient,
+      expiresAtOverride: expiresAtFromClient,
+      checkDuplicates: url.searchParams.get('checkDuplicates') === 'true' || body.checkDuplicates === true,
+      duplicateDecisions: url.searchParams.get('decisions') || body.decisions,
+      period: url.searchParams.get('period') || body.period,
+      afterParam: url.searchParams.get('after') || body.after,
+      quotaSafe: true, // POST mode = skip unnecessary reads
+    });
+  } catch (error: any) {
+    console.error('Strava sync POST error:', error);
+    const errMsg = error instanceof Error ? error.message : 'Failed to sync';
+    const isQuota = errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('Quota exceeded') || error.code === 8;
+    return NextResponse.json(
+      { error: isQuota ? 'Firebase daily quota reached. Try again tomorrow.' : errMsg, isQuota },
+      { status: isQuota ? 429 : 500 }
+    );
+  }
+}
+
+// GET handler — reads tokens from Firestore (original behavior)
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
+
+    if (!userId) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
-    console.log(`👤 Syncing for user: ${userId}`);
+    return handleSync(request, {
+      userId,
+      checkDuplicates: searchParams.get('checkDuplicates') === 'true',
+      duplicateDecisions: searchParams.get('decisions'),
+      period: searchParams.get('period'),
+      afterParam: searchParams.get('after'),
+      quotaSafe: false,
+    });
+  } catch (error: any) {
+    console.error('Strava sync GET error:', error);
+    const errMsg = error instanceof Error ? error.message : 'Failed to sync';
+    const isQuota = errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('Quota exceeded') || error.code === 8;
+    return NextResponse.json(
+      { error: isQuota ? 'Firebase daily quota reached. Try again tomorrow.' : errMsg, isQuota },
+      { status: isQuota ? 429 : 500 }
+    );
+  }
+}
 
-    // Get user's Strava credentials
-    const userDoc = await adminDb.collection('users').doc(userId).get();
+interface SyncOptions {
+  userId: string;
+  accessTokenOverride?: string;
+  refreshTokenOverride?: string;
+  expiresAtOverride?: number;
+  checkDuplicates: boolean;
+  duplicateDecisions?: string | null;
+  period?: string | null;
+  afterParam?: string | null;
+  quotaSafe: boolean;
+}
 
-    if (!userDoc.exists) {
-      console.error('❌ User not found');
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
+async function handleSync(request: NextRequest, opts: SyncOptions) {
+  try {
+    const {
+      userId, checkDuplicates, duplicateDecisions: duplicateDecisionsRaw,
+      period, afterParam, quotaSafe,
+    } = opts;
 
-    const userData = userDoc.data();
+    console.log(`🔄 Strava sync for ${userId} (quotaSafe=${quotaSafe})`);
 
-    if (!userData?.stravaAccessToken) {
-      console.error('❌ Strava not connected');
-      return NextResponse.json({ error: 'Strava not connected' }, { status: 400 });
-    }
+    // ── Resolve Strava tokens ──
+    let accessToken: string;
+    let refreshToken: string | undefined;
 
-    console.log('✅ User has Strava connected');
+    if (opts.accessTokenOverride) {
+      // Tokens provided by frontend — zero Firestore reads needed
+      accessToken = opts.accessTokenOverride;
+      refreshToken = opts.refreshTokenOverride;
 
-    // Check if token is expired and refresh if needed
-    let accessToken = userData.stravaAccessToken;
-    const currentTime = Math.floor(Date.now() / 1000);
-
-    // Handle stravaTokenExpiresAt stored as number, Date, or Firestore Timestamp
-    const expiresAt = userData.stravaTokenExpiresAt?.toDate
-      ? Math.floor(userData.stravaTokenExpiresAt.toDate().getTime() / 1000)
-      : userData.stravaTokenExpiresAt instanceof Date
-        ? Math.floor(userData.stravaTokenExpiresAt.getTime() / 1000)
-        : userData.stravaTokenExpiresAt;
-
-    if (expiresAt && expiresAt < currentTime) {
-      console.log('🔄 Token expired, refreshing...');
-      const newToken = await refreshStravaToken(userId, userData.stravaRefreshToken);
-      if (!newToken) {
-        console.error('❌ Failed to refresh token');
-        return NextResponse.json({ error: 'Failed to refresh Strava token' }, { status: 401 });
+      // Check expiry
+      const currentTime = Math.floor(Date.now() / 1000);
+      if (opts.expiresAtOverride && opts.expiresAtOverride < currentTime && refreshToken) {
+        console.log('🔄 Client token expired, refreshing...');
+        const newToken = await refreshStravaToken(userId, refreshToken);
+        if (!newToken) {
+          return NextResponse.json({ error: 'Failed to refresh Strava token', needsReconnect: true }, { status: 401 });
+        }
+        accessToken = newToken;
       }
-      accessToken = newToken;
-      console.log('✅ Token refreshed');
+    } else {
+      // Read tokens from Firestore (original path)
+      const userDoc = await adminDb.collection('users').doc(userId).get();
+      if (!userDoc.exists) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+      const userData = userDoc.data();
+      if (!userData?.stravaAccessToken) {
+        return NextResponse.json({ error: 'Strava not connected' }, { status: 400 });
+      }
+
+      accessToken = userData.stravaAccessToken;
+      refreshToken = userData.stravaRefreshToken;
+      const currentTime = Math.floor(Date.now() / 1000);
+      const expiresAt = userData.stravaTokenExpiresAt?.toDate
+        ? Math.floor(userData.stravaTokenExpiresAt.toDate().getTime() / 1000)
+        : userData.stravaTokenExpiresAt instanceof Date
+          ? Math.floor(userData.stravaTokenExpiresAt.getTime() / 1000)
+          : userData.stravaTokenExpiresAt;
+
+      if (expiresAt && expiresAt < currentTime) {
+        console.log('🔄 Token expired, refreshing...');
+        const newToken = await refreshStravaToken(userId, refreshToken!);
+        if (!newToken) {
+          return NextResponse.json({ error: 'Failed to refresh Strava token' }, { status: 401 });
+        }
+        accessToken = newToken;
+      }
     }
 
     // Calculate time range based on period parameter or explicit 'after' date
     const PERIOD_DAYS: Record<string, number> = {
       '2days': 2, 'week': 7, 'month': 30, '2months': 60, '6months': 180, 'year': 365,
     };
-    const afterParam = searchParams.get('after'); // ISO date string e.g. '2025-01-01'
     let afterTimestamp: number;
     if (afterParam) {
       afterTimestamp = Math.floor(new Date(afterParam).getTime() / 1000);
@@ -391,7 +473,13 @@ export async function GET(request: NextRequest) {
       console.error('❌ Strava API authorization error:', { status: result.error.status, error: errorData });
 
       console.log('🔄 Authorization failed, attempting token refresh...');
-      const newToken = await refreshStravaToken(userId, userData.stravaRefreshToken);
+      if (!refreshToken) {
+        return NextResponse.json(
+          { error: 'Strava authorization failed and no refresh token available. Please disconnect and reconnect your Strava account.', needsReconnect: true },
+          { status: 401 }
+        );
+      }
+      const newToken = await refreshStravaToken(userId, refreshToken);
 
       if (!newToken) {
         console.error('❌ Token refresh failed - user needs to reconnect');
@@ -428,35 +516,44 @@ export async function GET(request: NextRequest) {
     const activities = result.activities || [];
     console.log(`✅ Fetched ${activities.length} activities`);
 
-    // Get existing Strava workout IDs to avoid duplicates
-    const existingWorkoutsSnapshot = await adminDb
-      .collection('users').doc(userId).collection('workouts')
-      .where('source', '==', 'strava')
-      .get();
+    // ── Filter already-imported activities ──
+    let activitiesToProcess: any[];
 
-    const existingStravaIds = new Set(
-      existingWorkoutsSnapshot.docs.map(doc => String(doc.data().stravaActivityId))
-    );
+    if (quotaSafe) {
+      // Quota-safe mode: skip the batch query. We use deterministic doc IDs (strava_{id})
+      // so set() will just overwrite if they exist — no reads needed.
+      activitiesToProcess = activities;
+      console.log(`📦 Quota-safe: processing all ${activities.length} activities (using deterministic doc IDs)`);
+    } else {
+      // Normal mode: query existing Strava workout IDs to filter duplicates
+      const existingWorkoutsSnapshot = await adminDb
+        .collection('users').doc(userId).collection('workouts')
+        .where('source', '==', 'strava')
+        .get();
 
-    console.log(`📊 Found ${existingStravaIds.size} existing Strava workouts`);
+      const existingStravaIds = new Set(
+        existingWorkoutsSnapshot.docs.map(doc => String(doc.data().stravaActivityId))
+      );
 
-    // Filter out already imported activities
-    const activitiesToProcess: any[] = [];
-    for (const activity of activities) {
-      if (!existingStravaIds.has(String(activity.id))) {
-        activitiesToProcess.push(activity);
+      console.log(`📊 Found ${existingStravaIds.size} existing Strava workouts`);
+
+      activitiesToProcess = [];
+      for (const activity of activities) {
+        if (!existingStravaIds.has(String(activity.id))) {
+          activitiesToProcess.push(activity);
+        }
       }
+      console.log(`🆕 Processing ${activitiesToProcess.length} new activities`);
     }
 
-    console.log(`🆕 Processing ${activitiesToProcess.length} new activities`);
-
     // Parse duplicate decisions if provided
-    const decisions: Record<string, { action: 'merge' | 'new'; workoutId?: string }> = duplicateDecisions
-      ? JSON.parse(duplicateDecisions)
+    const decisions: Record<string, { action: 'merge' | 'new'; workoutId?: string }> = duplicateDecisionsRaw
+      ? JSON.parse(typeof duplicateDecisionsRaw === 'string' ? duplicateDecisionsRaw : JSON.stringify(duplicateDecisionsRaw))
       : {};
 
     // If checkDuplicates is true, find and return potential duplicates
-    if (checkDuplicates) {
+    // (requires Firestore reads — only works when not quota-limited)
+    if (checkDuplicates && !quotaSafe) {
       console.log('🔍 Checking for duplicates...');
       const potentialDuplicates: {
         stravaActivityId: string;
@@ -493,7 +590,6 @@ export async function GET(request: NextRequest) {
             }
           } catch (activityError: any) {
             console.error(`❌ Error checking duplicates for activity ${activity.name}:`, activityError.message);
-            // Continue processing other activities instead of failing entirely
           }
         }
 
@@ -518,6 +614,15 @@ export async function GET(request: NextRequest) {
           { status: 500 }
         );
       }
+    } else if (checkDuplicates && quotaSafe) {
+      // Can't check duplicates without reads — skip and proceed with sync
+      return NextResponse.json({
+        success: true,
+        hasDuplicates: false,
+        duplicates: [],
+        totalNewActivities: activitiesToProcess.length,
+        quotaSafe: true,
+      });
     }
 
     // Process activities one at a time to avoid duplicates
@@ -569,9 +674,10 @@ export async function GET(request: NextRequest) {
 
       // Check if there's a decision for this activity
       const decision = decisions[stravaId];
+      let shouldCreate = false;
 
-      if (decision?.action === 'merge' && decision.workoutId) {
-        // User chose to merge with existing workout
+      if (!quotaSafe && decision?.action === 'merge' && decision.workoutId) {
+        // User chose to merge with existing workout (requires writes only)
         console.log(`  🔗 Merging: ${activity.name}`);
 
         await adminDb.collection('users').doc(userId).collection('workouts').doc(decision.workoutId).update({
@@ -583,12 +689,11 @@ export async function GET(request: NextRequest) {
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
         mergedWorkoutsCount++;
-      } else {
-        // Try to find a matching coach-assigned workout (date-based auto-merge)
+      } else if (!quotaSafe) {
+        // Normal mode: try auto-merge and proximity checks (require reads)
         const matchingWorkout = await findMatchingWorkout(userId, workoutType, activityDate);
 
         if (matchingWorkout && !decision) {
-          // Auto-merge with date-matched workout
           console.log(`  🔗 Auto-merge: ${activity.name} → ${matchingWorkout.data.name}`);
 
           await adminDb.collection('users').doc(userId).collection('workouts').doc(matchingWorkout.id).update({
@@ -601,7 +706,7 @@ export async function GET(request: NextRequest) {
           });
           mergedWorkoutsCount++;
         } else {
-          // Before creating: proximity duplicate check (catches 4-min drift, GPS re-uploads, etc.)
+          // Proximity duplicate check (requires reads)
           const thirtyMinBefore = new Date(activityDate.getTime() - 30 * 60 * 1000);
           const thirtyMinAfter = new Date(activityDate.getTime() + 30 * 60 * 1000);
           const proximitySnap = await adminDb
@@ -611,11 +716,11 @@ export async function GET(request: NextRequest) {
             .where('date', '>=', admin.firestore.Timestamp.fromDate(thirtyMinBefore))
             .where('date', '<=', admin.firestore.Timestamp.fromDate(thirtyMinAfter))
             .get();
-          
+
           let proximityDupe = false;
           for (const pDoc of proximitySnap.docs) {
             const pData = pDoc.data();
-            if (pData.stravaActivityId === stravaId) continue; // same activity, already handled
+            if (pData.stravaActivityId === stravaId) continue;
             const eDur = pData.actualStats?.duration || (pData.duration || 0) * 60;
             const nDur = activity.moving_time || 0;
             const dClose = eDur > 0 && nDur > 0 && Math.abs(eDur - nDur) < 600;
@@ -629,10 +734,20 @@ export async function GET(request: NextRequest) {
               break;
             }
           }
-          
+
           if (!proximityDupe) {
-            // Create new workout
-            console.log(`  ➕ Creating: ${activity.name}`);
+            // Fall through to create workout below
+            shouldCreate = true;
+          }
+        }
+      } else {
+        // Quota-safe mode: skip merge/proximity checks, go straight to create.
+        // Deterministic doc ID (strava_{id}) handles duplicates via set() overwrite.
+        shouldCreate = true;
+      }
+
+      if (shouldCreate) {
+          console.log(`  ➕ Creating: ${activity.name}`);
 
           // Generate AI tags and fun route comment
           const { tags: aiTags, aiComment } = await generateWorkoutTags(activity);
@@ -707,8 +822,6 @@ export async function GET(request: NextRequest) {
 
           await adminDb.collection('users').doc(userId).collection('workouts').doc(`strava_${stravaId}`).set(newWorkoutData);
           newWorkoutsCount++;
-          }
-        }
       }
 
       // Mark as processed
@@ -722,9 +835,9 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ Finished: Created ${newWorkoutsCount}, merged ${mergedWorkoutsCount}, skipped ${skippedCount}`);
 
-    // Run Groq dedup only on full sync (year or no period specified) — skip for partial syncs
+    // Run Groq dedup only on full sync (year or no period specified) — skip for partial syncs and quota-safe mode
     let dedupInfo: any = null;
-    if (!period || period === 'year') {
+    if (!quotaSafe && (!period || period === 'year')) {
     try {
       console.log('🔍 Running Groq dedup after sync...');
       const { runDedupPipeline, executeDedupDeletions } = await import('@/lib/groq-dedup');

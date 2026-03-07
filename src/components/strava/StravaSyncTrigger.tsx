@@ -37,9 +37,12 @@ export function StravaSyncTrigger() {
       // Show connected toast
       toast.success('Strava account connected successfully');
 
-      // Auto-trigger sync if not already running
+      // Auto-trigger sync if not already running — pass tokens for quota-safe mode
       if (status === 'idle') {
-        startSync(user.username);
+        const tokens = user.stravaAccessToken
+          ? { stravaAccessToken: user.stravaAccessToken, stravaRefreshToken: user.stravaRefreshToken, stravaTokenExpiresAt: user.stravaTokenExpiresAt }
+          : undefined;
+        startSync(user.username, undefined, tokens);
       }
     }
   }, [searchParams, user, startSync, status, router, pathname]);
