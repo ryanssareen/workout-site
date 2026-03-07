@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Dumbbell, Loader2, User, Mail, Lock, ArrowRight, AlertCircle, AtSign } from 'lucide-react';
+import { Dumbbell, Loader2, User, Mail, Lock, ArrowRight, AlertCircle, AlertTriangle, AtSign } from 'lucide-react';
 import Link from 'next/link';
 
 export function RegisterForm() {
@@ -23,6 +23,7 @@ export function RegisterForm() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [nameError, setNameError] = useState('');
   const [usernameError, setUsernameError] = useState('');
+  const [usernameWarning, setUsernameWarning] = useState('');
   const [usernameChecking, setUsernameChecking] = useState(false);
   const router = useRouter();
   const setUser = useAuthStore((s) => s.setUser);
@@ -71,6 +72,7 @@ export function RegisterForm() {
     const lower = value.toLowerCase().replace(/[^a-z0-9_]/g, '');
     setFormData((prev) => ({ ...prev, username: lower }));
     setUsernameError('');
+    setUsernameWarning('');
     setUsernameChecking(false);
 
     // Clear any pending check
@@ -97,7 +99,8 @@ export function RegisterForm() {
         if (prev.username !== lower) return prev;
         setUsernameChecking(false);
         if (available === 'error') {
-          setUsernameError('Could not check username. Please try again.');
+          // Non-blocking warning — user can still submit (transaction is the safety net)
+          setUsernameWarning("Couldn't verify availability — we'll check when you submit");
         } else if (!available) {
           setUsernameError('Username is already taken');
         }
@@ -110,6 +113,7 @@ export function RegisterForm() {
     e.preventDefault();
     setNameError('');
     setUsernameError('');
+    setUsernameWarning('');
     setLoading(true);
 
     const trimmedName = formData.displayName.trim();
@@ -126,17 +130,15 @@ export function RegisterForm() {
       return;
     }
 
+    // Try to check availability, but don't block on errors —
+    // the Firestore transaction in createUser is the real safety net
     const available = await isUsernameAvailable(formData.username);
-    if (available === 'error') {
-      setUsernameError('Could not verify username. Please try again.');
-      setLoading(false);
-      return;
-    }
-    if (!available) {
+    if (available === false) {
       setUsernameError('Username is already taken');
       setLoading(false);
       return;
     }
+    // available === 'error' → proceed anyway, transaction will catch duplicates
 
     const isClean = await checkName(trimmedName);
     if (!isClean) {
@@ -161,7 +163,12 @@ export function RegisterForm() {
       toast.success('Account created successfully');
       router.push('/onboarding');
     } catch (error: any) {
-      toast.error(error.message);
+      // Surface "username taken" from transaction clearly
+      if (error.message?.includes('already taken')) {
+        setUsernameError('Username is already taken');
+      } else {
+        toast.error(error.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -204,6 +211,12 @@ export function RegisterForm() {
               <div className="flex items-center gap-1.5 text-red-400 text-sm animate-in fade-in slide-in-from-top-1 duration-200">
                 <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                 <span>{usernameError}</span>
+              </div>
+            )}
+            {!usernameError && usernameWarning && (
+              <div className="flex items-center gap-1.5 text-amber-400 text-sm animate-in fade-in slide-in-from-top-1 duration-200">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                <span>{usernameWarning}</span>
               </div>
             )}
             <p className="text-xs text-white/25">Lowercase letters, numbers, underscores. 3-20 characters.</p>

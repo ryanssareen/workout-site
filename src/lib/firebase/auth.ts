@@ -10,7 +10,7 @@ import {
   browserLocalPersistence,
   browserSessionPersistence,
 } from 'firebase/auth';
-import { doc, getDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, runTransaction } from 'firebase/firestore';
 import { getAuthInstance, getDbInstance } from './config';
 import { User, UserRole } from '@/types';
 import { getUsernameFromUid } from './userMapping';
@@ -45,12 +45,21 @@ export async function createUser(
 
     if (coachUsername) userProfile.coachUsername = coachUsername;
 
-    // Atomic write: user doc keyed by username + UID mapping
+    // Transaction: atomically check username isn't taken, then create user + mapping
+    // This is the hard safety net — prevents duplicate usernames even if the
+    // pre-check was skipped (e.g. Firestore read quota exhausted)
     const db = getDbInstance();
-    const batch = writeBatch(db);
-    batch.set(doc(db, 'users', username), userProfile);
-    batch.set(doc(db, 'userMappings', uid), { username });
-    await batch.commit();
+    const userRef = doc(db, 'users', username);
+    const mappingRef = doc(db, 'userMappings', uid);
+
+    await runTransaction(db, async (transaction) => {
+      const existingUser = await transaction.get(userRef);
+      if (existingUser.exists()) {
+        throw new Error('Username is already taken');
+      }
+      transaction.set(userRef, userProfile);
+      transaction.set(mappingRef, { username });
+    });
 
     return userProfile as User;
   } catch (error: any) {
@@ -83,10 +92,18 @@ export async function createGoogleUser(
 
     if (photoURL) userProfile.photoURL = photoURL;
 
-    const batch = writeBatch(db);
-    batch.set(doc(db, 'users', username), userProfile);
-    batch.set(doc(db, 'userMappings', uid), { username });
-    await batch.commit();
+    // Transaction: atomically check username isn't taken, then create user + mapping
+    const userRef = doc(db, 'users', username);
+    const mappingRef = doc(db, 'userMappings', uid);
+
+    await runTransaction(db, async (transaction) => {
+      const existingUser = await transaction.get(userRef);
+      if (existingUser.exists()) {
+        throw new Error('Username is already taken');
+      }
+      transaction.set(userRef, userProfile);
+      transaction.set(mappingRef, { username });
+    });
 
     return userProfile as User;
   } catch (error: any) {
