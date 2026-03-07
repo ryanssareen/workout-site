@@ -37,20 +37,19 @@ export async function getUsernameFromUid(uid: string): Promise<string | null> {
 }
 
 export async function isUsernameAvailable(username: string): Promise<boolean | 'error'> {
+  // Try 1: API route (uses Admin SDK, bypasses security rules — works for unauthenticated users)
   try {
-    // Check Firestore directly via client SDK — avoids Admin SDK dependency
+    const res = await fetch(`/api/auth/check-username?username=${encodeURIComponent(username)}`);
+    const data = await res.json();
+    if (!data.serverError) return data.available === true;
+    // Admin SDK failed — fall through to client-side
+  } catch {}
+
+  // Try 2: Client-side Firestore (works when user is authenticated, e.g. choose-username page)
+  try {
     const userDoc = await getDoc(doc(getDbInstance(), 'users', username));
     return !userDoc.exists();
-  } catch (error) {
-    console.error('Error checking username availability:', error);
-    // Fallback to API route if client-side check fails (e.g. security rules)
-    try {
-      const res = await fetch(`/api/auth/check-username?username=${encodeURIComponent(username)}`);
-      const data = await res.json();
-      if (data.serverError) return 'error';
-      return data.available === true;
-    } catch {
-      return 'error';
-    }
+  } catch {
+    return 'error';
   }
 }

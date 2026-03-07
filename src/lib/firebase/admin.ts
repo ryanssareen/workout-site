@@ -2,39 +2,53 @@ import * as admin from 'firebase-admin';
 
 let initialized = false;
 
+function parseServiceAccount(raw: string): any {
+  // Try 1: base64-encoded JSON
+  try {
+    const decoded = Buffer.from(raw, 'base64').toString('utf8');
+    const parsed = JSON.parse(decoded);
+    if (parsed.project_id) return parsed;
+  } catch {}
+
+  // Try 2: raw JSON string (not base64 encoded)
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed.project_id) return parsed;
+  } catch {}
+
+  // Try 3: URL-encoded or escaped JSON
+  try {
+    const parsed = JSON.parse(decodeURIComponent(raw));
+    if (parsed.project_id) return parsed;
+  } catch {}
+
+  throw new Error('Could not parse FIREBASE_SERVICE_ACCOUNT — tried base64, raw JSON, and URL-encoded');
+}
+
 function initializeFirebaseAdmin() {
   if (initialized || admin.apps.length > 0) {
     return;
   }
 
   try {
-    console.log('🔵 Initializing Firebase Admin SDK...');
-    console.log('🔵 FIREBASE_SERVICE_ACCOUNT exists?', !!process.env.FIREBASE_SERVICE_ACCOUNT);
-    
-    if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
+    const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
+
+    if (!raw) {
       console.error('❌ FIREBASE_SERVICE_ACCOUNT environment variable is not set!');
-      console.error('❌ Firebase Admin SDK will NOT work!');
       return;
     }
 
-    console.log('🔵 Decoding base64 service account...');
-    const serviceAccount = JSON.parse(
-      Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT, 'base64').toString('utf8')
-    );
-    
-    console.log('🔵 Service account decoded successfully!');
-    console.log('🔵 Project ID:', serviceAccount.project_id);
-    console.log('🔵 Client email:', serviceAccount.client_email);
-    
+    const serviceAccount = parseServiceAccount(raw);
+    console.log('🔵 Firebase Admin: project =', serviceAccount.project_id);
+
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
     });
-    
+
     console.log('✅ Firebase Admin initialized successfully!');
     initialized = true;
   } catch (error) {
-    console.error('❌ Firebase Admin initialization error:', error);
-    console.error('❌ Error message:', error instanceof Error ? error.message : 'Unknown error');
+    console.error('❌ Firebase Admin initialization error:', error instanceof Error ? error.message : error);
   }
 }
 
