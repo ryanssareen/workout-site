@@ -249,7 +249,12 @@ function SettingsContent() {
       // No duplicates — kick off sync via the global store
       startSync(user.username, undefined, getStravaTokens());
     } catch (error: any) {
-      if (error.message?.includes('reconnect')) {
+      // If quota exhausted, skip duplicate check and go straight to quota-safe sync
+      const isQuota = error.message?.includes('quota') || error.message?.includes('RESOURCE_EXHAUSTED') || error.message?.includes('Quota exceeded');
+      if (isQuota && getStravaTokens()) {
+        console.log('⚡ Quota hit during duplicate check — falling back to quota-safe sync');
+        startSync(user.username, undefined, getStravaTokens());
+      } else if (error.message?.includes('reconnect')) {
         toast.error('Strava authorization expired', {
           description: 'Disconnect and reconnect your Strava account to fix this.',
         });
