@@ -78,7 +78,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen relative overflow-x-hidden bg-background text-foreground">
+    <div className="min-h-screen relative bg-background text-foreground">
       <div className="absolute inset-0 bg-energy -z-10 pointer-events-none" aria-hidden />
       <Navbar />
       <MobileBottomNav />
