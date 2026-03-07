@@ -21,36 +21,47 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Parse state — contains { uid, from } packed by the authorize route
+    // Parse state — contains { uid, username, from } packed by the authorize route
     let uid: string | null = null;
+    let usernameFromState: string | null = null;
     let from = 'settings';
 
     if (stateRaw) {
       try {
         const parsed = JSON.parse(stateRaw);
         uid = parsed.uid || null;
+        usernameFromState = parsed.username || null;
         from = parsed.from || 'settings';
       } catch {
         console.error('❌ Failed to parse state param:', stateRaw);
       }
     }
 
-    if (!uid) {
-      console.error('❌ No userId found in state param');
+    if (!uid && !usernameFromState) {
+      console.error('❌ No userId or username found in state param');
       return NextResponse.redirect(
         new URL('/settings?strava=error&reason=no_state', baseUrl)
       );
     }
 
-    // Resolve UID to username for the new schema
-    let username: string;
-    try {
-      username = await adminResolveUsername(uid);
-    } catch (e: any) {
-      console.error('❌ Failed to resolve username for UID:', uid, e.message);
-      const detail = encodeURIComponent(`UID lookup failed: ${e.message?.slice(0, 150) || 'unknown error'}`);
+    // Resolve username — prefer the one passed directly from the frontend (zero Firestore reads),
+    // fall back to UID lookup if not provided
+    let username = usernameFromState;
+    if (!username && uid) {
+      try {
+        username = await adminResolveUsername(uid);
+      } catch (e: any) {
+        console.error('❌ Failed to resolve username for UID:', uid, e.message);
+        const detail = encodeURIComponent(`UID lookup failed: ${e.message?.slice(0, 150) || 'unknown error'}`);
+        return NextResponse.redirect(
+          new URL(`/settings?strava=error&reason=no_user&detail=${detail}`, baseUrl)
+        );
+      }
+    }
+
+    if (!username) {
       return NextResponse.redirect(
-        new URL(`/settings?strava=error&reason=no_user&detail=${detail}`, baseUrl)
+        new URL('/settings?strava=error&reason=no_user&detail=No%20username%20available', baseUrl)
       );
     }
 

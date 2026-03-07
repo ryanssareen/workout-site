@@ -24,12 +24,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Username passed directly from the frontend — avoids Firestore lookup in the callback
+    const username = request.nextUrl.searchParams.get('username');
     // Where the user started (onboarding vs settings) — determines redirect after callback
     const from = request.nextUrl.searchParams.get('from') || 'settings';
 
-    // Pack userId + from into the OAuth state param — Strava returns it in the callback.
-    // This is the standard OAuth mechanism; it doesn't rely on cookies surviving the redirect.
-    const state = JSON.stringify({ uid: userId, from });
+    // Pack uid + username + from into the OAuth state param — Strava returns it in the callback.
+    // Carrying the username here means the callback doesn't need any Firestore reads to resolve it.
+    const state = JSON.stringify({ uid: userId, username, from });
 
     // Build Strava OAuth URL
     const authUrl = new URL('https://www.strava.com/oauth/authorize');

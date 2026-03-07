@@ -45,7 +45,7 @@ function ConnectStravaContent() {
       return;
     }
     setIsConnecting(true);
-    window.location.href = `/api/auth/strava/authorize?userId=${user.uid}`;
+    window.location.href = `/api/auth/strava/authorize?userId=${user.uid}&username=${user.username}`;
   };
 
   if (loading) {

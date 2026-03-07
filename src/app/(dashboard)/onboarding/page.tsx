@@ -106,7 +106,7 @@ export default function OnboardingPage() {
       if (connectStrava) {
         // Redirect to Strava OAuth — it will come back to /settings?strava=connected
         // then user lands on dashboard
-        window.location.href = `/api/auth/strava/authorize?userId=${user.uid}&from=onboarding`;
+        window.location.href = `/api/auth/strava/authorize?userId=${user.uid}&username=${user.username}&from=onboarding`;
         return;
       }
 

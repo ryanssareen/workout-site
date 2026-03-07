@@ -202,7 +202,7 @@ function SettingsContent() {
     }
   }, [searchParams, router]);
 
-  const handleConnectStrava = () => { setIsConnectingStrava(true); window.location.href = `/api/auth/strava/authorize?userId=${user?.uid}`; };
+  const handleConnectStrava = () => { setIsConnectingStrava(true); window.location.href = `/api/auth/strava/authorize?userId=${user?.uid}&username=${user?.username}`; };
 
   const handleDisconnectStrava = async () => {
     if (!user) return;
