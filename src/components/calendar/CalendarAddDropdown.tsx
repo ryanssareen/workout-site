@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from 'react';
 import { Plus, Dumbbell, Flag, StickyNote, Loader2, Check } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { Timestamp } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/lib/stores/authStore';

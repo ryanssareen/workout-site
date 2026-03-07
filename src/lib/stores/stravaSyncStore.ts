@@ -37,6 +37,13 @@ interface StravaSyncState {
 // Module-level promise tracking — survives component unmounts
 let activeSyncPromise: Promise<void> | null = null;
 
+// Safely extract a string error message from any value
+function toErrorString(val: unknown, fallback: string): string {
+  if (typeof val === 'string') return val;
+  if (val && typeof val === 'object' && 'message' in val && typeof (val as any).message === 'string') return (val as any).message;
+  return fallback;
+}
+
 // Shared response handler (used by both GET and POST paths)
 function handleSyncResponse(
   response: Response,
@@ -45,7 +52,7 @@ function handleSyncResponse(
   return response.json().then((data) => {
     if (!response.ok) {
       if (data.needsReconnect) {
-        set({ status: 'error', error: data.error, needsReconnect: true });
+        set({ status: 'error', error: toErrorString(data.error, 'Strava authorization expired'), needsReconnect: true });
         toast.error('Strava authorization expired', {
           description: 'Disconnect and reconnect your Strava account.',
         });
@@ -53,8 +60,9 @@ function handleSyncResponse(
         // Signal caller to retry with POST
         return { isQuota: true };
       } else {
-        set({ status: 'error', error: data.error || 'Sync failed' });
-        toast.error(data.error || 'Failed to sync with Strava');
+        const msg = toErrorString(data.error, 'Sync failed');
+        set({ status: 'error', error: msg });
+        toast.error(msg);
       }
       return;
     }
@@ -137,7 +145,7 @@ export const useStravaSyncStore = create<StravaSyncState>((set, get) => ({
 
     activeSyncPromise = doSync()
       .catch((err) => {
-        const errorMsg = err.message || 'Network error';
+        const errorMsg = toErrorString(err, 'Network error');
         set({ status: 'error', error: errorMsg });
         if (errorMsg.includes('reconnect')) {
           toast.error('Strava authorization expired', {
