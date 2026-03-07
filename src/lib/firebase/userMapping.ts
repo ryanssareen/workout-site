@@ -25,10 +25,25 @@ export function validateUsername(username: string): { valid: boolean; error?: st
 
 export async function getUsernameFromUid(uid: string): Promise<string | null> {
   try {
+    // Fast path: userMappings collection
     const mappingDoc = await getDoc(doc(getDbInstance(), 'userMappings', uid));
     if (mappingDoc.exists()) {
       return mappingDoc.data().username;
     }
+
+    // Fallback: query users collection by uid field (for accounts created
+    // before the userMappings system). If found, backfill the mapping.
+    const { query, collection, where, limit, getDocs, setDoc } = await import('firebase/firestore');
+    const db = getDbInstance();
+    const q = query(collection(db, 'users'), where('uid', '==', uid), limit(1));
+    const snapshot = await getDocs(q);
+    if (!snapshot.empty) {
+      const username = snapshot.docs[0].id;
+      // Backfill for next time
+      setDoc(doc(db, 'userMappings', uid), { username }).catch(() => {});
+      return username;
+    }
+
     return null;
   } catch (error) {
     console.error('Error looking up username for UID:', error);
