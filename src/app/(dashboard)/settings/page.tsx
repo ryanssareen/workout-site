@@ -187,13 +187,15 @@ function SettingsContent() {
   useEffect(() => {
     const stravaStatus = searchParams.get('strava');
     const reason = searchParams.get('reason');
+    const detail = searchParams.get('detail');
     // Only handle errors here — the StravaSyncTrigger in the layout handles ?strava=connected
     if (stravaStatus === 'error') {
       const messages: Record<string, string> = {
         denied: 'Strava authorization was denied. Please try again and click "Authorize" on the Strava page.',
         token_failed: 'Failed to exchange Strava token. Please try connecting again.',
-        no_cookie: 'Session expired before Strava connected. Please try again.',
-        exception: 'Something went wrong connecting to Strava. Please try again.',
+        no_state: 'Session data was lost during Strava redirect. Please try again.',
+        no_user: detail || 'Could not find your user account. Please log out and log back in.',
+        exception: detail ? `Strava connection error: ${detail}` : 'Something went wrong connecting to Strava. Please try again.',
       };
       toast.error(reason && messages[reason] ? messages[reason] : 'Failed to connect Strava. Please try again.');
       router.replace('/settings');

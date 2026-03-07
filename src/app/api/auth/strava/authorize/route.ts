@@ -1,13 +1,12 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {
   try {
     const clientId = process.env.STRAVA_CLIENT_ID;
     const redirectUri = process.env.STRAVA_REDIRECT_URI;
-    
+
     if (!clientId || !redirectUri) {
       return NextResponse.json(
         { error: 'Strava configuration missing' },
@@ -17,7 +16,7 @@ export async function GET(request: NextRequest) {
 
     // Get user ID from request (should be passed as query param from frontend)
     const userId = request.nextUrl.searchParams.get('userId');
-    
+
     if (!userId) {
       return NextResponse.json(
         { error: 'User ID required' },
@@ -25,25 +24,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Store userId in cookie to retrieve after OAuth callback
-    const cookieStore = await cookies();
-    cookieStore.set('strava_oauth_userId', userId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 600, // 10 minutes
-      path: '/',
-    });
+    // Where the user started (onboarding vs settings) — determines redirect after callback
+    const from = request.nextUrl.searchParams.get('from') || 'settings';
 
-    // Store redirect origin so callback knows where to send the user
-    const from = request.nextUrl.searchParams.get('from');
-    if (from) {
-      cookieStore.set('strava_oauth_from', from, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 600,
-        path: '/',
-      });
-    }
+    // Pack userId + from into the OAuth state param — Strava returns it in the callback.
+    // This is the standard OAuth mechanism; it doesn't rely on cookies surviving the redirect.
+    const state = JSON.stringify({ uid: userId, from });
 
     // Build Strava OAuth URL
     const authUrl = new URL('https://www.strava.com/oauth/authorize');
@@ -52,8 +38,9 @@ export async function GET(request: NextRequest) {
     authUrl.searchParams.append('response_type', 'code');
     authUrl.searchParams.append('scope', 'read,activity:read_all');
     authUrl.searchParams.append('approval_prompt', 'auto');
+    authUrl.searchParams.append('state', state);
 
-    console.log('🔐 Redirecting to Strava OAuth:', authUrl.toString());
+    console.log('🔐 Redirecting to Strava OAuth, uid:', userId, 'from:', from);
 
     // Redirect to Strava
     return NextResponse.redirect(authUrl.toString());
