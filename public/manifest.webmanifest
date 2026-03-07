@@ -2,10 +2,12 @@
   "name": "The Daily Athlete",
   "short_name": "Daily Athlete",
   "description": "Your personal training companion. Track workouts, build discipline, and crush your goals.",
-  "start_url": "/",
+  "start_url": "/dashboard",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#09090b",
   "theme_color": "#09090b",
+  "categories": ["fitness", "health", "sports"],
   "icons": [
     {
       "src": "/icons/icon-192.png",
@@ -22,6 +24,20 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Log Workout",
+      "short_name": "New",
+      "url": "/workouts/new",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Calendar",
+      "short_name": "Calendar",
+      "url": "/calendar",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }

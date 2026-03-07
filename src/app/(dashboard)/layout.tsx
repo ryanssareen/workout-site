@@ -84,7 +84,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <Navbar />
       <Suspense fallback={null}><StravaSyncTrigger /></Suspense>
       <MobileBottomNav />
-      <main className={`relative container mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-20 lg:pb-8 ${isWide ? 'max-w-[1920px]' : 'max-w-[1440px]'}`}>
+      <main className={`relative container mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-24 lg:pb-8 ${isWide ? 'max-w-[1920px]' : 'max-w-[1440px]'}`}>
         <div className={`panel-glow rounded-2xl sm:rounded-3xl ${isWide ? 'p-3 sm:p-4 md:p-6' : 'p-4 sm:p-6 md:p-8'}`}>
           {children}
         </div>

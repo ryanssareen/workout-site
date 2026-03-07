@@ -15,6 +15,7 @@ import {
   Mountain,
   Heart,
   Zap,
+  Gauge,
 } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import Link from 'next/link';
@@ -69,6 +70,8 @@ export function WorkoutDetailPanel({
   const maxHR = workout.stravaData?.maxHeartRate
     ? `${workout.stravaData.maxHeartRate}`
     : '--';
+  const maxSpeedMs = workout.actualStats?.maxSpeed;
+  const maxSpeedKmh = maxSpeedMs && maxSpeedMs > 0 ? (maxSpeedMs * 3.6).toFixed(1) : null;
 
   return (
     <div className="w-[380px] shrink-0 border-l bg-card overflow-y-auto flex flex-col">
@@ -121,6 +124,9 @@ export function WorkoutDetailPanel({
           )}
           {workout.bike?.avgPower && (
             <StatBlock icon={<Zap className="h-4 w-4" />} label="Avg Power" value={`${workout.bike.avgPower}W`} />
+          )}
+          {maxSpeedKmh && (
+            <StatBlock icon={<Gauge className="h-4 w-4" />} label="Max Speed" value={`${maxSpeedKmh} km/h`} />
           )}
         </div>
 

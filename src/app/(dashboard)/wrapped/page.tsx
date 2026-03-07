@@ -178,12 +178,14 @@ export default function YearlyWrappedPage() {
             {!guessSubmitted ? (
               <div className="w-full max-w-xs space-y-4">
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={guess}
-                  onChange={e => setGuess(e.target.value)}
+                  onChange={e => setGuess(e.target.value.replace(/\D/g, ''))}
                   onKeyDown={e => e.key === 'Enter' && handleGuess()}
                   placeholder="Your guess..."
-                  className="w-full text-center text-4xl font-bold bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white placeholder:text-white/20 focus:outline-none focus:border-red-500/50 focus:ring-2 focus:ring-red-500/20 transition-all"
+                  className="w-full text-center text-4xl font-bold bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white placeholder:text-white/20 focus:outline-none focus:border-red-500/50 focus:ring-2 focus:ring-red-500/20 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   autoFocus
                 />
                 <button

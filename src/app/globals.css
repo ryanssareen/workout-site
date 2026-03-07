@@ -122,6 +122,34 @@
   }
 }
 
+/* ── PWA Standalone Mode ── */
+@media (display-mode: standalone) {
+  /* Prevent iOS rubber-band overscroll */
+  html {
+    overscroll-behavior: none;
+    overflow: hidden;
+    height: 100%;
+  }
+  body {
+    overflow: auto;
+    height: 100%;
+    /* Prevent text selection when swiping — feels more native */
+    -webkit-user-select: none;
+    user-select: none;
+    /* Prevent pull-to-refresh on Android */
+    overscroll-behavior-y: contain;
+  }
+  /* Re-enable text selection in input areas */
+  input, textarea, [contenteditable] {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  /* Smoother tap response */
+  a, button {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
 /* Custom animations for dashboard */
 @keyframes count-up {
   from {

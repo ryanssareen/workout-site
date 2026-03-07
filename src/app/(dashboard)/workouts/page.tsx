@@ -57,6 +57,12 @@ function getExtraStats(workout: Workout): { icon: React.ReactNode; value: string
   const power = workout.stravaData?.avgPower || workout.bike?.avgPower;
   if (power && power > 0) chips.push({ icon: <Zap className="h-3 w-3 text-yellow-400" />, value: `${Math.round(power)}`, label: 'W' });
 
+  // Max speed (runs & bikes)
+  const maxSpeed = as?.maxSpeed;
+  if (maxSpeed && maxSpeed > 0) {
+    chips.push({ icon: <Gauge className="h-3 w-3 text-sky-400" />, value: `${(maxSpeed * 3.6).toFixed(1)}`, label: 'km/h' });
+  }
+
   // Strength extras
   if (workout.type === 'strength' && workout.strength?.exercises?.length) {
     const totalSets = workout.strength.exercises.reduce((s, e) => s + (e.sets || 0), 0);
