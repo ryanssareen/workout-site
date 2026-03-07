@@ -98,15 +98,24 @@ export function CalendarHeader({
           </div>
         </div>
 
-        {/* Center: Date label */}
-        <h1 className="text-lg md:text-xl font-bold tracking-tight uppercase">
-          <span className="hidden md:inline">
-            {getDateLabel(viewMode, currentMonth)}
-          </span>
-          <span className="md:hidden text-base">
-            {getDateLabel(viewMode, currentMonth)}
-          </span>
-        </h1>
+        {/* Center: Date label + Add Workout */}
+        <div className="flex items-center gap-2">
+          <h1 className="text-lg md:text-xl font-bold tracking-tight uppercase">
+            <span className="hidden md:inline">
+              {getDateLabel(viewMode, currentMonth)}
+            </span>
+            <span className="md:hidden text-base">
+              {getDateLabel(viewMode, currentMonth)}
+            </span>
+          </h1>
+          <Link
+            href="/workouts/new"
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add Workout
+          </Link>
+        </div>
 
         {/* Right: Actions */}
         <div className="flex items-center gap-2">
@@ -125,15 +134,6 @@ export function CalendarHeader({
               ))}
             </select>
           )}
-
-          {/* Add Workout button */}
-          <Link
-            href="/workouts/new"
-            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Add Workout
-          </Link>
 
           {/* Desktop action buttons */}
           <button

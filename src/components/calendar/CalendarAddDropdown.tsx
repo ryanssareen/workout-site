@@ -5,7 +5,6 @@ import { Plus, Dumbbell, Flag, StickyNote } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
 
 interface CalendarAddDropdownProps {
   date: Date;
@@ -74,7 +73,7 @@ export function CalendarAddDropdown({ date, className }: CalendarAddDropdownProp
           </button>
           <button
             onClick={() => {
-              toast.info('Notes coming soon!', { description: 'Calendar notes will be available in the next update.' });
+              router.push(`/workouts/new?date=${dateStr}&note=true`);
               setOpen(false);
             }}
             className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted/50 transition-colors text-left"

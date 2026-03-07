@@ -32,6 +32,9 @@ export default function NewWorkoutPage() {
 
   const templateId = searchParams.get('templateId');
   const aiGenerated = searchParams.get('aiGenerated') === 'true';
+  const dateParam = searchParams.get('date'); // e.g. "2026-03-07" from calendar
+  const tagParam = searchParams.get('tag');   // e.g. "race" from calendar event
+  const isNote = searchParams.get('note') === 'true'; // calendar "Add Note"
 
   const isCoach = user?.role === 'coach';
   const isUnconnectedAthlete = (user?.role === 'athlete' || user?.role === 'student') && !user?.coachUsername;
@@ -255,8 +258,31 @@ export default function NewWorkoutPage() {
         ...(templateData.other && { other: templateData.other }),
       };
     }
-    return isUnconnectedAthlete ? { assignedTo: user?.username } : undefined;
-  }, [templateData, isUnconnectedAthlete, user?.username, students]);
+    // No template — check for URL params (from calendar dropdown)
+    const defaults: Record<string, any> = {};
+    if (isUnconnectedAthlete) defaults.assignedTo = user?.username;
+
+    // Pre-fill date from ?date=YYYY-MM-DD
+    if (dateParam) {
+      try {
+        const d = new Date(dateParam + 'T12:00:00'); // noon to avoid timezone shift
+        if (!isNaN(d.getTime())) defaults.date = d;
+      } catch { /* ignore bad dates */ }
+    }
+
+    // Pre-fill tag from ?tag=race (etc.)
+    if (tagParam) {
+      defaults.tags = [tagParam];
+    }
+
+    // "Add Note" from calendar — pre-fill as other type with note name
+    if (isNote) {
+      defaults.type = 'other';
+      defaults.name = 'Note';
+    }
+
+    return Object.keys(defaults).length > 0 ? defaults : undefined;
+  }, [templateData, isUnconnectedAthlete, user?.username, students, dateParam, tagParam, isNote]);
 
   return (
     <div className="space-y-6">

@@ -47,6 +47,10 @@ export function useStravaAutoSync(
       if (err.needsReconnect) {
         return { newWorkouts: 0, merged: 0, needsReconnect: true };
       }
+      if (err.isQuota || res.status === 429) {
+        console.log('[auto-sync] quota exhausted — stopping');
+        return { newWorkouts: 0, merged: 0, quotaHit: true } as any;
+      }
       throw new Error(err.error || 'sync failed');
     }
 
@@ -71,6 +75,10 @@ export function useStravaAutoSync(
 
         if (result.needsReconnect) {
           console.warn('[auto-sync] Strava token expired, needs reconnect');
+          return;
+        }
+        if ((result as any).quotaHit) {
+          console.log('[auto-sync] quota hit — aborting remaining phases');
           return;
         }
 
