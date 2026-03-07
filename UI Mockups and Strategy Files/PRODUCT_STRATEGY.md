@@ -18,13 +18,16 @@
 | **Landing Page** | Polished | Simplified dark-themed design: centered hero, sport pills, 3-step how-it-works, 6-card feature grid, FAQ, CTA. Welcoming tone, no aggressive branding. |
 | **Multi-Sport** | Complete | Swim, bike, run, strength, triathlon, other — all with sport-specific fields. |
 | **Email System** | Working | Brevo for transactional, cron for reminders/summaries. |
+| **PWA** | Production-ready | Static manifest, service worker (cache-first static, network-first nav, offline fallback), safe-area handling, installable on iOS/Android. |
+| **Workouts UX** | Clean mobile-first | Compact header, AI suggestions collapsed by default, tight spacing, Garmin-style stat chips, neutral/orange color scheme. |
+| **Streak Tracking** | Functional | Streak counter on dashboard stats row, profile page, and public athlete profile. Computed from consecutive completed workout days. |
 
 ### What's Missing or Weak
 
 | Area | Gap | Impact |
 |------|-----|--------|
 | ~~**Report sharing UX**~~ | ✅ DONE — `/wrap` (weekly shareable card), `/review` (monthly shareable card), `/wrapped` (yearly 8-slide interactive with public sharing at `/athlete/[username]/wrapped`). All use ShareButtons (Instagram Story, WhatsApp, X, iMessage, Save Image via html-to-image, Copy Link) | ~~HIGH~~ |
-| **Workouts UX** | ✅ IMPROVED — AI suggestions at top of workouts page, time filter tabs (Planned/Past/All), Garmin-style stat chips, workout preview dialog with full details | ~~MEDIUM~~ |
+| ~~**Workouts UX**~~ | ✅ DONE — Compact mobile-first layout, AI suggestions collapsed by default behind slim trigger bar, tight spacing, Garmin-style stat chips, neutral/orange color scheme (no red), workout preview dialog | ~~MEDIUM~~ |
 | ~~**Public athlete profiles**~~ | ✅ DONE — `/athlete/[username]` with stats, pie chart, recent workouts, PRs, AI tagline | ~~HIGH~~ |
 | **Product analytics** | Zero tracking of user behavior (no PostHog, no Amplitude, nothing) | HIGH — can't improve what you can't measure |
 | ~~**PWA / mobile install**~~ | ✅ DONE — Static manifest, service worker (cache-first static, network-first nav, offline fallback), Apple web app support, safe-area handling, installable on iOS/Android | ~~MEDIUM~~ |
