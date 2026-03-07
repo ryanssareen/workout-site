@@ -47,6 +47,7 @@ import {
   EXPERIENCE_LEVEL_OPTIONS,
 } from '@/lib/schemas/profile';
 import { cn } from '@/lib/utils';
+import { useStravaSyncStore } from '@/lib/stores/stravaSyncStore';
 import type { User as UserType } from '@/types';
 
 function SettingsContent() {
@@ -178,13 +179,16 @@ function SettingsContent() {
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const [stravaDuplicates, setStravaDuplicates] = useState<any[]>([]);
 
+  // Global Strava sync store (survives navigation)
+  const syncStatus = useStravaSyncStore((s) => s.status);
+  const startSync = useStravaSyncStore((s) => s.startSync);
+  const checkDuplicates = useStravaSyncStore((s) => s.checkDuplicates);
+
   useEffect(() => {
     const stravaStatus = searchParams.get('strava');
     const reason = searchParams.get('reason');
-    if (stravaStatus === 'connected') {
-      toast.success('Strava account connected successfully');
-      router.replace('/settings');
-    } else if (stravaStatus === 'error') {
+    // Only handle errors here — the StravaSyncTrigger in the layout handles ?strava=connected
+    if (stravaStatus === 'error') {
       const messages: Record<string, string> = {
         denied: 'Strava authorization was denied. Please try again and click "Authorize" on the Strava page.',
         token_failed: 'Failed to exchange Strava token. Please try connecting again.',
@@ -212,70 +216,27 @@ function SettingsContent() {
 
   const handleSyncStrava = async (decisions?: Record<string, { action: 'merge' | 'new'; workoutId?: string }>) => {
     if (!user) return;
+
+    // With decisions (from duplicate dialog), go straight to sync via the global store
+    if (decisions) {
+      startSync(user.username, decisions);
+      return;
+    }
+
+    // No decisions — check for duplicates first (local interactive flow)
     setIsSyncingStrava(true);
     try {
-      if (!decisions) {
-        const checkResponse = await fetch(
-          `/api/strava/sync?userId=${user.username}&checkDuplicates=true`,
-          { headers: { 'Accept': 'application/json' } }
-        );
-
-        if (!checkResponse.ok) {
-          const errorData = await checkResponse.json().catch(() => ({ error: 'Unknown error' }));
-          console.error('Duplicate check failed:', errorData);
-
-          if (errorData.needsReconnect) {
-            throw new Error(errorData.error || 'Please reconnect your Strava account');
-          }
-          if (errorData.hint) {
-            throw new Error(`${errorData.error}: ${errorData.hint}`);
-          } else if (errorData.details) {
-            throw new Error(`${errorData.error}: ${errorData.details}`);
-          } else {
-            throw new Error(errorData.error || 'Failed to check for duplicates');
-          }
-        }
-
-        const checkData = await checkResponse.json();
-
-        if (checkData.hasDuplicates && checkData.duplicates?.length > 0) {
-          setStravaDuplicates(checkData.duplicates);
-          setShowDuplicateDialog(true);
-          setIsSyncingStrava(false);
-          return;
-        }
+      const result = await checkDuplicates(user.username);
+      if (result.hasDuplicates && result.duplicates?.length > 0) {
+        setStravaDuplicates(result.duplicates);
+        setShowDuplicateDialog(true);
+        setIsSyncingStrava(false);
+        return;
       }
 
-      const decisionsParam = decisions ? `&decisions=${encodeURIComponent(JSON.stringify(decisions))}` : '';
-      const response = await fetch(
-        `/api/strava/sync?userId=${user.username}${decisionsParam}`,
-        { headers: { 'Accept': 'application/json' } }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('Sync failed:', errorData);
-        if (errorData.needsReconnect) {
-          throw new Error(errorData.error || 'Please reconnect your Strava account');
-        }
-        throw new Error(errorData.error || 'Failed to sync');
-      }
-
-      const data = await response.json();
-
-      let message = '';
-      if (data.mergedWorkouts > 0 && data.newWorkouts > 0) {
-        message = `Merged ${data.mergedWorkouts} and created ${data.newWorkouts} workout${data.newWorkouts > 1 ? 's' : ''}!`;
-      } else if (data.mergedWorkouts > 0) {
-        message = `Merged ${data.mergedWorkouts} workout${data.mergedWorkouts > 1 ? 's' : ''}!`;
-      } else if (data.newWorkouts > 0) {
-        message = `Synced ${data.newWorkouts} workout${data.newWorkouts > 1 ? 's' : ''}!`;
-      } else {
-        message = 'All caught up!';
-      }
-      toast.success(message);
+      // No duplicates — kick off sync via the global store
+      startSync(user.username);
     } catch (error: any) {
-      console.error('Strava sync error:', error);
       if (error.message?.includes('reconnect')) {
         toast.error('Strava authorization expired', {
           description: 'Disconnect and reconnect your Strava account to fix this.',
@@ -609,8 +570,8 @@ function SettingsContent() {
                     </div>
                   </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => handleSyncStrava()} disabled={isSyncingStrava}>
-                    {isSyncingStrava ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Syncing...</> : 'Sync'}
+                  <Button variant="outline" size="sm" onClick={() => handleSyncStrava()} disabled={isSyncingStrava || syncStatus === 'syncing'}>
+                    {syncStatus === 'syncing' ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Syncing...</> : isSyncingStrava ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Checking...</> : 'Sync'}
                   </Button>
                   <Button variant="outline" size="sm" onClick={handleDisconnectStrava} disabled={isDisconnectingStrava} className="text-red-500 hover:text-red-600 hover:bg-red-500/10">
                     {isDisconnectingStrava ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unlink className="h-4 w-4" />}
@@ -705,7 +666,7 @@ function SettingsContent() {
         onOpenChange={setShowDuplicateDialog}
         duplicates={stravaDuplicates}
         onConfirm={handleDuplicateDecisions}
-        isLoading={isSyncingStrava}
+        isLoading={syncStatus === 'syncing'}
       />
     </div>
   );

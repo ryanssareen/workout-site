@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
 
     // Determine redirect destination based on where the flow started
     const from = cookieStore.get('strava_oauth_from')?.value;
-    const redirectPath = from === 'onboarding' ? '/calendar?strava=connected' : '/settings?strava=connected';
+    const redirectPath = from === 'onboarding' ? '/dashboard?strava=connected' : '/settings?strava=connected';
 
     // Clear cookies
     cookieStore.delete('strava_oauth_userId');

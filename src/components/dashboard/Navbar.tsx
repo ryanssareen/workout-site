@@ -5,7 +5,8 @@ import { signOut } from '@/lib/firebase/auth';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
-import { Dumbbell, LogOut, LayoutDashboard, Calendar as CalendarIcon, ListChecks, BarChart3, UserCircle, Settings } from 'lucide-react';
+import { useStravaSyncStore } from '@/lib/stores/stravaSyncStore';
+import { Dumbbell, LogOut, LayoutDashboard, Calendar as CalendarIcon, ListChecks, BarChart3, UserCircle, Settings, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useMemo } from 'react';
@@ -14,6 +15,7 @@ export function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
+  const syncStatus = useStravaSyncStore((s) => s.status);
 
   const handleLogout = async () => { await signOut(); router.push('/login'); };
 
@@ -58,6 +60,12 @@ export function Navbar() {
                 </div>
                 <Link href="/profile"><Button variant="ghost" size="icon" className="h-8 w-8"><UserCircle className="h-4 w-4" /></Button></Link>
                 <Link href="/settings"><Button variant="ghost" size="icon" className="h-8 w-8"><Settings className="h-4 w-4" /></Button></Link>
+              </div>
+            )}
+            {syncStatus === 'syncing' && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FC4C02]/10 border border-[#FC4C02]/20 text-[#FC4C02]">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span className="text-xs font-medium hidden sm:inline">Syncing Strava...</span>
               </div>
             )}
             <ThemeToggle />
