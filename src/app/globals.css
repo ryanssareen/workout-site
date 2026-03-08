@@ -124,15 +124,11 @@
 
 /* ── PWA Standalone Mode ── */
 @media (display-mode: standalone) {
-  /* Prevent iOS rubber-band overscroll */
-  html {
+  /* Prevent overscroll bounce without clipping content */
+  html, body {
     overscroll-behavior: none;
-    overflow: hidden;
-    height: 100%;
   }
   body {
-    overflow: auto;
-    height: 100%;
     /* Prevent text selection when swiping — feels more native */
     -webkit-user-select: none;
     user-select: none;

@@ -51,7 +51,8 @@ export function Navbar() {
             })}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Desktop: full user info panel */}
             {user && (
               <div className="hidden md:flex items-center gap-3 px-3 py-1.5 rounded-xl bg-primary/5 border border-border/60">
                 <div className="text-right">
@@ -62,14 +63,25 @@ export function Navbar() {
                 <Link href="/settings"><Button variant="ghost" size="icon" className="h-8 w-8"><Settings className="h-4 w-4" /></Button></Link>
               </div>
             )}
+            {/* Strava sync indicator */}
             {syncStatus === 'syncing' && (
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FC4C02]/10 border border-[#FC4C02]/20 text-[#FC4C02]">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 <span className="text-xs font-medium hidden sm:inline">Syncing Strava...</span>
               </div>
             )}
+            {/* Mobile: compact profile icon */}
+            <Link href="/profile" className="md:hidden">
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <UserCircle className="h-4 w-4" />
+              </Button>
+            </Link>
             <ThemeToggle />
-            <Button variant="outline" size="sm" onClick={handleLogout} className="hidden md:flex h-9"><LogOut className="h-4 w-4 mr-2" />Logout</Button>
+            {/* Logout — icon-only on mobile, icon+text on desktop */}
+            <Button variant="outline" size="icon" onClick={handleLogout} className="h-8 w-8 md:h-9 md:w-auto md:px-3">
+              <LogOut className="h-4 w-4 md:mr-2" />
+              <span className="hidden md:inline">Logout</span>
+            </Button>
           </div>
         </div>
       </div>
