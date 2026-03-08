@@ -17,7 +17,7 @@ import {
 } from 'date-fns';
 import { cn } from '@/lib/utils';
 
-const DAY_HEADERS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const DAY_HEADERS_SHORT = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 interface CalendarYearViewProps {
   currentMonth: Date;
@@ -95,8 +95,8 @@ function MiniMonth({
   const weeks = useMemo(() => {
     const monthStart = startOfMonth(month);
     const monthEnd = endOfMonth(month);
-    const gridStart = startOfWeek(monthStart, { weekStartsOn: 0 });
-    const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
+    const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+    const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
 
     const allDays = eachDayOfInterval({ start: gridStart, end: gridEnd });
     const result: Date[][] = [];

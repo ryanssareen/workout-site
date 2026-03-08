@@ -496,8 +496,8 @@ export function CalendarViews({ workouts }: SectionProps) {
     const now = new Date();
     const weeks: { label: string; workouts: number }[] = [];
     for (let i = 15; i >= 0; i--) {
-      const weekStart = startOfWeek(subWeeks(now, i));
-      const weekEnd = endOfWeek(subWeeks(now, i));
+      const weekStart = startOfWeek(subWeeks(now, i), { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(subWeeks(now, i), { weekStartsOn: 1 });
       const count = workouts.filter(w => {
         const d = w.date?.toDate ? w.date.toDate() : new Date(w.date as any);
         return isWithinInterval(d, { start: weekStart, end: weekEnd });

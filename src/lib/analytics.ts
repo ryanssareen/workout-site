@@ -155,10 +155,10 @@ export function computeTimeSeries(workouts: Workout[], range: TimeRange): TimePo
       label: format(m, 'MMM yyyy'),
     }));
   } else if (useWeekly) {
-    const weeks = eachWeekOfInterval({ start, end: now });
+    const weeks = eachWeekOfInterval({ start, end: now }, { weekStartsOn: 1 });
     intervals = weeks.map(w => ({
-      start: startOfWeek(w),
-      end: endOfWeek(w),
+      start: startOfWeek(w, { weekStartsOn: 1 }),
+      end: endOfWeek(w, { weekStartsOn: 1 }),
       label: format(w, 'MMM d'),
     }));
   } else {
@@ -358,8 +358,8 @@ export function computePRTimeline(workouts: Workout[], range: TimeRange): PRPoin
     const months = eachMonthOfInterval({ start, end: now });
     intervals = months.map(m => ({ start: startOfMonth(m), end: endOfMonth(m), label: format(m, 'MMM yyyy') }));
   } else if (useWeekly) {
-    const weeks = eachWeekOfInterval({ start, end: now });
-    intervals = weeks.map(w => ({ start: startOfWeek(w), end: endOfWeek(w), label: format(w, 'MMM d') }));
+    const weeks = eachWeekOfInterval({ start, end: now }, { weekStartsOn: 1 });
+    intervals = weeks.map(w => ({ start: startOfWeek(w, { weekStartsOn: 1 }), end: endOfWeek(w, { weekStartsOn: 1 }), label: format(w, 'MMM d') }));
   } else {
     const days = eachDayOfInterval({ start, end: now });
     intervals = days.map(d => ({ start: new Date(d.setHours(0, 0, 0, 0)), end: new Date(new Date(d).setHours(23, 59, 59, 999)), label: format(d, 'MMM d') }));

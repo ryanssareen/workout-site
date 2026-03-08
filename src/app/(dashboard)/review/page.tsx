@@ -37,7 +37,7 @@ const TYPE_BG: Record<string, string> = {
   other: 'from-gray-500/20 to-gray-500/5',
 };
 const PIE_COLORS = ['#22c55e', '#f97316', '#3b82f6', '#a855f7', '#6b7280', '#ef4444', '#14b8a6'];
-const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 // ── Helpers ──
 
@@ -115,7 +115,8 @@ function pctChange(curr: number, prev: number): { text: string; positive: boolea
 // ── Activity Calendar Component ──
 
 function ActivityCalendar({ days, monthStart }: { days: { date: Date; count: number }[]; monthStart: Date }) {
-  const firstDayOfWeek = getDay(monthStart); // 0=Sun
+  const rawDay = getDay(monthStart); // 0=Sun in JS
+  const firstDayOfWeek = rawDay === 0 ? 6 : rawDay - 1; // Convert to Mon=0
   const blanks = Array.from({ length: firstDayOfWeek });
   const today = new Date();
 

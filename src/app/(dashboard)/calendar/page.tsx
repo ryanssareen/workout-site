@@ -45,7 +45,7 @@ export default function CalendarPage() {
   // Navigation anchor date (drives all views)
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   // Mobile: week navigation
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 0 }));
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   // Selected day (both mobile + desktop)
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   // Selected workout for detail panel (desktop)
@@ -150,7 +150,7 @@ export default function CalendarPage() {
   const handleToday = () => {
     const now = new Date();
     setCurrentMonth(now);
-    setWeekStart(startOfWeek(now, { weekStartsOn: 0 }));
+    setWeekStart(startOfWeek(now, { weekStartsOn: 1 }));
     setSelectedDate(now);
   };
 

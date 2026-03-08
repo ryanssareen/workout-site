@@ -17,7 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 import { CalendarAddDropdown } from './CalendarAddDropdown';
 
-const DAY_HEADERS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAY_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 interface CalendarFullMonthViewProps {
   currentMonth: Date;
@@ -43,8 +43,8 @@ export function CalendarFullMonthView({
   const weeks = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
-    const gridStart = startOfWeek(monthStart, { weekStartsOn: 0 });
-    const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
+    const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+    const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
 
     const allDays = eachDayOfInterval({ start: gridStart, end: gridEnd });
     const result: Date[][] = [];

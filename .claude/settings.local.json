@@ -38,7 +38,10 @@
       "Bash(grep -r \"grid-cols\" /Users/ryan/Documents/workout-site/.claude/worktrees/nostalgic-matsumoto/src/components/workouts/*.tsx)",
       "Bash(git add \"src/app/\\(dashboard\\)/calendar/page.tsx\" src/components/calendar/types.ts src/components/calendar/CalendarViewSelector.tsx src/components/calendar/CalendarHeader.tsx src/components/calendar/CalendarWeekView.tsx src/components/calendar/CalendarWorkoutCard.tsx src/components/calendar/CalendarFullMonthView.tsx src/components/calendar/CalendarYearView.tsx src/components/calendar/CalendarSummary.tsx)",
       "Bash(git push origin claude/nostalgic-matsumoto:main)",
-      "Bash(git add -A)"
+      "Bash(git add -A)",
+      "Bash(npm install web-push)",
+      "Bash(npx web-push generate-vapid-keys --json)",
+      "Bash(npm install --save-dev @types/web-push)"
     ]
   }
 }

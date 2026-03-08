@@ -15,7 +15,7 @@ import {
 import { cn } from '@/lib/utils';
 import { CalendarAddDropdown } from './CalendarAddDropdown';
 
-const DAY_HEADERS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAY_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 interface CalendarMonthViewProps {
   currentMonth: Date;
@@ -40,9 +40,9 @@ export function CalendarMonthView({
   // Build a 2-week grid centered on the selected date (or first of month)
   const weeks = useMemo(() => {
     const anchor = selectedDate || currentMonth;
-    const week1Start = startOfWeek(anchor, { weekStartsOn: 0 });
+    const week1Start = startOfWeek(anchor, { weekStartsOn: 1 });
     const week2Start = addWeeks(week1Start, 1);
-    const week2End = endOfWeek(week2Start, { weekStartsOn: 0 });
+    const week2End = endOfWeek(week2Start, { weekStartsOn: 1 });
 
     const days = eachDayOfInterval({ start: week1Start, end: week2End });
     const result: Date[][] = [];

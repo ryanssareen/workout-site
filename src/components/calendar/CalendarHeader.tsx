@@ -42,8 +42,8 @@ function getDateLabel(viewMode: CalendarViewMode, currentMonth: Date): string {
     case 'day':
       return format(currentMonth, 'EEE, MMM d, yyyy');
     case 'week': {
-      const ws = startOfWeek(currentMonth, { weekStartsOn: 0 });
-      const we = endOfWeek(currentMonth, { weekStartsOn: 0 });
+      const ws = startOfWeek(currentMonth, { weekStartsOn: 1 });
+      const we = endOfWeek(currentMonth, { weekStartsOn: 1 });
       return `${format(ws, 'MMM d')} – ${format(we, 'MMM d, yyyy')}`;
     }
     case 'month':

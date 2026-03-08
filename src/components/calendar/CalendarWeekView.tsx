@@ -14,7 +14,7 @@ import {
 import { cn } from '@/lib/utils';
 import { CalendarAddDropdown } from './CalendarAddDropdown';
 
-const DAY_HEADERS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAY_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 interface CalendarWeekViewProps {
   currentMonth: Date;
@@ -38,8 +38,8 @@ export function CalendarWeekView({
   onNoteAdded,
 }: CalendarWeekViewProps) {
   const days = useMemo(() => {
-    const ws = startOfWeek(currentMonth, { weekStartsOn: 0 });
-    const we = endOfWeek(currentMonth, { weekStartsOn: 0 });
+    const ws = startOfWeek(currentMonth, { weekStartsOn: 1 });
+    const we = endOfWeek(currentMonth, { weekStartsOn: 1 });
     return eachDayOfInterval({ start: ws, end: we });
   }, [currentMonth]);
 

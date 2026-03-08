@@ -486,14 +486,15 @@ export function HeatmapSlide({ stats, animateIn }: { stats: YearStats; animateIn
             let currentWeek: { date: Date; count: number }[] = [];
             const firstDay = stats.heatmap[0];
             if (firstDay) {
-              const dayOfWeek = getDay(firstDay.date);
+              const rawDay = getDay(firstDay.date); // 0=Sun
+              const dayOfWeek = rawDay === 0 ? 6 : rawDay - 1; // Convert to Mon=0
               for (let i = 0; i < dayOfWeek; i++) {
                 currentWeek.push({ date: new Date(), count: -1 });
               }
             }
             for (const day of stats.heatmap) {
               currentWeek.push(day);
-              if (getDay(day.date) === 6) {
+              if (getDay(day.date) === 0) { // Sunday = end of Mon-Sun week
                 weeks.push(currentWeek);
                 currentWeek = [];
               }
