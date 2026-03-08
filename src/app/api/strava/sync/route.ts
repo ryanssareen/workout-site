@@ -262,7 +262,8 @@ async function refreshStravaToken(userId: string, refreshToken: string): Promise
     });
 
     if (!response.ok) {
-      console.error('Failed to refresh Strava token');
+      const errBody = await response.text().catch(() => 'no body');
+      console.error(`Failed to refresh Strava token (${response.status}): ${errBody}`);
       return null;
     }
 
@@ -660,6 +661,10 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
 
     // Handle Strava rate limit (429) — surface it clearly so the client can back off
     if (!result.activities && result.error && result.error.status === 429) {
+      // Log the full response body to understand WHY Strava is returning 429
+      const errorBody = await result.error.clone().json().catch(() => null);
+      console.warn(`⚠️ Strava 429 response body:`, JSON.stringify(errorBody));
+      console.warn(`⚠️ Strava 429 response headers:`, Object.fromEntries(result.error.headers.entries()));
       const { message, isDaily, isCooldown, retryAfterSeconds, rateLimitScope } = getRateLimitMessage(result.error);
       console.warn(`⏳ Strava rate limit hit (429): ${message}`);
       return NextResponse.json(
