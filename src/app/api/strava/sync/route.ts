@@ -221,14 +221,55 @@ async function findMatchingWorkout(
   // Filter by date (same calendar day) and source (not strava)
   for (const doc of workoutsSnapshot.docs) {
     const data = doc.data();
-    
+
     // Skip if it's a Strava import
     if (data.source === 'strava') continue;
-    
+
     // Check if workout date is on the same day as the activity
     const workoutDate = data.date?.toDate ? data.date.toDate() : new Date(data.date);
     if (workoutDate >= start && workoutDate <= end) {
       console.log(`🔗 Found matching workout: ${data.name} (${doc.id})`);
+      return { id: doc.id, data };
+    }
+  }
+
+  return null;
+}
+
+// Find a matching imported (CSV/XLSX) workout by date + type + near distance
+async function findMatchingImportedWorkout(
+  userId: string,
+  workoutType: string,
+  activityDate: Date,
+  activityDistance: number // in meters
+): Promise<{ id: string; data: any } | null> {
+  const { start, end } = getDayBounds(activityDate);
+
+  // Query for imported workouts of same type on the same day
+  const workoutsSnapshot = await adminDb
+    .collection('users').doc(userId).collection('workouts')
+    .where('type', '==', workoutType)
+    .where('source', '==', 'import')
+    .where('date', '>=', admin.firestore.Timestamp.fromDate(start))
+    .where('date', '<=', admin.firestore.Timestamp.fromDate(end))
+    .get();
+
+  for (const doc of workoutsSnapshot.docs) {
+    const data = doc.data();
+    // Already merged with Strava? Skip.
+    if (data.stravaActivityId) continue;
+
+    // Check distance proximity (within 10%)
+    const importedDist = data.actualStats?.distance || 0; // in meters
+    if (activityDistance > 0 && importedDist > 0) {
+      const ratio = Math.abs(activityDistance - importedDist) / Math.max(activityDistance, importedDist);
+      if (ratio < 0.10) {
+        console.log(`📎 Found matching imported workout: ${data.name} (${doc.id}) — distance ${(importedDist/1000).toFixed(1)}km vs ${(activityDistance/1000).toFixed(1)}km`);
+        return { id: doc.id, data };
+      }
+    } else if (activityDistance === 0 && importedDist === 0) {
+      // Both have no distance (e.g. strength workout) — match by type + date alone
+      console.log(`📎 Found matching imported workout (no distance): ${data.name} (${doc.id})`);
       return { id: doc.id, data };
     }
   }
@@ -745,6 +786,44 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
         // Quota-safe mode: skip merge/proximity checks, go straight to create.
         // Deterministic doc ID (strava_{id}) handles duplicates via set() overwrite.
         shouldCreate = true;
+      }
+
+      // Before creating, check if there's a matching imported (CSV/XLSX) workout to merge with
+      if (shouldCreate) {
+        try {
+          const importedMatch = await findMatchingImportedWorkout(
+            userId, workoutType, activityDate, activity.distance || 0
+          );
+          if (importedMatch) {
+            console.log(`  📎 Merging Strava → imported: ${activity.name} → ${importedMatch.data.name}`);
+            const mergeUpdate: any = {
+              stravaActivityId: stravaId,
+              actualStats,
+              source: 'strava', // upgrade source to strava
+              completedBy: 'strava',
+              completedAt: admin.firestore.Timestamp.fromDate(activityDate),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            };
+            // Add route data if Strava has it
+            if (activity.map?.summary_polyline) {
+              mergeUpdate.routeData = {
+                polyline: activity.map.summary_polyline,
+                ...(activity.start_latlng ? { startLatLng: activity.start_latlng } : {}),
+                ...(activity.end_latlng ? { endLatLng: activity.end_latlng } : {}),
+              };
+            }
+            // Fetch photos
+            if (activity.total_photo_count > 0) {
+              const photoUrls = await fetchStravaPhotos(String(activity.id), accessToken);
+              if (photoUrls.length > 0) mergeUpdate.photos = photoUrls;
+            }
+            await adminDb.collection('users').doc(userId).collection('workouts').doc(importedMatch.id).update(mergeUpdate);
+            mergedWorkoutsCount++;
+            shouldCreate = false;
+          }
+        } catch (e: any) {
+          console.log(`  ⚠️ Import merge check failed (non-fatal): ${e.message}`);
+        }
       }
 
       if (shouldCreate) {

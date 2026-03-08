@@ -352,6 +352,58 @@ async function processActivity(
       };
     }
 
+    // CHECK FOR MATCHING IMPORTED (CSV/XLSX) WORKOUT — same day, type, near distance
+    try {
+      const importedSnapshot = await adminDb
+        .collection('users').doc(username).collection('workouts')
+        .where('type', '==', workoutType)
+        .where('source', '==', 'import')
+        .where('date', '>=', admin.firestore.Timestamp.fromDate(dayStart))
+        .where('date', '<=', admin.firestore.Timestamp.fromDate(dayEnd))
+        .get();
+
+      for (const iDoc of importedSnapshot.docs) {
+        const iData = iDoc.data();
+        if (iData.stravaActivityId) continue; // already merged
+
+        const iDist = iData.actualStats?.distance || 0;
+        const aDist = activity.distance || 0;
+
+        // Match if distance within 10%, or both have no distance (e.g. strength)
+        const distMatch = (aDist > 0 && iDist > 0 && Math.abs(aDist - iDist) / Math.max(aDist, iDist) < 0.10)
+          || (aDist === 0 && iDist === 0);
+
+        if (distMatch) {
+          console.log(`📎 Merging Strava activity with imported workout: ${iData.name} (${iDoc.id})`);
+          const mergeUpdate: any = {
+            stravaActivityId,
+            actualStats,
+            source: 'strava',
+            completedBy: 'strava',
+            completedAt: admin.firestore.Timestamp.fromDate(activityDate),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            ...typeData,
+          };
+          if (Object.keys(routeData).length > 0) mergeUpdate.routeData = routeData;
+          mergeUpdate.stravaData = {
+            ...(activity.distance ? { distance: activity.distance } : {}),
+            ...(activity.moving_time ? { time: activity.moving_time } : {}),
+            ...(activity.total_elevation_gain ? { elevationGain: Math.round(activity.total_elevation_gain) } : {}),
+            ...(activity.average_heartrate ? { avgHeartRate: Math.round(activity.average_heartrate) } : {}),
+            ...(activity.max_heartrate ? { maxHeartRate: Math.round(activity.max_heartrate) } : {}),
+            ...(activity.average_watts ? { avgPower: Math.round(activity.average_watts) } : {}),
+          };
+          await iDoc.ref.update(mergeUpdate);
+          return {
+            success: true,
+            message: `Merged "${activity.name}" with imported workout "${iData.name}"`
+          };
+        }
+      }
+    } catch (e: any) {
+      console.log(`⚠️ Import merge check failed (non-fatal): ${e.message}`);
+    }
+
     // NO MATCH — create a new Strava workout entry
     // Use deterministic doc ID to prevent duplicates from concurrent webhook retries
     const workoutId = `strava_${stravaActivityId}`;

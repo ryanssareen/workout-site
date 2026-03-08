@@ -1,16 +1,16 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { getDbInstance } from '@/lib/firebase/config';
-import { Loader2, Sparkles, ArrowRight, ArrowLeft, AlertCircle, Link2 } from 'lucide-react';
+import { Loader2, Sparkles, ArrowRight, ArrowLeft, AlertCircle, Link2, Upload, FileSpreadsheet, CheckCircle2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-type Step = 'intro' | 'name' | 'age' | 'strava';
-const STEPS: Step[] = ['intro', 'name', 'age', 'strava'];
+type Step = 'intro' | 'name' | 'age' | 'import' | 'strava';
+const STEPS: Step[] = ['intro', 'name', 'age', 'import', 'strava'];
 
 const AGE_RANGES = [
   { value: 'under-18', label: 'Under 18' },
@@ -21,6 +21,13 @@ const AGE_RANGES = [
   { value: '55-64', label: '55–64' },
   { value: '65+', label: '65+' },
 ];
+
+const ACCEPTED_TYPES = [
+  'text/csv',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
+];
+const ACCEPTED_EXTENSIONS = ['.csv', '.xlsx', '.xls'];
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -36,6 +43,14 @@ export default function OnboardingPage() {
   const [error, setError] = useState('');
   const completingRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Import state
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ created: number; summary: string } | null>(null);
+  const [importError, setImportError] = useState('');
+  const [dragActive, setDragActive] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -50,7 +65,7 @@ export default function OnboardingPage() {
 
   // Progress dots (exclude intro)
   const stepIdx = STEPS.indexOf(step);
-  const totalDots = STEPS.length - 1; // 3 dots for name, age, strava
+  const totalDots = STEPS.length - 1; // 4 dots for name, age, import, strava
 
   const goNext = () => {
     const i = STEPS.indexOf(step);
@@ -117,6 +132,85 @@ export default function OnboardingPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  // ── Import handlers ──
+  const validateFile = (file: File): boolean => {
+    const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+    if (!ACCEPTED_EXTENSIONS.includes(ext)) {
+      setImportError('Please upload a CSV or XLSX file.');
+      return false;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setImportError('File is too large. Maximum 10 MB.');
+      return false;
+    }
+    return true;
+  };
+
+  const handleFileSelect = (file: File) => {
+    setImportError('');
+    setImportResult(null);
+    if (validateFile(file)) {
+      setImportFile(file);
+    }
+  };
+
+  const handleDrag = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files?.[0]) {
+      handleFileSelect(e.dataTransfer.files[0]);
+    }
+  }, []);
+
+  const handleImport = async () => {
+    if (!importFile || !user) return;
+    setImporting(true);
+    setImportError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      formData.append('username', user.username);
+
+      const res = await fetch('/api/workouts/import', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setImportError(data.error || 'Failed to import workouts');
+        return;
+      }
+
+      setImportResult({ created: data.created, summary: data.summary });
+      toast.success(`Imported ${data.created} workouts!`);
+    } catch (err: any) {
+      setImportError(err.message || 'Failed to import workouts');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const clearImport = () => {
+    setImportFile(null);
+    setImportResult(null);
+    setImportError('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   if (!user || (user.onboardingCompleted !== false && !completingRef.current)) return null;
@@ -232,7 +326,130 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* ── STEP 3: CONNECT STRAVA ── */}
+        {/* ── STEP 3: IMPORT WORKOUTS ── */}
+        {step === 'import' && (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="text-center space-y-2">
+              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Import History</h2>
+              <p className="text-muted-foreground">Got a workout export? Upload it and we&apos;ll do the rest.</p>
+            </div>
+
+            {/* Success state */}
+            {importResult && (
+              <div className="rounded-2xl border border-green-500/30 bg-green-500/5 p-5 space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-green-500/10 flex items-center justify-center">
+                    <CheckCircle2 className="w-5 h-5 text-green-500" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-green-500">{importResult.created} workouts imported!</p>
+                    <p className="text-xs text-muted-foreground">{importResult.summary}</p>
+                  </div>
+                </div>
+                <button onClick={clearImport} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  Upload another file
+                </button>
+              </div>
+            )}
+
+            {/* Upload area */}
+            {!importResult && (
+              <div className="space-y-4">
+                <div
+                  onDragEnter={handleDrag}
+                  onDragOver={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={cn(
+                    'relative cursor-pointer rounded-2xl border-2 border-dashed p-8 text-center transition-all duration-200',
+                    dragActive
+                      ? 'border-primary bg-primary/5 scale-[1.01]'
+                      : importFile
+                        ? 'border-primary/40 bg-primary/5'
+                        : 'border-border hover:border-primary/40 hover:bg-muted/50'
+                  )}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv,.xlsx,.xls"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) handleFileSelect(e.target.files[0]);
+                    }}
+                  />
+
+                  {importFile ? (
+                    <div className="flex items-center justify-center gap-3">
+                      <FileSpreadsheet className="w-8 h-8 text-primary" />
+                      <div className="text-left">
+                        <p className="font-semibold text-sm">{importFile.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {(importFile.size / 1024).toFixed(0)} KB
+                        </p>
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); clearImport(); }}
+                        className="p-1.5 rounded-full hover:bg-muted transition-colors"
+                      >
+                        <X className="w-4 h-4 text-muted-foreground" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <Upload className="w-10 h-10 text-muted-foreground mx-auto" />
+                      <div>
+                        <p className="text-sm font-medium">Drop your file here or tap to browse</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          CSV or XLSX from Strava, Garmin, Apple Health, etc.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {importError && (
+                  <div className="flex items-start gap-2 px-1 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <AlertCircle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+                    <p className="text-sm text-destructive">{importError}</p>
+                  </div>
+                )}
+
+                {importFile && !importing && (
+                  <PrimaryButton onClick={handleImport} disabled={importing}>
+                    <Upload className="w-5 h-5" />Import Workouts
+                  </PrimaryButton>
+                )}
+
+                {importing && (
+                  <div className="rounded-2xl border bg-card p-5 space-y-3 animate-in fade-in duration-300">
+                    <div className="flex items-center gap-3">
+                      <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                      <div>
+                        <p className="text-sm font-medium">Analyzing your workouts...</p>
+                        <p className="text-xs text-muted-foreground">AI is reading your file and creating workouts</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <BackButton onClick={goBack} />
+              <PrimaryButton onClick={goNext} disabled={importing} className="flex-[2]">
+                {importResult || !importFile ? (
+                  <>Continue<ArrowRight className="w-5 h-5" /></>
+                ) : (
+                  <>Skip<ArrowRight className="w-5 h-5" /></>
+                )}
+              </PrimaryButton>
+            </div>
+          </div>
+        )}
+
+        {/* ── STEP 4: CONNECT STRAVA ── */}
         {step === 'strava' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="text-center space-y-2">
