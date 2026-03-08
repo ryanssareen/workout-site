@@ -26,7 +26,7 @@ function logStravaRateLimits(resp: Response, context: string) {
   return limits;
 }
 
-function getRateLimitMessage(resp: Response): { message: string; isDaily: boolean } {
+function getRateLimitMessage(resp: Response): { message: string; isDaily: boolean; isCooldown: boolean } {
   const limits = parseStravaRateLimits(resp);
   if (limits) {
     const isDailyExceeded = limits.dailyUsage >= limits.dailyLimit;
@@ -35,21 +35,24 @@ function getRateLimitMessage(resp: Response): { message: string; isDaily: boolea
       return {
         message: `Strava daily limit reached (${limits.dailyUsage}/${limits.dailyLimit}). Resets at midnight UTC.`,
         isDaily: true,
+        isCooldown: false,
       };
     }
     if (is15MinExceeded) {
       return {
         message: `Strava 15-min limit reached (${limits.fifteenMinUsage}/${limits.fifteenMinLimit}). Try again in ~15 minutes.`,
         isDaily: false,
+        isCooldown: false,
       };
     }
     // 429 returned but counters under limit — window just rolled over, brief cooldown
     return {
       message: `Strava rate limit cooldown (${limits.fifteenMinUsage}/${limits.fifteenMinLimit} 15-min, ${limits.dailyUsage}/${limits.dailyLimit} daily). Try again in a minute.`,
       isDaily: false,
+      isCooldown: true,
     };
   }
-  return { message: 'Strava rate limit reached. Try again in a few minutes.', isDaily: false };
+  return { message: 'Strava rate limit reached. Try again in a few minutes.', isDaily: false, isCooldown: false };
 }
 
 // Predefined workout tags (must match frontend)
@@ -628,10 +631,10 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
 
     // Handle Strava rate limit (429) — surface it clearly so the client can back off
     if (!result.activities && result.error && result.error.status === 429) {
-      const { message, isDaily } = getRateLimitMessage(result.error);
+      const { message, isDaily, isCooldown } = getRateLimitMessage(result.error);
       console.warn(`⏳ Strava rate limit hit (429): ${message}`);
       return NextResponse.json(
-        { error: message, rateLimited: true, isDailyLimit: isDaily },
+        { error: message, rateLimited: true, isDailyLimit: isDaily, isCooldown },
         { status: 429 }
       );
     }

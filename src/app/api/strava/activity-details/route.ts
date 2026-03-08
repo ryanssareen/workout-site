@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 
 // ── Strava rate-limit header parser ──────────────────────────────────────────
-function getRateLimitMessage(resp: Response): { message: string; isDaily: boolean } {
+function getRateLimitMessage(resp: Response): { message: string; isDaily: boolean; isCooldown: boolean } {
   const limitHeader = resp.headers.get('x-ratelimit-limit');   // e.g. "100,1000"
   const usageHeader = resp.headers.get('x-ratelimit-usage');   // e.g. "34,562"
   if (limitHeader && usageHeader) {
@@ -12,18 +12,19 @@ function getRateLimitMessage(resp: Response): { message: string; isDaily: boolea
     const [fifteenMinUsage, dailyUsage] = usageHeader.split(',').map(Number);
     console.log(`📊 Strava rate limits: ${fifteenMinUsage}/${fifteenMinLimit} (15-min), ${dailyUsage}/${dailyLimit} (daily)`);
     if (dailyUsage >= dailyLimit) {
-      return { message: `Strava daily limit reached (${dailyUsage}/${dailyLimit}). Resets at midnight UTC.`, isDaily: true };
+      return { message: `Strava daily limit reached (${dailyUsage}/${dailyLimit}). Resets at midnight UTC.`, isDaily: true, isCooldown: false };
     }
     if (fifteenMinUsage >= fifteenMinLimit) {
-      return { message: `Strava 15-min limit reached (${fifteenMinUsage}/${fifteenMinLimit}). Try again in ~15 minutes.`, isDaily: false };
+      return { message: `Strava 15-min limit reached (${fifteenMinUsage}/${fifteenMinLimit}). Try again in ~15 minutes.`, isDaily: false, isCooldown: false };
     }
     // 429 but counters under limit — window rollover cooldown
     return {
       message: `Strava rate limit cooldown (${fifteenMinUsage}/${fifteenMinLimit} 15-min, ${dailyUsage}/${dailyLimit} daily). Try again in a minute.`,
       isDaily: false,
+      isCooldown: true,
     };
   }
-  return { message: 'Strava rate limit reached. Try again in a few minutes.', isDaily: false };
+  return { message: 'Strava rate limit reached. Try again in a few minutes.', isDaily: false, isCooldown: false };
 }
 
 /**
@@ -106,7 +107,7 @@ export async function GET(request: NextRequest) {
       if (!refreshResp.ok) {
         if (refreshResp.status === 429) {
           const rl = getRateLimitMessage(refreshResp);
-          return NextResponse.json({ error: rl.message, rateLimited: true, isDailyLimit: rl.isDaily }, { status: 429 });
+          return NextResponse.json({ error: rl.message, rateLimited: true, isDailyLimit: rl.isDaily, isCooldown: rl.isCooldown }, { status: 429 });
         }
         return NextResponse.json({ error: 'Failed to refresh Strava token', needsReconnect: true }, { status: 401 });
       }
@@ -131,7 +132,7 @@ export async function GET(request: NextRequest) {
     if (!stravaResp.ok) {
       if (stravaResp.status === 429) {
         const rl = getRateLimitMessage(stravaResp);
-        return NextResponse.json({ error: rl.message, rateLimited: true, isDailyLimit: rl.isDaily }, { status: 429 });
+        return NextResponse.json({ error: rl.message, rateLimited: true, isDailyLimit: rl.isDaily, isCooldown: rl.isCooldown }, { status: 429 });
       }
       return NextResponse.json({ error: `Strava API error: ${stravaResp.status}` }, { status: 500 });
     }
