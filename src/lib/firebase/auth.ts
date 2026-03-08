@@ -10,7 +10,7 @@ import {
   browserLocalPersistence,
   browserSessionPersistence,
 } from 'firebase/auth';
-import { doc, getDoc, serverTimestamp, runTransaction } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { getAuthInstance, getDbInstance } from './config';
 import { User, UserRole } from '@/types';
 import { getUsernameFromUid } from './userMapping';
@@ -19,6 +19,42 @@ import { getUsernameFromUid } from './userMapping';
 export type GoogleSignInResult =
   | { type: 'existing'; user: User }
   | { type: 'needs_username'; uid: string; email: string; displayName: string; photoURL?: string };
+
+/**
+ * Server-side user creation — sends auth token + profile data to API route.
+ * The API uses Admin SDK to bypass Firestore security rules, handling:
+ * - Existing userMappings from previous failed registrations
+ * - Atomic user doc + mapping creation
+ * - Username uniqueness validation
+ */
+async function createUserViaAPI(
+  token: string,
+  data: {
+    username: string;
+    email: string;
+    displayName: string;
+    role?: UserRole;
+    photoURL?: string;
+    coachUsername?: string;
+  }
+): Promise<User> {
+  const response = await fetch('/api/auth/create-user', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || 'Failed to create user');
+  }
+
+  return result.user as User;
+}
 
 export async function createUser(
   email: string,
@@ -29,39 +65,19 @@ export async function createUser(
   coachUsername?: string
 ): Promise<User> {
   try {
+    // Step 1: Create Firebase Auth account
     const userCredential = await createUserWithEmailAndPassword(getAuthInstance(), email, password);
-    const { uid } = userCredential.user;
 
-    const userProfile: Record<string, any> = {
-      uid,
+    // Step 2: Get auth token and create user doc via server API
+    const token = await userCredential.user.getIdToken();
+
+    return await createUserViaAPI(token, {
       username,
       email,
       displayName,
       role,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      onboardingCompleted: false,
-    };
-
-    if (coachUsername) userProfile.coachUsername = coachUsername;
-
-    // Transaction: atomically check username isn't taken, then create user + mapping
-    // This is the hard safety net — prevents duplicate usernames even if the
-    // pre-check was skipped (e.g. Firestore read quota exhausted)
-    const db = getDbInstance();
-    const userRef = doc(db, 'users', username);
-    const mappingRef = doc(db, 'userMappings', uid);
-
-    await runTransaction(db, async (transaction) => {
-      const existingUser = await transaction.get(userRef);
-      if (existingUser.exists()) {
-        throw new Error('Username is already taken');
-      }
-      transaction.set(userRef, userProfile);
-      transaction.set(mappingRef, { username });
+      coachUsername,
     });
-
-    return userProfile as User;
   } catch (error: any) {
     throw new Error(error.message || 'Failed to create user');
   }
@@ -69,6 +85,7 @@ export async function createUser(
 
 /**
  * Create user doc for Google Sign-In users after they pick a username.
+ * Uses server API to handle edge cases (existing mappings, retries, etc.)
  */
 export async function createGoogleUser(
   uid: string,
@@ -78,34 +95,21 @@ export async function createGoogleUser(
   photoURL?: string,
 ): Promise<User> {
   try {
-    const db = getDbInstance();
-    const userProfile: Record<string, any> = {
-      uid,
+    // Google user is already authenticated — get their token
+    const auth = getAuthInstance();
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('Not authenticated. Please sign in again.');
+    }
+
+    const token = await currentUser.getIdToken();
+
+    return await createUserViaAPI(token, {
       username,
       email,
       displayName,
-      role: 'athlete' as UserRole,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      onboardingCompleted: false,
-    };
-
-    if (photoURL) userProfile.photoURL = photoURL;
-
-    // Transaction: atomically check username isn't taken, then create user + mapping
-    const userRef = doc(db, 'users', username);
-    const mappingRef = doc(db, 'userMappings', uid);
-
-    await runTransaction(db, async (transaction) => {
-      const existingUser = await transaction.get(userRef);
-      if (existingUser.exists()) {
-        throw new Error('Username is already taken');
-      }
-      transaction.set(userRef, userProfile);
-      transaction.set(mappingRef, { username });
+      photoURL,
     });
-
-    return userProfile as User;
   } catch (error: any) {
     throw new Error(error.message || 'Failed to create Google user');
   }
