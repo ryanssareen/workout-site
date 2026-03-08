@@ -6,6 +6,47 @@ import admin from 'firebase-admin';
 import Groq from 'groq-sdk';
 import { sendPushNotification } from '@/lib/push';
 
+// ── Strava rate-limit header parser ──────────────────────────────────────────
+function parseStravaRateLimits(resp: Response) {
+  const limitHeader = resp.headers.get('x-ratelimit-limit');   // e.g. "100,1000"
+  const usageHeader = resp.headers.get('x-ratelimit-usage');   // e.g. "34,562"
+  if (!limitHeader || !usageHeader) return null;
+
+  const [fifteenMinLimit, dailyLimit] = limitHeader.split(',').map(Number);
+  const [fifteenMinUsage, dailyUsage] = usageHeader.split(',').map(Number);
+
+  return { fifteenMinLimit, dailyLimit, fifteenMinUsage, dailyUsage };
+}
+
+function logStravaRateLimits(resp: Response, context: string) {
+  const limits = parseStravaRateLimits(resp);
+  if (limits) {
+    console.log(`📊 [${context}] Strava rate limits: ${limits.fifteenMinUsage}/${limits.fifteenMinLimit} (15-min), ${limits.dailyUsage}/${limits.dailyLimit} (daily)`);
+  }
+  return limits;
+}
+
+function getRateLimitMessage(resp: Response): { message: string; isDaily: boolean } {
+  const limits = parseStravaRateLimits(resp);
+  if (limits) {
+    const is15MinExceeded = limits.fifteenMinUsage >= limits.fifteenMinLimit;
+    const isDailyExceeded = limits.dailyUsage >= limits.dailyLimit;
+    if (isDailyExceeded) {
+      return {
+        message: `Strava daily rate limit reached (${limits.dailyUsage}/${limits.dailyLimit}). Resets at midnight UTC.`,
+        isDaily: true,
+      };
+    }
+    if (is15MinExceeded) {
+      return {
+        message: `Strava 15-minute rate limit reached (${limits.fifteenMinUsage}/${limits.fifteenMinLimit}). Try again in ~15 minutes.`,
+        isDaily: false,
+      };
+    }
+  }
+  return { message: 'Strava rate limit reached. Try again in a few minutes.', isDaily: false };
+}
+
 // Predefined workout tags (must match frontend)
 const WORKOUT_TAGS = [
   'easy', 'moderate', 'hard', 'recovery', 'speed', 
@@ -561,6 +602,7 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
         // Backfill: fetch a single page using 'before' timestamp
         const url = `https://www.strava.com/api/v3/athlete/activities?before=${beforeTimestamp}&per_page=200&page=${fetchPage}`;
         const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        logStravaRateLimits(resp, `backfill page ${fetchPage}`);
         if (!resp.ok) return { activities: null, error: resp };
         const data = await resp.json();
         if (!Array.isArray(data)) return { activities: [] };
@@ -575,6 +617,7 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
           `https://www.strava.com/api/v3/athlete/activities?after=${afterTimestamp}&per_page=200&page=${page}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
+        logStravaRateLimits(resp, `recent page ${page}`);
         if (!resp.ok) {
           if (page === 1) return { activities: null, error: resp };
           break; // stop paginating on later page errors
@@ -628,10 +671,10 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
 
     // Handle Strava rate limit (429) — surface it clearly so the client can back off
     if (!result.activities && result.error && result.error.status === 429) {
-      const errorData = await result.error.json().catch(() => ({ message: 'Rate Limit Exceeded' }));
-      console.warn('⏳ Strava rate limit hit (429). Will retry on next sync cycle.');
+      const { message, isDaily } = getRateLimitMessage(result.error);
+      console.warn(`⏳ Strava rate limit hit (429): ${message}`);
       return NextResponse.json(
-        { error: 'Strava rate limit exceeded. Please wait a few minutes and try again.', rateLimited: true },
+        { error: message, rateLimited: true, isDailyLimit: isDaily },
         { status: 429 }
       );
     }

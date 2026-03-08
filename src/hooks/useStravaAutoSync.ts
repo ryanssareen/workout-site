@@ -42,6 +42,7 @@ export function useStravaAutoSync(
     merged: number;
     needsReconnect?: boolean;
     rateLimited?: boolean;
+    rateLimitMessage?: string;
     backfillComplete?: boolean;
   };
 
@@ -81,8 +82,8 @@ export function useStravaAutoSync(
         return { newWorkouts: 0, merged: 0, needsReconnect: true };
       }
       if (err.isQuota || err.rateLimited || res.status === 429) {
-        console.log('[auto-sync] Strava rate limit / quota exhausted — stopping');
-        return { newWorkouts: 0, merged: 0, rateLimited: true };
+        console.log(`[auto-sync] Strava rate limit — ${err.error || 'quota exhausted'}`);
+        return { newWorkouts: 0, merged: 0, rateLimited: true, rateLimitMessage: err.error };
       }
       throw new Error(err.error || 'sync failed');
     }
@@ -137,7 +138,7 @@ export function useStravaAutoSync(
         return;
       }
       if (recentResult.rateLimited) {
-        toast.info('Strava rate limit reached. Sync will resume automatically later.', { icon: '⏳', duration: 5000 });
+        toast.info(recentResult.rateLimitMessage || 'Strava rate limit reached. Sync will resume later.', { icon: '⏳', duration: 6000 });
         return;
       }
 
@@ -172,7 +173,7 @@ export function useStravaAutoSync(
           }
           if (backfillResult.rateLimited) {
             console.log(`[auto-sync] Rate limited during backfill at page ${page} — will resume next time`);
-            toast.info('Strava rate limit reached. History sync will resume next time.', { icon: '⏳', duration: 5000 });
+            toast.info(backfillResult.rateLimitMessage || 'Strava rate limit reached. History sync will resume next time.', { icon: '⏳', duration: 6000 });
             break;
           }
 

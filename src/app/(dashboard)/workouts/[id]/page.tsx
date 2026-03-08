@@ -433,7 +433,7 @@ export default function WorkoutDetailPage() {
                         if (!res.ok) {
                           const err = await res.json().catch(() => ({}));
                           if (res.status === 429 || err.rateLimited) {
-                            toast.info('Strava rate limit reached. Try again in a few minutes.', { icon: '⏳', duration: 5000 });
+                            toast.info(err.error || 'Strava rate limit reached. Try again later.', { icon: '⏳', duration: 6000 });
                             return;
                           }
                           throw new Error(err.error || 'Failed to load details');
