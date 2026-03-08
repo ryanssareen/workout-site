@@ -139,29 +139,15 @@ export function useStravaAutoSync(
         return;
       }
       if (recentResult.rateLimited) {
-        if (recentResult.isCooldown) {
-          // Cooldown — silently retry up to 3 times with increasing delay
-          const delays = [10_000, 15_000, 20_000];
-          let retryResult: SyncResult | null = null;
-          for (const delay of delays) {
-            console.log(`[auto-sync] Strava cooldown — retrying in ${delay / 1000}s...`);
-            await new Promise(r => setTimeout(r, delay));
-            retryResult = await fetchSync(userId, { mode: 'recent', period: recentPeriod }, tokens);
-            if (!retryResult.rateLimited) break;
-          }
-          if (!retryResult || retryResult.rateLimited) {
-            console.log('[auto-sync] Still rate limited after retries — skipping silently');
-            return;
-          }
-          if (retryResult.needsReconnect) return;
-          totalNew += retryResult.newWorkouts;
-          totalMerged += retryResult.merged;
-          if (retryResult.newWorkouts + retryResult.merged > 0) onNewWorkouts?.();
-        } else {
-          // Real rate limit — show toast so user knows
+        // Don't retry — retries waste API calls and extend cooldowns.
+        // Sync will try again on next page load (5-min session cooldown).
+        if (!recentResult.isCooldown) {
+          // Real rate limit (daily/15-min exceeded) — tell the user
           toast.info(recentResult.rateLimitMessage || 'Strava rate limit reached. Sync will resume later.', { icon: '⏳', duration: 6000 });
-          return;
+        } else {
+          console.log('[auto-sync] Strava cooldown — skipping silently, will try next page load');
         }
+        return;
       }
 
       totalNew += recentResult.newWorkouts;
@@ -194,33 +180,12 @@ export function useStravaAutoSync(
             return;
           }
           if (backfillResult.rateLimited) {
-            if (backfillResult.isCooldown) {
-              // Cooldown during backfill — retry with increasing delay
-              const delays = [10_000, 15_000, 20_000];
-              let retryResult: SyncResult | null = null;
-              for (const delay of delays) {
-                console.log(`[auto-sync] Backfill cooldown at page ${page} — retrying in ${delay / 1000}s...`);
-                await new Promise(r => setTimeout(r, delay));
-                retryResult = await fetchSync(userId, { mode: 'backfill', backfillPage: page }, tokens);
-                if (!retryResult.rateLimited) break;
-              }
-              if (!retryResult || retryResult.rateLimited) {
-                console.log(`[auto-sync] Still rate limited after backfill retries — will resume next time`);
-                break;
-              }
-              if (retryResult.needsReconnect) return;
-              totalNew += retryResult.newWorkouts;
-              totalMerged += retryResult.merged;
-              if (retryResult.newWorkouts + retryResult.merged > 0) onNewWorkouts?.();
-              if (retryResult.backfillComplete) {
-                console.log('[auto-sync] Stage 2: backfill complete after retry');
-                break;
-              }
-            } else {
-              console.log(`[auto-sync] Rate limited during backfill at page ${page} — will resume next time`);
+            // Don't retry — just stop backfill and resume next time
+            if (!backfillResult.isCooldown) {
               toast.info(backfillResult.rateLimitMessage || 'Strava rate limit reached. History sync will resume next time.', { icon: '⏳', duration: 6000 });
-              break;
             }
+            console.log(`[auto-sync] Rate limited during backfill at page ${page} — will resume next time`);
+            break;
           }
 
           totalNew += backfillResult.newWorkouts;
