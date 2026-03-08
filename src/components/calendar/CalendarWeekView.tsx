@@ -1,11 +1,12 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Workout } from '@/types';
 import { CalendarWorkoutCard } from './CalendarWorkoutCard';
 import {
   startOfWeek,
   endOfWeek,
+  addWeeks,
   eachDayOfInterval,
   isSameDay,
   isToday,
@@ -37,11 +38,32 @@ export function CalendarWeekView({
   maxPillsPerCell = 8,
   onNoteAdded,
 }: CalendarWeekViewProps) {
+  // Detect desktop (md breakpoint = 768px)
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)');
+    setIsDesktop(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
   const days = useMemo(() => {
     const ws = startOfWeek(currentMonth, { weekStartsOn: 1 });
-    const we = endOfWeek(currentMonth, { weekStartsOn: 1 });
+    const we = isDesktop
+      ? endOfWeek(addWeeks(ws, 1), { weekStartsOn: 1 }) // 2 weeks
+      : endOfWeek(ws, { weekStartsOn: 1 }); // 1 week
     return eachDayOfInterval({ start: ws, end: we });
-  }, [currentMonth]);
+  }, [currentMonth, isDesktop]);
+
+  // Split days into week rows
+  const weeks = useMemo(() => {
+    const result: Date[][] = [];
+    for (let i = 0; i < days.length; i += 7) {
+      result.push(days.slice(i, i + 7));
+    }
+    return result;
+  }, [days]);
 
   return (
     <div
@@ -60,70 +82,75 @@ export function CalendarWeekView({
         ))}
       </div>
 
-      {/* Single week row */}
-      <div className="flex-1 grid grid-cols-7 min-h-0">
-        {days.map((day) => {
-          const dateKey = format(day, 'yyyy-MM-dd');
-          const dayWorkouts = (workoutsByDate.get(dateKey) || []).filter((w) =>
-            activeTypes.has(w.type),
-          );
-          const today = isToday(day);
-          const selected = selectedDate ? isSameDay(day, selectedDate) : false;
-          const visibleWorkouts = dayWorkouts.slice(0, maxPillsPerCell);
-          const overflow = dayWorkouts.length - maxPillsPerCell;
+      {/* Week rows — 1 on mobile, 2 on desktop */}
+      <div className={cn('flex-1 grid min-h-0', weeks.length > 1 ? 'grid-rows-2' : 'grid-rows-1')}>
+        {weeks.map((week, weekIndex) => (
+          <div key={weekIndex} className={cn('grid grid-cols-7 min-h-0', weekIndex > 0 && 'border-t')}>
+            {week.map((day) => {
+              const dateKey = format(day, 'yyyy-MM-dd');
+              const dayWorkouts = (workoutsByDate.get(dateKey) || []).filter((w) =>
+                activeTypes.has(w.type),
+              );
+              const today = isToday(day);
+              const selected = selectedDate ? isSameDay(day, selectedDate) : false;
+              const maxPills = isDesktop && weeks.length > 1 ? Math.min(maxPillsPerCell, 4) : maxPillsPerCell;
+              const visibleWorkouts = dayWorkouts.slice(0, maxPills);
+              const overflow = dayWorkouts.length - maxPills;
 
-          return (
-            <div
-              key={dateKey}
-              onClick={() => onSelectDate(day)}
-              className={cn(
-                'group/cell border-r last:border-r-0 px-2 py-2 cursor-pointer transition-colors overflow-hidden flex flex-col',
-                selected && 'bg-primary/5 ring-1 ring-inset ring-primary/30',
-                today && !selected && 'bg-red-500/[0.03]',
-                'hover:bg-muted/30',
-              )}
-            >
-              {/* Date number + month + add button */}
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <span
+              return (
+                <div
+                  key={dateKey}
+                  onClick={() => onSelectDate(day)}
                   className={cn(
-                    'text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full shrink-0',
-                    today && 'bg-red-600 text-white',
-                    !today && 'text-foreground',
+                    'group/cell border-r last:border-r-0 px-2 py-2 cursor-pointer transition-colors overflow-hidden flex flex-col',
+                    selected && 'bg-primary/5 ring-1 ring-inset ring-primary/30',
+                    today && !selected && 'bg-red-500/[0.03]',
+                    'hover:bg-muted/30',
                   )}
                 >
-                  {format(day, 'd')}
-                </span>
-                <span className="text-[10px] font-medium text-muted-foreground uppercase truncate flex-1">
-                  {format(day, 'MMM')}
-                </span>
-                <CalendarAddDropdown date={day} onNoteAdded={onNoteAdded} className="opacity-0 group-hover/cell:opacity-100 transition-opacity" />
-              </div>
+                  {/* Date number + month + add button */}
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <span
+                      className={cn(
+                        'text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full shrink-0',
+                        today && 'bg-red-600 text-white',
+                        !today && 'text-foreground',
+                      )}
+                    >
+                      {format(day, 'd')}
+                    </span>
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase truncate flex-1">
+                      {format(day, 'MMM')}
+                    </span>
+                    <CalendarAddDropdown date={day} onNoteAdded={onNoteAdded} className="opacity-0 group-hover/cell:opacity-100 transition-opacity" />
+                  </div>
 
-              {/* Workout pills */}
-              <div className="flex-1 space-y-1 min-h-0 overflow-y-auto">
-                {visibleWorkouts.map((workout) => (
-                  <CalendarWorkoutCard
-                    key={workout.id}
-                    workout={workout}
-                    compact={false}
-                    onSelect={onSelectWorkout}
-                  />
-                ))}
-                {overflow > 0 && (
-                  <div className="text-[10px] text-muted-foreground font-medium pl-1">
-                    +{overflow} more
+                  {/* Workout pills */}
+                  <div className="flex-1 space-y-1 min-h-0 overflow-y-auto">
+                    {visibleWorkouts.map((workout) => (
+                      <CalendarWorkoutCard
+                        key={workout.id}
+                        workout={workout}
+                        compact={false}
+                        onSelect={onSelectWorkout}
+                      />
+                    ))}
+                    {overflow > 0 && (
+                      <div className="text-[10px] text-muted-foreground font-medium pl-1">
+                        +{overflow} more
+                      </div>
+                    )}
+                    {dayWorkouts.length === 0 && (
+                      <div className="text-[10px] text-muted-foreground/40 italic pl-1 pt-1">
+                        Rest day
+                      </div>
+                    )}
                   </div>
-                )}
-                {dayWorkouts.length === 0 && (
-                  <div className="text-[10px] text-muted-foreground/40 italic pl-1 pt-1">
-                    Rest day
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
+                </div>
+              );
+            })}
+          </div>
+        ))}
       </div>
     </div>
   );

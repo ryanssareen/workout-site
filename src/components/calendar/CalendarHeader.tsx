@@ -10,7 +10,7 @@ import {
   Plus,
   MoreHorizontal,
 } from 'lucide-react';
-import { format, startOfWeek, endOfWeek } from 'date-fns';
+import { format, startOfWeek, endOfWeek, addWeeks } from 'date-fns';
 import Link from 'next/link';
 import {
   DropdownMenu,
@@ -44,6 +44,11 @@ function getDateLabel(viewMode: CalendarViewMode, currentMonth: Date): string {
     case 'week': {
       const ws = startOfWeek(currentMonth, { weekStartsOn: 1 });
       const we = endOfWeek(currentMonth, { weekStartsOn: 1 });
+      const we2 = endOfWeek(addWeeks(ws, 1), { weekStartsOn: 1 });
+      // Desktop shows 2-week range, mobile shows 1-week
+      if (typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches) {
+        return `${format(ws, 'MMM d')} – ${format(we2, 'MMM d, yyyy')}`;
+      }
       return `${format(ws, 'MMM d')} – ${format(we, 'MMM d, yyyy')}`;
     }
     case 'month':
