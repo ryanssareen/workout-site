@@ -1,0 +1,22 @@
+name: ✨ Feature Request
+description: Suggest a new feature or improvement.
+labels: ["feature"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What do you want?
+      description: Describe the feature. Paste mockups/screenshots if you have them.
+      placeholder: "e.g. Add a dark mode toggle in settings"
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - Nice to have
+        - Should have
+        - Must have
+    validations:
+      required: false

@@ -1,0 +1,33 @@
+name: 🐛 Bug Report
+description: Something broken? Report it here.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the bug. Paste screenshots directly here.
+      placeholder: "e.g. Strava sync shows wrong date for imported workouts"
+    validations:
+      required: true
+  - type: input
+    id: page
+    attributes:
+      label: Which page?
+      placeholder: "e.g. /workouts, /wrap, /settings"
+    validations:
+      required: false
+  - type: dropdown
+    id: device
+    attributes:
+      label: Device
+      options:
+        - iPhone (PWA)
+        - iPhone (Safari)
+        - Android (PWA)
+        - Android (Chrome)
+        - Desktop (Chrome)
+        - Desktop (Safari)
+        - Other
+    validations:
+      required: false
