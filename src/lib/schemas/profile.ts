@@ -11,6 +11,7 @@ export const SPORT_OPTIONS = [
 export const TRAINING_FOR_OPTIONS = [
   'Hyrox',
   'Ironman',
+  'Half Ironman',
   'Marathon',
   'Half Marathon',
   'Triathlon',
