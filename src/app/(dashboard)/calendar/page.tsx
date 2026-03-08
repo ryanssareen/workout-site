@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { getUserWorkouts, completeWorkout, deleteWorkout, getCoachStudents } from '@/lib/firebase/firestore';
 import { Workout } from '@/types';
 import { CalendarViewMode } from '@/components/calendar/types';
-import { useStravaAutoSync } from '@/hooks/useStravaAutoSync';
+import { useStravaAutoSync, SYNC_COOLDOWN_UNTIL_KEY } from '@/hooks/useStravaAutoSync';
 import { Loader2 } from 'lucide-react';
 import {
   format,
@@ -61,6 +61,16 @@ export default function CalendarPage() {
 
   // ── Strava sync ──────────────────────────────────────────────────────
   const fromStrava = searchParams.get('strava') === 'connected';
+  const shouldBypassCooldown = useMemo(() => {
+    if (!fromStrava) return false;
+    try {
+      const cooldownUntilRaw = sessionStorage.getItem(SYNC_COOLDOWN_UNTIL_KEY);
+      const cooldownUntil = cooldownUntilRaw ? Number(cooldownUntilRaw) : 0;
+      return !(Number.isFinite(cooldownUntil) && cooldownUntil > Date.now());
+    } catch {
+      return true;
+    }
+  }, [fromStrava]);
 
   const refreshWorkouts = useCallback(async () => {
     if (!user) return;
@@ -72,7 +82,7 @@ export default function CalendarPage() {
   const { syncing, syncPhaseLabel } = useStravaAutoSync(
     fromStrava ? user : null,
     refreshWorkouts,
-    fromStrava,
+    shouldBypassCooldown,
   );
 
   // ── Data loading ─────────────────────────────────────────────────────

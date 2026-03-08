@@ -62,7 +62,14 @@ function handleSyncResponse(
       } else {
         const msg = toErrorString(data.error, 'Sync failed');
         set({ status: 'error', error: msg });
-        toast.error(msg);
+        if (response.status === 429 && typeof data.retryAfterSeconds === 'number') {
+          const mins = Math.max(1, Math.ceil(data.retryAfterSeconds / 60));
+          toast.error(msg, {
+            description: `Try again in about ${mins} minute${mins === 1 ? '' : 's'}.`,
+          });
+        } else {
+          toast.error(msg);
+        }
       }
       return;
     }

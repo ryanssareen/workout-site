@@ -26,7 +26,24 @@ function logStravaRateLimits(resp: Response, context: string) {
   return limits;
 }
 
-function getRateLimitMessage(resp: Response): { message: string; isDaily: boolean; isCooldown: boolean } {
+function secondsUntilUtcMidnight(): number {
+  const now = new Date();
+  const nextUtcMidnight = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate() + 1,
+    0, 0, 0, 0
+  );
+  return Math.max(1, Math.ceil((nextUtcMidnight - now.getTime()) / 1000));
+}
+
+function getRateLimitMessage(resp: Response): {
+  message: string;
+  isDaily: boolean;
+  isCooldown: boolean;
+  retryAfterSeconds: number;
+  rateLimitScope: 'daily' | 'window15' | 'cooldown';
+} {
   const limits = parseStravaRateLimits(resp);
   if (limits) {
     const isDailyExceeded = limits.dailyUsage >= limits.dailyLimit;
@@ -36,6 +53,8 @@ function getRateLimitMessage(resp: Response): { message: string; isDaily: boolea
         message: `Strava daily limit reached (${limits.dailyUsage}/${limits.dailyLimit}). Resets at midnight UTC.`,
         isDaily: true,
         isCooldown: false,
+        retryAfterSeconds: secondsUntilUtcMidnight(),
+        rateLimitScope: 'daily',
       };
     }
     if (is15MinExceeded) {
@@ -43,6 +62,8 @@ function getRateLimitMessage(resp: Response): { message: string; isDaily: boolea
         message: `Strava 15-min limit reached (${limits.fifteenMinUsage}/${limits.fifteenMinLimit}). Try again in ~15 minutes.`,
         isDaily: false,
         isCooldown: false,
+        retryAfterSeconds: 900,
+        rateLimitScope: 'window15',
       };
     }
     // 429 returned but counters under limit — window just rolled over, brief cooldown
@@ -50,9 +71,17 @@ function getRateLimitMessage(resp: Response): { message: string; isDaily: boolea
       message: `Strava rate limit cooldown (${limits.fifteenMinUsage}/${limits.fifteenMinLimit} 15-min, ${limits.dailyUsage}/${limits.dailyLimit} daily). Try again in a minute.`,
       isDaily: false,
       isCooldown: true,
+      retryAfterSeconds: 60,
+      rateLimitScope: 'cooldown',
     };
   }
-  return { message: 'Strava rate limit reached. Try again in a few minutes.', isDaily: false, isCooldown: false };
+  return {
+    message: 'Strava rate limit reached. Try again in a few minutes.',
+    isDaily: false,
+    isCooldown: false,
+    retryAfterSeconds: 60,
+    rateLimitScope: 'cooldown',
+  };
 }
 
 // Predefined workout tags (must match frontend)
@@ -631,10 +660,17 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
 
     // Handle Strava rate limit (429) — surface it clearly so the client can back off
     if (!result.activities && result.error && result.error.status === 429) {
-      const { message, isDaily, isCooldown } = getRateLimitMessage(result.error);
+      const { message, isDaily, isCooldown, retryAfterSeconds, rateLimitScope } = getRateLimitMessage(result.error);
       console.warn(`⏳ Strava rate limit hit (429): ${message}`);
       return NextResponse.json(
-        { error: message, rateLimited: true, isDailyLimit: isDaily, isCooldown },
+        {
+          error: message,
+          rateLimited: true,
+          isDailyLimit: isDaily,
+          isCooldown,
+          retryAfterSeconds,
+          rateLimitScope,
+        },
         { status: 429 }
       );
     }

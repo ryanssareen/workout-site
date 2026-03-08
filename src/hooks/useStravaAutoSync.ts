@@ -5,8 +5,26 @@ import { User } from '@/types';
 import { toast } from 'sonner';
 
 const SYNC_COOLDOWN_KEY = 'coachtrack_last_strava_sync';
+export const SYNC_COOLDOWN_UNTIL_KEY = 'coachtrack_strava_cooldown_until';
 const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes between auto-syncs
 const PAGE_DELAY_MS = 2_000; // 2s pause between backfill pages to respect Strava rate limits
+
+// Module-level in-flight guard — survives route remounts in same tab
+let activeAutoSyncPromise: Promise<void> | null = null;
+
+function setCooldownFor(ms: number): void {
+  const now = Date.now();
+  const nextUntil = now + Math.max(0, ms);
+  try {
+    const existingRaw = sessionStorage.getItem(SYNC_COOLDOWN_UNTIL_KEY);
+    const existingUntil = existingRaw ? Number(existingRaw) : 0;
+    const finalUntil = Number.isFinite(existingUntil) ? Math.max(existingUntil, nextUntil) : nextUntil;
+    sessionStorage.setItem(SYNC_COOLDOWN_KEY, String(now));
+    sessionStorage.setItem(SYNC_COOLDOWN_UNTIL_KEY, String(finalUntil));
+  } catch {
+    // Ignore storage failures (private mode / blocked storage)
+  }
+}
 
 /**
  * 2-stage Strava auto-sync on login / page load.
@@ -44,6 +62,8 @@ export function useStravaAutoSync(
     rateLimited?: boolean;
     rateLimitMessage?: string;
     isCooldown?: boolean;
+    retryAfterSeconds?: number;
+    rateLimitScope?: 'daily' | 'window15' | 'cooldown';
     backfillComplete?: boolean;
   };
 
@@ -84,7 +104,15 @@ export function useStravaAutoSync(
       }
       if (err.isQuota || err.rateLimited || res.status === 429) {
         console.log(`[auto-sync] Strava rate limit — ${err.error || 'quota exhausted'}${err.isCooldown ? ' (cooldown)' : ''}`);
-        return { newWorkouts: 0, merged: 0, rateLimited: true, rateLimitMessage: err.error, isCooldown: !!err.isCooldown };
+        return {
+          newWorkouts: 0,
+          merged: 0,
+          rateLimited: true,
+          rateLimitMessage: err.error,
+          isCooldown: !!err.isCooldown,
+          retryAfterSeconds: typeof err.retryAfterSeconds === 'number' ? err.retryAfterSeconds : undefined,
+          rateLimitScope: err.rateLimitScope,
+        };
       }
       throw new Error(err.error || 'sync failed');
     }
@@ -139,6 +167,8 @@ export function useStravaAutoSync(
         return;
       }
       if (recentResult.rateLimited) {
+        const retryMs = ((recentResult.retryAfterSeconds ?? 60) * 1000) + 5_000;
+        setCooldownFor(retryMs);
         // Don't retry — retries waste API calls and extend cooldowns.
         // Sync will try again on next page load (5-min session cooldown).
         if (!recentResult.isCooldown) {
@@ -180,6 +210,8 @@ export function useStravaAutoSync(
             return;
           }
           if (backfillResult.rateLimited) {
+            const retryMs = ((backfillResult.retryAfterSeconds ?? 60) * 1000) + 5_000;
+            setCooldownFor(retryMs);
             // Don't retry — just stop backfill and resume next time
             if (!backfillResult.isCooldown) {
               toast.info(backfillResult.rateLimitMessage || 'Strava rate limit reached. History sync will resume next time.', { icon: '⏳', duration: 6000 });
@@ -260,10 +292,20 @@ export function useStravaAutoSync(
   useEffect(() => {
     if (hasFired.current) return;
     if (!user?.stravaAccessToken) return;
+    if (activeAutoSyncPromise) {
+      console.log('[auto-sync] skipped — sync already in-flight');
+      return;
+    }
 
     // Cooldown check — don't spam Strava (skip for fresh onboarding)
     if (!skipCooldown) {
       try {
+        const cooldownUntilRaw = sessionStorage.getItem(SYNC_COOLDOWN_UNTIL_KEY);
+        const cooldownUntil = cooldownUntilRaw ? Number(cooldownUntilRaw) : 0;
+        if (Number.isFinite(cooldownUntil) && cooldownUntil > Date.now()) {
+          console.log('[auto-sync] skipped — extended cooldown active');
+          return;
+        }
         const last = sessionStorage.getItem(SYNC_COOLDOWN_KEY);
         if (last && Date.now() - Number(last) < COOLDOWN_MS) {
           console.log('[auto-sync] skipped — cooldown active');
@@ -279,7 +321,10 @@ export function useStravaAutoSync(
       stravaTokenExpiresAt: user.stravaTokenExpiresAt,
     } : undefined;
     console.log(`[auto-sync] firing 2-stage Strava sync${tokens ? ' (quota-safe POST mode)' : ' (GET mode)'}`);
-    runSync(user.username, user, tokens);
+    activeAutoSyncPromise = runSync(user.username, user, tokens)
+      .finally(() => {
+        activeAutoSyncPromise = null;
+      });
   }, [user, runSync, skipCooldown]);
 
   return { syncing, syncPhaseLabel, syncResult };
