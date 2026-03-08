@@ -46,6 +46,57 @@ function getWorkoutStatus(workout: Workout) {
   return { isStravaStandalone, isMatchedByStrava, isLate, isCompletedManual, isMissed, isFuture, past, today };
 }
 
+// ── Status-driven border + fill styles ──────────────────────────────────
+function getStatusStyles(status: ReturnType<typeof getWorkoutStatus>, noteMode: boolean) {
+  if (noteMode) {
+    return {
+      border: 'border-blue-400/50 dark:border-blue-500/50',
+      bg: 'bg-blue-100/80 dark:bg-blue-500/15',
+      opacity: '',
+    };
+  }
+  if (status.isCompletedManual || status.isMatchedByStrava) {
+    return {
+      border: 'border-green-400 dark:border-green-500/70',
+      bg: 'bg-green-100/80 dark:bg-green-500/15',
+      opacity: '',
+    };
+  }
+  if (status.isStravaStandalone) {
+    return {
+      border: 'border-orange-400 dark:border-orange-500/70',
+      bg: 'bg-orange-100/80 dark:bg-orange-500/15',
+      opacity: '',
+    };
+  }
+  if (status.isLate) {
+    return {
+      border: 'border-amber-400 dark:border-amber-500/70',
+      bg: 'bg-amber-100/80 dark:bg-amber-500/15',
+      opacity: '',
+    };
+  }
+  if (status.isMissed) {
+    return {
+      border: 'border-red-400 dark:border-red-500/70',
+      bg: 'bg-red-100/80 dark:bg-red-500/15',
+      opacity: 'opacity-60',
+    };
+  }
+  if (status.isFuture) {
+    return {
+      border: 'border-blue-400/60 dark:border-blue-500/50 border-dashed',
+      bg: 'bg-blue-50/60 dark:bg-blue-500/10',
+      opacity: '',
+    };
+  }
+  return {
+    border: 'border-border/40',
+    bg: 'bg-card/60',
+    opacity: '',
+  };
+}
+
 interface CalendarWorkoutCardProps {
   workout: Workout;
   /** true = mobile compact list card, false = month grid mini-pill */
@@ -69,21 +120,7 @@ function MiniPill({ workout, onSelect }: { workout: Workout; onSelect?: (id: str
   const workoutDate = workout.date.toDate();
   const timeStr = format(workoutDate, 'h:mma').toLowerCase();
   const status = getWorkoutStatus(workout);
-
-  // Background tint based on status (notes always get blue tint)
-  const bgTint = noteMode
-    ? 'bg-blue-500/5'
-    : status.isCompletedManual
-      ? 'bg-green-500/5'
-      : status.isMatchedByStrava
-        ? 'bg-green-500/5'
-        : status.isStravaStandalone
-          ? 'bg-orange-500/5'
-          : status.isLate
-            ? 'bg-amber-500/5'
-            : status.isMissed
-              ? 'bg-red-500/5'
-              : '';
+  const statusStyles = getStatusStyles(status, noteMode);
 
   // Status label for second line
   const statusLabel = status.isCompletedManual
@@ -117,12 +154,13 @@ function MiniPill({ workout, onSelect }: { workout: Workout; onSelect?: (id: str
         onSelect?.(workout.id);
       }}
       className={cn(
-        'w-full text-left rounded-lg border-l-[3px] px-2 py-1.5 transition-all duration-200',
-        'hover:bg-muted/50 hover:shadow-sm cursor-pointer',
-        'backdrop-blur-sm',
-        bgTint || 'bg-card/60',
+        'w-full text-left rounded-lg px-2 py-1.5 transition-all duration-200',
+        'hover:shadow-sm cursor-pointer',
+        'border border-l-4',
+        statusStyles.border,
         cfg.border,
-        status.isMissed && 'opacity-50',
+        statusStyles.bg,
+        statusStyles.opacity,
       )}
     >
       <div className="flex items-center gap-1.5 min-w-0">
@@ -194,21 +232,23 @@ function CompactCard({
   const workoutDate = workout.date.toDate();
   const timeStr = format(workoutDate, 'h:mm a');
   const status = getWorkoutStatus(workout);
+  const statusStyles = getStatusStyles(status, noteMode);
 
   return (
     <Link
       href={`/workouts/${workout.id}`}
       className={cn(
-        'block rounded-2xl border border-border/40 transition-all duration-200',
-        'bg-card/70 backdrop-blur-sm',
+        'block rounded-2xl border transition-all duration-200',
         'shadow-sm hover:shadow-md hover:shadow-black/5',
         'hover:scale-[1.01] active:scale-[0.99]',
-        status.isMissed && 'opacity-60',
+        statusStyles.border,
+        statusStyles.bg,
+        statusStyles.opacity,
       )}
     >
       <div className="flex overflow-hidden rounded-2xl">
         {/* Left color accent */}
-        <div className={cn('w-1 shrink-0', cfg.border.replace('border-l-', 'bg-'))} />
+        <div className={cn('w-1.5 shrink-0', cfg.border.replace('border-l-', 'bg-'))} />
         <div className="flex items-start gap-3 p-3.5 flex-1 min-w-0">
         {/* Emoji / Note icon */}
         {noteMode ? (
@@ -314,16 +354,7 @@ function MicroPillCard({ workout, onSelect }: { workout: Workout; onSelect?: (id
   const noteMode = isNote(workout);
   const cfg = noteMode ? NOTE_CONFIG : (TYPE_CONFIG[workout.type] || TYPE_CONFIG.other);
   const status = getWorkoutStatus(workout);
-
-  const bgTint = noteMode
-    ? 'bg-blue-500/5'
-    : status.isCompletedManual || status.isMatchedByStrava
-      ? 'bg-green-500/5'
-      : status.isStravaStandalone
-        ? 'bg-orange-500/5'
-        : status.isMissed
-          ? 'bg-red-500/5'
-          : '';
+  const statusStyles = getStatusStyles(status, noteMode);
 
   return (
     <button
@@ -332,12 +363,13 @@ function MicroPillCard({ workout, onSelect }: { workout: Workout; onSelect?: (id
         onSelect?.(workout.id);
       }}
       className={cn(
-        'w-full text-left rounded-md border-l-2 px-1.5 py-0.5 transition-all duration-200',
+        'w-full text-left rounded-md px-1.5 py-0.5 transition-all duration-200',
         'hover:bg-muted/50 cursor-pointer',
-        'backdrop-blur-sm',
-        bgTint || 'bg-card/60',
+        'border border-l-[3px]',
+        statusStyles.border,
         cfg.border,
-        status.isMissed && 'opacity-50',
+        statusStyles.bg,
+        statusStyles.opacity,
       )}
     >
       <div className="flex items-center gap-1 min-w-0">
