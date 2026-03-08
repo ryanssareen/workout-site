@@ -84,6 +84,29 @@ export interface RouteData {
   aiComment?: string; // Fun AI-generated location comment
 }
 
+export interface StraveLap {
+  index: number;
+  name: string;              // e.g. "Lap 1"
+  distance: number;          // meters
+  elapsedTime: number;       // seconds
+  movingTime: number;        // seconds
+  avgSpeed: number;          // m/s
+  maxSpeed: number;          // m/s
+  avgCadence?: number;
+  avgWatts?: number;
+  totalElevationGain?: number;
+}
+
+export interface StravaSplit {
+  split: number;             // split number (1-based)
+  distance: number;          // meters
+  elapsedTime: number;       // seconds
+  movingTime: number;        // seconds
+  avgSpeed: number;          // m/s
+  elevationDifference?: number;
+  paceZone?: number;
+}
+
 export type WorkoutRating = 'too_easy' | 'just_right' | 'too_hard';
 
 export interface Workout {
@@ -125,6 +148,10 @@ export interface Workout {
   actualStats?: StravaActivityStats;
   routeData?: RouteData; // Map route from Strava
   photos?: string[]; // Photo URLs (from Strava or uploaded)
+  // Strava detailed data (laps & splits) — fetched via GET /activities/{id}
+  stravaDetailsFetched?: boolean; // true if detailed activity data has been fetched
+  laps?: StraveLap[];
+  splits?: StravaSplit[];
   // Manual completion fields
   completionNotes?: string;
   completedBy?: 'manual' | 'strava';

@@ -8,7 +8,7 @@ import { Workout, AchievementResult } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Edit, ArrowLeft, Calendar, Clock, CheckCircle2, Circle, Activity, BookmarkPlus, BookmarkX } from 'lucide-react';
+import { Loader2, Edit, ArrowLeft, Calendar, Clock, CheckCircle2, Circle, Activity, BookmarkPlus, BookmarkX, BarChart3, ChevronDown, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -69,6 +69,8 @@ export default function WorkoutDetailPage() {
   const [frequency, setFrequency] = useState('');
   const [achievements, setAchievements] = useState<AchievementResult | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [showSplits, setShowSplits] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -397,6 +399,184 @@ export default function WorkoutDetailPage() {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Splits / Laps */}
+          {workout.source === 'strava' && (
+            <div className="bg-muted/50 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-orange-500" />
+                  {workout.type === 'run' ? 'Splits' : 'Laps'}
+                </h3>
+                {workout.stravaDetailsFetched && (workout.splits?.length || workout.laps?.length) ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowSplits(!showSplits)}
+                    className="text-sm"
+                  >
+                    {showSplits ? <ChevronUp className="h-4 w-4 mr-1" /> : <ChevronDown className="h-4 w-4 mr-1" />}
+                    {showSplits ? 'Hide' : 'Show'}
+                  </Button>
+                ) : !workout.stravaDetailsFetched ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={loadingDetails}
+                    onClick={async () => {
+                      setLoadingDetails(true);
+                      try {
+                        const ownerUsername = searchParams.get('owner') || user!.username;
+                        const res = await fetch(`/api/strava/activity-details?userId=${ownerUsername}&workoutId=${workout.id}`);
+                        if (!res.ok) {
+                          const err = await res.json().catch(() => ({}));
+                          throw new Error(err.error || 'Failed to load details');
+                        }
+                        const data = await res.json();
+                        setWorkout(prev => prev ? {
+                          ...prev,
+                          stravaDetailsFetched: true,
+                          laps: data.laps,
+                          splits: data.splits,
+                        } : null);
+                        setShowSplits(true);
+                        toast.success('Loaded detailed activity data');
+                      } catch (err: any) {
+                        toast.error(err.message || 'Failed to load details');
+                      } finally {
+                        setLoadingDetails(false);
+                      }
+                    }}
+                  >
+                    {loadingDetails ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <BarChart3 className="h-4 w-4 mr-1" />}
+                    Load Details
+                  </Button>
+                ) : (
+                  <span className="text-xs text-muted-foreground">No split data</span>
+                )}
+              </div>
+
+              {showSplits && workout.splits && workout.splits.length > 0 && workout.type === 'run' && (
+                <div className="mt-3 overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-muted-foreground">
+                        <th className="text-left py-2 pr-3">Split</th>
+                        <th className="text-right py-2 px-3">Distance</th>
+                        <th className="text-right py-2 px-3">Pace</th>
+                        <th className="text-right py-2 px-3">Elev</th>
+                        <th className="text-right py-2 pl-3">Zone</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {workout.splits.map((s) => {
+                        const paceSecPerKm = s.avgSpeed > 0 ? 1000 / s.avgSpeed : 0;
+                        const paceMin = Math.floor(paceSecPerKm / 60);
+                        const paceSec = Math.round(paceSecPerKm % 60);
+                        return (
+                          <tr key={s.split} className="border-b border-border/30">
+                            <td className="py-2 pr-3 font-medium">{s.split}</td>
+                            <td className="text-right py-2 px-3">{(s.distance / 1000).toFixed(2)} km</td>
+                            <td className="text-right py-2 px-3 font-mono">
+                              {paceSecPerKm > 0 ? `${paceMin}:${String(paceSec).padStart(2, '0')}/km` : '-'}
+                            </td>
+                            <td className="text-right py-2 px-3">
+                              {s.elevationDifference != null ? `${s.elevationDifference > 0 ? '+' : ''}${Math.round(s.elevationDifference)}m` : '-'}
+                            </td>
+                            <td className="text-right py-2 pl-3">
+                              {s.paceZone != null ? (
+                                <span className={cn(
+                                  'inline-block w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center',
+                                  s.paceZone <= 2 ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' :
+                                  s.paceZone <= 3 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400' :
+                                  'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
+                                )}>{s.paceZone}</span>
+                              ) : '-'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {showSplits && workout.laps && workout.laps.length > 0 && workout.type !== 'run' && (
+                <div className="mt-3 overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-muted-foreground">
+                        <th className="text-left py-2 pr-3">Lap</th>
+                        <th className="text-right py-2 px-3">Distance</th>
+                        <th className="text-right py-2 px-3">Time</th>
+                        <th className="text-right py-2 px-3">Avg Speed</th>
+                        {workout.laps.some(l => l.avgWatts) && <th className="text-right py-2 px-3">Power</th>}
+                        {workout.laps.some(l => l.totalElevationGain) && <th className="text-right py-2 pl-3">Elev</th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {workout.laps.map((lap) => {
+                        const timeMin = Math.floor(lap.movingTime / 60);
+                        const timeSec = Math.round(lap.movingTime % 60);
+                        return (
+                          <tr key={lap.index} className="border-b border-border/30">
+                            <td className="py-2 pr-3 font-medium">{lap.name}</td>
+                            <td className="text-right py-2 px-3">{(lap.distance / 1000).toFixed(2)} km</td>
+                            <td className="text-right py-2 px-3 font-mono">{timeMin}:{String(timeSec).padStart(2, '0')}</td>
+                            <td className="text-right py-2 px-3">{(lap.avgSpeed * 3.6).toFixed(1)} km/h</td>
+                            {workout.laps!.some(l => l.avgWatts) && (
+                              <td className="text-right py-2 px-3">{lap.avgWatts ? `${Math.round(lap.avgWatts)}W` : '-'}</td>
+                            )}
+                            {workout.laps!.some(l => l.totalElevationGain) && (
+                              <td className="text-right py-2 pl-3">{lap.totalElevationGain ? `${Math.round(lap.totalElevationGain)}m` : '-'}</td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* For runs, also show laps if they exist and are different from splits */}
+              {showSplits && workout.laps && workout.laps.length > 1 && workout.type === 'run' && (
+                <div className="mt-4">
+                  <h4 className="text-sm font-medium text-muted-foreground mb-2">Laps</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b text-muted-foreground">
+                          <th className="text-left py-2 pr-3">Lap</th>
+                          <th className="text-right py-2 px-3">Distance</th>
+                          <th className="text-right py-2 px-3">Pace</th>
+                          <th className="text-right py-2 pl-3">Time</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {workout.laps.map((lap) => {
+                          const paceSecPerKm = lap.avgSpeed > 0 ? 1000 / lap.avgSpeed : 0;
+                          const paceMin = Math.floor(paceSecPerKm / 60);
+                          const paceSec = Math.round(paceSecPerKm % 60);
+                          const timeMin = Math.floor(lap.movingTime / 60);
+                          const timeSec = Math.round(lap.movingTime % 60);
+                          return (
+                            <tr key={lap.index} className="border-b border-border/30">
+                              <td className="py-2 pr-3 font-medium">{lap.name}</td>
+                              <td className="text-right py-2 px-3">{(lap.distance / 1000).toFixed(2)} km</td>
+                              <td className="text-right py-2 px-3 font-mono">
+                                {paceSecPerKm > 0 ? `${paceMin}:${String(paceSec).padStart(2, '0')}/km` : '-'}
+                              </td>
+                              <td className="text-right py-2 pl-3 font-mono">{timeMin}:{String(timeSec).padStart(2, '0')}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
