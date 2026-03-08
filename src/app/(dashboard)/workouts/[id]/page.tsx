@@ -430,28 +430,29 @@ export default function WorkoutDetailPage() {
                       try {
                         const ownerUsername = searchParams.get('owner') || user!.username;
                         const detailUrl = `/api/strava/activity-details?userId=${ownerUsername}&workoutId=${workout.id}`;
+                        const retryDelays = [10_000, 15_000, 20_000]; // exponential-ish backoff
                         let res = await fetch(detailUrl);
-                        if (!res.ok) {
+
+                        for (let attempt = 0; !res.ok && attempt < retryDelays.length; attempt++) {
                           const err = await res.json().catch(() => ({}));
-                          if (res.status === 429 || err.rateLimited) {
-                            if (err.isCooldown) {
-                              // Brief cooldown — wait 5s and retry once
-                              toast.info('Strava briefly busy, retrying...', { icon: '⏳', duration: 3000 });
-                              await new Promise(r => setTimeout(r, 5000));
-                              res = await fetch(detailUrl);
-                              if (!res.ok) {
-                                const retryErr = await res.json().catch(() => ({}));
-                                toast.info(retryErr.error || 'Strava rate limit reached. Try again in a minute.', { icon: '⏳', duration: 6000 });
-                                return;
-                              }
-                            } else {
-                              toast.info(err.error || 'Strava rate limit reached. Try again later.', { icon: '⏳', duration: 6000 });
-                              return;
-                            }
+                          if ((res.status === 429 || err.rateLimited) && err.isCooldown) {
+                            toast.info(`Strava briefly busy, retrying in ${retryDelays[attempt] / 1000}s... (${attempt + 1}/${retryDelays.length})`, { icon: '⏳', duration: retryDelays[attempt] });
+                            await new Promise(r => setTimeout(r, retryDelays[attempt]));
+                            res = await fetch(detailUrl);
+                          } else if (res.status === 429 || err.rateLimited) {
+                            toast.info(err.error || 'Strava rate limit reached. Try again later.', { icon: '⏳', duration: 6000 });
+                            return;
                           } else {
                             throw new Error(err.error || 'Failed to load details');
                           }
                         }
+
+                        if (!res.ok) {
+                          const finalErr = await res.json().catch(() => ({}));
+                          toast.info(finalErr.error || 'Strava rate limit persists. Try again in a minute.', { icon: '⏳', duration: 6000 });
+                          return;
+                        }
+
                         const data = await res.json();
                         setWorkout(prev => prev ? {
                           ...prev,

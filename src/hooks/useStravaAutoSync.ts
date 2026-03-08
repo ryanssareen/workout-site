@@ -140,12 +140,17 @@ export function useStravaAutoSync(
       }
       if (recentResult.rateLimited) {
         if (recentResult.isCooldown) {
-          // Brief cooldown — silently retry once after 5s
-          console.log('[auto-sync] Strava cooldown — retrying in 5s...');
-          await new Promise(r => setTimeout(r, 5000));
-          const retryResult = await fetchSync(userId, { mode: 'recent', period: recentPeriod }, tokens);
-          if (retryResult.rateLimited) {
-            console.log('[auto-sync] Still rate limited after retry — skipping silently');
+          // Cooldown — silently retry up to 3 times with increasing delay
+          const delays = [10_000, 15_000, 20_000];
+          let retryResult: SyncResult | null = null;
+          for (const delay of delays) {
+            console.log(`[auto-sync] Strava cooldown — retrying in ${delay / 1000}s...`);
+            await new Promise(r => setTimeout(r, delay));
+            retryResult = await fetchSync(userId, { mode: 'recent', period: recentPeriod }, tokens);
+            if (!retryResult.rateLimited) break;
+          }
+          if (!retryResult || retryResult.rateLimited) {
+            console.log('[auto-sync] Still rate limited after retries — skipping silently');
             return;
           }
           if (retryResult.needsReconnect) return;
@@ -190,12 +195,17 @@ export function useStravaAutoSync(
           }
           if (backfillResult.rateLimited) {
             if (backfillResult.isCooldown) {
-              // Brief cooldown during backfill — wait 5s and retry this page
-              console.log(`[auto-sync] Backfill cooldown at page ${page} — retrying in 5s...`);
-              await new Promise(r => setTimeout(r, 5000));
-              const retryResult = await fetchSync(userId, { mode: 'backfill', backfillPage: page }, tokens);
-              if (retryResult.rateLimited) {
-                console.log(`[auto-sync] Still rate limited after backfill retry — will resume next time`);
+              // Cooldown during backfill — retry with increasing delay
+              const delays = [10_000, 15_000, 20_000];
+              let retryResult: SyncResult | null = null;
+              for (const delay of delays) {
+                console.log(`[auto-sync] Backfill cooldown at page ${page} — retrying in ${delay / 1000}s...`);
+                await new Promise(r => setTimeout(r, delay));
+                retryResult = await fetchSync(userId, { mode: 'backfill', backfillPage: page }, tokens);
+                if (!retryResult.rateLimited) break;
+              }
+              if (!retryResult || retryResult.rateLimited) {
+                console.log(`[auto-sync] Still rate limited after backfill retries — will resume next time`);
                 break;
               }
               if (retryResult.needsReconnect) return;
