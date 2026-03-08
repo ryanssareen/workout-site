@@ -343,7 +343,7 @@ export default function OnboardingPage() {
                   </div>
                   <div>
                     <p className="font-semibold text-green-500">{importResult.created} workouts imported!</p>
-                    <p className="text-xs text-muted-foreground">{importResult.summary}</p>
+                    <p className="text-xs text-muted-foreground">{typeof importResult.summary === 'string' ? importResult.summary : JSON.stringify(importResult.summary)}</p>
                   </div>
                 </div>
                 <button onClick={clearImport} className="text-xs text-muted-foreground hover:text-foreground transition-colors">

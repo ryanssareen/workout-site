@@ -462,7 +462,13 @@ ${extractionRules}`;
     }
 
     const workouts = (parsed.workouts || []).slice(0, MAX_WORKOUTS);
-    const summary = parsed.summary || `Parsed ${workouts.length} workouts`;
+    // Ensure summary is always a string (AI sometimes returns an object)
+    const rawSummary = parsed.summary;
+    const summary = typeof rawSummary === 'string'
+      ? rawSummary
+      : rawSummary && typeof rawSummary === 'object'
+        ? Object.entries(rawSummary).map(([k, v]) => `${k}: ${v}`).join(', ')
+        : `Parsed ${workouts.length} workouts`;
 
     if (workouts.length === 0) {
       return NextResponse.json(
