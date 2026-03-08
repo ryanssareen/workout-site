@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
         cached: true,
         laps: workout.laps || [],
         splits: workout.splits || [],
+        photos: workout.photos || [],
       });
     }
 
@@ -156,10 +157,33 @@ export async function GET(request: NextRequest) {
       ...(s.pace_zone != null ? { paceZone: s.pace_zone } : {}),
     }));
 
+    // Fetch photos if activity has them (detail response includes photo count)
+    let photos: string[] = [];
+    if (detail.total_photo_count > 0 || workout.hasStravaPhotos) {
+      try {
+        const photosResp = await fetch(
+          `https://www.strava.com/api/v3/activities/${workout.stravaActivityId}/photos?size=600&photo_sources=true`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        if (photosResp.ok) {
+          const photosData = await photosResp.json();
+          if (Array.isArray(photosData)) {
+            for (const photo of photosData) {
+              const url = photo.urls?.['600'] || photo.urls?.['100'] || photo.urls?.['0'];
+              if (url) photos.push(url);
+            }
+          }
+        }
+      } catch {
+        // Non-fatal — photos are optional
+      }
+    }
+
     // Store in Firestore for future use (cache)
     const updateData: any = { stravaDetailsFetched: true };
     if (laps.length > 0) updateData.laps = laps;
     if (splits.length > 0) updateData.splits = splits;
+    if (photos.length > 0) updateData.photos = photos;
 
     await workoutRef.update(updateData);
 
@@ -167,6 +191,7 @@ export async function GET(request: NextRequest) {
       cached: false,
       laps,
       splits,
+      photos,
     });
   } catch (error: any) {
     console.error('Activity details error:', error);

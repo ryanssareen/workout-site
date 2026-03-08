@@ -444,6 +444,7 @@ export default function WorkoutDetailPage() {
                           stravaDetailsFetched: true,
                           laps: data.laps,
                           splits: data.splits,
+                          ...(data.photos?.length > 0 ? { photos: data.photos } : {}),
                         } : null);
                         setShowSplits(true);
                         toast.success('Loaded detailed activity data');

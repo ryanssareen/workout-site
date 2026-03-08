@@ -900,10 +900,9 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
                 ...(activity.end_latlng ? { endLatLng: activity.end_latlng } : {}),
               };
             }
-            // Fetch photos
+            // Photos loaded on-demand via activity-details endpoint (saves API calls)
             if (activity.total_photo_count > 0) {
-              const photoUrls = await fetchStravaPhotos(String(activity.id), accessToken);
-              if (photoUrls.length > 0) mergeUpdate.photos = photoUrls;
+              mergeUpdate.hasStravaPhotos = true;
             }
             await adminDb.collection('users').doc(userId).collection('workouts').doc(importedMatch.id).update(mergeUpdate);
             mergedWorkoutsCount++;
@@ -950,12 +949,9 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
             newWorkoutData.routeData = routeData;
           }
 
-          // Fetch photos if the activity has any
+          // Mark if activity has photos (loaded on-demand to save API calls)
           if (activity.total_photo_count > 0) {
-            const photoUrls = await fetchStravaPhotos(String(activity.id), accessToken);
-            if (photoUrls.length > 0) {
-              newWorkoutData.photos = photoUrls;
-            }
+            newWorkoutData.hasStravaPhotos = true;
           }
 
           // Add type-specific sub-objects so workouts can be properly edited
