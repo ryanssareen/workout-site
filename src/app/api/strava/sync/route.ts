@@ -207,56 +207,8 @@ async function fetchStravaPhotos(activityId: string, accessToken: string): Promi
   }
 }
 
-// Fetch detailed activity data (laps & splits) — requires one extra API call per activity
-async function fetchActivityDetails(activityId: string, accessToken: string): Promise<{ laps: any[]; splits: any[] } | null> {
-  try {
-    const resp = await fetch(
-      `https://www.strava.com/api/v3/activities/${activityId}`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
-    );
-    if (!resp.ok) {
-      console.log(`⚠️ Failed to fetch details for activity ${activityId}: ${resp.status}`);
-      return null;
-    }
-    const detail = await resp.json();
-    return {
-      laps: detail.laps || [],
-      splits: detail.splits_metric || [],
-    };
-  } catch (error) {
-    console.error(`❌ Error fetching details for activity ${activityId}:`, error);
-    return null;
-  }
-}
-
-// Map raw Strava lap data to our StraveLap format
-function mapLaps(rawLaps: any[]) {
-  return rawLaps.map((lap: any, idx: number) => ({
-    index: idx + 1,
-    name: lap.name || `Lap ${idx + 1}`,
-    distance: lap.distance,
-    elapsedTime: lap.elapsed_time,
-    movingTime: lap.moving_time,
-    avgSpeed: lap.average_speed,
-    maxSpeed: lap.max_speed,
-    ...(lap.average_cadence != null ? { avgCadence: lap.average_cadence } : {}),
-    ...(lap.average_watts != null ? { avgWatts: lap.average_watts } : {}),
-    ...(lap.total_elevation_gain != null ? { totalElevationGain: lap.total_elevation_gain } : {}),
-  }));
-}
-
-// Map raw Strava split data to our StravaSplit format
-function mapSplits(rawSplits: any[]) {
-  return rawSplits.map((s: any) => ({
-    split: s.split,
-    distance: s.distance,
-    elapsedTime: s.elapsed_time,
-    movingTime: s.moving_time,
-    avgSpeed: s.average_speed,
-    ...(s.elevation_difference != null ? { elevationDifference: s.elevation_difference } : {}),
-    ...(s.pace_zone != null ? { paceZone: s.pace_zone } : {}),
-  }));
-}
+// Laps/splits are now fetched on-demand via /api/strava/activity-details
+// to avoid burning through Strava's rate limit during sync (1 extra call per activity)
 
 // Refresh Strava access token if expired
 async function refreshStravaToken(userId: string, refreshToken: string): Promise<string | null> {
@@ -864,15 +816,6 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
           actualStats,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         };
-        // Fetch laps/splits during recent sync
-        if (syncMode === 'recent') {
-          const details = await fetchActivityDetails(stravaId, accessToken);
-          if (details) {
-            mergeData.stravaDetailsFetched = true;
-            if (details.laps.length > 0) mergeData.laps = mapLaps(details.laps);
-            if (details.splits.length > 0) mergeData.splits = mapSplits(details.splits);
-          }
-        }
         await adminDb.collection('users').doc(userId).collection('workouts').doc(decision.workoutId).update(mergeData);
         mergedWorkoutsCount++;
       } else if (!quotaSafe) {
@@ -890,15 +833,6 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
             actualStats,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           };
-          // Fetch laps/splits during recent sync
-          if (syncMode === 'recent') {
-            const details = await fetchActivityDetails(stravaId, accessToken);
-            if (details) {
-              autoMergeData.stravaDetailsFetched = true;
-              if (details.laps.length > 0) autoMergeData.laps = mapLaps(details.laps);
-              if (details.splits.length > 0) autoMergeData.splits = mapSplits(details.splits);
-            }
-          }
           await adminDb.collection('users').doc(userId).collection('workouts').doc(matchingWorkout.id).update(autoMergeData);
           mergedWorkoutsCount++;
         } else {
@@ -970,15 +904,6 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
             if (activity.total_photo_count > 0) {
               const photoUrls = await fetchStravaPhotos(String(activity.id), accessToken);
               if (photoUrls.length > 0) mergeUpdate.photos = photoUrls;
-            }
-            // Fetch laps/splits during recent sync
-            if (syncMode === 'recent') {
-              const details = await fetchActivityDetails(stravaId, accessToken);
-              if (details) {
-                mergeUpdate.stravaDetailsFetched = true;
-                if (details.laps.length > 0) mergeUpdate.laps = mapLaps(details.laps);
-                if (details.splits.length > 0) mergeUpdate.splits = mapSplits(details.splits);
-              }
             }
             await adminDb.collection('users').doc(userId).collection('workouts').doc(importedMatch.id).update(mergeUpdate);
             mergedWorkoutsCount++;
@@ -1061,16 +986,6 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
               distanceUnit: 'meters',
               time: timeMin,
             };
-          }
-
-          // Fetch detailed activity data (laps/splits) during recent sync only
-          if (syncMode === 'recent') {
-            const details = await fetchActivityDetails(stravaId, accessToken);
-            if (details) {
-              newWorkoutData.stravaDetailsFetched = true;
-              if (details.laps.length > 0) newWorkoutData.laps = mapLaps(details.laps);
-              if (details.splits.length > 0) newWorkoutData.splits = mapSplits(details.splits);
-            }
           }
 
           await adminDb.collection('users').doc(userId).collection('workouts').doc(`strava_${stravaId}`).set(newWorkoutData);
