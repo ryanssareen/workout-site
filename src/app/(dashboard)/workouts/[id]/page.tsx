@@ -429,14 +429,28 @@ export default function WorkoutDetailPage() {
                       setLoadingDetails(true);
                       try {
                         const ownerUsername = searchParams.get('owner') || user!.username;
-                        const res = await fetch(`/api/strava/activity-details?userId=${ownerUsername}&workoutId=${workout.id}`);
+                        const detailUrl = `/api/strava/activity-details?userId=${ownerUsername}&workoutId=${workout.id}`;
+                        let res = await fetch(detailUrl);
                         if (!res.ok) {
                           const err = await res.json().catch(() => ({}));
                           if (res.status === 429 || err.rateLimited) {
-                            toast.info(err.error || 'Strava rate limit reached. Try again later.', { icon: '⏳', duration: 6000 });
-                            return;
+                            if (err.isCooldown) {
+                              // Brief cooldown — wait 5s and retry once
+                              toast.info('Strava briefly busy, retrying...', { icon: '⏳', duration: 3000 });
+                              await new Promise(r => setTimeout(r, 5000));
+                              res = await fetch(detailUrl);
+                              if (!res.ok) {
+                                const retryErr = await res.json().catch(() => ({}));
+                                toast.info(retryErr.error || 'Strava rate limit reached. Try again in a minute.', { icon: '⏳', duration: 6000 });
+                                return;
+                              }
+                            } else {
+                              toast.info(err.error || 'Strava rate limit reached. Try again later.', { icon: '⏳', duration: 6000 });
+                              return;
+                            }
+                          } else {
+                            throw new Error(err.error || 'Failed to load details');
                           }
-                          throw new Error(err.error || 'Failed to load details');
                         }
                         const data = await res.json();
                         setWorkout(prev => prev ? {
