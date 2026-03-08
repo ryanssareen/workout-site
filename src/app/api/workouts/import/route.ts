@@ -184,24 +184,58 @@ IMPORTANT RULES:
     // Use sample prompt for large files, full for small ones
     const useFullData = dataRows.length <= 100;
 
-    const completion = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an expert fitness data analyst. Parse workout CSV/spreadsheet data into structured JSON. Always return valid JSON. Be precise with date parsing and unit conversions.',
-        },
-        {
-          role: 'user',
-          content: useFullData ? fullPrompt : prompt,
-        },
-      ],
-      temperature: 0,
-      max_tokens: 8000,
-      response_format: { type: 'json_object' },
-    });
+    const messages = [
+      {
+        role: 'system' as const,
+        content: 'You are an expert fitness data analyst. Parse workout CSV/spreadsheet data into structured JSON. Always return valid JSON. Be precise with date parsing and unit conversions.',
+      },
+      {
+        role: 'user' as const,
+        content: useFullData ? fullPrompt : prompt,
+      },
+    ];
 
-    const response = completion.choices[0]?.message?.content || '{}';
+    // Try primary model, fall back to smaller model on rate limit
+    const MODELS = [
+      'llama-3.3-70b-versatile',
+      'llama-3.1-8b-instant',
+    ];
+
+    let response = '{}';
+    let modelUsed = '';
+
+    for (const model of MODELS) {
+      try {
+        console.log(`🤖 Trying model: ${model}`);
+        const completion = await groq.chat.completions.create({
+          model,
+          messages,
+          temperature: 0,
+          max_tokens: 8000,
+          response_format: { type: 'json_object' },
+        });
+        response = completion.choices[0]?.message?.content || '{}';
+        modelUsed = model;
+        break;
+      } catch (modelError: any) {
+        const status = modelError?.status || modelError?.statusCode;
+        if (status === 429) {
+          console.warn(`⚠️ Rate limited on ${model}, trying next model...`);
+          continue;
+        }
+        // Non-rate-limit error — throw immediately
+        throw modelError;
+      }
+    }
+
+    if (!modelUsed) {
+      return NextResponse.json(
+        { error: 'AI service is temporarily rate limited. Please try again in a few minutes.' },
+        { status: 429 }
+      );
+    }
+
+    console.log(`✅ Got response from ${modelUsed}`);
     let parsed: { workouts?: ParsedWorkout[]; summary?: string };
 
     try {
