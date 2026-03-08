@@ -60,7 +60,7 @@ export interface StrengthExercise {
 }
 
 export interface StrengthData {
-  exercises: StrengthExercise[];
+  exercises?: StrengthExercise[];
   totalTime?: number; // minutes
   rpe?: number; // 1-10 scale (Rate of Perceived Exertion)
 }
@@ -136,8 +136,11 @@ export function getWorkoutSummary(workout: Workout): string {
     return `${dist}${workout.run.time} min${pace}`;
   }
   if (workout.strength) {
-    const exerciseCount = workout.strength.exercises.length;
-    return `${exerciseCount} exercises${workout.strength.totalTime ? ` - ${workout.strength.totalTime} min` : ''}`;
+    const exerciseCount = workout.strength.exercises?.length ?? 0;
+    const parts: string[] = [];
+    if (exerciseCount > 0) parts.push(`${exerciseCount} exercises`);
+    if (workout.strength.totalTime) parts.push(`${workout.strength.totalTime} min`);
+    return parts.length > 0 ? parts.join(' - ') : 'Strength session';
   }
   if (workout.other) {
     return workout.other.description;

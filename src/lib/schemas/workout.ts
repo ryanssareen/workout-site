@@ -40,7 +40,7 @@ const strengthExerciseSchema = z.object({
 });
 
 const strengthDataSchema = z.object({
-  exercises: z.array(strengthExerciseSchema).min(1, 'At least one exercise is required'),
+  exercises: z.array(strengthExerciseSchema).optional(),
   totalTime: z.number().optional(),
   rpe: z.number().min(1).max(10).optional(),
 });

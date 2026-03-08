@@ -222,44 +222,44 @@ export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAt
       </div>
 
       {/* Type-Specific Forms */}
-      <div className="border rounded-lg p-4 bg-muted/30">
-        <Label className="text-base font-semibold mb-4 block">Workout Details *</Label>
-        
-        {selectedType === 'swim' && (
-          <SwimForm
-            data={swimData || {}}
-            onChange={(data) => setValue('swim', data as any)}
-          />
-        )}
+      {selectedType !== 'strength' ? (
+        <div className="border rounded-lg p-4 bg-muted/30">
+          <Label className="text-base font-semibold mb-4 block">Workout Details *</Label>
 
-        {selectedType === 'bike' && (
-          <BikeForm
-            data={bikeData || {}}
-            onChange={(data) => setValue('bike', data as any)}
-          />
-        )}
+          {selectedType === 'swim' && (
+            <SwimForm
+              data={swimData || {}}
+              onChange={(data) => setValue('swim', data as any)}
+            />
+          )}
 
-        {selectedType === 'run' && (
-          <RunForm
-            data={runData || {}}
-            onChange={(data) => setValue('run', data as any)}
-          />
-        )}
+          {selectedType === 'bike' && (
+            <BikeForm
+              data={bikeData || {}}
+              onChange={(data) => setValue('bike', data as any)}
+            />
+          )}
 
-        {selectedType === 'strength' && (
-          <StrengthForm
-            data={strengthData || {}}
-            onChange={(data) => setValue('strength', data as any)}
-          />
-        )}
+          {selectedType === 'run' && (
+            <RunForm
+              data={runData || {}}
+              onChange={(data) => setValue('run', data as any)}
+            />
+          )}
 
-        {selectedType === 'other' && (
-          <OtherForm
-            data={otherData || {}}
-            onChange={(data) => setValue('other', data as any)}
-          />
-        )}
-      </div>
+          {selectedType === 'other' && (
+            <OtherForm
+              data={otherData || {}}
+              onChange={(data) => setValue('other', data as any)}
+            />
+          )}
+        </div>
+      ) : (
+        <StrengthForm
+          data={strengthData || {}}
+          onChange={(data) => setValue('strength', data as any)}
+        />
+      )}
 
       {/* Date */}
       <div className="space-y-2">
