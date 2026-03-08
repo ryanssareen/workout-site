@@ -2,10 +2,23 @@
 
 import { Workout } from '@/types';
 import { TYPE_CONFIG, TYPE_LABELS, getTypeData, formatDur } from './types';
-import { CheckCircle2, Circle, AlertCircle } from 'lucide-react';
+import { CheckCircle2, Circle, AlertCircle, StickyNote } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+
+// ── Note detection ──────────────────────────────────────────────────────
+function isNote(workout: Workout): boolean {
+  return workout.type === 'other' && workout.name === 'Note';
+}
+
+// Note-specific config overrides
+const NOTE_CONFIG = {
+  emoji: '📝',
+  color: 'text-blue-500',
+  border: 'border-l-blue-400',
+  bg: 'bg-blue-500/8',
+};
 
 // ── Strava Logo SVG ──────────────────────────────────────────────────────
 function StravaIcon({ className }: { className?: string }) {
@@ -50,24 +63,27 @@ interface CalendarWorkoutCardProps {
  * Shows 6 distinct workout states with visual differentiation.
  */
 function MiniPill({ workout, onSelect }: { workout: Workout; onSelect?: (id: string) => void }) {
-  const cfg = TYPE_CONFIG[workout.type] || TYPE_CONFIG.other;
+  const noteMode = isNote(workout);
+  const cfg = noteMode ? NOTE_CONFIG : (TYPE_CONFIG[workout.type] || TYPE_CONFIG.other);
   const stats = getTypeData(workout);
   const workoutDate = workout.date.toDate();
   const timeStr = format(workoutDate, 'h:mma').toLowerCase();
   const status = getWorkoutStatus(workout);
 
-  // Background tint based on status
-  const bgTint = status.isCompletedManual
-    ? 'bg-green-500/5'
-    : status.isMatchedByStrava
+  // Background tint based on status (notes always get blue tint)
+  const bgTint = noteMode
+    ? 'bg-blue-500/5'
+    : status.isCompletedManual
       ? 'bg-green-500/5'
-      : status.isStravaStandalone
-        ? 'bg-orange-500/5'
-        : status.isLate
-          ? 'bg-amber-500/5'
-          : status.isMissed
-            ? 'bg-red-500/5'
-            : '';
+      : status.isMatchedByStrava
+        ? 'bg-green-500/5'
+        : status.isStravaStandalone
+          ? 'bg-orange-500/5'
+          : status.isLate
+            ? 'bg-amber-500/5'
+            : status.isMissed
+              ? 'bg-red-500/5'
+              : '';
 
   // Status label for second line
   const statusLabel = status.isCompletedManual
@@ -110,42 +126,52 @@ function MiniPill({ workout, onSelect }: { workout: Workout; onSelect?: (id: str
       )}
     >
       <div className="flex items-center gap-1.5 min-w-0">
-        <span className="text-xs shrink-0">{cfg.emoji}</span>
+        {noteMode ? (
+          <StickyNote className="h-3 w-3 text-blue-500 shrink-0" />
+        ) : (
+          <span className="text-xs shrink-0">{cfg.emoji}</span>
+        )}
         <span
           className={cn(
             'text-[11px] font-semibold truncate flex-1',
+            noteMode && 'italic text-blue-600 dark:text-blue-400',
             status.isMissed && 'line-through text-muted-foreground',
           )}
         >
-          {workout.name}
+          {noteMode ? (workout.description || 'Note') : workout.name}
         </span>
 
         {/* Status icons */}
-        {(status.isCompletedManual || status.isLate || status.isMatchedByStrava) && (
+        {!noteMode && (status.isCompletedManual || status.isLate || status.isMatchedByStrava) && (
           <CheckCircle2 className="h-3 w-3 text-green-500 shrink-0" />
         )}
         {(status.isStravaStandalone || status.isMatchedByStrava) && (
           <StravaIcon className="h-3 w-3 text-[#FC4C02] shrink-0" />
         )}
-        {status.isMissed && (
+        {status.isMissed && !noteMode && (
           <AlertCircle className="h-3 w-3 text-red-500 shrink-0" />
         )}
       </div>
-      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-0.5">
-        {!status.isMissed && <span>{timeStr}</span>}
-        {!status.isMissed && stats.primary !== '--' && (
-          <>
-            <span className="opacity-40">·</span>
-            <span className="truncate">{stats.primary}</span>
-          </>
-        )}
-        {statusLabel && (
-          <>
-            {!status.isMissed && <span className="opacity-40">·</span>}
-            <span className={cn('font-semibold', statusLabelColor)}>{statusLabel}</span>
-          </>
-        )}
-      </div>
+      {noteMode ? (
+        /* Notes: no stats, just a subtle "Note" label */
+        <div className="text-[10px] text-blue-500/60 mt-0.5 italic">Note</div>
+      ) : (
+        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-0.5">
+          {!status.isMissed && <span>{timeStr}</span>}
+          {!status.isMissed && stats.primary !== '--' && (
+            <>
+              <span className="opacity-40">·</span>
+              <span className="truncate">{stats.primary}</span>
+            </>
+          )}
+          {statusLabel && (
+            <>
+              {!status.isMissed && <span className="opacity-40">·</span>}
+              <span className={cn('font-semibold', statusLabelColor)}>{statusLabel}</span>
+            </>
+          )}
+        </div>
+      )}
     </button>
   );
 }
@@ -162,7 +188,8 @@ function CompactCard({
   workout: Workout;
   onToggleComplete?: (e: React.MouseEvent, workout: Workout) => void;
 }) {
-  const cfg = TYPE_CONFIG[workout.type] || TYPE_CONFIG.other;
+  const noteMode = isNote(workout);
+  const cfg = noteMode ? NOTE_CONFIG : (TYPE_CONFIG[workout.type] || TYPE_CONFIG.other);
   const stats = getTypeData(workout);
   const workoutDate = workout.date.toDate();
   const timeStr = format(workoutDate, 'h:mm a');
@@ -183,13 +210,22 @@ function CompactCard({
         {/* Left color accent */}
         <div className={cn('w-1 shrink-0', cfg.border.replace('border-l-', 'bg-'))} />
         <div className="flex items-start gap-3 p-3.5 flex-1 min-w-0">
-        {/* Emoji */}
-        <span className="text-xl mt-0.5 shrink-0">{cfg.emoji}</span>
+        {/* Emoji / Note icon */}
+        {noteMode ? (
+          <StickyNote className="h-5 w-5 text-blue-500 mt-0.5 shrink-0" />
+        ) : (
+          <span className="text-xl mt-0.5 shrink-0">{cfg.emoji}</span>
+        )}
 
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-bold leading-tight truncate">{workout.name}</h3>
+            <h3 className={cn(
+              'text-sm font-bold leading-tight truncate',
+              noteMode && 'italic text-blue-600 dark:text-blue-400',
+            )}>
+              {noteMode ? (workout.description || 'Note') : workout.name}
+            </h3>
             {/* Status badge */}
             {status.isFuture && (
               <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
@@ -275,16 +311,19 @@ function CompactCard({
  * Shows only emoji + truncated name + status icon. No second line.
  */
 function MicroPillCard({ workout, onSelect }: { workout: Workout; onSelect?: (id: string) => void }) {
-  const cfg = TYPE_CONFIG[workout.type] || TYPE_CONFIG.other;
+  const noteMode = isNote(workout);
+  const cfg = noteMode ? NOTE_CONFIG : (TYPE_CONFIG[workout.type] || TYPE_CONFIG.other);
   const status = getWorkoutStatus(workout);
 
-  const bgTint = status.isCompletedManual || status.isMatchedByStrava
-    ? 'bg-green-500/5'
-    : status.isStravaStandalone
-      ? 'bg-orange-500/5'
-      : status.isMissed
-        ? 'bg-red-500/5'
-        : '';
+  const bgTint = noteMode
+    ? 'bg-blue-500/5'
+    : status.isCompletedManual || status.isMatchedByStrava
+      ? 'bg-green-500/5'
+      : status.isStravaStandalone
+        ? 'bg-orange-500/5'
+        : status.isMissed
+          ? 'bg-red-500/5'
+          : '';
 
   return (
     <button
@@ -302,19 +341,24 @@ function MicroPillCard({ workout, onSelect }: { workout: Workout; onSelect?: (id
       )}
     >
       <div className="flex items-center gap-1 min-w-0">
-        <span className="text-[10px] shrink-0">{cfg.emoji}</span>
+        {noteMode ? (
+          <StickyNote className="h-2.5 w-2.5 text-blue-500 shrink-0" />
+        ) : (
+          <span className="text-[10px] shrink-0">{cfg.emoji}</span>
+        )}
         <span
           className={cn(
             'text-[10px] font-semibold truncate flex-1',
+            noteMode && 'italic text-blue-600 dark:text-blue-400',
             status.isMissed && 'line-through text-muted-foreground',
           )}
         >
-          {workout.name}
+          {noteMode ? (workout.description?.slice(0, 30) || 'Note') : workout.name}
         </span>
-        {(status.isCompletedManual || status.isMatchedByStrava) && (
+        {!noteMode && (status.isCompletedManual || status.isMatchedByStrava) && (
           <CheckCircle2 className="h-2.5 w-2.5 text-green-500 shrink-0" />
         )}
-        {status.isStravaStandalone && (
+        {!noteMode && status.isStravaStandalone && (
           <StravaIcon className="h-2.5 w-2.5 text-[#FC4C02] shrink-0" />
         )}
       </div>
