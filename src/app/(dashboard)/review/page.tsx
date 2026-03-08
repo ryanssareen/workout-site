@@ -279,7 +279,7 @@ export default function MonthlyReviewPage() {
 
   // ══ Nav bar (always visible) ══
   const navBar = (
-    <div className="sticky top-0 z-20 flex items-center justify-between px-4 py-2 bg-background/80 backdrop-blur-xl border-b border-border/20">
+    <div className="sticky top-0 z-20 flex items-center justify-between px-4 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] bg-background/80 backdrop-blur-xl border-b border-border/20">
       <Link href="/dashboard" className="p-1.5 -ml-1 rounded-full hover:bg-muted transition-colors">
         <X className="h-4 w-4 text-muted-foreground" />
       </Link>
@@ -535,7 +535,7 @@ export default function MonthlyReviewPage() {
       </div>
 
       {/* ═══ Share ═══ */}
-      <div className="sticky bottom-0 z-20 px-4 py-2 bg-background/80 backdrop-blur-xl border-t border-border/30">
+      <div className="sticky bottom-0 z-20 px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] bg-background/80 backdrop-blur-xl border-t border-border/30">
         <div className="max-w-6xl mx-auto">
           {showShare ? (
             <ShareButtons

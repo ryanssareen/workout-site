@@ -217,7 +217,7 @@ export default function WrapPage() {
   return (
     <div className="fixed inset-0 bg-background overflow-y-auto">
       {/* Top bar */}
-      <div className="sticky top-0 z-20 flex items-center justify-between px-5 py-3 bg-background/80 backdrop-blur-xl">
+      <div className="sticky top-0 z-20 flex items-center justify-between px-5 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] bg-background/80 backdrop-blur-xl">
         <Link href="/dashboard" className="p-2 -ml-2 rounded-full hover:bg-muted transition-colors">
           <X className="h-5 w-5 text-muted-foreground" />
         </Link>
@@ -332,7 +332,7 @@ export default function WrapPage() {
       </div>
 
       {/* Sticky share bar */}
-      <div className="sticky bottom-0 z-20 p-4 bg-background/80 backdrop-blur-xl border-t border-border/30">
+      <div className="sticky bottom-0 z-20 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-background/80 backdrop-blur-xl border-t border-border/30">
         <div className="max-w-lg mx-auto">
           {showShare ? (
             <ShareButtons

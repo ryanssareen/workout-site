@@ -84,7 +84,7 @@ function Lightbox({
       onClick={onClose}
     >
       <button
-        className="absolute top-4 right-4 text-white/80 hover:text-white z-10"
+        className="absolute top-[max(1rem,env(safe-area-inset-top))] right-4 text-white/80 hover:text-white z-10"
         onClick={onClose}
       >
         <X className="h-8 w-8" />

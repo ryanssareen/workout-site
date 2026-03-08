@@ -145,7 +145,7 @@ export default function YearlyWrappedPage() {
   return (
     <div className="dark min-h-screen bg-black text-white relative">
       {/* Top bar */}
-      <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-black/80 backdrop-blur-xl">
+      <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] bg-black/80 backdrop-blur-xl">
         <Link href="/dashboard" className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors">
           <X className="h-5 w-5 text-white/60" />
         </Link>
@@ -237,7 +237,7 @@ export default function YearlyWrappedPage() {
       </div>
 
       {/* Bottom bar */}
-      <div className="sticky bottom-0 z-30 px-4 pb-6 pt-3 bg-gradient-to-t from-black via-black/80 to-transparent">
+      <div className="sticky bottom-0 z-30 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 bg-gradient-to-t from-black via-black/80 to-transparent">
         {progressBar}
 
         {slide === 'final' ? (
