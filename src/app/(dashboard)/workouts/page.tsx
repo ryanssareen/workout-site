@@ -9,11 +9,21 @@ import { AIWorkoutSuggestions } from '@/components/workouts/AIWorkoutSuggestions
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { Plus, Loader2, CheckCircle2, Circle, AlertCircle, Heart, Mountain, Flame, Gauge, Zap, Sparkles } from 'lucide-react';
+import { Plus, Loader2, CheckCircle2, Circle, AlertCircle, Heart, Mountain, Flame, Gauge, Zap, Sparkles, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { TYPE_CONFIG, getTypeData, formatDur } from '@/components/calendar/types';
 import { format, isPast, isToday, isFuture, startOfDay } from 'date-fns';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 type TimeFilter = 'all' | 'planned' | 'past';
 
@@ -73,7 +83,7 @@ function getExtraStats(workout: Workout): { icon: React.ReactNode; value: string
   return chips;
 }
 
-function WorkoutRow({ workout }: { workout: Workout }) {
+function WorkoutRow({ workout, onDelete }: { workout: Workout; onDelete?: (workout: Workout) => void }) {
   const cfg = TYPE_CONFIG[workout.type] || TYPE_CONFIG.other;
   const stats = getTypeData(workout);
   const workoutDate = workout.date?.toDate?.() ?? new Date(workout.date as any);
@@ -82,12 +92,13 @@ function WorkoutRow({ workout }: { workout: Workout }) {
   const isMissed = past && !workout.completed && workout.source !== 'strava';
   const isLate = workout.completedLate === true;
   const extraStats = getExtraStats(workout);
+  const isPlanned = !workout.completed && (isFuture(workoutDate) || isToday(workoutDate));
 
   return (
     <Link
       href={`/workouts/${workout.id}`}
       className={cn(
-        'flex items-center gap-3 p-3 rounded-xl border bg-card transition-all hover:shadow-sm hover:border-primary/20',
+        'group flex items-center gap-3 p-3 rounded-xl border bg-card transition-all hover:shadow-sm hover:border-primary/20',
         isMissed && 'opacity-50',
       )}
     >
@@ -144,6 +155,16 @@ function WorkoutRow({ workout }: { workout: Workout }) {
           ))}
         </div>
       )}
+      {/* Delete button for planned workouts — visible on hover */}
+      {isPlanned && onDelete && (
+        <button
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(workout); }}
+          className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
+          title="Delete workout"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      )}
       <div className="shrink-0">
         {workout.completed ? (
           <CheckCircle2 className={cn('h-4.5 w-4.5', isLate ? 'text-amber-500' : 'text-green-500')} />
@@ -166,6 +187,8 @@ function WorkoutsContent() {
   const [activeFilter, setActiveFilter] = useState<WorkoutType | 'all'>('all');
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const [showAI, setShowAI] = useState(false);
+  const [workoutToDelete, setWorkoutToDelete] = useState<Workout | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadWorkouts = useCallback(async () => {
     if (!user) return;
@@ -176,6 +199,21 @@ function WorkoutsContent() {
   }, [user]);
 
   useEffect(() => { loadWorkouts(); }, [loadWorkouts]);
+
+  const handleDeleteWorkout = async () => {
+    if (!workoutToDelete || !user?.username) return;
+    setDeleting(true);
+    try {
+      await deleteWorkout(user.username, workoutToDelete.id);
+      setWorkouts(prev => prev.filter(w => w.id !== workoutToDelete.id));
+      toast.success('Workout deleted');
+      setWorkoutToDelete(null);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete workout');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   // Helper: get workout date
   const getDate = (w: Workout) => {
@@ -362,11 +400,33 @@ function WorkoutsContent() {
           </div>
         ) : (
           sortedWorkouts.map((workout) => (
-            <WorkoutRow key={workout.id} workout={workout} />
+            <WorkoutRow key={workout.id} workout={workout} onDelete={canManageWorkouts ? setWorkoutToDelete : undefined} />
           ))
         )}
       </div>
 
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!workoutToDelete} onOpenChange={(open) => { if (!open) setWorkoutToDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete workout?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete &quot;{workoutToDelete?.name}&quot;. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteWorkout}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -36,11 +36,33 @@ export function useStravaAutoSync(
   const [syncResult, setSyncResult] = useState<{ newWorkouts: number; merged: number } | null>(null);
   const hasFired = useRef(false);
 
-  const fetchPhase = useCallback(async (userId: string, period: string): Promise<{ newWorkouts: number; merged: number; needsReconnect?: boolean }> => {
-    const res = await fetch(
-      `/api/strava/sync?userId=${userId}&period=${period}`,
-      { headers: { Accept: 'application/json' } },
-    );
+  const fetchPhase = useCallback(async (
+    userId: string,
+    period: string,
+    tokens?: { stravaAccessToken: string; stravaRefreshToken?: string; stravaTokenExpiresAt?: number },
+  ): Promise<{ newWorkouts: number; merged: number; needsReconnect?: boolean }> => {
+    let res: Response;
+
+    if (tokens?.stravaAccessToken) {
+      // POST mode — send tokens in body, zero Firestore reads on server (quota-safe)
+      res = await fetch('/api/strava/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          userId,
+          period,
+          stravaAccessToken: tokens.stravaAccessToken,
+          stravaRefreshToken: tokens.stravaRefreshToken,
+          stravaTokenExpiresAt: tokens.stravaTokenExpiresAt,
+        }),
+      });
+    } else {
+      // GET fallback — server reads tokens from Firestore
+      res = await fetch(
+        `/api/strava/sync?userId=${userId}&period=${period}`,
+        { headers: { Accept: 'application/json' } },
+      );
+    }
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -61,17 +83,20 @@ export function useStravaAutoSync(
     };
   }, []);
 
-  const runSync = useCallback(async (userId: string) => {
+  const runSync = useCallback(async (
+    userId: string,
+    tokens?: { stravaAccessToken: string; stravaRefreshToken?: string; stravaTokenExpiresAt?: number },
+  ) => {
     setSyncing(true);
     let totalNew = 0;
     let totalMerged = 0;
 
     try {
       for (const phase of SYNC_PHASES) {
-        console.log(`[auto-sync] phase: ${phase}`);
+        console.log(`[auto-sync] phase: ${phase}${tokens ? ' (POST/quota-safe)' : ' (GET)'}`);
         setSyncPhaseLabel(PHASE_LABELS[phase] || phase);
 
-        const result = await fetchPhase(userId, phase);
+        const result = await fetchPhase(userId, phase, tokens);
 
         if (result.needsReconnect) {
           console.warn('[auto-sync] Strava token expired, needs reconnect');
@@ -159,8 +184,13 @@ export function useStravaAutoSync(
     }
 
     hasFired.current = true;
-    console.log('[auto-sync] firing progressive Strava sync');
-    runSync(user.username);
+    const tokens = user.stravaAccessToken ? {
+      stravaAccessToken: user.stravaAccessToken,
+      stravaRefreshToken: user.stravaRefreshToken,
+      stravaTokenExpiresAt: user.stravaTokenExpiresAt,
+    } : undefined;
+    console.log(`[auto-sync] firing progressive Strava sync${tokens ? ' (quota-safe POST mode)' : ' (GET mode)'}`);
+    runSync(user.username, tokens);
   }, [user, runSync, skipCooldown]);
 
   return { syncing, syncPhaseLabel, syncResult };

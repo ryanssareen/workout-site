@@ -93,11 +93,11 @@ npx tsc --noEmit     # Type check without building
 - `/` — Landing page: centered hero ("Your training, all in one place"), sport pills, how-it-works steps, 6-card features grid (Strava Sync, Visual Calendar, Progress Tracking, AI Coach, Multi-Sport, Email Reminders), FAQ, CTA. Dark theme, simplified design.
 - `/profile` — Read-only public-style profile view (stats, pie chart, recent workouts, PRs). "Edit Profile" links to `/settings`
 - `/settings` — Full profile edit form (name, bio, timezone, age, experience, height/weight, sports, training goals with event name/date), Strava integration, public profile toggle, account management
-- `/workouts` — Compact header, AI Workout Suggestions collapsed by default behind slim trigger bar (expandable), time filter tabs (Planned/Past/All), horizontal type filter tags (All/Run/Bike/Swim/Strength/Other), compact single-row workout list with Garmin-style stat chips (HR, elevation, calories, pace, power). Neutral/orange color scheme (no red).
-- `/workouts/new` — Create workout form with type-specific sub-forms, supports AI-generated templates (via sessionStorage) and saved templates. Preview dialog before creation.
+- `/workouts` — Compact header, AI Workout Suggestions collapsed by default behind slim trigger bar (expandable), time filter tabs (Planned/Past/All), horizontal type filter tags (All/Run/Bike/Swim/Strength/Other), compact single-row workout list with Garmin-style stat chips (HR, elevation, calories, pace, power). Neutral/orange color scheme (no red). Delete button (trash icon) on hover for planned workouts with AlertDialog confirmation.
+- `/workouts/new` — Create workout form with type-specific sub-forms, supports AI-generated templates (via sessionStorage) and saved templates. Preview dialog before creation. Reads `date` and `tag` URL params from calendar dropdown navigation.
 - `/athlete/[username]` — Public athlete profile (SSR), shares components with `/profile` via ProfileComponents.tsx
 - `/onboarding/profile` — 3-step onboarding: pick sports → pick goals (with event details) → about you (age, experience, height, weight)
-- `/calendar` — Multi-view calendar (day/week/month/year). Week view: 7-day grid with color-coded workout pills, weekly summary bar. Month view: full month grid with activity dots. Year view: heatmap-style activity density. Supports coach athlete picker, ICS export, email report. Components in `src/components/calendar/`.
+- `/calendar` — Multi-view calendar (day/week/month/year). Week view: 7-day grid with color-coded workout pills, weekly summary bar. Month view: full month grid with activity dots. Year view: heatmap-style activity density. Supports coach athlete picker, ICS export, email report. CalendarAddDropdown on each day cell: "Add Event" (→ `/workouts/new?date=...&tag=race`), "Add Note" (inline popup saves as "other" type workout). Components in `src/components/calendar/`.
 - `/wrap` — Weekly Training Wrap ("Your Week's Capsule"). Immersive full-screen layout with week-by-week navigation. Per-sport stats with week-over-week comparison (% change), highlight of the week (longest/furthest workout with photo), rating system (incredible/solid/consistent/recovery/quiet). Share via ShareButtons (Instagram, WhatsApp, X, iMessage, save image).
 - `/review` — Monthly Review page. Month navigation with "not ready" gate for current month. Hero row with key stats (workouts, distance, time, active days). Activity calendar grid, per-sport stats with month-over-month comparison, pie chart breakdown, vs last month comparison (% change per metric), daily activity bar chart, weekly distance + duration area charts. Share via ShareButtons.
 - `/wrapped` — Yearly Wrapped (2025). 8-slide interactive carousel: guess (interactive workout count guess game) → reveal → stats → breakdown → records → heatmap → summary → final. Public sharing route at `/athlete/[username]/wrapped` with SSR, OG images, privacy gate. Components in `src/components/wrapped/WrappedSlides.tsx`.
@@ -118,6 +118,27 @@ npx tsc --noEmit     # Type check without building
 - **Yearly Wrapped** (`/wrapped`) — 8-slide interactive carousel with guess game. Public sharing at `/athlete/[username]/wrapped` with SSR + OG images. Privacy-gated via `profilePublic` flag. Components in `src/components/wrapped/WrappedSlides.tsx`.
 - **ShareButtons** component (`src/components/workouts/ShareWorkoutCard.tsx`) — Reusable share UI: Instagram Story, WhatsApp, X/Twitter, iMessage, save image (PNG via `html-to-image`), copy link. Used by wrap, review, wrapped, and workout sharing.
 - **Email system** — Summary emails every 10 days via Brevo cron (`/api/cron/send-summaries`). Wrap email template at `src/lib/email/wrapTemplate.ts`.
+
+## Strava Sync
+- **Auto-sync** on page load via `useStravaAutoSync` hook — progressive phase-based sync (2days → 7days → 30days)
+- **Quota-safe POST mode** — when tokens available, sends them in request body to avoid Firestore reads on server (bypasses Spark plan quota limits)
+- **GET fallback** — reads tokens from Firestore, falls back to POST if quota hit (429)
+- **Error safety** — `toErrorString()` helper in `stravaSyncStore.ts` prevents Firebase error objects `{code, message}` from leaking into React rendering (fixes React error #31)
+- **Store:** `src/lib/stores/stravaSyncStore.ts` — Zustand store with `startSync`, `checkDuplicates`, `clearResult`
+- **Hook:** `src/hooks/useStravaAutoSync.ts` — auto-triggers sync on mount, handles quota exhaustion gracefully
+
+## Calendar
+- **Add Workout** button centered in CalendarHeader next to date label
+- **Add Event** (via CalendarAddDropdown) — navigates to `/workouts/new?date=YYYY-MM-DD&tag=race`
+- **Add Note** (via CalendarAddDropdown) — inline popup with textarea, saves as "other" type workout via `createWorkout()`, refreshes calendar via `onNoteAdded` callback
+- **CalendarAddDropdown** — `src/components/calendar/CalendarAddDropdown.tsx`, uses `onNoteAdded` callback threaded through CalendarWeekView/CalendarFullMonthView to calendar page's `refreshWorkouts`
+
+## Workout Deletion
+- **Delete planned workouts** — available on workouts list page for future uncompleted workouts
+- **UI:** Trash icon appears on hover for planned workout rows, opens AlertDialog confirmation
+- **Access control:** Only users who can manage workouts (coaches or unconnected athletes) see delete button
+- **Function:** `deleteWorkout(ownerUsername, id)` in `src/lib/firebase/firestore.ts`
+- **Optimistic update:** Removed from local state immediately on success
 
 ## Known Issues & Active Work
 - Strava webhook subscription needs proper registration (webhook code exists but auto-sync requires env vars + API call setup)

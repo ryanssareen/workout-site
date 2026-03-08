@@ -431,6 +431,7 @@ Progress dots, back/continue navigation, "Skip for now" option. Data saved to Fi
 - Garmin-style stat chips on right (HR bpm, elevation m, calories, pace /km, power W, sets/exercises for strength)
 - Completion status icon: ✓ green (completed), ✓ amber (late), ⚠ red (missed), ○ gray (pending)
 - Missed workouts shown with opacity + strikethrough name
+- **Delete button** — Trash icon appears on hover for planned (future, uncompleted) workouts. Opens AlertDialog confirmation. Only shown when user can manage workouts (coaches or unconnected athletes).
 - Each row links to `/workouts/[id]`
 
 **Create Workout** (`/workouts/new`):
@@ -458,7 +459,8 @@ Progress dots, back/continue navigation, "Skip for now" option. Data saved to Fi
 
 **Multi-view calendar system** with 4 view modes: day, week, month, year.
 
-- **CalendarHeader** — View mode selector (day/week/month/year buttons), Today/prev/next navigation, coach athlete picker dropdown, "Add Workout" button, Export Calendar (ICS), Send Report button
+- **CalendarHeader** — View mode selector (day/week/month/year buttons), Today/prev/next navigation, coach athlete picker dropdown, centered "Add Workout" button (next to date label), Export Calendar (ICS), Send Report button
+- **CalendarAddDropdown** — Per-day cell dropdown with "Add Workout" (→ `/workouts/new?date=...`), "Add Event" (→ `/workouts/new?date=...&tag=race`), "Add Note" (inline popup with textarea — saves as "other" type workout, refreshes calendar via `onNoteAdded` callback)
 - **Strava auto-sync indicator** — Real-time phase label during sync
 
 **Week View** (`CalendarWeekView.tsx`):
@@ -722,6 +724,19 @@ Coach-athlete connections work via **unique 6-letter coach codes**.
 3. Strava callback → `/api/auth/strava/callback` stores tokens in user doc
 4. Redirect back to `/settings?strava=connected`
 
+### Auto-Sync System
+
+**Hook:** `src/hooks/useStravaAutoSync.ts` — progressive phase-based auto-sync on page load:
+1. Phase 1: `period=2days` — fetch last 2 days
+2. Phase 2: `period=7days` — fetch last 7 days
+3. Phase 3: `period=30days` — fetch last 30 days
+4. Stops early if quota exhausted (429) — graceful abort
+
+**Store:** `src/lib/stores/stravaSyncStore.ts` — Zustand state machine:
+- **Quota-safe POST mode** — when tokens are available (from auth store), sends them in request body → zero Firestore reads on server (bypasses Spark plan quota limits)
+- **GET fallback** — reads tokens from Firestore, falls back to POST if quota hit
+- **`toErrorString()` helper** — safely extracts string error messages from any value (including Firebase error objects `{code, message}`) to prevent React error #31
+
 ### Sync Flow (`/api/strava/sync`)
 1. Refresh token if expired
 2. Fetch activities from last year (`/athlete/activities?after=...&per_page=200`)
@@ -809,7 +824,9 @@ Coach-athlete connections work via **unique 6-letter coach codes**.
 
 ## State Management
 
-### Zustand Auth Store (`src/lib/stores/authStore.ts`)
+### Zustand Stores
+
+#### Auth Store (`src/lib/stores/authStore.ts`)
 
 ```typescript
 interface AuthState {
@@ -825,6 +842,24 @@ interface AuthState {
 - Listens to Firebase auth state changes
 - Fetches user profile from Firestore on auth change
 - Handles dynamic Firebase imports (prevents SSR issues)
+
+#### Strava Sync Store (`src/lib/stores/stravaSyncStore.ts`)
+
+```typescript
+interface StravaSyncState {
+  status: 'idle' | 'syncing' | 'done' | 'error';
+  result: SyncResult | null;
+  error: string | null;
+  needsReconnect: boolean;
+  startSync: (username, decisions?, tokens?) => void;
+  checkDuplicates: (username) => Promise<...>;
+  clearResult: () => void;
+}
+```
+
+- Module-level `activeSyncPromise` prevents duplicate syncs across component remounts
+- `toErrorString()` helper safely extracts strings from any error value (objects, strings, unknown)
+- `handleSyncResponse()` shared handler for both GET and POST sync paths
 
 ---
 
@@ -919,3 +954,4 @@ The app is installable as a Progressive Web App on iOS and Android.
 2. **Save as Template** — Navigates to non-existent `/templates` page (broken)
 3. **Custom domain** — `thedailyathlete.in` has DNS/NXDOMAIN issues (Squarespace)
 4. **Legacy 'student' role** — Still appears in some type definitions and old data
+5. **Firebase Spark plan quota** — Daily read quota (50K reads/day) can be exhausted by Strava auto-sync across multiple users. Quota-safe POST mode mitigates but doesn't eliminate the issue. Consider upgrading to Blaze plan.

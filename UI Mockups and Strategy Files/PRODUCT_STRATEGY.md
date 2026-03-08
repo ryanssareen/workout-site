@@ -19,8 +19,10 @@
 | **Multi-Sport** | Complete | Swim, bike, run, strength, triathlon, other — all with sport-specific fields. |
 | **Email System** | Working | Brevo for transactional, cron for reminders/summaries. |
 | **PWA** | Production-ready | Static manifest, service worker (cache-first static, network-first nav, offline fallback), safe-area handling, installable on iOS/Android. |
-| **Workouts UX** | Clean mobile-first | Compact header, AI suggestions collapsed by default, tight spacing, Garmin-style stat chips, neutral/orange color scheme. |
+| **Workouts UX** | Clean mobile-first | Compact header, AI suggestions collapsed by default, tight spacing, Garmin-style stat chips, neutral/orange color scheme. Delete planned workouts with AlertDialog confirmation. |
 | **Streak Tracking** | Functional | Streak counter on dashboard stats row, profile page, and public athlete profile. Computed from consecutive completed workout days. |
+| **Calendar Actions** | Production-ready | CalendarAddDropdown per day cell: Add Workout (→ form), Add Event (→ form with race tag), Add Note (inline popup saves as workout). Add Workout button centered in header. |
+| **Strava Quota Safety** | Production-ready | Quota-safe POST mode sends tokens in body (zero Firestore reads). Progressive auto-sync (2d → 7d → 30d). Graceful 429 handling. `toErrorString()` prevents React error #31. |
 
 ### What's Missing or Weak
 
@@ -35,6 +37,7 @@
 | **Push notifications** | Email-only engagement | MEDIUM |
 | **Month calendar view** | ✅ DONE — Calendar now has 4 views (day/week/month/year) with heatmap year view | ~~LOW-MEDIUM~~ |
 | **Streak gamification** | ✅ PARTIAL — Streak counter on profile/public profile, dashboard stats row. Still missing: streak notifications, at-risk nudges, visual enhancements | MEDIUM — retention lever |
+| **Firebase Spark quota** | Quota-safe POST mode mitigates but daily 50K read limit still hit by multi-user auto-sync. Consider Blaze plan upgrade. | HIGH — affects all users when quota exhausted |
 
 ### Competitive Position
 
@@ -445,6 +448,9 @@ Progress dots, back/continue navigation, "Skip for now" option. Data saved to Fi
 | Landing Page (dark theme, feature grid, FAQ) | ✅ DONE |
 | PWA Support (manifest, service worker, offline fallback, installable, safe-area) | ✅ DONE |
 | Streak Counter (profile + public profile display) | ✅ DONE (partial — notifications pending) |
+| Calendar Actions (Add Note popup, Add Event, centered Add Workout) | ✅ DONE |
+| Delete Planned Workouts (trash icon on hover + AlertDialog confirmation) | ✅ DONE |
+| Strava Quota-Safe Sync (POST mode, progressive auto-sync, error safety) | ✅ DONE |
 
 ### What's Next
 
