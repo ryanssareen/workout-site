@@ -360,6 +360,8 @@ export async function POST(request: NextRequest) {
       period: url.searchParams.get('period') || body.period,
       afterParam: url.searchParams.get('after') || body.after,
       quotaSafe: true, // POST mode = skip unnecessary reads
+      mode: (url.searchParams.get('mode') || body.mode) as 'recent' | 'backfill' | undefined,
+      backfillPage: Number(url.searchParams.get('backfillPage') || body.backfillPage) || undefined,
     });
   } catch (error: any) {
     console.error('Strava sync POST error:', error);
@@ -389,6 +391,8 @@ export async function GET(request: NextRequest) {
       period: searchParams.get('period'),
       afterParam: searchParams.get('after'),
       quotaSafe: false,
+      mode: searchParams.get('mode') as 'recent' | 'backfill' | undefined,
+      backfillPage: Number(searchParams.get('backfillPage')) || undefined,
     });
   } catch (error: any) {
     console.error('Strava sync GET error:', error);
@@ -411,16 +415,19 @@ interface SyncOptions {
   period?: string | null;
   afterParam?: string | null;
   quotaSafe: boolean;
+  mode?: 'recent' | 'backfill';  // recent = last N days (default), backfill = paginated older history
+  backfillPage?: number;          // page number for backfill mode (1-based)
 }
 
 async function handleSync(request: NextRequest, opts: SyncOptions) {
   try {
     const {
       userId, checkDuplicates, duplicateDecisions: duplicateDecisionsRaw,
-      period, afterParam, quotaSafe,
+      period, afterParam, quotaSafe, mode, backfillPage,
     } = opts;
 
-    console.log(`🔄 Strava sync for ${userId} (quotaSafe=${quotaSafe})`);
+    const syncMode = mode || 'recent';
+    console.log(`🔄 Strava sync for ${userId} (mode=${syncMode}, quotaSafe=${quotaSafe}${backfillPage ? `, page=${backfillPage}` : ''})`);
 
     // ── Resolve Strava tokens ──
     let accessToken: string;
@@ -471,22 +478,45 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
       }
     }
 
-    // Calculate time range based on period parameter or explicit 'after' date
+    // Calculate time range based on mode, period, or explicit 'after' date
     const PERIOD_DAYS: Record<string, number> = {
       '2days': 2, 'week': 7, 'month': 30, '2months': 60, '6months': 180, 'year': 365,
     };
-    let afterTimestamp: number;
-    if (afterParam) {
+
+    // Backfill mode: fetch activities OLDER than 30 days, one page at a time
+    // Recent mode: fetch activities from the last N days (default: 30)
+    let afterTimestamp: number | undefined;
+    let beforeTimestamp: number | undefined;
+    const fetchPage = backfillPage || 1;
+
+    if (syncMode === 'backfill') {
+      // Fetch activities older than 30 days
+      beforeTimestamp = Math.floor(Date.now() / 1000) - (30 * 24 * 60 * 60);
+      console.log(`📡 Backfill mode: fetching page ${fetchPage} of activities before 30 days ago...`);
+    } else if (afterParam) {
       afterTimestamp = Math.floor(new Date(afterParam).getTime() / 1000);
       console.log(`📡 Fetching activities after ${afterParam}...`);
     } else {
-      const periodDays = (period && PERIOD_DAYS[period]) || 365;
+      const periodDays = (period && PERIOD_DAYS[period]) || 30; // default to 30 days (was 365)
       afterTimestamp = Math.floor(Date.now() / 1000) - (periodDays * 24 * 60 * 60);
-      console.log(`📡 Fetching activities from the last ${period || 'year'} (${periodDays} days)...`);
+      console.log(`📡 Fetching activities from the last ${period || 'month'} (${periodDays} days)...`);
     }
 
-    // Fetch activities with pagination (Strava max 200 per page)
-    async function fetchAllActivities(token: string): Promise<{ activities: any[] | null; error?: Response }> {
+    // Fetch activities from Strava API
+    // Recent mode: paginate to get all activities in the time window
+    // Backfill mode: single page only (client controls pagination)
+    async function fetchActivities(token: string): Promise<{ activities: any[] | null; error?: Response }> {
+      if (syncMode === 'backfill') {
+        // Backfill: fetch a single page using 'before' timestamp
+        const url = `https://www.strava.com/api/v3/athlete/activities?before=${beforeTimestamp}&per_page=200&page=${fetchPage}`;
+        const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        if (!resp.ok) return { activities: null, error: resp };
+        const data = await resp.json();
+        if (!Array.isArray(data)) return { activities: [] };
+        return { activities: data };
+      }
+
+      // Recent mode: paginate to fetch all activities in the window
       const all: any[] = [];
       let page = 1;
       while (true) {
@@ -507,7 +537,7 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
       return { activities: all };
     }
 
-    let result = await fetchAllActivities(accessToken);
+    let result = await fetchActivities(accessToken);
 
     // Handle authorization errors with token refresh and retry
     if (!result.activities && result.error && (result.error.status === 401 || result.error.status === 403)) {
@@ -532,7 +562,7 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
       }
 
       console.log('✅ Token refreshed, retrying request...');
-      result = await fetchAllActivities(newToken);
+      result = await fetchActivities(newToken);
 
       if (!result.activities) {
         const retryErrorData = result.error ? await result.error.json().catch(() => ({ message: 'Unknown error' })) : {};
@@ -925,6 +955,27 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
 
     console.log(`✅ Finished: Created ${newWorkoutsCount}, merged ${mergedWorkoutsCount}, skipped ${skippedCount}`);
 
+    // ── Update sync tracking timestamps on user doc ──
+    try {
+      const syncUpdate: Record<string, any> = {
+        lastStravaSync: Math.floor(Date.now() / 1000),
+      };
+      if (syncMode === 'backfill') {
+        // Track backfill progress — if we got fewer than 200 activities, backfill is complete
+        if (activities.length < 200) {
+          syncUpdate.lastStravaFullBackfill = Math.floor(Date.now() / 1000);
+          syncUpdate.stravaBackfillPage = admin.firestore.FieldValue.delete();
+          console.log('✅ Backfill complete — all historical activities fetched');
+        } else {
+          syncUpdate.stravaBackfillPage = fetchPage;
+          console.log(`📄 Backfill page ${fetchPage} done (${activities.length} activities) — more pages remain`);
+        }
+      }
+      await adminDb.collection('users').doc(userId).update(syncUpdate);
+    } catch (err) {
+      console.error('⚠️ Failed to update sync timestamps (non-fatal):', err);
+    }
+
     // Run Groq dedup only on full sync (year or no period specified) — skip for partial syncs and quota-safe mode
     let dedupInfo: any = null;
     if (!quotaSafe && (!period || period === 'year')) {
@@ -981,12 +1032,18 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
 
     return NextResponse.json({
       success: true,
-      period: period || 'year',
+      mode: syncMode,
+      period: period || (syncMode === 'backfill' ? 'backfill' : 'month'),
       newWorkouts: newWorkoutsCount,
       mergedWorkouts: mergedWorkoutsCount,
       totalActivities: activities.length,
       message,
       dedup: dedupInfo,
+      // Backfill signals: client uses these to decide whether to fetch next page
+      ...(syncMode === 'backfill' && {
+        backfillPage: fetchPage,
+        backfillComplete: activities.length < 200,
+      }),
     });
   } catch (error: any) {
     console.error('Strava sync error:', error);

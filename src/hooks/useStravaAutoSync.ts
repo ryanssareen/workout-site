@@ -6,25 +6,19 @@ import { toast } from 'sonner';
 
 const SYNC_COOLDOWN_KEY = 'coachtrack_last_strava_sync';
 const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes between auto-syncs
-const PHASE_DELAY_MS = 2_000; // 2s pause between phases to respect Strava rate limits
-
-// Progressive sync phases: most recent first, then expand
-const SYNC_PHASES = ['2days', 'week', 'month', '2months', '6months', 'year'] as const;
-
-const PHASE_LABELS: Record<string, string> = {
-  '2days': 'last 2 days',
-  'week': 'last week',
-  'month': 'last 30 days',
-  '2months': 'last 60 days',
-  '6months': 'last 6 months',
-  'year': 'last year',
-};
+const PAGE_DELAY_MS = 2_000; // 2s pause between backfill pages to respect Strava rate limits
 
 /**
- * Background Strava sync on login / page load.
- * Syncs progressively: 2 days → 1 week → 1 month → 2 months → 6 months → 1 year.
- * After each phase that imports workouts, refreshes the page data
- * so the calendar populates quickly instead of waiting for the full year.
+ * 2-stage Strava auto-sync on login / page load.
+ *
+ * Stage 1 — Quick Fill: Fetch last 30 days (or since lastStravaSync) in a
+ *           single API call. Immediately populates the calendar.
+ *
+ * Stage 2 — Backfill: Only runs if the user has never completed a full
+ *           historical backfill (lastStravaFullBackfill is null). Fetches
+ *           activities older than 30 days, one page (200 activities) at a
+ *           time, with 2s delay between pages. Resumes from the last saved
+ *           page if interrupted by a rate limit.
  */
 export function useStravaAutoSync(
   user: User | null,
@@ -37,11 +31,25 @@ export function useStravaAutoSync(
   const [syncResult, setSyncResult] = useState<{ newWorkouts: number; merged: number } | null>(null);
   const hasFired = useRef(false);
 
-  const fetchPhase = useCallback(async (
+  // ── Generic fetch helper ──────────────────────────────────────────────
+  type SyncParams = {
+    mode: 'recent' | 'backfill';
+    period?: string;
+    backfillPage?: number;
+  };
+  type SyncResult = {
+    newWorkouts: number;
+    merged: number;
+    needsReconnect?: boolean;
+    rateLimited?: boolean;
+    backfillComplete?: boolean;
+  };
+
+  const fetchSync = useCallback(async (
     userId: string,
-    period: string,
+    params: SyncParams,
     tokens?: { stravaAccessToken: string; stravaRefreshToken?: string; stravaTokenExpiresAt?: number },
-  ): Promise<{ newWorkouts: number; merged: number; needsReconnect?: boolean }> => {
+  ): Promise<SyncResult> => {
     let res: Response;
 
     if (tokens?.stravaAccessToken) {
@@ -51,7 +59,9 @@ export function useStravaAutoSync(
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({
           userId,
-          period,
+          mode: params.mode,
+          period: params.period,
+          backfillPage: params.backfillPage,
           stravaAccessToken: tokens.stravaAccessToken,
           stravaRefreshToken: tokens.stravaRefreshToken,
           stravaTokenExpiresAt: tokens.stravaTokenExpiresAt,
@@ -59,10 +69,10 @@ export function useStravaAutoSync(
       });
     } else {
       // GET fallback — server reads tokens from Firestore
-      res = await fetch(
-        `/api/strava/sync?userId=${userId}&period=${period}`,
-        { headers: { Accept: 'application/json' } },
-      );
+      const qs = new URLSearchParams({ userId, mode: params.mode });
+      if (params.period) qs.set('period', params.period);
+      if (params.backfillPage) qs.set('backfillPage', String(params.backfillPage));
+      res = await fetch(`/api/strava/sync?${qs}`, { headers: { Accept: 'application/json' } });
     }
 
     if (!res.ok) {
@@ -71,8 +81,8 @@ export function useStravaAutoSync(
         return { newWorkouts: 0, merged: 0, needsReconnect: true };
       }
       if (err.isQuota || err.rateLimited || res.status === 429) {
-        console.log('[auto-sync] Strava rate limit / quota exhausted — stopping remaining phases');
-        return { newWorkouts: 0, merged: 0, quotaHit: true } as any;
+        console.log('[auto-sync] Strava rate limit / quota exhausted — stopping');
+        return { newWorkouts: 0, merged: 0, rateLimited: true };
       }
       throw new Error(err.error || 'sync failed');
     }
@@ -81,11 +91,14 @@ export function useStravaAutoSync(
     return {
       newWorkouts: data.newWorkouts || 0,
       merged: data.mergedWorkouts || 0,
+      backfillComplete: data.backfillComplete,
     };
   }, []);
 
+  // ── Main sync orchestrator ────────────────────────────────────────────
   const runSync = useCallback(async (
     userId: string,
+    currentUser: User,
     tokens?: { stravaAccessToken: string; stravaRefreshToken?: string; stravaTokenExpiresAt?: number },
   ) => {
     setSyncing(true);
@@ -93,44 +106,99 @@ export function useStravaAutoSync(
     let totalMerged = 0;
 
     try {
-      for (let i = 0; i < SYNC_PHASES.length; i++) {
-        const phase = SYNC_PHASES[i];
-        // Small delay between phases to respect Strava rate limits (100 req / 15 min)
-        if (i > 0) await new Promise(r => setTimeout(r, PHASE_DELAY_MS));
-        console.log(`[auto-sync] phase: ${phase}${tokens ? ' (POST/quota-safe)' : ' (GET)'}`);
-        setSyncPhaseLabel(PHASE_LABELS[phase] || phase);
+      // ── Stage 1: Quick calendar fill ──────────────────────────────
+      // Determine how far back to sync based on lastStravaSync
+      const now = Math.floor(Date.now() / 1000);
+      const lastSync = currentUser.lastStravaSync;
+      let recentPeriod = 'month'; // default: last 30 days for new users
 
-        const result = await fetchPhase(userId, phase, tokens);
-
-        if (result.needsReconnect) {
-          console.warn('[auto-sync] Strava token expired, needs reconnect');
+      if (lastSync) {
+        const ageSeconds = now - lastSync;
+        if (ageSeconds < 300) {
+          // Synced less than 5 minutes ago — skip
+          console.log('[auto-sync] synced very recently, skipping Stage 1');
+          setSyncing(false);
           return;
+        } else if (ageSeconds < 3600) {
+          recentPeriod = '2days';
+        } else if (ageSeconds < 86400) {
+          recentPeriod = 'week';
         }
-        if ((result as any).quotaHit) {
-          console.log('[auto-sync] Strava rate limit hit — aborting remaining phases');
-          toast.info('Strava rate limit reached. Sync will resume automatically later.', {
-            icon: '⏳',
-            duration: 5000,
-          });
-          return;
-        }
+        // else: > 1 day ago → use 'month' (default)
+      }
 
-        totalNew += result.newWorkouts;
-        totalMerged += result.merged;
-        const phaseTotal = result.newWorkouts + result.merged;
+      console.log(`[auto-sync] Stage 1: fetching ${recentPeriod}${tokens ? ' (POST/quota-safe)' : ' (GET)'}`);
+      setSyncPhaseLabel(`syncing ${recentPeriod === '2days' ? 'last 2 days' : recentPeriod === 'week' ? 'last week' : 'last 30 days'}`);
 
-        // Refresh the page after each phase that brought in new data
-        if (phaseTotal > 0) {
-          console.log(`[auto-sync] ${phase}: ${result.newWorkouts} new, ${result.merged} merged — refreshing`);
-          onNewWorkouts?.();
-        } else {
-          console.log(`[auto-sync] ${phase}: no new activities`);
+      const recentResult = await fetchSync(userId, { mode: 'recent', period: recentPeriod }, tokens);
+
+      if (recentResult.needsReconnect) {
+        console.warn('[auto-sync] Strava token expired, needs reconnect');
+        return;
+      }
+      if (recentResult.rateLimited) {
+        toast.info('Strava rate limit reached. Sync will resume automatically later.', { icon: '⏳', duration: 5000 });
+        return;
+      }
+
+      totalNew += recentResult.newWorkouts;
+      totalMerged += recentResult.merged;
+
+      if (recentResult.newWorkouts + recentResult.merged > 0) {
+        console.log(`[auto-sync] Stage 1: ${recentResult.newWorkouts} new, ${recentResult.merged} merged — refreshing`);
+        onNewWorkouts?.();
+      } else {
+        console.log('[auto-sync] Stage 1: no new activities');
+      }
+
+      // ── Stage 2: Historical backfill (only if never completed) ────
+      if (!currentUser.lastStravaFullBackfill) {
+        const startPage = (currentUser.stravaBackfillPage || 0) + 1; // resume from next page
+        console.log(`[auto-sync] Stage 2: starting backfill from page ${startPage}`);
+
+        let page = startPage;
+        while (true) {
+          // Delay between pages to respect Strava rate limits
+          await new Promise(r => setTimeout(r, PAGE_DELAY_MS));
+
+          setSyncPhaseLabel(`backfilling history (page ${page})`);
+          console.log(`[auto-sync] Stage 2: backfill page ${page}${tokens ? ' (POST)' : ' (GET)'}`);
+
+          const backfillResult = await fetchSync(userId, { mode: 'backfill', backfillPage: page }, tokens);
+
+          if (backfillResult.needsReconnect) {
+            console.warn('[auto-sync] Strava token expired during backfill');
+            return;
+          }
+          if (backfillResult.rateLimited) {
+            console.log(`[auto-sync] Rate limited during backfill at page ${page} — will resume next time`);
+            toast.info('Strava rate limit reached. History sync will resume next time.', { icon: '⏳', duration: 5000 });
+            break;
+          }
+
+          totalNew += backfillResult.newWorkouts;
+          totalMerged += backfillResult.merged;
+
+          if (backfillResult.newWorkouts + backfillResult.merged > 0) {
+            console.log(`[auto-sync] Stage 2 page ${page}: ${backfillResult.newWorkouts} new, ${backfillResult.merged} merged`);
+            onNewWorkouts?.();
+          }
+
+          // Server tells us when backfill is done (fewer than 200 activities returned)
+          if (backfillResult.backfillComplete) {
+            console.log('[auto-sync] Stage 2: backfill complete — all history fetched');
+            break;
+          }
+
+          page++;
         }
+      } else {
+        console.log('[auto-sync] Stage 2: skipped (full backfill already completed)');
       }
 
       setSyncResult({ newWorkouts: totalNew, merged: totalMerged });
 
-      // Show one summary toast after all phases complete
+      // Show summary toast
       const grandTotal = totalNew + totalMerged;
       if (grandTotal > 0) {
         const parts: string[] = [];
@@ -142,7 +210,7 @@ export function useStravaAutoSync(
         });
       }
 
-      // Auto-dedup: run once after all phases
+      // Auto-dedup: run once after all stages
       try {
         console.log('[auto-sync] running auto-dedup...');
         const dedupRes = await fetch('/api/workouts/auto-dedup', {
@@ -174,8 +242,9 @@ export function useStravaAutoSync(
       setSyncing(false);
       setSyncPhaseLabel(null);
     }
-  }, [onNewWorkouts, fetchPhase]);
+  }, [onNewWorkouts, fetchSync]);
 
+  // ── Auto-trigger on mount ─────────────────────────────────────────────
   useEffect(() => {
     if (hasFired.current) return;
     if (!user?.stravaAccessToken) return;
@@ -197,8 +266,8 @@ export function useStravaAutoSync(
       stravaRefreshToken: user.stravaRefreshToken,
       stravaTokenExpiresAt: user.stravaTokenExpiresAt,
     } : undefined;
-    console.log(`[auto-sync] firing progressive Strava sync${tokens ? ' (quota-safe POST mode)' : ' (GET mode)'}`);
-    runSync(user.username, tokens);
+    console.log(`[auto-sync] firing 2-stage Strava sync${tokens ? ' (quota-safe POST mode)' : ' (GET mode)'}`);
+    runSync(user.username, user, tokens);
   }, [user, runSync, skipCooldown]);
 
   return { syncing, syncPhaseLabel, syncResult };

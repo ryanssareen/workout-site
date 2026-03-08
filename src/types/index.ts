@@ -60,6 +60,10 @@ export interface User {
     keys: { p256dh: string; auth: string };
     createdAt: string;
   }>;
+  // Strava sync tracking
+  lastStravaSync?: number;         // epoch seconds — last successful recent sync
+  lastStravaFullBackfill?: number; // epoch seconds — when full history backfill completed
+  stravaBackfillPage?: number;     // tracks backfill progress for resume after rate limit
 }
 
 export interface StravaActivityStats {
