@@ -587,7 +587,7 @@ export default function WorkoutDetailPage() {
                 <Activity className="h-4 w-4 text-orange-500" />
                 Route Map
               </h3>
-              <RouteMap routeData={workout.routeData} height={450} workoutId={workout.id} />
+              <RouteMap routeData={workout.routeData} height={450} workoutId={workout.id} ownerUsername={workout.ownerUsername} />
             </div>
           )}
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Polyline, CircleMarker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { decodePolyline } from '@/lib/polyline';
@@ -30,14 +30,16 @@ interface RouteMapProps {
   className?: string;
   height?: number;
   workoutId?: string; // If provided, auto-generates AI comment for existing workouts
+  ownerUsername?: string; // Required for AI comment generation
 }
 
-export function RouteMap({ routeData, className = '', height = 300, workoutId }: RouteMapProps) {
+export function RouteMap({ routeData, className = '', height = 300, workoutId, ownerUsername }: RouteMapProps) {
   const [positions, setPositions] = useState<[number, number][]>([]);
   const [isClient, setIsClient] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [aiComment, setAiComment] = useState<string | null>(routeData.aiComment || null);
   const [loadingComment, setLoadingComment] = useState(false);
+  const commentAttempted = useRef(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -58,21 +60,23 @@ export function RouteMap({ routeData, className = '', height = 300, workoutId }:
 
   // Auto-generate AI comment for existing workouts that don't have one
   useEffect(() => {
-    if (workoutId && !aiComment && !loadingComment && isClient) {
-      setLoadingComment(true);
-      fetch('/api/ai/route-comment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workoutId }),
+    if (commentAttempted.current) return;
+    if (!workoutId || !ownerUsername || aiComment || !isClient) return;
+
+    commentAttempted.current = true;
+    setLoadingComment(true);
+    fetch('/api/ai/route-comment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ workoutId, ownerUsername }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.comment) setAiComment(data.comment);
       })
-        .then(res => res.json())
-        .then(data => {
-          if (data.comment) setAiComment(data.comment);
-        })
-        .catch(() => {})
-        .finally(() => setLoadingComment(false));
-    }
-  }, [workoutId, aiComment, isClient, loadingComment]);
+      .catch(() => {})
+      .finally(() => setLoadingComment(false));
+  }, [workoutId, ownerUsername, aiComment, isClient]);
 
   if (!isClient) {
     return (
