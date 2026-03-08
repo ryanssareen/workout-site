@@ -107,7 +107,12 @@ export async function POST(request: NextRequest) {
 
     const groq = new Groq({ apiKey: process.env.GROQ_API_KEY.trim() });
 
-    // Send a sample of data (header + first 15 rows + last 5 rows for context)
+    // Build data strings for AI
+    const fullDataStr = [header, ...dataRows]
+      .map(row => row.map(cell => String(cell ?? '').trim()).join(' | '))
+      .join('\n');
+
+    // For large files, send sample + instruction to process all
     const sampleRows = dataRows.length <= 20
       ? dataRows
       : [...dataRows.slice(0, 15), ...dataRows.slice(-5)];
@@ -116,82 +121,63 @@ export async function POST(request: NextRequest) {
       .map(row => row.map(cell => String(cell ?? '').trim()).join(' | '))
       .join('\n');
 
-    const prompt = `Analyze this workout data file and extract structured workouts.
-
-COLUMNS: ${header.map((h, i) => `[${i}] "${h}"`).join(', ')}
-
-DATA SAMPLE (${sampleRows.length} of ${dataRows.length} rows):
-${sampleData}
-
-TASK: Map the columns to workout fields and return ALL ${dataRows.length} rows as structured workouts.
-
-For each row, extract:
-- name: workout name/title (use activity type if no name column exists)
-- type: MUST be one of: "run", "bike", "swim", "strength", "other"
-  Mapping guide: Running/Jogging/Walk→run, Cycling/Biking/Spinning→bike, Swimming/Pool→swim, Weight Training/Gym/CrossFit/Yoga/HIIT→strength, anything else→other
-- date: ISO 8601 date string (YYYY-MM-DDTHH:mm:ss). Convert from whatever format the file uses.
-- duration: in minutes (convert from hours/seconds if needed)
-- distance: in km (convert from miles/meters if needed. 1 mile = 1.60934 km, 1 meter = 0.001 km)
-- calories: number (optional)
-- avgHeartRate: number (optional)
-- elevationGain: in meters (optional)
-- notes: any extra text/description (optional)
-
-IMPORTANT RULES:
-1. Return ONLY a JSON object: {"workouts": [...], "summary": "brief description of what was imported"}
-2. The "workouts" array must contain objects for ALL ${dataRows.length} data rows in the file, not just the sample
-3. If a field is missing/empty, omit it from the object
-4. Always include name, type, and date — skip the row if date cannot be determined
-5. For distances: if the unit column says miles, convert to km. If meters, convert to km.
-6. Do NOT include header rows or empty rows as workouts
-7. If the file appears to be a Strava/Garmin/Apple Health export, use domain knowledge to map columns correctly`;
-
-    // Use full data for processing (not just sample)
-    const fullDataStr = [header, ...dataRows]
-      .map(row => row.map(cell => String(cell ?? '').trim()).join(' | '))
-      .join('\n');
-
-    const fullPrompt = `Analyze this workout data file and extract structured workouts.
-
-COLUMNS: ${header.map((h, i) => `[${i}] "${h}"`).join(', ')}
-
-FULL DATA (${dataRows.length} rows):
-${fullDataStr}
-
-TASK: Map the columns to workout fields and return ALL rows as structured workouts.
-
-For each row, extract:
-- name: workout name/title (use activity type if no name column exists)
-- type: MUST be one of: "run", "bike", "swim", "strength", "other"
-  Mapping guide: Running/Jogging/Walk→run, Cycling/Biking/Spinning→bike, Swimming/Pool→swim, Weight Training/Gym/CrossFit/Yoga/HIIT→strength, anything else→other
-- date: ISO 8601 date string (YYYY-MM-DDTHH:mm:ss). Convert from whatever format the file uses.
-- duration: in minutes (convert from hours/seconds if needed)
-- distance: in km (convert from miles/meters if needed. 1 mile = 1.60934 km, 1 meter = 0.001 km)
-- calories: number (optional)
-- avgHeartRate: number (optional)
-- elevationGain: in meters (optional)
-- notes: any extra text/description (optional)
-
-IMPORTANT RULES:
-1. Return ONLY a JSON object: {"workouts": [...], "summary": "brief description of what was imported"}
-2. The "workouts" array must contain objects for ALL data rows
-3. If a field is missing/empty, omit it from the object
-4. Always include name, type, and date — skip the row if date cannot be determined
-5. For distances: if the unit column says miles, convert to km. If meters, convert to km.
-6. Do NOT include header rows or empty rows as workouts
-7. If the file appears to be a Strava/Garmin/Apple Health export, use domain knowledge to map columns correctly`;
-
-    // Use sample prompt for large files, full for small ones
     const useFullData = dataRows.length <= 100;
+
+    const dateGuidance = `
+CRITICAL DATE RULES — READ CAREFULLY:
+- You MUST extract the date from the ACTUAL cell values in the data. Every date must come from text that is literally present in the row.
+- NEVER fabricate, guess, or infer dates. If a row has no date value in any cell, SKIP that row entirely — do NOT include it.
+- Dates may appear in various formats: "2024-01-15", "Jan 15, 2024", "15/01/2024", "1/15/24", "Monday, January 15", etc.
+- Dates might be in a dedicated "Date" column OR embedded in another cell (e.g. "Mon 15 Jan" in a description).
+- If dates only have month/day but no year, use the current year (2026) or the most recent past occurrence.
+- If dates appear as "DD/MM/YYYY" (common outside US), parse accordingly — look at the values to determine format.
+- ABSOLUTELY DO NOT spread workouts evenly across months or assign sequential dates. Use ONLY the dates you find in the data.
+- In the summary field, mention which column(s) you found dates in so we can verify.`;
+
+    const extractionRules = `For each row, extract:
+- name: workout name/title (use activity type if no name column exists)
+- type: MUST be one of: "run", "bike", "swim", "strength", "other"
+  Mapping guide: Running/Jogging/Walk→run, Cycling/Biking/Spinning→bike, Swimming/Pool→swim, Weight Training/Gym/CrossFit/Yoga/HIIT→strength, anything else→other
+- date: ISO 8601 date string (YYYY-MM-DDTHH:mm:ss). MUST come from actual data in the row — see date rules above.
+- duration: in minutes (convert from hours/seconds if needed)
+- distance: in km (convert from miles/meters if needed. 1 mile = 1.60934 km, 1 meter = 0.001 km)
+- calories: number (optional)
+- avgHeartRate: number (optional)
+- elevationGain: in meters (optional)
+- description: any notes/comments text (optional)
+
+OUTPUT RULES:
+1. Return ONLY a JSON object: {"workouts": [...], "summary": "..."}
+2. The "workouts" array must contain objects for each data row that has a valid date
+3. If a field is missing/empty, omit it from the object
+4. SKIP any row where no date can be found in the cell values — do NOT make one up
+5. For distances: if the unit column says miles, convert to km. If meters, convert to km.
+6. Do NOT include header rows or empty rows as workouts
+7. If the file appears to be a Strava/Garmin/Apple Health export, use domain knowledge to map columns
+8. In "summary", state which column(s) contained dates and the date range found`;
+
+    const dataBlock = useFullData
+      ? `FULL DATA (${dataRows.length} rows):\n${fullDataStr}`
+      : `DATA SAMPLE (${sampleRows.length} of ${dataRows.length} rows):\n${sampleData}\n\nProcess ALL ${dataRows.length} rows, not just this sample.`;
+
+    const userPrompt = `Analyze this workout data and extract structured workouts.
+
+COLUMNS: ${header.map((h, i) => `[${i}] "${h}"`).join(', ')}
+
+${dataBlock}
+
+${dateGuidance}
+
+${extractionRules}`;
 
     const messages = [
       {
         role: 'system' as const,
-        content: 'You are an expert fitness data analyst. Parse workout CSV/spreadsheet data into structured JSON. Always return valid JSON. Be precise with date parsing and unit conversions.',
+        content: 'You are an expert fitness data analyst. Parse workout CSV/spreadsheet data into structured JSON. Return valid JSON only. CRITICAL: Every date you output MUST come from actual text in the input data cells. Never fabricate dates.',
       },
       {
         role: 'user' as const,
-        content: useFullData ? fullPrompt : prompt,
+        content: userPrompt,
       },
     ];
 
@@ -256,6 +242,36 @@ IMPORTANT RULES:
         { error: 'No valid workouts could be extracted from the file. Ensure the file has date, type, and workout data.' },
         { status: 422 }
       );
+    }
+
+    // Detect hallucinated dates: if all dates are on the same day-of-month
+    // or perfectly evenly spaced, the AI likely fabricated them
+    if (workouts.length >= 5) {
+      const dates = workouts
+        .map(w => w.date ? new Date(w.date) : null)
+        .filter((d): d is Date => d !== null && !isNaN(d.getTime()));
+
+      if (dates.length >= 5) {
+        // Check if all dates fall on just 1-2 days of the month (e.g., all on the 2nd or 3rd)
+        const daysOfMonth = new Set(dates.map(d => d.getDate()));
+        if (daysOfMonth.size <= 2 && dates.length > 4) {
+          console.warn(`⚠️ Suspicious dates detected: all on day(s) ${[...daysOfMonth].join(',')} of month — likely AI hallucination`);
+          return NextResponse.json(
+            { error: 'The AI could not reliably extract dates from your file. Please ensure your file has a clear date column with actual dates (e.g., "2025-01-15" or "Jan 15, 2025"). Try re-uploading with dates in a recognizable format.' },
+            { status: 422 }
+          );
+        }
+
+        // Check if all dates are in a single year that's far from current year
+        const years = new Set(dates.map(d => d.getFullYear()));
+        const currentYear = new Date().getFullYear();
+        if (years.size === 1) {
+          const year = [...years][0];
+          if (Math.abs(year - currentYear) > 3) {
+            console.warn(`⚠️ Suspicious dates: all in year ${year}, current year is ${currentYear}`);
+          }
+        }
+      }
     }
 
     // Validate and create workouts in Firestore
