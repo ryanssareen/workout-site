@@ -432,6 +432,10 @@ export default function WorkoutDetailPage() {
                         const res = await fetch(`/api/strava/activity-details?userId=${ownerUsername}&workoutId=${workout.id}`);
                         if (!res.ok) {
                           const err = await res.json().catch(() => ({}));
+                          if (res.status === 429 || err.rateLimited) {
+                            toast.info('Strava rate limit reached. Try again in a few minutes.', { icon: '⏳', duration: 5000 });
+                            return;
+                          }
                           throw new Error(err.error || 'Failed to load details');
                         }
                         const data = await res.json();

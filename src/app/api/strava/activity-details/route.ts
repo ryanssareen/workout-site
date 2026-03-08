@@ -80,6 +80,9 @@ export async function GET(request: NextRequest) {
       });
 
       if (!refreshResp.ok) {
+        if (refreshResp.status === 429) {
+          return NextResponse.json({ error: 'Strava rate limit reached. Try again in a few minutes.', rateLimited: true }, { status: 429 });
+        }
         return NextResponse.json({ error: 'Failed to refresh Strava token', needsReconnect: true }, { status: 401 });
       }
 
