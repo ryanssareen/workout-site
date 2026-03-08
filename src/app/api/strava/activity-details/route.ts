@@ -93,34 +93,36 @@ export async function GET(request: NextRequest) {
         : userData.stravaTokenExpiresAt;
 
     if (expiresAt && expiresAt < currentTime && userData.stravaRefreshToken) {
-      const refreshResp = await fetch('https://www.strava.com/oauth/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          client_id: process.env.STRAVA_CLIENT_ID,
-          client_secret: process.env.STRAVA_CLIENT_SECRET,
-          grant_type: 'refresh_token',
-          refresh_token: userData.stravaRefreshToken,
-        }),
-      });
+      try {
+        const refreshResp = await fetch('https://www.strava.com/oauth/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            client_id: process.env.STRAVA_CLIENT_ID,
+            client_secret: process.env.STRAVA_CLIENT_SECRET,
+            grant_type: 'refresh_token',
+            refresh_token: userData.stravaRefreshToken,
+          }),
+        });
 
-      if (!refreshResp.ok) {
-        if (refreshResp.status === 429) {
-          const rl = getRateLimitMessage(refreshResp);
-          return NextResponse.json({ error: rl.message, rateLimited: true, isDailyLimit: rl.isDaily, isCooldown: rl.isCooldown }, { status: 429 });
+        if (refreshResp.ok) {
+          const refreshData = await refreshResp.json();
+          accessToken = refreshData.access_token;
+
+          // Update tokens in Firestore
+          await adminDb.collection('users').doc(userId).update({
+            stravaAccessToken: refreshData.access_token,
+            stravaRefreshToken: refreshData.refresh_token,
+            stravaTokenExpiresAt: refreshData.expires_at,
+          });
+        } else {
+          // Refresh failed (429 or other) — continue with existing token.
+          // Sync likely refreshed it recently; Strava tokens last ~6 hours.
+          console.warn(`⚠️ Token refresh failed (${refreshResp.status}) — trying existing token`);
         }
-        return NextResponse.json({ error: 'Failed to refresh Strava token', needsReconnect: true }, { status: 401 });
+      } catch (refreshErr) {
+        console.warn('⚠️ Token refresh network error — trying existing token', refreshErr);
       }
-
-      const refreshData = await refreshResp.json();
-      accessToken = refreshData.access_token;
-
-      // Update tokens in Firestore
-      await adminDb.collection('users').doc(userId).update({
-        stravaAccessToken: refreshData.access_token,
-        stravaRefreshToken: refreshData.refresh_token,
-        stravaTokenExpiresAt: refreshData.expires_at,
-      });
     }
 
     // Fetch detailed activity from Strava
@@ -133,6 +135,9 @@ export async function GET(request: NextRequest) {
       if (stravaResp.status === 429) {
         const rl = getRateLimitMessage(stravaResp);
         return NextResponse.json({ error: rl.message, rateLimited: true, isDailyLimit: rl.isDaily, isCooldown: rl.isCooldown }, { status: 429 });
+      }
+      if (stravaResp.status === 401) {
+        return NextResponse.json({ error: 'Strava token expired. Please reconnect Strava.', needsReconnect: true }, { status: 401 });
       }
       return NextResponse.json({ error: `Strava API error: ${stravaResp.status}` }, { status: 500 });
     }
