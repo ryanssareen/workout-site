@@ -29,20 +29,25 @@ function logStravaRateLimits(resp: Response, context: string) {
 function getRateLimitMessage(resp: Response): { message: string; isDaily: boolean } {
   const limits = parseStravaRateLimits(resp);
   if (limits) {
-    const is15MinExceeded = limits.fifteenMinUsage >= limits.fifteenMinLimit;
     const isDailyExceeded = limits.dailyUsage >= limits.dailyLimit;
+    const is15MinExceeded = limits.fifteenMinUsage >= limits.fifteenMinLimit;
     if (isDailyExceeded) {
       return {
-        message: `Strava daily rate limit reached (${limits.dailyUsage}/${limits.dailyLimit}). Resets at midnight UTC.`,
+        message: `Strava daily limit reached (${limits.dailyUsage}/${limits.dailyLimit}). Resets at midnight UTC.`,
         isDaily: true,
       };
     }
     if (is15MinExceeded) {
       return {
-        message: `Strava 15-minute rate limit reached (${limits.fifteenMinUsage}/${limits.fifteenMinLimit}). Try again in ~15 minutes.`,
+        message: `Strava 15-min limit reached (${limits.fifteenMinUsage}/${limits.fifteenMinLimit}). Try again in ~15 minutes.`,
         isDaily: false,
       };
     }
+    // 429 returned but counters under limit — window just rolled over, brief cooldown
+    return {
+      message: `Strava rate limit cooldown (${limits.fifteenMinUsage}/${limits.fifteenMinLimit} 15-min, ${limits.dailyUsage}/${limits.dailyLimit} daily). Try again in a minute.`,
+      isDaily: false,
+    };
   }
   return { message: 'Strava rate limit reached. Try again in a few minutes.', isDaily: false };
 }

@@ -17,6 +17,11 @@ function getRateLimitMessage(resp: Response): { message: string; isDaily: boolea
     if (fifteenMinUsage >= fifteenMinLimit) {
       return { message: `Strava 15-min limit reached (${fifteenMinUsage}/${fifteenMinLimit}). Try again in ~15 minutes.`, isDaily: false };
     }
+    // 429 but counters under limit — window rollover cooldown
+    return {
+      message: `Strava rate limit cooldown (${fifteenMinUsage}/${fifteenMinLimit} 15-min, ${dailyUsage}/${dailyLimit} daily). Try again in a minute.`,
+      isDaily: false,
+    };
   }
   return { message: 'Strava rate limit reached. Try again in a few minutes.', isDaily: false };
 }
