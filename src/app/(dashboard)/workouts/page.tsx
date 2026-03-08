@@ -89,7 +89,8 @@ function WorkoutRow({ workout, onDelete }: { workout: Workout; onDelete?: (worko
   const workoutDate = workout.date?.toDate?.() ?? new Date(workout.date as any);
   const dateStr = format(workoutDate, 'MMM d');
   const past = isPast(workoutDate) && !isToday(workoutDate);
-  const isMissed = past && !workout.completed && workout.source !== 'strava';
+  const isNote = workout.type === 'other' && workout.name === 'Note';
+  const isMissed = past && !workout.completed && workout.source !== 'strava' && !isNote;
   const isLate = workout.completedLate === true;
   const extraStats = getExtraStats(workout);
   const isPlanned = !workout.completed && (isFuture(workoutDate) || isToday(workoutDate));

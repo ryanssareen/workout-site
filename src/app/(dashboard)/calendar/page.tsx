@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useSearchParams } from 'next/navigation';
-import { getUserWorkouts, completeWorkout, getCoachStudents } from '@/lib/firebase/firestore';
+import { getUserWorkouts, completeWorkout, deleteWorkout, getCoachStudents } from '@/lib/firebase/firestore';
 import { Workout } from '@/types';
 import { CalendarViewMode } from '@/components/calendar/types';
 import { useStravaAutoSync } from '@/hooks/useStravaAutoSync';
@@ -164,6 +164,19 @@ export default function CalendarPage() {
       toast.success(workout.completed ? 'Marked incomplete' : 'Marked complete!');
     } catch (err: any) {
       toast.error(err.message || 'Failed to update');
+    }
+  };
+
+  const handleDeleteWorkout = async (workout: Workout) => {
+    if (!user) return;
+    if (!confirm(`Delete this note?`)) return;
+    try {
+      await deleteWorkout(user.username, workout.id);
+      setWorkouts((prev) => prev.filter((w) => w.id !== workout.id));
+      setSelectedWorkoutId(null);
+      toast.success('Note deleted');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete');
     }
   };
 
@@ -439,6 +452,7 @@ export default function CalendarPage() {
               workout={selectedWorkout}
               onClose={() => setSelectedWorkoutId(null)}
               onToggleComplete={handleToggleComplete}
+              onDelete={handleDeleteWorkout}
             />
           )}
         </div>

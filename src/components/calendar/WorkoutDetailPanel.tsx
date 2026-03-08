@@ -16,6 +16,7 @@ import {
   Heart,
   Zap,
   Gauge,
+  Trash2,
 } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import Link from 'next/link';
@@ -25,19 +26,22 @@ interface WorkoutDetailPanelProps {
   workout: Workout;
   onClose: () => void;
   onToggleComplete?: (e: React.MouseEvent, workout: Workout) => void;
+  onDelete?: (workout: Workout) => void;
 }
 
 export function WorkoutDetailPanel({
   workout,
   onClose,
   onToggleComplete,
+  onDelete,
 }: WorkoutDetailPanelProps) {
   const cfg = TYPE_CONFIG[workout.type] || TYPE_CONFIG.other;
   const stats = getTypeData(workout);
   const workoutDate = workout.date.toDate();
   const today = isToday(workoutDate);
   const past = isPast(workoutDate) && !today;
-  const isMissed = past && !workout.completed;
+  const isNote = workout.type === 'other' && workout.name === 'Note';
+  const isMissed = past && !workout.completed && !isNote;
   const isStrava = workout.source === 'strava' || workout.completedBy === 'strava';
   const hasRoute = !!(workout.routeData?.polyline);
 
@@ -199,7 +203,7 @@ export function WorkoutDetailPanel({
 
         {/* Actions */}
         <div className="flex items-center gap-2 pt-2 border-t">
-          {onToggleComplete && workout.source !== 'strava' && (
+          {onToggleComplete && workout.source !== 'strava' && !isNote && (
             <button
               onClick={(e) => onToggleComplete(e, workout)}
               className={cn(
@@ -218,6 +222,14 @@ export function WorkoutDetailPanel({
                   <CheckCircle2 className="h-4 w-4" /> Complete
                 </>
               )}
+            </button>
+          )}
+          {isNote && onDelete && (
+            <button
+              onClick={() => onDelete(workout)}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border text-red-500 hover:bg-red-500/10 transition-colors"
+            >
+              <Trash2 className="h-4 w-4" /> Delete
             </button>
           )}
           <Link
