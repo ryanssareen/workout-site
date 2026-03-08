@@ -98,63 +98,62 @@ function WorkoutRow({ workout, onDelete }: { workout: Workout; onDelete?: (worko
     <Link
       href={`/workouts/${workout.id}`}
       className={cn(
-        'group flex items-center gap-3 p-3 rounded-xl border bg-card transition-all hover:shadow-sm hover:border-primary/20',
+        'group flex items-center gap-3 px-4 py-3 rounded-xl border bg-card transition-all hover:shadow-sm hover:border-primary/20',
         isMissed && 'opacity-50',
       )}
     >
-      <span className="text-lg shrink-0">{cfg.emoji}</span>
+      {/* Type icon */}
+      <span className="text-xl shrink-0 w-7 text-center">{cfg.emoji}</span>
+
+      {/* Name + date/distance/time */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <span className={cn(
-            'text-sm font-semibold truncate',
+            'text-[13px] font-semibold truncate',
             isMissed && 'line-through text-muted-foreground',
           )}>{workout.name}</span>
-          <Badge variant="secondary" className={cn('text-[10px] capitalize shrink-0', cfg.color)}>
-            {workout.type}
-          </Badge>
           {isLate && (
-            <Badge variant="secondary" className="text-[10px] shrink-0 bg-amber-500/10 text-amber-600 dark:text-amber-400">
+            <Badge variant="secondary" className="text-[9px] shrink-0 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0">
               Late
             </Badge>
           )}
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+        <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5">
           <span>{dateStr}</span>
           {stats.primary !== '--' && (
             <>
-              <span className="opacity-40">·</span>
-              <span className="font-medium text-foreground/70">{stats.primary}</span>
+              <span className="opacity-30">·</span>
+              <span>{stats.primary}</span>
             </>
           )}
           {stats.time && stats.time !== '0:00' && (
             <>
-              <span className="opacity-40">·</span>
+              <span className="opacity-30">·</span>
               <span>{stats.time}</span>
             </>
           )}
           {workout.assignedToName && (
             <>
-              <span className="opacity-40">·</span>
+              <span className="opacity-30">·</span>
               <span className="truncate">For {workout.assignedToName}</span>
             </>
           )}
         </div>
       </div>
-      {/* Garmin-style extra stat chips — right side */}
+
+      {/* Stat columns — Garmin style: uniform text, icon + value + unit */}
       {extraStats.length > 0 && (
-        <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+        <div className="hidden sm:flex items-center gap-4 shrink-0">
           {extraStats.map((chip, i) => (
-            <span
-              key={i}
-              className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground bg-muted/50 rounded-md px-1.5 py-0.5"
-            >
-              {chip.icon}
-              <span className="font-semibold text-foreground/60">{chip.value}</span>
-              {chip.label && <span className="text-muted-foreground/60">{chip.label}</span>}
-            </span>
+            <div key={i} className="flex items-center gap-1 text-[11px]">
+              <span className="shrink-0 opacity-70">{chip.icon}</span>
+              <span className="font-medium text-foreground/80 tabular-nums">{chip.value}</span>
+              {chip.label && <span className="text-muted-foreground/50">{chip.label}</span>}
+            </div>
           ))}
         </div>
       )}
+
       {/* Delete button for planned workouts — visible on hover */}
       {isPlanned && onDelete && (
         <button
@@ -165,6 +164,8 @@ function WorkoutRow({ workout, onDelete }: { workout: Workout; onDelete?: (worko
           <Trash2 className="h-3.5 w-3.5" />
         </button>
       )}
+
+      {/* Completion status */}
       <div className="shrink-0">
         {workout.completed ? (
           <CheckCircle2 className={cn('h-4.5 w-4.5', isLate ? 'text-amber-500' : 'text-green-500')} />
