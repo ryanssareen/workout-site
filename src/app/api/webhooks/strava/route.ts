@@ -6,6 +6,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import admin from 'firebase-admin';
 import crypto from 'crypto';
 import { runDedupPipeline, executeDedupDeletions } from '@/lib/groq-dedup';
+import { sendPushNotification } from '@/lib/push';
 
 // Map Strava activity types to our workout types
 function mapStravaType(stravaType: string): 'swim' | 'run' | 'bike' | 'strength' {
@@ -464,6 +465,14 @@ export async function POST(request: NextRequest) {
                 .where('stravaId', '==', String(owner_id)).limit(1).get();
               if (!userSnap.empty) {
                 const username = userSnap.docs[0].id;
+
+                // Send push notification for new Strava workout
+                await sendPushNotification(username, {
+                  title: '🏃 New Strava Workout',
+                  body: result.message || 'A new workout was synced from Strava',
+                  url: '/workouts',
+                }).catch(() => {}); // non-fatal
+
                 console.log('🔍 Running Groq dedup for user:', username);
                 const { result: dedupResult } = await runDedupPipeline(username);
                 if (dedupResult.duplicatesFound > 0) {

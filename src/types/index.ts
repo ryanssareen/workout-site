@@ -54,6 +54,12 @@ export interface User {
   // Public profile
   profileTagline?: string;    // AI-generated one-liner for public profile
   profilePublic?: boolean;    // Whether /athlete/username is accessible (default: true)
+  // Push notification subscriptions
+  pushSubscriptions?: Array<{
+    endpoint: string;
+    keys: { p256dh: string; auth: string };
+    createdAt: string;
+  }>;
 }
 
 export interface StravaActivityStats {

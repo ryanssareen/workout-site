@@ -87,3 +87,40 @@ self.addEventListener('fetch', (event) => {
       .catch(() => caches.match(request))
   );
 });
+
+// ── Push Notifications ──
+
+// Show notification when push message received
+self.addEventListener('push', (event) => {
+  const data = event.data?.json() ?? {};
+  const { title, body, url, icon } = data;
+
+  event.waitUntil(
+    self.registration.showNotification(title || 'The Daily Athlete', {
+      body: body || '',
+      icon: icon || '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      data: { url: url || '/dashboard' },
+    })
+  );
+});
+
+// Handle notification click — open/focus the app
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || '/dashboard';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Try to focus an existing window
+      for (const client of windowClients) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          client.navigate(url);
+          return client.focus();
+        }
+      }
+      // Otherwise open a new window
+      return clients.openWindow(url);
+    })
+  );
+});

@@ -178,8 +178,8 @@ export default function WrapPage() {
   }, [user?.username]);
 
   const now = new Date();
-  const targetWeekEnd = subWeeks(endOfWeek(now, { weekStartsOn: 0 }), weekOffset);
-  const targetWeekStart = startOfWeek(targetWeekEnd, { weekStartsOn: 0 });
+  const targetWeekEnd = subWeeks(endOfWeek(now, { weekStartsOn: 1 }), weekOffset);
+  const targetWeekStart = startOfWeek(targetWeekEnd, { weekStartsOn: 1 });
   const prevWeekStart = subWeeks(targetWeekStart, 1);
   const prevWeekEnd = subWeeks(targetWeekEnd, 1);
 

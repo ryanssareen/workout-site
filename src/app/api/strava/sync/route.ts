@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import admin from 'firebase-admin';
 import Groq from 'groq-sdk';
+import { sendPushNotification } from '@/lib/push';
 
 // Predefined workout tags (must match frontend)
 const WORKOUT_TAGS = [
@@ -869,6 +870,15 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
       message = `Created ${newWorkoutsCount} new workout${newWorkoutsCount > 1 ? 's' : ''} from Strava`;
     } else {
       message = 'No new activities to sync';
+    }
+
+    // Send push notification if new workouts were synced
+    if (newWorkoutsCount > 0 || mergedWorkoutsCount > 0) {
+      sendPushNotification(userId, {
+        title: '🏃 Strava Sync Complete',
+        body: message,
+        url: '/workouts',
+      }).catch(() => {}); // non-fatal, fire and forget
     }
 
     // Redirect back to settings or return JSON based on request type

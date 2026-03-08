@@ -8,6 +8,7 @@ import {
   generateWrapEmail, generateWrapSubject,
   WrapEmailData, WrapSportStat,
 } from '@/lib/email/wrapTemplate';
+import { sendPushNotification } from '@/lib/push';
 
 const MAX_USERS_PER_RUN = 50;
 
@@ -64,24 +65,26 @@ export async function GET(request: NextRequest) {
       console.warn('Cron secret mismatch or missing');
     }
 
-    // Calculate last week's range (Sunday–Saturday)
+    // Calculate last week's range (Monday–Sunday)
     const now = new Date();
-    const dayOfWeek = now.getDay(); // 0=Sun
-    const lastSunday = new Date(now);
-    lastSunday.setDate(now.getDate() - dayOfWeek - 7);
-    lastSunday.setHours(0, 0, 0, 0);
+    const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ...
+    // How many days back to get to the most recent Monday of a completed week
+    const daysBackToLastMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const lastMonday = new Date(now);
+    lastMonday.setDate(now.getDate() - daysBackToLastMonday - 7);
+    lastMonday.setHours(0, 0, 0, 0);
 
-    const lastSaturday = new Date(lastSunday);
-    lastSaturday.setDate(lastSunday.getDate() + 6);
-    lastSaturday.setHours(23, 59, 59, 999);
+    const lastSunday = new Date(lastMonday);
+    lastSunday.setDate(lastMonday.getDate() + 6);
+    lastSunday.setHours(23, 59, 59, 999);
 
     // Previous week for comparison
-    const prevSunday = new Date(lastSunday);
-    prevSunday.setDate(prevSunday.getDate() - 7);
-    const prevSaturday = new Date(lastSaturday);
-    prevSaturday.setDate(prevSaturday.getDate() - 7);
+    const prevMonday = new Date(lastMonday);
+    prevMonday.setDate(prevMonday.getDate() - 7);
+    const prevSunday2 = new Date(lastSunday);
+    prevSunday2.setDate(prevSunday2.getDate() - 7);
 
-    const weekLabel = `${lastSunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${lastSaturday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+    const weekLabel = `${lastMonday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${lastSunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
 
     console.log(`📦 Starting weekly wrap job for ${weekLabel}`);
 
@@ -111,7 +114,7 @@ export async function GET(request: NextRequest) {
 
       // Check if already sent this week's wrap
       const lastWrapDate = userData.lastWrapDate?.toDate?.();
-      if (lastWrapDate && lastWrapDate > lastSunday) {
+      if (lastWrapDate && lastWrapDate > lastMonday) {
         continue; // Already sent
       }
 
@@ -119,12 +122,12 @@ export async function GET(request: NextRequest) {
         // Get this week's and last week's workouts
         const [thisWeekSnap, lastWeekSnap] = await Promise.all([
           adminDb.collection('users').doc(username).collection('workouts')
-            .where('date', '>=', admin.firestore.Timestamp.fromDate(lastSunday))
-            .where('date', '<=', admin.firestore.Timestamp.fromDate(lastSaturday))
+            .where('date', '>=', admin.firestore.Timestamp.fromDate(lastMonday))
+            .where('date', '<=', admin.firestore.Timestamp.fromDate(lastSunday))
             .get(),
           adminDb.collection('users').doc(username).collection('workouts')
-            .where('date', '>=', admin.firestore.Timestamp.fromDate(prevSunday))
-            .where('date', '<=', admin.firestore.Timestamp.fromDate(prevSaturday))
+            .where('date', '>=', admin.firestore.Timestamp.fromDate(prevMonday))
+            .where('date', '<=', admin.firestore.Timestamp.fromDate(prevSunday2))
             .get(),
         ]);
 
@@ -236,6 +239,13 @@ export async function GET(request: NextRequest) {
         sendSmtpEmail.htmlContent = generateWrapEmail(wrapData);
 
         await apiInstance.sendTransacEmail(sendSmtpEmail);
+
+        // Send push notification alongside email
+        await sendPushNotification(username, {
+          title: `${rating.emoji} Your Weekly Wrap is Ready`,
+          body: `You logged ${thisWeek.length} workout${thisWeek.length !== 1 ? 's' : ''} this week. See how it went!`,
+          url: '/wrap',
+        }).catch(() => {}); // non-fatal
 
         // Mark as sent
         await adminDb.collection('users').doc(username).update({
