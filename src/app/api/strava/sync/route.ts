@@ -545,6 +545,16 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
       console.log('✅ Successfully retried after token refresh');
     }
 
+    // Handle Strava rate limit (429) — surface it clearly so the client can back off
+    if (!result.activities && result.error && result.error.status === 429) {
+      const errorData = await result.error.json().catch(() => ({ message: 'Rate Limit Exceeded' }));
+      console.warn('⏳ Strava rate limit hit (429). Will retry on next sync cycle.');
+      return NextResponse.json(
+        { error: 'Strava rate limit exceeded. Please wait a few minutes and try again.', rateLimited: true },
+        { status: 429 }
+      );
+    }
+
     // Handle other errors
     if (!result.activities && result.error) {
       const errorData = await result.error.json().catch(() => ({ message: 'Unknown error' }));

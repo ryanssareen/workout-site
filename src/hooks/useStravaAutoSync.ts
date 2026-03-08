@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 
 const SYNC_COOLDOWN_KEY = 'coachtrack_last_strava_sync';
 const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes between auto-syncs
+const PHASE_DELAY_MS = 2_000; // 2s pause between phases to respect Strava rate limits
 
 // Progressive sync phases: most recent first, then expand
 const SYNC_PHASES = ['2days', 'week', 'month', '2months', '6months', 'year'] as const;
@@ -69,8 +70,8 @@ export function useStravaAutoSync(
       if (err.needsReconnect) {
         return { newWorkouts: 0, merged: 0, needsReconnect: true };
       }
-      if (err.isQuota || res.status === 429) {
-        console.log('[auto-sync] quota exhausted — stopping');
+      if (err.isQuota || err.rateLimited || res.status === 429) {
+        console.log('[auto-sync] Strava rate limit / quota exhausted — stopping remaining phases');
         return { newWorkouts: 0, merged: 0, quotaHit: true } as any;
       }
       throw new Error(err.error || 'sync failed');
@@ -92,7 +93,10 @@ export function useStravaAutoSync(
     let totalMerged = 0;
 
     try {
-      for (const phase of SYNC_PHASES) {
+      for (let i = 0; i < SYNC_PHASES.length; i++) {
+        const phase = SYNC_PHASES[i];
+        // Small delay between phases to respect Strava rate limits (100 req / 15 min)
+        if (i > 0) await new Promise(r => setTimeout(r, PHASE_DELAY_MS));
         console.log(`[auto-sync] phase: ${phase}${tokens ? ' (POST/quota-safe)' : ' (GET)'}`);
         setSyncPhaseLabel(PHASE_LABELS[phase] || phase);
 
@@ -103,7 +107,11 @@ export function useStravaAutoSync(
           return;
         }
         if ((result as any).quotaHit) {
-          console.log('[auto-sync] quota hit — aborting remaining phases');
+          console.log('[auto-sync] Strava rate limit hit — aborting remaining phases');
+          toast.info('Strava rate limit reached. Sync will resume automatically later.', {
+            icon: '⏳',
+            duration: 5000,
+          });
           return;
         }
 
