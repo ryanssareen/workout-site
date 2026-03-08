@@ -14,7 +14,7 @@
 | **Strava Sync** | Production-ready | OAuth + webhooks + dedup + photos + routes. Well-executed. |
 | **AI Suggestions** | Genuinely advanced | 3-tier pipeline (logic engine → Groq → validator), periodization-aware, fatigue-aware, deload-aware. `max_tokens: 8000` for full workout details. Better than Final Surge, TrainingPeaks. |
 | **Report Engine** | Solid foundation | 6 section types, Recharts charts, AI-generated reports via Groq, PNG/PDF/email export. |
-| **Onboarding** | Streamlined | Simplified to 3 steps (Sports → Goals with event name/date → About You). Profile completion bar on dashboard for deferred fields. |
+| **Onboarding** | Streamlined | 5 steps (Intro → Name → Age → Import workout history → Strava Connect). Profile completion bar on dashboard for deferred fields. |
 | **Landing Page** | Polished | Simplified dark-themed design: centered hero, sport pills, 3-step how-it-works, 6-card feature grid, FAQ, CTA. Welcoming tone, no aggressive branding. |
 | **Multi-Sport** | Complete | Swim, bike, run, strength, triathlon, other — all with sport-specific fields. |
 | **Email System** | Working | Brevo for transactional, cron for reminders/summaries. |
@@ -34,7 +34,7 @@
 | **Product analytics** | Zero tracking of user behavior (no PostHog, no Amplitude, nothing) | HIGH — can't improve what you can't measure |
 | ~~**PWA / mobile install**~~ | ✅ DONE — Static manifest, service worker (cache-first static, network-first nav, offline fallback), Apple web app support, safe-area handling, installable on iOS/Android | ~~MEDIUM~~ |
 | **Monetization** | No payment system, no tiers, no pricing page | MEDIUM — not urgent pre-PMF |
-| **Push notifications** | Email-only engagement | MEDIUM |
+| ~~**Push notifications**~~ | ✅ DONE — Web Push API with VAPID, multi-device support, auto-cleanup. Used for Strava sync + weekly wrap. | ~~MEDIUM~~ |
 | **Month calendar view** | ✅ DONE — Calendar now has 4 views (day/week/month/year) with heatmap year view | ~~LOW-MEDIUM~~ |
 | **Streak gamification** | ✅ PARTIAL — Streak counter on profile/public profile, dashboard stats row. Still missing: streak notifications, at-risk nudges, visual enhancements | MEDIUM — retention lever |
 | **Firebase Spark quota** | Quota-safe POST mode mitigates but daily 50K read limit still hit by multi-user auto-sync. Consider Blaze plan upgrade. | HIGH — affects all users when quota exhausted |
@@ -118,11 +118,11 @@ The viral report core is built. The next wave focuses on **retention** (keeping 
 | 6 | Race Recap Card | Viral | HIGH — highest-emotion share moment in endurance sports | Medium | **P1** |
 | 7 | AI Race Predictions | Differentiation | HIGH — predict race times based on training data | Medium | **P1** |
 | 8 | Training Plans / Programs | Core product | HIGH — structured multi-week plans, not just daily suggestions | High | **P1** |
-| 9 | Smart Notifications | Retention | MEDIUM — AI nudges: rest day advice, streak warnings, PR alerts | Medium | **P2** |
+| 9 | Smart Notifications | Retention | ✅ PARTIAL — Web Push infrastructure built, used for Strava sync + wrap. Still need: AI nudges (rest day advice, streak warnings, PR alerts) | Medium | **P2** |
 | 10 | Social Feed / Follow Athletes | Growth | HIGH — activity feed, kudos/reactions, follow system | High | **P2** |
 | 11 | Embeddable Stats Widget | Growth | MEDIUM — for blogs, Linktree, personal sites | Medium | **P2** |
 | 12 | Training Block Summary | Viral | MEDIUM — pre-event preparation report | High | **P2** |
-| 13 | Import from Other Platforms | Growth | MEDIUM — Garmin Connect, Apple Health, Wahoo imports | High | **P2** |
+| 13 | Import from Other Platforms | Growth | ✅ PARTIAL — CSV/XLSX import with AI extraction + programmatic date detection in onboarding. Still need: direct Garmin Connect, Apple Health, Wahoo API imports | High | **P2** |
 | 14 | Group Challenges | Growth / retention | HIGH — weekly/monthly challenges between friends | High | **P3** |
 | 15 | Coach Marketplace | Monetization | HIGH — coaches advertise, athletes browse and connect | Very High | **P3** |
 | 16 | Advanced Training Load Analytics | Differentiation | MEDIUM — TSS/CTL/ATL fitness-fatigue chart, HR zones | High | **P3** |
@@ -272,18 +272,20 @@ Each item below is a standalone implementation task. Pick any one and ask Claude
 
 ---
 
-### Implementation 6: Simplified Onboarding (3 Steps) + Profile Completion Bar ✅ DONE
+### Implementation 6: Onboarding (5 Steps) + Profile Completion Bar ✅ DONE
 
-**Status:** Fully implemented. Onboarding reduced to 3 focused steps. Profile completion bar on dashboard. Edit profile form lives in `/settings`.
+**Status:** Fully implemented. Onboarding expanded to 5 steps with workout import and Strava connect. Profile completion bar on dashboard. Edit profile form lives in `/settings`.
 
 **What was built:**
 
-**3-step onboarding flow (`/onboarding/profile`):**
-1. **Sports** — Multi-select from SPORT_OPTIONS: Running, Cycling, Swimming, Strength Training, Triathlon. Sport emoji badges with toggle selection.
-2. **Goals** — Multi-select from 14 TRAINING_FOR_OPTIONS + inline event name and event date fields for each selected goal. Events saved as `Array<{ goal, eventName, eventDate }>`.
-3. **About You** — Age range (dropdown), experience level (dropdown), height (with cm/ft toggle), weight (with kg/lbs toggle).
+**5-step onboarding flow (`/onboarding`):**
+1. **Intro** — Welcome splash screen with "Get Started" button
+2. **Name** — Display name entry with profanity check via `/api/ai/profanity-check`
+3. **Age** — Age range selection (7 ranges from "Under 18" to "65+")
+4. **Import** — Workout history import. Drag-and-drop CSV/XLSX upload (max 10 MB). Supports Garmin, Apple Health, Strava exports. Processed via `/api/workouts/import` with AI-powered extraction + programmatic DD/MM date detection. Shows success count and summary.
+5. **Strava** — Strava OAuth connection with benefits list (auto-sync, stats, route maps, photos)
 
-Progress dots, back/continue navigation, "Skip for now" option. Data saved to Firestore user doc on finish.
+Progress dots, back/continue navigation, skip options. Data saved to Firestore user doc on finish.
 
 **Profile completion bar (dashboard):**
 - `ProfileCompletionBar` component shows progress percentage + links to `/settings` to complete remaining fields
@@ -451,6 +453,12 @@ Progress dots, back/continue navigation, "Skip for now" option. Data saved to Fi
 | Calendar Actions (Add Note popup, Add Event, centered Add Workout) | ✅ DONE |
 | Delete Planned Workouts (trash icon on hover + AlertDialog confirmation) | ✅ DONE |
 | Strava Quota-Safe Sync (POST mode, progressive auto-sync, error safety) | ✅ DONE |
+| Push Notifications (Web Push API, VAPID, multi-device, Strava sync + wrap) | ✅ DONE |
+| Weekly Wrap Monday–Sunday boundaries (ISO 8601) | ✅ DONE |
+| Workout Import in Onboarding (CSV/XLSX with AI + programmatic date detection) | ✅ DONE |
+| Strava-Import Merge (auto-merge imported workouts when Strava syncs) | ✅ DONE |
+| Server-Side User Creation (Admin SDK, fixes Google Sign-In registration bug) | ✅ DONE |
+| Groq Model Fallback (70B → 8B instant on rate limit) | ✅ DONE |
 
 ### What's Next
 
@@ -478,7 +486,7 @@ Progress dots, back/continue navigation, "Skip for now" option. Data saved to Fi
 15. Coach Marketplace — two-sided marketplace for coaching services
 16. Advanced Training Load Analytics — TSS/CTL/ATL, HR zones, fitness-fatigue
 
-**Immediate next actions:** PWA is done. Streak counter is on profiles. Remaining Phase 5: PostHog analytics + PR Achievement Cards + streak notifications/at-risk nudges. All low-effort, high-impact.
+**Immediate next actions:** PWA, push notifications, workout import, and Strava merge are done. Remaining Phase 5: PostHog analytics + PR Achievement Cards + streak at-risk nudges (push infra ready, just need logic). All low-effort, high-impact.
 
 ---
 

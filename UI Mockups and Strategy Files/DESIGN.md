@@ -13,7 +13,7 @@
 | Auth | Firebase Auth (email/password + Google Sign-In) |
 | Styling | Tailwind CSS 4, shadcn/ui, Radix UI primitives |
 | State | Zustand (`src/lib/stores/authStore.ts`) |
-| AI | Groq SDK (LLaMA 3.3 70B) for tagging/comments, OpenAI SDK for reports/suggestions |
+| AI | Groq SDK (LLaMA 3.3 70B + 8B instant fallback) for tagging/comments/import, OpenAI SDK for reports/suggestions |
 | Email | Brevo SMTP for transactional, Nodemailer (Gmail) for cron |
 | Integrations | Strava API (OAuth 2.0 + webhooks) |
 | Charts | Recharts |
@@ -51,11 +51,12 @@ src/
 │   ├── athlete/[username]/      # Public athlete profile page (SSR)
 │   ├── api/                     # ~45 API routes
 │   │   ├── ai/                  # AI: chat, suggestions, reports, tagging, profanity
-│   │   ├── auth/strava/         # Strava OAuth (authorize, callback, disconnect)
+│   │   ├── auth/                # User creation (Admin SDK), Strava OAuth (authorize, callback, disconnect)
 │   │   ├── strava/              # Sync, webhook, cleanup, migration
 │   │   ├── workouts/            # Workout CRUD + copy + format + dedup
 │   │   ├── cron/                # send-reminders, send-summaries
-│   │   ├── import/              # CSV analyze, remap, confirm
+│   │   ├── workouts/            # Workout CRUD + import (CSV/XLSX with AI + programmatic date detection)
+│   │   ├── push/                # Web Push notification subscribe/unsubscribe
 │   │   ├── reports/             # Report generation + email
 │   │   ├── notifications/       # Comment notifications
 │   │   └── admin/               # assign-athletes
@@ -88,7 +89,7 @@ src/
 ├── lib/
 │   ├── firebase/
 │   │   ├── config.ts            # getAuthInstance(), getDbInstance()
-│   │   ├── auth.ts              # createUser, signIn, signOut, signInWithGoogle, getUserProfile
+│   │   ├── auth.ts              # createUser, signIn, signOut, signInWithGoogle, getUserProfile, createUserViaAPI (calls server-side Admin SDK)
 │   │   ├── firestore.ts         # All Firestore CRUD operations
 │   │   └── admin.ts             # Firebase Admin SDK (API routes only)
 │   ├── schemas/
@@ -156,6 +157,13 @@ src/
     workoutReminders: boolean;
     coachMessages: boolean;
   };
+
+  // Push Notifications (Web Push API)
+  pushSubscriptions?: Array<{
+    endpoint: string;
+    keys: { p256dh: string; auth: string };
+    createdAt: string;
+  }>;
 
   // Onboarding
   onboardingCompleted?: boolean;
@@ -389,13 +397,15 @@ src/
 - All new users registered as `'athlete'` role
 - Redirect to `/onboarding` after signup
 
-### Onboarding (`/onboarding/profile`) — 3 Steps
+### Onboarding (`/onboarding`) — 5 Steps
 
-1. **Sports** — Multi-select from SPORT_OPTIONS: Running, Cycling, Swimming, Strength Training, Triathlon. Sport emoji badges with toggle selection.
-2. **Goals** — Multi-select from 14 TRAINING_FOR_OPTIONS (Hyrox, Ironman, Marathon, Half Marathon, Triathlon, Spartan Race, CrossFit, Ultra Marathon, 5K/10K, Century Ride, Open Water Swim, Powerlifting, General Fitness, Other). Each selected goal shows inline **event name** (text input) and **event date** (date picker) fields. Events saved as `Array<{ goal, eventName, eventDate }>`.
-3. **About You** — Age range (dropdown), experience level (dropdown), height (with cm/ft toggle), weight (with kg/lbs toggle).
+1. **Intro** — Welcome splash screen with "Get Started" button
+2. **Name** — Display name entry with profanity check via `/api/ai/profanity-check`
+3. **Age** — Age range selection (7 ranges from "Under 18" to "65+")
+4. **Import** — Workout history import. Drag-and-drop CSV/XLSX upload (max 10 MB). Supports Garmin, Apple Health, Strava exports. Processed via `/api/workouts/import` with AI-powered extraction + programmatic date detection. Shows success count and summary.
+5. **Strava** — Strava OAuth connection with benefits list (auto-sync, stats, route maps, photos)
 
-Progress dots, back/continue navigation, "Skip for now" option. Data saved to Firestore user doc on finish. Redirects to dashboard.
+Progress dots, back/continue navigation, skip options. Data saved to Firestore user doc on finish. Redirects to dashboard.
 
 ### Dashboard (`/dashboard`)
 
@@ -504,7 +514,7 @@ Share Reports button with modal. Time-aware greeting.
 
 ### Weekly Wrap (`/wrap`)
 
-Full-screen immersive "Your Week's Capsule" page with week-by-week navigation.
+Full-screen immersive "Your Week's Capsule" page with week-by-week navigation. **Monday–Sunday week boundaries** (ISO 8601, `weekStartsOn: 1`).
 
 - **Top bar:** Close (X → dashboard), week nav arrows, week date range label, theme toggle
 - **Brand header:** CT red badge + "Your Week's Capsule" label
@@ -637,6 +647,7 @@ Shared components (`PieChart`, `StatCard`, format helpers) live in `src/componen
 ### Authentication
 | Route | Method | Purpose |
 |-------|--------|---------|
+| `/api/auth/create-user` | POST | Server-side user creation via Admin SDK (bypasses Firestore security rules). Validates username, creates user doc + userMapping atomically. Idempotent. |
 | `/api/auth/strava/authorize` | GET | Initiate Strava OAuth redirect |
 | `/api/auth/strava/callback` | GET | Handle OAuth callback, store tokens |
 | `/api/auth/strava/disconnect` | POST | Remove Strava connection |
@@ -651,6 +662,7 @@ Shared components (`PieChart`, `StatCard`, format helpers) live in `src/componen
 | `/api/workouts/copy` | POST | Copy public workout to user's list |
 | `/api/workouts/format` | POST | Format/standardize workout data |
 | `/api/workouts/auto-dedup` | POST | Automatic deduplication |
+| `/api/workouts/import` | POST | CSV/XLSX import with AI extraction + programmatic DD/MM date detection. Model fallback: 70B → 8B on rate limit. |
 
 ### Strava
 | Route | Method | Purpose |
@@ -685,12 +697,11 @@ Shared components (`PieChart`, `StatCard`, format helpers) live in `src/componen
 | `/api/reports/email` | POST | Generate and email report |
 | `/api/notifications/workout-comment` | POST | Email notification when comment posted |
 
-### Import
+### Push Notifications
 | Route | Method | Purpose |
 |-------|--------|---------|
-| `/api/import/analyze` | POST | Parse CSV/Excel, detect columns |
-| `/api/import/remap` | POST | Map imported fields to standard format |
-| `/api/import/confirm` | POST | Insert imported workouts into Firestore |
+| `/api/push/subscribe` | POST | Register Web Push subscription (dedup by endpoint) |
+| `/api/push/subscribe` | DELETE | Unsubscribe from push notifications |
 
 ### Admin
 | Route | Method | Purpose |
@@ -748,6 +759,7 @@ Coach-athlete connections work via **unique 6-letter coach codes**.
    - Fetch photos if `total_photo_count > 0` (via `/activities/{id}/photos?size=600`)
    - Generate AI tags + location comment via Groq (LLaMA 3.3 70B)
    - Auto-merge with matching coach-assigned workout (same day, same type, not completed)
+   - Auto-merge with matching imported workout (`source: 'import'`, same day, same type, distance within 10%)
    - Or create new workout document
    - Proximity duplicate detection (within 30 min, similar duration/distance)
 5. Run Groq dedup pipeline post-sync
@@ -813,12 +825,40 @@ Coach-athlete connections work via **unique 6-letter coach codes**.
 
 ## Import System
 
-1. **Upload:** CSV, .xlsx, .xls via drag-and-drop (FileUploadStep)
-2. **Analyze** (`/api/import/analyze`): AI-powered column detection and mapping
-3. **Remap** (`/api/import/remap`): User can adjust column assignments
-4. **Preview** (ImportPreview): Review data before confirming
-5. **Confirm** (`/api/import/confirm`): Bulk insert into Firestore
-6. **Auto-tagging:** Groq AI tags imported workouts
+**Single-step import** via `/api/workouts/import` (POST):
+
+1. **Upload:** CSV, .xlsx, .xls via drag-and-drop (onboarding step 4 or future standalone)
+2. **Parse:** PapaParse for CSV, SheetJS for XLSX. Max 500 rows.
+3. **Date Detection:** Programmatic column scanning with 8 regex patterns. Detects DD/MM vs MM/DD format at column level (if any value has first number >12, entire column is DD/MM). Pre-parses dates to ISO strings.
+4. **AI Extraction:** Groq (70B with 8B fallback) extracts workout type, name, description, duration, distance from non-date columns. Row indices for cross-referencing.
+5. **Date Override:** Pre-parsed dates replace AI dates (AI hallucinates dates — this is the critical fix).
+6. **Create:** Batch Firestore writes with `source: 'import'`. Type-specific sub-objects, actualStats.
+7. **Strava Merge:** When Strava syncs later, imported workouts are matched by day+type+distance(±10%) and merged instead of duplicated.
+
+---
+
+## Push Notifications
+
+Web Push API with VAPID authentication for real-time browser notifications.
+
+### Components
+| File | Purpose |
+|------|---------|
+| `src/components/PushNotificationManager.tsx` | Client component, prompts for permission in standalone (PWA) mode |
+| `src/lib/push.ts` | Server-side notification sending via `web-push` SDK |
+| `/api/push/subscribe` | POST/DELETE endpoints for subscription management |
+
+### Features
+- VAPID authentication for secure push delivery
+- Multi-device support (array of subscriptions per user)
+- Auto-subscription when permission granted; prompt in default state
+- Subscription deduplication by endpoint URL
+- Automatic cleanup of expired subscriptions (410/404 responses)
+- Non-blocking error handling (failed sends don't throw)
+- Use cases: Strava sync completion, weekly wrap ready notifications
+
+### Storage
+Push subscriptions stored on user doc as `pushSubscriptions: Array<{endpoint, keys: {p256dh, auth}, createdAt}>`.
 
 ---
 
@@ -907,6 +947,8 @@ interface StravaSyncState {
 | `BREVO_API_KEY` | Brevo email service |
 | `NEXT_PUBLIC_APP_URL` | App base URL |
 | `ADMIN_SECRET` | Admin endpoint auth |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Web Push VAPID public key |
+| `VAPID_PRIVATE_KEY` | Web Push VAPID private key |
 
 ---
 
@@ -955,3 +997,4 @@ The app is installable as a Progressive Web App on iOS and Android.
 3. **Custom domain** — `thedailyathlete.in` has DNS/NXDOMAIN issues (Squarespace)
 4. **Legacy 'student' role** — Still appears in some type definitions and old data
 5. **Firebase Spark plan quota** — Daily read quota (50K reads/day) can be exhausted by Strava auto-sync across multiple users. Quota-safe POST mode mitigates but doesn't eliminate the issue. Consider upgrading to Blaze plan.
+6. **Groq rate limits** — 100K tokens/day on `llama-3.3-70b-versatile`. Mitigated with `llama-3.1-8b-instant` fallback but both models can be rate-limited under heavy import usage.
