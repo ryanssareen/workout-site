@@ -222,6 +222,7 @@ export default function RoadmapPage() {
             <Link href="/"          className={`text-sm transition-colors hidden sm:inline ${t.navLink}`}>Home</Link>
             <Link href="/features"  className={`text-sm transition-colors hidden sm:inline ${t.navLink}`}>Features</Link>
             <Link href="/portfolio" className={`text-sm transition-colors hidden sm:inline ${t.navLink}`}>Portfolio</Link>
+            <Link href="/comic"    className={`text-sm transition-colors hidden sm:inline ${t.navLink}`}>Our Story</Link>
             <Link href="/contact"   className={`text-sm transition-colors hidden sm:inline ${t.navLink}`}>Contact</Link>
             <button
               onClick={() => setIsDark(!isDark)}
