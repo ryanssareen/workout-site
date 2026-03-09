@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { Share2, Download, Copy, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { track } from '@/lib/posthog';
 
 // ── Brand SVG Icons ──
 
@@ -54,9 +55,11 @@ interface ShareButtonsProps {
   captureBg?: string;
   /** Override the capture width in px. Defaults to 520. */
   captureW?: number;
+  /** Source page for analytics (e.g. 'wrap', 'review', 'wrapped', 'workout'). */
+  source?: string;
 }
 
-function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef, onClose, captureBg, captureW }: ShareButtonsProps) {
+function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef, onClose, captureBg, captureW, source }: ShareButtonsProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -112,12 +115,14 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
     link.download = `${fileName}-${format(new Date(), 'yyyy-MM-dd')}.jpg`;
     link.href = dataUrl;
     link.click();
+    track('report_shared', { platform: 'download', source });
     toast.success('Image downloaded!');
   };
 
   const handleCopyCaption = async () => {
     await navigator.clipboard.writeText(shareText);
     setCopied(true);
+    track('report_shared', { platform: 'copy_caption', source });
     toast.success('Caption copied!');
     setTimeout(() => setCopied(false), 2000);
   };
@@ -144,6 +149,7 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
       try { await navigator.clipboard.writeText(shareText); } catch { /* ignore */ }
       toast.success('Image saved! Attach it in WhatsApp');
     }
+    track('report_shared', { platform: 'whatsapp', source });
     window.open(`https://wa.me/`, '_blank');
   };
 
@@ -158,6 +164,7 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
       try { await navigator.clipboard.writeText(shareText); } catch { /* ignore */ }
       toast.success('Image saved! Attach it to your post');
     }
+    track('report_shared', { platform: 'x', source });
     window.open('https://twitter.com/compose/tweet', '_blank');
   };
 
@@ -171,6 +178,7 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
       dl.click();
     }
     try { await navigator.clipboard.writeText(shareText); } catch { /* ignore */ }
+    track('report_shared', { platform: 'instagram_story', source });
 
     // Open Instagram — app on mobile, website on desktop
     window.location.href = 'https://www.instagram.com/';
@@ -191,6 +199,7 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
       if (err?.name === 'AbortError') return;
     }
     // Fallback to sms: link
+    track('report_shared', { platform: 'imessage', source });
     window.open(`sms:&body=${encodeURIComponent(shareText)}`, '_blank');
   };
 

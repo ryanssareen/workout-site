@@ -1,6 +1,7 @@
 'use client';
 
 import { ThemeProvider } from './ThemeProvider';
+import { PostHogProvider } from './PostHogProvider';
 import { Toaster } from '@/components/ui/sonner';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useEffect } from 'react';
@@ -20,8 +21,10 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
       disableTransitionOnChange
       themes={['light', 'dark']}
     >
-      {children}
-      <Toaster />
+      <PostHogProvider>
+        {children}
+        <Toaster />
+      </PostHogProvider>
     </ThemeProvider>
   );
 }

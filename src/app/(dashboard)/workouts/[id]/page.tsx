@@ -15,6 +15,7 @@ import { format } from 'date-fns';
 import { formatInTimezone, formatTime } from '@/lib/dateUtils';
 import { CommentSection } from '@/components/workouts/comments';
 import { ShareWorkoutCard } from '@/components/workouts/ShareWorkoutCard';
+import { track } from '@/lib/posthog';
 import dynamic from 'next/dynamic';
 
 // Dynamic import for map (no SSR)
@@ -115,6 +116,8 @@ export default function WorkoutDetailPage() {
       };
       setWorkout(updatedWorkout);
       setShowCompletionDialog(false);
+
+      track('workout_completed', { type: workout.type, source: workout.source || 'manual' });
 
       // Check for achievements (non-blocking — show toast immediately, celebration after)
       toast.success('Workout marked as complete!');

@@ -8,6 +8,7 @@ import { getDbInstance } from '@/lib/firebase/config';
 import { Loader2, Sparkles, ArrowRight, ArrowLeft, AlertCircle, Link2, Upload, FileSpreadsheet, CheckCircle2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { track } from '@/lib/posthog';
 
 type Step = 'intro' | 'name' | 'age' | 'import' | 'strava';
 const STEPS: Step[] = ['intro', 'name', 'age', 'import', 'strava'];
@@ -117,6 +118,8 @@ export default function OnboardingPage() {
         ageRange,
         onboardingCompleted: true,
       });
+
+      track('onboarding_completed', { strava_connect_chosen: connectStrava });
 
       if (connectStrava) {
         // Redirect to Strava OAuth — it will come back to /settings?strava=connected

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { format, parseISO } from 'date-fns';
+import { track } from '@/lib/posthog';
 
 interface WorkoutSuggestion {
   name: string;
@@ -121,7 +122,7 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
       }
 
       // Normalize: flatten specs into top-level type keys for form compatibility
-      setSuggestions(rawSuggestions.map((s: any) => {
+      const normalized = rawSuggestions.map((s: any) => {
         const specs = s.specs || {};
         return {
           ...s,
@@ -134,7 +135,9 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
           benefits: Array.isArray(s.benefits) ? s.benefits : [],
           tags: Array.isArray(s.tags) ? s.tags : [],
         };
-      }));
+      });
+      setSuggestions(normalized);
+      track('ai_suggestion_viewed', { count: normalized.length, aiEnhanced: data.aiEnhanced ?? false });
     } catch (err: any) {
       setError(err.message || 'Failed to load suggestions');
     } finally {
@@ -164,6 +167,7 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
       cooldown: suggestion.cooldown,
     };
     sessionStorage.setItem('aiWorkoutData', JSON.stringify(formData));
+    track('ai_suggestion_accepted', { type: suggestion.type });
     router.push('/workouts/new?aiGenerated=true');
   };
 

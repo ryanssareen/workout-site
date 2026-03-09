@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { track } from '@/lib/posthog';
 import { Dumbbell, Loader2, User, Mail, Lock, ArrowRight, AlertCircle, AlertTriangle, AtSign } from 'lucide-react';
 import Link from 'next/link';
 
@@ -39,6 +40,7 @@ export function RegisterForm() {
         router.push('/dashboard');
       } else {
         // New Google user needs to pick a username
+        track('user_signed_up', { method: 'google' });
         setNeedsUsername(true, result);
         router.push('/choose-username');
       }
@@ -160,6 +162,7 @@ export function RegisterForm() {
       setUser(user);
       setNeedsUsername(false);
 
+      track('user_signed_up', { method: 'email' });
       toast.success('Account created successfully');
       router.push('/onboarding');
     } catch (error: any) {

@@ -5,6 +5,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useStravaSyncStore } from '@/lib/stores/stravaSyncStore';
 import { toast } from 'sonner';
+import { track } from '@/lib/posthog';
 
 /**
  * Invisible component rendered in the dashboard layout.
@@ -35,6 +36,7 @@ export function StravaSyncTrigger() {
       router.replace(url.pathname + (url.search || ''));
 
       // Show connected toast
+      track('strava_connected');
       toast.success('Strava account connected successfully');
 
       // Auto-trigger sync if not already running — pass tokens for quota-safe mode
