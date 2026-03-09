@@ -6,13 +6,10 @@ import { getUserWorkouts } from '@/lib/firebase/firestore';
 import { Workout, WorkoutType } from '@/types';
 import {
   startOfMonth, endOfMonth, subMonths, isWithinInterval, format,
-  eachDayOfInterval, isSameDay, getDay, startOfWeek, endOfWeek,
-  eachWeekOfInterval, isBefore,
+  eachDayOfInterval, isSameDay, getDay, isBefore,
 } from 'date-fns';
 import {
   PieChart, Pie, Cell, ResponsiveContainer,
-  BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
-  AreaChart, Area,
 } from 'recharts';
 import { ShareButtons } from '@/components/workouts/ShareWorkoutCard';
 import { Share2, Loader2, ChevronLeft, ChevronRight, X, TrendingUp, TrendingDown, Minus, Calendar, Clock, Flame, MapPin } from 'lucide-react';
@@ -232,27 +229,6 @@ export default function MonthlyReviewPage() {
     })).sort((a, b) => b.value - a.value);
   }, [thisMonthWorkouts]);
 
-  const dailyData = useMemo(() => {
-    return eachDayOfInterval({ start: targetMonthStart, end: targetMonthEnd }).map(day => {
-      const dw = thisMonthWorkouts.filter(w => isSameDay(toDate(w), day));
-      return { day: format(day, 'd'), date: format(day, 'MMM d'), count: dw.length, isToday: isSameDay(day, now), dayOfWeek: getDay(day) };
-    });
-  }, [thisMonthWorkouts, targetMonthStart, targetMonthEnd, now]);
-
-  const weeklyTrend = useMemo(() => {
-    const weeks = eachWeekOfInterval({ start: targetMonthStart, end: targetMonthEnd }, { weekStartsOn: 1 });
-    return weeks.map((ws, i) => {
-      const we = endOfWeek(ws, { weekStartsOn: 1 });
-      const ww = thisMonthWorkouts.filter(w => { const d = toDate(w); return d >= ws && d <= we; });
-      return {
-        week: `W${i + 1}`, label: format(ws, 'MMM d'),
-        distance: Math.round(ww.reduce((s, w) => s + (w.actualStats?.distance || 0), 0) / 100) / 10,
-        duration: Math.round(ww.reduce((s, w) => { if (w.actualStats?.duration) return s + w.actualStats.duration / 60; if (w.duration) return s + w.duration; return s; }, 0)),
-        workouts: ww.length,
-      };
-    });
-  }, [thisMonthWorkouts, targetMonthStart, targetMonthEnd]);
-
   const totalWorkouts = thisMonthWorkouts.length;
   const totalCompleted = thisMonthWorkouts.filter(w => w.completed).length;
   const totalDistanceKm = Math.round(sportStats.reduce((s, st) => s + st.distanceKm, 0) * 10) / 10;
@@ -265,7 +241,6 @@ export default function MonthlyReviewPage() {
   const firstName = user?.displayName?.split(' ')[0] || 'Athlete';
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/review` : '';
   const shareText = `${rating.emoji} My ${format(targetMonthStart, 'MMMM')} in review: ${totalWorkouts} workouts, ${totalDistanceKm}km, ${totalDurationHrs}hrs — The Daily Athlete`;
-  const tooltipStyle = { backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--card-foreground))', fontSize: '11px', padding: '6px 10px' };
 
   const prevDistKm = Math.round(lastMonthWorkouts.reduce((s, w) => s + (w.actualStats?.distance || 0), 0) / 100) / 10;
   const prevDurMin = Math.round(lastMonthWorkouts.reduce((s, w) => { if (w.actualStats?.duration) return s + w.actualStats.duration / 60; if (w.duration) return s + w.duration; return s; }, 0));
@@ -329,102 +304,96 @@ export default function MonthlyReviewPage() {
     <div className="fixed inset-0 bg-background overflow-y-auto">
       {navBar}
 
-      <div ref={cardRef} className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-4 space-y-4">
+      <div ref={cardRef} className="w-full max-w-lg mx-auto px-4 py-5 space-y-4">
 
-        {/* Month label (visible in captured image) */}
+        {/* Month label (visible in captured image + on page) */}
         <h2 className="text-center text-2xl font-black tracking-tight text-foreground">
           {monthLabel}
         </h2>
 
-        {/* ═══ ROW 1: Hero — title + big stat badges ═══ */}
-        <div className="rounded-xl bg-gradient-to-br from-primary/10 via-transparent to-purple-500/10 border border-border/30 p-4 sm:p-5">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-7 h-7 rounded-lg bg-red-600 flex items-center justify-center">
-                  <span className="text-white font-bold text-[10px]">CT</span>
-                </div>
-                <span className="text-muted-foreground text-[10px] font-medium tracking-widest uppercase">Month in Review</span>
+        {/* ═══ Hero — title + big stat badges ═══ */}
+        <div className="rounded-xl bg-gradient-to-br from-primary/10 via-transparent to-purple-500/10 border border-border/30 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-7 h-7 rounded-lg bg-red-600 flex items-center justify-center">
+              <span className="text-white font-bold text-[10px]">CT</span>
+            </div>
+            <span className="text-muted-foreground text-[10px] font-medium tracking-widest uppercase">Month in Review</span>
+          </div>
+          <h1 className="text-foreground text-xl font-bold leading-tight mb-4">
+            Dear {firstName}, this was <span className={rating.color}>{rating.word}</span> {rating.emoji}
+          </h1>
+          {/* Stat badges — 4 across */}
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { icon: Flame, value: String(totalWorkouts), label: 'workouts', color: 'text-orange-400', bg: 'from-orange-500/15 to-orange-500/5' },
+              { icon: MapPin, value: `${totalDistanceKm}km`, label: 'distance', color: 'text-green-400', bg: 'from-green-500/15 to-green-500/5' },
+              { icon: Clock, value: `${totalDurationHrs}h`, label: 'time', color: 'text-blue-400', bg: 'from-blue-500/15 to-blue-500/5' },
+              { icon: Calendar, value: `${activeDays}`, label: `of ${totalDays} days`, color: 'text-purple-400', bg: 'from-purple-500/15 to-purple-500/5' },
+            ].map(s => (
+              <div key={s.label} className={`rounded-xl bg-gradient-to-b ${s.bg} border border-border/20 px-2 py-2.5 text-center`}>
+                <s.icon className={`h-3.5 w-3.5 ${s.color} mx-auto mb-1`} />
+                <p className="text-lg font-bold text-foreground leading-none">{s.value}</p>
+                <p className="text-[9px] text-muted-foreground mt-0.5">{s.label}</p>
               </div>
-              <h1 className="text-foreground text-xl sm:text-2xl font-bold leading-tight">
-                Dear {firstName}, this was <span className={rating.color}>{rating.word}</span> {rating.emoji}
-              </h1>
-            </div>
-            {/* Big stats */}
-            <div className="flex gap-2 sm:gap-3 shrink-0">
-              {[
-                { icon: Flame, value: String(totalWorkouts), label: 'workouts', color: 'text-orange-400', bg: 'from-orange-500/15 to-orange-500/5' },
-                { icon: MapPin, value: `${totalDistanceKm}km`, label: 'distance', color: 'text-green-400', bg: 'from-green-500/15 to-green-500/5' },
-                { icon: Clock, value: `${totalDurationHrs}h`, label: 'time', color: 'text-blue-400', bg: 'from-blue-500/15 to-blue-500/5' },
-                { icon: Calendar, value: `${activeDays}`, label: `of ${totalDays} days`, color: 'text-purple-400', bg: 'from-purple-500/15 to-purple-500/5' },
-              ].map(s => (
-                <div key={s.label} className={`rounded-xl bg-gradient-to-b ${s.bg} border border-border/20 px-3 py-2.5 text-center min-w-[72px]`}>
-                  <s.icon className={`h-3.5 w-3.5 ${s.color} mx-auto mb-1`} />
-                  <p className="text-lg font-bold text-foreground leading-none">{s.value}</p>
-                  <p className="text-[9px] text-muted-foreground mt-0.5">{s.label}</p>
-                </div>
-              ))}
-            </div>
+            ))}
           </div>
         </div>
 
-        {/* ═══ ROW 2: Calendar + Sports + Pie (3 cols) ═══ */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-
-          {/* Activity Calendar */}
-          <div className="rounded-xl bg-muted/10 border border-border/20 p-3">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Activity</h2>
-              <span className="text-[10px] text-emerald-500 font-medium">{activeDays} active days</span>
-            </div>
-            <ActivityCalendar days={calendarDays} monthStart={targetMonthStart} />
+        {/* ═══ Activity Calendar ═══ */}
+        <div className="rounded-xl bg-muted/10 border border-border/20 p-3">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Activity</h2>
+            <span className="text-[10px] text-emerald-500 font-medium">{activeDays} active days</span>
           </div>
+          <ActivityCalendar days={calendarDays} monthStart={targetMonthStart} />
+        </div>
 
-          {/* Sport stats */}
-          <div className="space-y-1.5">
-            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">By Sport</h2>
-            {sportStats.map(stat => {
-              const metric = stat.distanceKm > 0 ? `${stat.distanceKm}km` : stat.durationMin > 0 ? `${stat.durationMin}m` : `${stat.count}x`;
-              const comp = stat.distanceKm > 0 ? pctChange(stat.distanceKm, stat.prevDistanceKm) : stat.durationMin > 0 ? pctChange(stat.durationMin, stat.prevDurationMin) : pctChange(stat.count, stat.prevCount);
-              return (
-                <div key={stat.type} className={`flex items-center gap-2.5 rounded-xl bg-gradient-to-r ${TYPE_BG[stat.type] || TYPE_BG.other} border border-border/20 px-3 py-2.5`}>
-                  <span className="text-xl">{TYPE_EMOJI[stat.type]}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-foreground">
-                      <span style={{ color: TYPE_COLOR[stat.type] }}>{metric}</span>
-                      <span className="text-muted-foreground font-normal ml-1">· {stat.count} sessions · {stat.durationMin}m</span>
-                    </p>
-                  </div>
-                  {comp && <span className={`text-[10px] font-bold ${comp.positive ? 'text-emerald-400' : 'text-red-400'}`}>{comp.text}</span>}
+        {/* ═══ By Sport ═══ */}
+        <div className="space-y-1.5">
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">By Sport</h2>
+          {sportStats.map(stat => {
+            const metric = stat.distanceKm > 0 ? `${stat.distanceKm}km` : stat.durationMin > 0 ? `${stat.durationMin}m` : `${stat.count}x`;
+            const comp = stat.distanceKm > 0 ? pctChange(stat.distanceKm, stat.prevDistanceKm) : stat.durationMin > 0 ? pctChange(stat.durationMin, stat.prevDurationMin) : pctChange(stat.count, stat.prevCount);
+            return (
+              <div key={stat.type} className={`flex items-center gap-2.5 rounded-xl bg-gradient-to-r ${TYPE_BG[stat.type] || TYPE_BG.other} border border-border/20 px-3 py-2.5`}>
+                <span className="text-xl">{TYPE_EMOJI[stat.type]}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-foreground">
+                    <span style={{ color: TYPE_COLOR[stat.type] }}>{metric}</span>
+                    <span className="text-muted-foreground font-normal ml-1">· {stat.count} sessions · {stat.durationMin}m</span>
+                  </p>
                 </div>
-              );
-            })}
-            {sportStats.length === 0 && (
-              <div className="text-xs text-muted-foreground/50 text-center py-4">No workouts this month</div>
-            )}
-          </div>
+                {comp && <span className={`text-[10px] font-bold ${comp.positive ? 'text-emerald-400' : 'text-red-400'}`}>{comp.text}</span>}
+              </div>
+            );
+          })}
+          {sportStats.length === 0 && (
+            <div className="text-xs text-muted-foreground/50 text-center py-4">No workouts this month</div>
+          )}
+        </div>
 
-          {/* Pie + vs Last Month */}
-          <div className="space-y-3">
+        {/* ═══ Breakdown + vs Last Month (side by side) ═══ */}
+        {(pieData.length > 0 || prevTotalWorkouts > 0) && (
+          <div className="grid grid-cols-2 gap-3">
             {pieData.length > 0 && (
               <div className="rounded-xl bg-muted/10 border border-border/20 p-3">
                 <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Breakdown</h2>
-                <div className="flex items-center gap-3">
-                  <div className="w-24 h-24 shrink-0">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-20 h-20 shrink-0">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        <Pie data={pieData} cx="50%" cy="50%" innerRadius={22} outerRadius={44} paddingAngle={3} dataKey="value" stroke="none">
+                        <Pie data={pieData} cx="50%" cy="50%" innerRadius={18} outerRadius={38} paddingAngle={3} dataKey="value" stroke="none">
                           {pieData.map((entry, i) => <Cell key={entry.type} fill={TYPE_COLOR[entry.type] || PIE_COLORS[i % PIE_COLORS.length]} />)}
                         </Pie>
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
-                  <div className="flex-1 space-y-1">
+                  <div className="space-y-0.5 w-full">
                     {pieData.map(e => (
                       <div key={e.type} className="flex items-center gap-1.5">
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: TYPE_COLOR[e.type] || '#6b7280' }} />
-                        <span className="text-[11px] text-foreground font-medium capitalize flex-1">{e.name}</span>
-                        <span className="text-[11px] text-muted-foreground">{e.value} · {e.pct}%</span>
+                        <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: TYPE_COLOR[e.type] || '#6b7280' }} />
+                        <span className="text-[10px] text-foreground font-medium capitalize flex-1 truncate">{e.name}</span>
+                        <span className="text-[10px] text-muted-foreground">{e.pct}%</span>
                       </div>
                     ))}
                   </div>
@@ -434,7 +403,7 @@ export default function MonthlyReviewPage() {
             {prevTotalWorkouts > 0 && (
               <div className="rounded-xl bg-muted/10 border border-border/20 p-3">
                 <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">vs Last Month</h2>
-                <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="space-y-3 pt-1">
                   {[
                     { label: 'Workouts', curr: totalWorkouts, prev: prevTotalWorkouts },
                     { label: 'Distance', curr: totalDistanceKm, prev: prevDistKm },
@@ -443,13 +412,13 @@ export default function MonthlyReviewPage() {
                     const diff = item.prev > 0 ? Math.round(((item.curr - item.prev) / item.prev) * 100) : 0;
                     const isUp = diff > 0, isDown = diff < 0;
                     return (
-                      <div key={item.label}>
-                        <div className={`text-base font-bold ${isUp ? 'text-emerald-400' : isDown ? 'text-red-400' : 'text-foreground'}`}>
-                          {isUp ? '+' : ''}{diff}%
-                        </div>
-                        <div className="flex items-center justify-center gap-0.5 mt-0.5">
+                      <div key={item.label} className="flex items-center justify-between">
+                        <span className="text-[10px] text-muted-foreground">{item.label}</span>
+                        <div className="flex items-center gap-1">
                           {isUp ? <TrendingUp className="h-2.5 w-2.5 text-emerald-400" /> : isDown ? <TrendingDown className="h-2.5 w-2.5 text-red-400" /> : <Minus className="h-2.5 w-2.5 text-muted-foreground" />}
-                          <span className="text-[10px] text-muted-foreground">{item.label}</span>
+                          <span className={`text-xs font-bold ${isUp ? 'text-emerald-400' : isDown ? 'text-red-400' : 'text-foreground'}`}>
+                            {isUp ? '+' : ''}{diff}%
+                          </span>
                         </div>
                       </div>
                     );
@@ -457,92 +426,29 @@ export default function MonthlyReviewPage() {
                 </div>
               </div>
             )}
-            {highlight && (
-              <div className="rounded-xl overflow-hidden bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20">
-                {highlight.photo && (
-                  <div className="h-20 overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={highlight.photo} alt="" className="w-full h-full object-cover" crossOrigin="anonymous" />
-                  </div>
-                )}
-                <div className="p-3">
-                  <p className="text-foreground text-xs font-semibold">{highlight.emoji} {highlight.label}</p>
-                  <p className="text-muted-foreground text-[10px] mt-0.5">{highlight.detail}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ═══ ROW 3: Daily bar chart (full width, compact) ═══ */}
-        {dailyData.length > 0 && (
-          <div className="rounded-xl bg-muted/10 border border-border/20 p-3">
-            <div className="flex items-center justify-between mb-1">
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Daily Activity</h2>
-            </div>
-            <div className="h-[60px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dailyData} barCategoryGap="10%">
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.2} vertical={false} />
-                  <XAxis dataKey="day" tick={{ fontSize: 8, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} interval={2} />
-                  <YAxis hide allowDecimals={false} />
-                  <Tooltip cursor={{ fill: 'hsl(var(--muted) / 0.3)' }} contentStyle={tooltipStyle}
-                    formatter={((value: any) => [`${value} workout${value !== 1 ? 's' : ''}`, '']) as any}
-                    labelFormatter={((label: any) => dailyData.find(d => d.day === label)?.date || label) as any}
-                  />
-                  <Bar dataKey="count" radius={[3, 3, 0, 0]}>
-                    {dailyData.map((entry, i) => (
-                      <Cell key={i} fill={entry.count > 0 ? '#22c55e' : 'hsl(var(--muted))'} fillOpacity={entry.count > 0 ? 0.7 : 0.15} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
           </div>
         )}
 
-        {/* ═══ ROW 4: Weekly trends side-by-side ═══ */}
-        {weeklyTrend.length > 1 && (weeklyTrend.some(w => w.distance > 0) || weeklyTrend.some(w => w.duration > 0)) && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {weeklyTrend.some(w => w.distance > 0) && (
-              <div className="rounded-xl bg-muted/10 border border-border/20 p-3">
-                <p className="text-[10px] text-muted-foreground font-medium mb-1">Weekly Distance (km)</p>
-                <div className="h-[70px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={weeklyTrend}>
-                      <defs><linearGradient id="dg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#22c55e" stopOpacity={0.3} /><stop offset="100%" stopColor="#22c55e" stopOpacity={0} /></linearGradient></defs>
-                      <XAxis dataKey="week" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                      <YAxis hide />
-                      <Tooltip contentStyle={tooltipStyle} formatter={((v: any) => [`${v} km`, '']) as any} />
-                      <Area type="monotone" dataKey="distance" stroke="#22c55e" strokeWidth={2} fill="url(#dg)" dot={{ r: 3, fill: '#22c55e', strokeWidth: 0 }} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
+        {/* ═══ Highlight of the month ═══ */}
+        {highlight && (
+          <div className="rounded-xl overflow-hidden bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20">
+            {highlight.photo && (
+              <div className="h-20 overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={highlight.photo} alt="" className="w-full h-full object-cover" crossOrigin="anonymous" />
               </div>
             )}
-            {weeklyTrend.some(w => w.duration > 0) && (
-              <div className="rounded-xl bg-muted/10 border border-border/20 p-3">
-                <p className="text-[10px] text-muted-foreground font-medium mb-1">Weekly Duration (min)</p>
-                <div className="h-[70px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={weeklyTrend}>
-                      <defs><linearGradient id="tg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3} /><stop offset="100%" stopColor="#3b82f6" stopOpacity={0} /></linearGradient></defs>
-                      <XAxis dataKey="week" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                      <YAxis hide />
-                      <Tooltip contentStyle={tooltipStyle} formatter={((v: any) => [`${v} min`, '']) as any} />
-                      <Area type="monotone" dataKey="duration" stroke="#3b82f6" strokeWidth={2} fill="url(#tg)" dot={{ r: 3, fill: '#3b82f6', strokeWidth: 0 }} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            )}
+            <div className="p-3">
+              <p className="text-foreground text-xs font-semibold">{highlight.emoji} {highlight.label}</p>
+              <p className="text-muted-foreground text-[10px] mt-0.5">{highlight.detail}</p>
+            </div>
           </div>
         )}
       </div>
 
       {/* ═══ Share ═══ */}
       <div className="sticky bottom-0 z-20 px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] bg-background/80 backdrop-blur-xl border-t border-border/30">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-lg mx-auto">
           {showShare ? (
             <ShareButtons
               title={`${format(targetMonthStart, 'MMMM yyyy')} Review`}

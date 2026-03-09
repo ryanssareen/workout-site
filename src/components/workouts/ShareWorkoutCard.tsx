@@ -52,9 +52,11 @@ interface ShareButtonsProps {
   onClose: () => void;
   /** Override the background color for the captured image. Defaults to '#0a0a0a'. */
   captureBg?: string;
+  /** Override the capture width in px. Defaults to 520. */
+  captureW?: number;
 }
 
-function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef, onClose, captureBg }: ShareButtonsProps) {
+function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef, onClose, captureBg, captureW }: ShareButtonsProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -77,14 +79,15 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
     const el = cardRef.current;
     const prevWidth = el.style.width;
     const prevMaxWidth = el.style.maxWidth;
-    el.style.width = '1200px';
-    el.style.maxWidth = '1200px';
+    const captureWidth = captureW || 520;
+    el.style.width = `${captureWidth}px`;
+    el.style.maxWidth = `${captureWidth}px`;
 
     try {
       const result = await toPng(el, {
         quality: 0.95,
         pixelRatio: 2,
-        width: 1200,
+        width: captureWidth,
         cacheBust: true,
         imagePlaceholder: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
         ...(captureBg ? { backgroundColor: captureBg } : {}),
@@ -101,7 +104,7 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
       hidden.forEach(({ el: img, display }) => { img.style.display = display; });
       setIsGenerating(false);
     }
-  }, [cardRef, captureBg]);
+  }, [cardRef, captureBg, captureW]);
 
   const handleDownload = async () => {
     const dataUrl = await generateImage();
