@@ -8,11 +8,8 @@ import {
   startOfMonth, endOfMonth, subMonths, isWithinInterval, format,
   eachDayOfInterval, isSameDay, getDay, isBefore,
 } from 'date-fns';
-import {
-  PieChart, Pie, Cell, ResponsiveContainer,
-} from 'recharts';
 import { ShareButtons } from '@/components/workouts/ShareWorkoutCard';
-import { Share2, Loader2, ChevronLeft, ChevronRight, X, TrendingUp, TrendingDown, Minus, Calendar, Clock, Flame, MapPin } from 'lucide-react';
+import { Share2, Loader2, ChevronLeft, ChevronRight, X, TrendingUp, TrendingDown, Minus, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/dashboard/ThemeToggle';
@@ -25,6 +22,9 @@ const TYPE_EMOJI: Record<string, string> = {
 const TYPE_LABEL: Record<string, string> = {
   run: 'ran', bike: 'cycled', swim: 'swam', strength: 'lifted', other: 'trained',
 };
+const TYPE_NAME: Record<string, string> = {
+  run: 'Running', bike: 'Cycling', swim: 'Swimming', strength: 'Strength', other: 'Other',
+};
 const TYPE_COLOR: Record<string, string> = {
   run: '#22c55e', bike: '#f97316', swim: '#3b82f6', strength: '#a855f7', other: '#6b7280',
 };
@@ -33,7 +33,6 @@ const TYPE_BG: Record<string, string> = {
   swim: 'from-blue-500/20 to-blue-500/5', strength: 'from-purple-500/20 to-purple-500/5',
   other: 'from-gray-500/20 to-gray-500/5',
 };
-const PIE_COLORS = ['#22c55e', '#f97316', '#3b82f6', '#a855f7', '#6b7280', '#ef4444', '#14b8a6'];
 const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 // ── Helpers ──
@@ -120,14 +119,14 @@ function ActivityCalendar({ days, monthStart }: { days: { date: Date; count: num
   return (
     <div>
       {/* Day-of-week headers */}
-      <div className="grid grid-cols-7 gap-px mb-1">
+      <div className="grid grid-cols-7 mb-0.5">
         {DAY_LABELS.map((d, i) => (
-          <div key={i} className="text-[10px] text-muted-foreground/60 text-center font-semibold py-1">{d}</div>
+          <div key={i} className="text-[8px] text-muted-foreground/50 text-center font-semibold py-0.5">{d}</div>
         ))}
       </div>
       {/* Calendar grid */}
-      <div className="grid grid-cols-7 gap-px">
-        {blanks.map((_, i) => <div key={`b-${i}`} className="h-9" />)}
+      <div className="grid grid-cols-7 gap-[2px]">
+        {blanks.map((_, i) => <div key={`b-${i}`} className="h-7" />)}
         {days.map((d) => {
           const isToday = isSameDay(d.date, today);
           const active = d.count > 0;
@@ -135,28 +134,21 @@ function ActivityCalendar({ days, monthStart }: { days: { date: Date; count: num
             <div
               key={format(d.date, 'd')}
               className={cn(
-                'h-9 flex flex-col items-center justify-center rounded-lg relative transition-colors',
+                'h-7 flex items-center justify-center rounded-md transition-colors',
                 active
-                  ? 'bg-emerald-500/15'
+                  ? 'bg-emerald-500/20'
                   : 'bg-transparent',
                 isToday && 'ring-1 ring-primary/50',
               )}
               title={`${format(d.date, 'MMM d')}: ${d.count} workout${d.count !== 1 ? 's' : ''}`}
             >
               <span className={cn(
-                'text-xs font-semibold leading-none',
-                active ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground/60',
+                'text-[10px] font-bold leading-none',
+                active ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground/40',
                 isToday && 'text-primary',
               )}>
                 {format(d.date, 'd')}
               </span>
-              {active && (
-                <div className="flex items-center gap-0.5 mt-0.5">
-                  {Array.from({ length: Math.min(d.count, 3) }).map((_, i) => (
-                    <div key={i} className="w-1 h-1 rounded-full bg-emerald-500" />
-                  ))}
-                </div>
-              )}
             </div>
           );
         })}
@@ -230,11 +222,9 @@ export default function MonthlyReviewPage() {
   }, [thisMonthWorkouts]);
 
   const totalWorkouts = thisMonthWorkouts.length;
-  const totalCompleted = thisMonthWorkouts.filter(w => w.completed).length;
   const totalDistanceKm = Math.round(sportStats.reduce((s, st) => s + st.distanceKm, 0) * 10) / 10;
   const totalDurationMin = sportStats.reduce((s, st) => s + st.durationMin, 0);
   const totalDurationHrs = Math.round(totalDurationMin / 6) / 10;
-  const totalCalories = sportStats.reduce((s, st) => s + st.calories, 0);
   const prevTotalWorkouts = lastMonthWorkouts.length;
   const activeDays = calendarDays.filter(d => d.count > 0).length;
   const totalDays = calendarDays.length;
@@ -304,132 +294,61 @@ export default function MonthlyReviewPage() {
     <div className="fixed inset-0 bg-background overflow-y-auto">
       {navBar}
 
-      <div ref={cardRef} className="w-full max-w-lg mx-auto px-4 py-5 space-y-4">
+      <div ref={cardRef} className="w-full max-w-lg mx-auto px-4 py-5 space-y-3">
 
-        {/* Month label (visible in captured image + on page) */}
-        <h2 className="text-center text-2xl font-black tracking-tight text-foreground">
-          {monthLabel}
-        </h2>
-
-        {/* ═══ Hero — title + big stat badges ═══ */}
+        {/* ═══ Hero — month, rating, big stats ═══ */}
         <div className="rounded-xl bg-gradient-to-br from-primary/10 via-transparent to-purple-500/10 border border-border/30 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-7 h-7 rounded-lg bg-red-600 flex items-center justify-center">
-              <span className="text-white font-bold text-[10px]">CT</span>
-            </div>
-            <span className="text-muted-foreground text-[10px] font-medium tracking-widest uppercase">Month in Review</span>
-          </div>
-          <h1 className="text-foreground text-xl font-bold leading-tight mb-4">
-            Dear {firstName}, this was <span className={rating.color}>{rating.word}</span> {rating.emoji}
+          <p className="text-muted-foreground text-[10px] font-semibold tracking-widest uppercase mb-1">Month in Review</p>
+          <h2 className="text-foreground text-2xl font-black tracking-tight leading-none mb-0.5">
+            {monthLabel}
+          </h2>
+          <h1 className="text-foreground text-base font-medium leading-tight mb-4">
+            Dear {firstName}, this was <span className={`font-bold ${rating.color}`}>{rating.word}</span> {rating.emoji}
           </h1>
-          {/* Stat badges — 4 across */}
+          {/* Stat badges — 4 across, big numbers, no icons */}
           <div className="grid grid-cols-4 gap-2">
             {[
-              { icon: Flame, value: String(totalWorkouts), label: 'workouts', color: 'text-orange-400', bg: 'from-orange-500/15 to-orange-500/5' },
-              { icon: MapPin, value: `${totalDistanceKm}km`, label: 'distance', color: 'text-green-400', bg: 'from-green-500/15 to-green-500/5' },
-              { icon: Clock, value: `${totalDurationHrs}h`, label: 'time', color: 'text-blue-400', bg: 'from-blue-500/15 to-blue-500/5' },
-              { icon: Calendar, value: `${activeDays}`, label: `of ${totalDays} days`, color: 'text-purple-400', bg: 'from-purple-500/15 to-purple-500/5' },
+              { value: String(totalWorkouts), label: 'workouts' },
+              { value: `${totalDistanceKm}km`, label: 'distance' },
+              { value: `${totalDurationHrs}h`, label: 'time' },
+              { value: `${activeDays}/${totalDays}`, label: 'active days' },
             ].map(s => (
-              <div key={s.label} className={`rounded-xl bg-gradient-to-b ${s.bg} border border-border/20 px-2 py-2.5 text-center`}>
-                <s.icon className={`h-3.5 w-3.5 ${s.color} mx-auto mb-1`} />
-                <p className="text-lg font-bold text-foreground leading-none">{s.value}</p>
-                <p className="text-[9px] text-muted-foreground mt-0.5">{s.label}</p>
+              <div key={s.label} className="rounded-lg bg-foreground/5 border border-border/20 py-2.5 text-center">
+                <p className="text-xl font-black text-foreground leading-none">{s.value}</p>
+                <p className="text-[9px] text-muted-foreground mt-1 font-medium uppercase tracking-wide">{s.label}</p>
               </div>
             ))}
           </div>
         </div>
 
-        {/* ═══ Activity Calendar ═══ */}
-        <div className="rounded-xl bg-muted/10 border border-border/20 p-3">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Activity</h2>
-            <span className="text-[10px] text-emerald-500 font-medium">{activeDays} active days</span>
-          </div>
-          <ActivityCalendar days={calendarDays} monthStart={targetMonthStart} />
-        </div>
-
-        {/* ═══ By Sport ═══ */}
-        <div className="space-y-1.5">
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">By Sport</h2>
-          {sportStats.map(stat => {
-            const metric = stat.distanceKm > 0 ? `${stat.distanceKm}km` : stat.durationMin > 0 ? `${stat.durationMin}m` : `${stat.count}x`;
-            const comp = stat.distanceKm > 0 ? pctChange(stat.distanceKm, stat.prevDistanceKm) : stat.durationMin > 0 ? pctChange(stat.durationMin, stat.prevDurationMin) : pctChange(stat.count, stat.prevCount);
-            return (
-              <div key={stat.type} className={`flex items-center gap-2.5 rounded-xl bg-gradient-to-r ${TYPE_BG[stat.type] || TYPE_BG.other} border border-border/20 px-3 py-2.5`}>
-                <span className="text-xl">{TYPE_EMOJI[stat.type]}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-foreground">
-                    <span style={{ color: TYPE_COLOR[stat.type] }}>{metric}</span>
-                    <span className="text-muted-foreground font-normal ml-1">· {stat.count} sessions · {stat.durationMin}m</span>
-                  </p>
-                </div>
-                {comp && <span className={`text-[10px] font-bold ${comp.positive ? 'text-emerald-400' : 'text-red-400'}`}>{comp.text}</span>}
-              </div>
-            );
-          })}
-          {sportStats.length === 0 && (
-            <div className="text-xs text-muted-foreground/50 text-center py-4">No workouts this month</div>
-          )}
-        </div>
-
-        {/* ═══ Breakdown + vs Last Month (side by side) ═══ */}
-        {(pieData.length > 0 || prevTotalWorkouts > 0) && (
-          <div className="grid grid-cols-2 gap-3">
-            {pieData.length > 0 && (
-              <div className="rounded-xl bg-muted/10 border border-border/20 p-3">
-                <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Breakdown</h2>
-                <div className="flex flex-col items-center gap-2">
-                  <div className="w-20 h-20 shrink-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={pieData} cx="50%" cy="50%" innerRadius={18} outerRadius={38} paddingAngle={3} dataKey="value" stroke="none">
-                          {pieData.map((entry, i) => <Cell key={entry.type} fill={TYPE_COLOR[entry.type] || PIE_COLORS[i % PIE_COLORS.length]} />)}
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
+        {/* ═══ vs Last Month — compact inline comparison ═══ */}
+        {prevTotalWorkouts > 0 && (() => {
+          const items = [
+            { label: 'Workouts', curr: totalWorkouts, prev: prevTotalWorkouts },
+            { label: 'Distance', curr: totalDistanceKm, prev: prevDistKm },
+            { label: 'Time', curr: totalDurationMin, prev: prevDurMin },
+          ];
+          return (
+            <div className="flex items-center justify-center gap-4 py-1">
+              <span className="text-[10px] text-muted-foreground font-medium">vs {format(prevMonthStart, 'MMM')}</span>
+              {items.map(item => {
+                const diff = item.prev > 0 ? Math.round(((item.curr - item.prev) / item.prev) * 100) : 0;
+                const isUp = diff > 0, isDown = diff < 0;
+                return (
+                  <div key={item.label} className="flex items-center gap-1">
+                    {isUp ? <TrendingUp className="h-2.5 w-2.5 text-emerald-400" /> : isDown ? <TrendingDown className="h-2.5 w-2.5 text-red-400" /> : <Minus className="h-2.5 w-2.5 text-muted-foreground" />}
+                    <span className={`text-[11px] font-bold ${isUp ? 'text-emerald-400' : isDown ? 'text-red-400' : 'text-muted-foreground'}`}>
+                      {isUp ? '+' : ''}{diff}%
+                    </span>
+                    <span className="text-[9px] text-muted-foreground">{item.label.toLowerCase()}</span>
                   </div>
-                  <div className="space-y-0.5 w-full">
-                    {pieData.map(e => (
-                      <div key={e.type} className="flex items-center gap-1.5">
-                        <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: TYPE_COLOR[e.type] || '#6b7280' }} />
-                        <span className="text-[10px] text-foreground font-medium capitalize flex-1 truncate">{e.name}</span>
-                        <span className="text-[10px] text-muted-foreground">{e.pct}%</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-            {prevTotalWorkouts > 0 && (
-              <div className="rounded-xl bg-muted/10 border border-border/20 p-3">
-                <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">vs Last Month</h2>
-                <div className="space-y-3 pt-1">
-                  {[
-                    { label: 'Workouts', curr: totalWorkouts, prev: prevTotalWorkouts },
-                    { label: 'Distance', curr: totalDistanceKm, prev: prevDistKm },
-                    { label: 'Time', curr: totalDurationMin, prev: prevDurMin },
-                  ].map(item => {
-                    const diff = item.prev > 0 ? Math.round(((item.curr - item.prev) / item.prev) * 100) : 0;
-                    const isUp = diff > 0, isDown = diff < 0;
-                    return (
-                      <div key={item.label} className="flex items-center justify-between">
-                        <span className="text-[10px] text-muted-foreground">{item.label}</span>
-                        <div className="flex items-center gap-1">
-                          {isUp ? <TrendingUp className="h-2.5 w-2.5 text-emerald-400" /> : isDown ? <TrendingDown className="h-2.5 w-2.5 text-red-400" /> : <Minus className="h-2.5 w-2.5 text-muted-foreground" />}
-                          <span className={`text-xs font-bold ${isUp ? 'text-emerald-400' : isDown ? 'text-red-400' : 'text-foreground'}`}>
-                            {isUp ? '+' : ''}{diff}%
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          );
+        })()}
 
-        {/* ═══ Highlight of the month ═══ */}
+        {/* ═══ Highlight of the month (moved up) ═══ */}
         {highlight && (
           <div className="rounded-xl overflow-hidden bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20">
             {highlight.photo && (
@@ -438,12 +357,81 @@ export default function MonthlyReviewPage() {
                 <img src={highlight.photo} alt="" className="w-full h-full object-cover" crossOrigin="anonymous" />
               </div>
             )}
-            <div className="p-3">
-              <p className="text-foreground text-xs font-semibold">{highlight.emoji} {highlight.label}</p>
-              <p className="text-muted-foreground text-[10px] mt-0.5">{highlight.detail}</p>
+            <div className="px-3 py-2.5 flex items-center gap-2">
+              <span className="text-lg">{highlight.emoji}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-foreground text-xs font-semibold">{highlight.label}</p>
+                <p className="text-muted-foreground text-[10px]">{highlight.detail}</p>
+              </div>
             </div>
           </div>
         )}
+
+        {/* ═══ By Sport — with sport name labels ═══ */}
+        <div className="space-y-1.5">
+          <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">By Sport</h2>
+          {sportStats.map(stat => {
+            const metric = stat.distanceKm > 0 ? `${stat.distanceKm}km` : stat.durationMin > 0 ? `${stat.durationMin}m` : `${stat.count}x`;
+            const comp = stat.distanceKm > 0 ? pctChange(stat.distanceKm, stat.prevDistanceKm) : stat.durationMin > 0 ? pctChange(stat.durationMin, stat.prevDurationMin) : pctChange(stat.count, stat.prevCount);
+            return (
+              <div key={stat.type} className={`flex items-center gap-2.5 rounded-xl bg-gradient-to-r ${TYPE_BG[stat.type] || TYPE_BG.other} border border-border/20 px-3 py-2`}>
+                <span className="text-lg">{TYPE_EMOJI[stat.type]}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-foreground leading-tight" style={{ color: TYPE_COLOR[stat.type] }}>
+                    {TYPE_NAME[stat.type] || stat.type}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {metric} · {stat.count} sessions · {stat.durationMin}m
+                  </p>
+                </div>
+                {comp && <span className={`text-[11px] font-black ${comp.positive ? 'text-emerald-400' : 'text-red-400'}`}>{comp.text}</span>}
+              </div>
+            );
+          })}
+          {sportStats.length === 0 && (
+            <div className="text-xs text-muted-foreground/50 text-center py-4">No workouts this month</div>
+          )}
+        </div>
+
+        {/* ═══ Activity Calendar ═══ */}
+        <div className="rounded-xl bg-muted/10 border border-border/20 p-3">
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Activity</h2>
+            <span className="text-[10px] text-emerald-500 font-medium">{activeDays} active days</span>
+          </div>
+          <ActivityCalendar days={calendarDays} monthStart={targetMonthStart} />
+        </div>
+
+        {/* ═══ Breakdown — horizontal stacked bar ═══ */}
+        {pieData.length > 0 && (
+          <div className="rounded-xl bg-muted/10 border border-border/20 p-3">
+            <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Breakdown</h2>
+            {/* Stacked bar */}
+            <div className="flex h-3 rounded-full overflow-hidden">
+              {pieData.map(e => (
+                <div
+                  key={e.type}
+                  className="h-full first:rounded-l-full last:rounded-r-full"
+                  style={{ width: `${e.pct}%`, backgroundColor: TYPE_COLOR[e.type] || '#6b7280' }}
+                />
+              ))}
+            </div>
+            {/* Legend */}
+            <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-2">
+              {pieData.map(e => (
+                <div key={e.type} className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: TYPE_COLOR[e.type] || '#6b7280' }} />
+                  <span className="text-[10px] text-muted-foreground">{TYPE_NAME[e.type] || e.name} {e.pct}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ═══ Footer branding ═══ */}
+        <div className="pt-1 pb-2 text-center">
+          <p className="text-[10px] text-muted-foreground/50 font-medium tracking-wider uppercase">The Daily Athlete</p>
+        </div>
       </div>
 
       {/* ═══ Share ═══ */}
