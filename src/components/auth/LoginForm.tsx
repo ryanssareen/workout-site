@@ -11,7 +11,11 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { Dumbbell, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 
-export function LoginForm() {
+interface Props {
+  dark?: boolean;
+}
+
+export function LoginForm({ dark = true }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
@@ -67,20 +71,20 @@ export function LoginForm() {
     <div className="w-full max-w-md">
       {/* Logo */}
       <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-black shadow-xl shadow-black/25 mb-4">
+        <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl shadow-xl mb-4 ${dark ? 'bg-black shadow-black/25' : 'bg-gray-900 shadow-gray-900/20'}`}>
           <Dumbbell className="w-8 h-8 text-white" />
         </div>
-        <h1 className="text-2xl font-black text-white uppercase tracking-tight">Welcome Back</h1>
-        <p className="text-white/40 mt-1">Sign in to The Daily Athlete</p>
+        <h1 className={`text-2xl font-black uppercase tracking-tight ${dark ? 'text-white' : 'text-gray-900'}`}>Welcome Back</h1>
+        <p className={`mt-1 ${dark ? 'text-white/40' : 'text-gray-400'}`}>Sign in to The Daily Athlete</p>
       </div>
 
       {/* Form Card */}
-      <div className="bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
+      <div className={`backdrop-blur-xl rounded-2xl p-8 shadow-2xl ${dark ? 'bg-white/[0.03] border border-white/10 shadow-black/40' : 'bg-white border border-gray-100 shadow-gray-200/60'}`}>
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-sm font-medium text-white/70">Email</Label>
+            <Label htmlFor="email" className={`text-sm font-medium ${dark ? 'text-white/70' : 'text-gray-600'}`}>Email</Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+              <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${dark ? 'text-white/30' : 'text-gray-400'}`} />
               <Input
                 id="email"
                 type="email"
@@ -88,20 +92,24 @@ export function LoginForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="pl-10 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-red-500 focus:ring-red-500/20 transition-colors"
+                className={`pl-10 h-11 transition-colors ${
+                  dark
+                    ? 'bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-red-500 focus:ring-red-500/20'
+                    : 'bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-red-400 focus:ring-red-400/20'
+                }`}
               />
             </div>
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="password" className="text-sm font-medium text-white/70">Password</Label>
-              <Link href="/reset-password" className="text-xs text-white/30 hover:text-red-400 transition-colors">
+              <Label htmlFor="password" className={`text-sm font-medium ${dark ? 'text-white/70' : 'text-gray-600'}`}>Password</Label>
+              <Link href="/reset-password" className={`text-xs transition-colors ${dark ? 'text-white/30 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}`}>
                 Forgot password?
               </Link>
             </div>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+              <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${dark ? 'text-white/30' : 'text-gray-400'}`} />
               <Input
                 id="password"
                 type="password"
@@ -109,7 +117,11 @@ export function LoginForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="pl-10 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-red-500 focus:ring-red-500/20 transition-colors"
+                className={`pl-10 h-11 transition-colors ${
+                  dark
+                    ? 'bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-red-500 focus:ring-red-500/20'
+                    : 'bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-red-400 focus:ring-red-400/20'
+                }`}
               />
             </div>
           </div>
@@ -120,9 +132,9 @@ export function LoginForm() {
               type="checkbox"
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
-              className="h-4 w-4 rounded border-white/20 bg-white/5 text-red-600 focus:ring-red-500/20 accent-red-600"
+              className={`h-4 w-4 rounded accent-red-600 ${dark ? 'border-white/20 bg-white/5' : 'border-gray-300 bg-white'}`}
             />
-            <Label htmlFor="rememberMe" className="text-sm text-white/50 cursor-pointer select-none">Remember me</Label>
+            <Label htmlFor="rememberMe" className={`text-sm cursor-pointer select-none ${dark ? 'text-white/50' : 'text-gray-500'}`}>Remember me</Label>
           </div>
 
           <Button type="submit" className="w-full h-11 font-bold bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/25 border-0 transition-all" disabled={loading || waitingForAuth || googleLoading}>
@@ -133,17 +145,17 @@ export function LoginForm() {
 
           <div className="relative my-4">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-white/10" />
+              <div className={`w-full border-t ${dark ? 'border-white/10' : 'border-gray-200'}`} />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-transparent px-2 text-white/30">or</span>
+              <span className={`px-2 ${dark ? 'bg-transparent text-white/30' : 'bg-white text-gray-400'}`}>or</span>
             </div>
           </div>
 
           <Button
             type="button"
             variant="outline"
-            className="w-full h-11 bg-white hover:bg-gray-50 text-gray-700 border-white/20 font-medium"
+            className={`w-full h-11 font-medium ${dark ? 'bg-white hover:bg-gray-50 text-gray-700 border-white/20' : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200'}`}
             onClick={handleGoogleSignIn}
             disabled={loading || waitingForAuth || googleLoading}
           >
@@ -162,15 +174,15 @@ export function LoginForm() {
         </form>
 
         <div className="mt-6 text-center">
-          <p className="text-sm text-white/30">
+          <p className={`text-sm ${dark ? 'text-white/30' : 'text-gray-500'}`}>
             Don&apos;t have an account?{' '}
-            <Link href="/register" className="text-red-400 hover:text-red-300 font-medium transition-colors">Sign up free</Link>
+            <Link href="/register" className="text-red-500 hover:text-red-400 font-medium transition-colors">Sign up free</Link>
           </p>
         </div>
       </div>
 
       <div className="mt-6 text-center">
-        <Link href="/" className="text-sm text-white/20 hover:text-white/50 transition-colors">&larr; Back to home</Link>
+        <Link href="/" className={`text-sm transition-colors ${dark ? 'text-white/20 hover:text-white/50' : 'text-gray-300 hover:text-gray-500'}`}>&larr; Back to home</Link>
       </div>
     </div>
   );
