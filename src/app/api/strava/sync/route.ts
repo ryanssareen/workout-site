@@ -791,9 +791,27 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
           }
         }
       } else {
-        // Quota-safe mode: skip merge/proximity checks, go straight to create.
-        // Deterministic doc ID (strava_{id}) handles duplicates via set() overwrite.
-        shouldCreate = true;
+        // Quota-safe mode: still try planned workout merge (one read per activity),
+        // but skip expensive proximity duplicate checks (saves multiple reads).
+        const matchingWorkout = await findMatchingWorkout(userId, workoutType, activityDate);
+        if (matchingWorkout) {
+          console.log(`  🔗 Auto-merge (quota-safe): ${activity.name} → ${matchingWorkout.data.name}`);
+          const autoMergeData: any = {
+            completed: true,
+            completedAt: admin.firestore.Timestamp.fromDate(activityDate),
+            completedBy: 'strava',
+            stravaActivityId: stravaId,
+            actualStats,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          };
+          if (Object.keys(routeData).length > 0) autoMergeData.routeData = routeData;
+          if (activity.total_photo_count > 0) autoMergeData.hasStravaPhotos = true;
+          await adminDb.collection('users').doc(userId).collection('workouts').doc(matchingWorkout.id).update(autoMergeData);
+          mergedWorkoutsCount++;
+        } else {
+          // No planned workout match — create new. Deterministic doc ID (strava_{id}) handles duplicates via set() overwrite.
+          shouldCreate = true;
+        }
       }
 
       // Before creating, check if there's a matching imported (CSV/XLSX) workout to merge with
