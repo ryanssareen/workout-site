@@ -3,7 +3,6 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import admin from 'firebase-admin';
-import Groq from 'groq-sdk';
 import { sendPushNotification } from '@/lib/push';
 
 // ── Strava rate-limit header parser ──────────────────────────────────────────
@@ -84,15 +83,6 @@ function getRateLimitMessage(resp: Response): {
   };
 }
 
-// Predefined workout tags (must match frontend)
-const WORKOUT_TAGS = [
-  'easy', 'moderate', 'hard', 'recovery', 'speed', 
-  'endurance', 'intervals', 'tempo', 'long', 'strength', 
-  'technique', 'race'
-] as const;
-
-type WorkoutTag = typeof WORKOUT_TAGS[number];
-
 // Map Strava activity types to our workout types
 function mapStravaType(stravaType: string): 'swim' | 'run' | 'bike' | 'strength' {
   const typeMap: Record<string, 'swim' | 'run' | 'bike' | 'strength'> = {
@@ -126,122 +116,6 @@ function getDayBounds(date: Date): { start: Date; end: Date } {
   const end = new Date(date);
   end.setHours(23, 59, 59, 999);
   return { start, end };
-}
-
-// AI-powered workout tagging using Groq
-async function generateWorkoutTags(activity: any): Promise<{ tags: WorkoutTag[]; aiComment?: string }> {
-  if (!process.env.GROQ_API_KEY) {
-    console.log('⚠️ GROQ_API_KEY not set, skipping AI tagging');
-    return { tags: [] };
-  }
-
-  try {
-    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY.trim() });
-
-    // Calculate pace for runs (min/km)
-    let paceInfo = '';
-    if (activity.type === 'Run' && activity.distance && activity.moving_time) {
-      const paceSecondsPerKm = (activity.moving_time / (activity.distance / 1000));
-      const paceMin = Math.floor(paceSecondsPerKm / 60);
-      const paceSec = Math.round(paceSecondsPerKm % 60);
-      paceInfo = `Pace: ${paceMin}:${paceSec.toString().padStart(2, '0')}/km`;
-    }
-
-    // Location context for fun comments
-    const locationCity = activity.location_city || '';
-    const locationState = activity.location_state || '';
-    const locationCountry = activity.location_country || '';
-    const hasLocation = locationCity || locationState || locationCountry;
-    const locationStr = [locationCity, locationState, locationCountry].filter(Boolean).join(', ');
-    const hasRoute = !!activity.map?.summary_polyline;
-    const terrainHint = activity.type === 'Run' && activity.name?.toLowerCase().includes('trail') ? 'trail' :
-                        activity.type === 'Run' && activity.name?.toLowerCase().includes('beach') ? 'beach' :
-                        activity.type === 'Ride' && activity.name?.toLowerCase().includes('mountain') ? 'mountain' : '';
-
-    const prompt = `Analyze this workout and select 1-3 appropriate tags.${hasLocation || hasRoute ? ' Also write a SHORT fun comment (1 sentence, max 15 words) about the route/location — be playful, like a hype coach reacting to where they trained. Examples: "Sandy beach vibes, perfect spot for a morning run! 🏖️", "Hill climbing beast mode in the mountains! 🏔️", "City streets at dawn — nothing beats that energy! 🌆"' : ''}
-
-Activity: ${activity.name}
-Type: ${activity.type}
-Distance: ${activity.distance ? (activity.distance / 1000).toFixed(2) + ' km' : 'N/A'}
-Duration: ${activity.moving_time ? Math.round(activity.moving_time / 60) + ' min' : 'N/A'}
-${paceInfo}
-Avg Heart Rate: ${activity.average_heartrate ? activity.average_heartrate + ' bpm' : 'N/A'}
-Max Heart Rate: ${activity.max_heartrate ? activity.max_heartrate + ' bpm' : 'N/A'}
-Elevation Gain: ${activity.total_elevation_gain ? activity.total_elevation_gain + ' m' : 'N/A'}
-${hasLocation ? `Location: ${locationStr}` : ''}
-${terrainHint ? `Terrain: ${terrainHint}` : ''}
-${hasRoute ? 'Has GPS route: Yes' : ''}
-
-Available tags: ${WORKOUT_TAGS.join(', ')}
-
-Rules:
-- Select 1-3 tags that best describe this workout
-- Use "easy" for recovery/warm-up pace, "moderate" for steady state, "hard" for intense efforts
-- Use "long" for duration >60min or distance >15km
-- Use "speed" for short fast efforts, "intervals" for repeated efforts, "tempo" for sustained moderate-hard pace
-- Use "recovery" for very easy efforts or active recovery
-- Use "race" only if the name suggests a race/competition
-
-Return ONLY a JSON object: {"tags": ["tag1", "tag2"]${hasLocation || hasRoute ? ', "comment": "your fun comment here"' : ''}}`;
-
-    const completion = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      messages: [
-        { role: 'system', content: 'You are a hype fitness coach analyzing workout data. Return only valid JSON. When writing comments, be fun and brief — react to the location/route like a friend would.' },
-        { role: 'user', content: prompt }
-      ],
-      temperature: 0.5,
-      max_tokens: 100,
-      response_format: { type: 'json_object' },
-    });
-
-    const response = completion.choices[0]?.message?.content || '{}';
-    const parsed = JSON.parse(response);
-    
-    // Validate tags
-    const validTags = (parsed.tags || [])
-      .filter((tag: string) => WORKOUT_TAGS.includes(tag as WorkoutTag))
-      .slice(0, 3) as WorkoutTag[];
-
-    const aiComment = parsed.comment && typeof parsed.comment === 'string' ? parsed.comment.slice(0, 100) : undefined;
-
-    console.log(`🏷️ AI generated tags for "${activity.name}": ${validTags.join(', ')}${aiComment ? ` | Comment: ${aiComment}` : ''}`);
-    return { tags: validTags, aiComment };
-  } catch (error) {
-    console.error('❌ AI tagging error:', error);
-    return { tags: [] };
-  }
-}
-
-// Fetch photo URLs for a Strava activity
-async function fetchStravaPhotos(activityId: string, accessToken: string): Promise<string[]> {
-  try {
-    const response = await fetch(
-      `https://www.strava.com/api/v3/activities/${activityId}/photos?size=600&photo_sources=true`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
-    );
-
-    if (!response.ok) {
-      console.log(`⚠️ Failed to fetch photos for activity ${activityId}: ${response.status}`);
-      return [];
-    }
-
-    const photos = await response.json();
-    if (!Array.isArray(photos) || photos.length === 0) return [];
-
-    // Extract the best available URL from each photo
-    const urls: string[] = [];
-    for (const photo of photos) {
-      const url = photo.urls?.['600'] || photo.urls?.['100'] || photo.urls?.['0'];
-      if (url) urls.push(url);
-    }
-
-    console.log(`📸 Found ${urls.length} photos for activity ${activityId}`);
-    return urls;
-  } catch (error) {
-    console.error(`❌ Error fetching photos for activity ${activityId}:`, error);
-    return [];
-  }
 }
 
 // Laps/splits are now fetched on-demand via /api/strava/activity-details
@@ -661,10 +535,6 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
 
     // Handle Strava rate limit (429) — surface it clearly so the client can back off
     if (!result.activities && result.error && result.error.status === 429) {
-      // Log the full response body to understand WHY Strava is returning 429
-      const errorBody = await result.error.clone().json().catch(() => null);
-      console.warn(`⚠️ Strava 429 response body:`, JSON.stringify(errorBody));
-      console.warn(`⚠️ Strava 429 response headers:`, Object.fromEntries(result.error.headers.entries()));
       const { message, isDaily, isCooldown, retryAfterSeconds, rateLimitScope } = getRateLimitMessage(result.error);
       console.warn(`⏳ Strava rate limit hit (429): ${message}`);
       return NextResponse.json(
@@ -965,9 +835,6 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
       if (shouldCreate) {
           console.log(`  ➕ Creating: ${activity.name}`);
 
-          // Generate AI tags and fun route comment
-          const { tags: aiTags, aiComment } = await generateWorkoutTags(activity);
-
           const newWorkoutData: any = {
             name: activity.name,
             type: workoutType,
@@ -987,14 +854,8 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
             actualStats,
           };
 
-          // Add AI-generated tags
-          if (aiTags.length > 0) {
-            newWorkoutData.tags = aiTags;
-          }
-
-          // Add route data if available (with AI comment)
+          // Add route data if available
           if (Object.keys(routeData).length > 0) {
-            if (aiComment) routeData.aiComment = aiComment;
             newWorkoutData.routeData = routeData;
           }
 
