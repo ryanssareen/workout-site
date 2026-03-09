@@ -22,8 +22,14 @@ const TYPE_EMOJI: Record<string, string> = {
   run: '🏃', bike: '🚴', swim: '🏊', strength: '💪', other: '🏋️',
 };
 
-const TYPE_LABEL: Record<string, string> = {
-  run: 'ran', bike: 'cycled', swim: 'swam', strength: 'lifted', other: 'trained',
+const TYPE_NAME: Record<string, string> = {
+  run: 'Running', bike: 'Cycling', swim: 'Swimming', strength: 'Strength', other: 'Other',
+};
+
+const TYPE_BG: Record<string, string> = {
+  run: 'from-green-500/20 to-green-500/5', bike: 'from-orange-500/20 to-orange-500/5',
+  swim: 'from-blue-500/20 to-blue-500/5', strength: 'from-purple-500/20 to-purple-500/5',
+  other: 'from-gray-500/20 to-gray-500/5',
 };
 
 const TYPE_COLOR: Record<string, string> = {
@@ -39,13 +45,6 @@ interface SportStat {
   prevDistanceKm: number;
   prevDurationMin: number;
   prevCount: number;
-}
-
-interface WeekHighlight {
-  label: string;
-  detail: string;
-  emoji: string;
-  photo?: string;
 }
 
 function computeWeeklySportStats(
@@ -83,57 +82,6 @@ function computeWeeklySportStats(
   }).sort((a, b) => b.count - a.count);
 }
 
-function detectHighlight(workouts: Workout[]): WeekHighlight | null {
-  if (workouts.length === 0) return null;
-
-  let longest: Workout | null = null;
-  let longestDur = 0;
-  let furthest: Workout | null = null;
-  let furthestDist = 0;
-
-  for (const w of workouts) {
-    const dur = w.actualStats?.duration
-      ? w.actualStats.duration / 60
-      : w.duration || 0;
-    if (dur > longestDur) { longestDur = dur; longest = w; }
-    const dist = (w.actualStats?.distance || 0) / 1000;
-    if (dist > furthestDist) { furthestDist = dist; furthest = w; }
-  }
-
-  if (longestDur >= 60 && longest) {
-    const hours = Math.floor(longestDur / 60);
-    const mins = Math.round(longestDur % 60);
-    const timeStr = hours > 0
-      ? `${hours} hour${hours > 1 ? 's' : ''}${mins > 0 ? ` ${mins} min` : ''}`
-      : `${Math.round(longestDur)} minutes`;
-    return {
-      label: `You ${TYPE_LABEL[longest.type] || 'trained'} for ${timeStr} non-stop`,
-      detail: longest.name,
-      emoji: TYPE_EMOJI[longest.type] || '🏋️',
-      photo: longest.photos?.[0],
-    };
-  }
-
-  if (furthestDist >= 5 && furthest) {
-    return {
-      label: `You ${TYPE_LABEL[furthest.type] || 'went'} ${furthestDist.toFixed(1)}km in one session`,
-      detail: furthest.name,
-      emoji: TYPE_EMOJI[furthest.type] || '🏋️',
-      photo: furthest.photos?.[0],
-    };
-  }
-
-  const completedCount = workouts.filter(w => w.completed).length;
-  if (completedCount > 0) {
-    return {
-      label: `You completed ${completedCount} workout${completedCount > 1 ? 's' : ''} this week`,
-      detail: 'Keep showing up!',
-      emoji: '🔥',
-    };
-  }
-  return null;
-}
-
 function getWeekRating(stats: SportStat[]): { word: string; emoji: string } {
   const totalCount = stats.reduce((s, st) => s + st.count, 0);
   const totalPrev = stats.reduce((s, st) => s + st.prevCount, 0);
@@ -146,13 +94,13 @@ function getWeekRating(stats: SportStat[]): { word: string; emoji: string } {
   return { word: 'a recovery week', emoji: '🧘' };
 }
 
-function pctChange(curr: number, prev: number): string | null {
+function pctChange(curr: number, prev: number): { text: string; positive: boolean } | null {
   if (prev === 0 && curr === 0) return null;
-  if (prev === 0) return 'new this week';
+  if (prev === 0) return { text: 'new', positive: true };
   const pct = Math.round(((curr - prev) / prev) * 100);
-  if (pct > 0) return `${pct}% more than last week`;
-  if (pct < 0) return `${Math.abs(pct)}% less than last week`;
-  return 'same as last week';
+  if (pct > 0) return { text: `+${pct}%`, positive: true };
+  if (pct < 0) return { text: `${pct}%`, positive: false };
+  return { text: '=', positive: true };
 }
 
 // ── Page ──
@@ -193,15 +141,20 @@ export default function WrapPage() {
   );
 
   const sportStats = useMemo(() => computeWeeklySportStats(thisWeekWorkouts, lastWeekWorkouts), [thisWeekWorkouts, lastWeekWorkouts]);
-  const highlight = useMemo(() => detectHighlight(thisWeekWorkouts), [thisWeekWorkouts]);
+  const activeSports = useMemo(() => sportStats.filter(s => s.count > 0), [sportStats]);
   const rating = useMemo(() => getWeekRating(sportStats), [sportStats]);
+
+  const totalWorkouts = thisWeekWorkouts.length;
+  const totalDistanceKm = Math.round(activeSports.reduce((s, st) => s + st.distanceKm, 0) * 10) / 10;
+  const totalDurationMin = activeSports.reduce((s, st) => s + st.durationMin, 0);
+  const fmtDur = (min: number) => { const h = Math.floor(min / 60); const m = min % 60; return h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`; };
 
   const firstName = user?.displayName?.split(' ')[0] || 'Athlete';
   const weekLabel = `${format(targetWeekStart, 'MMM d')} – ${format(targetWeekEnd, 'MMM d, yyyy')}`;
   const isCurrentWeek = weekOffset === 0;
 
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/wrap` : '';
-  const shareText = `${rating.emoji} My week's capsule: ${sportStats.map(s => `${TYPE_EMOJI[s.type]} ${s.distanceKm > 0 ? `${s.distanceKm}km` : `${s.count} sessions`}`).join(', ')}.\n\nTracked on The Daily Athlete`;
+  const shareText = `${rating.emoji} My week's capsule: ${activeSports.map(s => `${TYPE_EMOJI[s.type]} ${s.distanceKm > 0 ? `${s.distanceKm}km` : `${s.count} sessions`}`).join(', ')}.\n\nTracked on The Daily Athlete`;
 
   if (loading) {
     return (
@@ -234,105 +187,71 @@ export default function WrapPage() {
         <ThemeToggle />
       </div>
 
-      {/* Full-screen capsule content */}
-      <div ref={cardRef} className="min-h-[calc(100vh-60px)] flex flex-col justify-center px-6 sm:px-10 md:px-16 lg:px-24 py-10">
+      {/* Capsule content */}
+      <div ref={cardRef} className="w-full max-w-lg mx-auto px-4 py-5 space-y-3">
 
-        {/* Brand */}
-        <div className="flex items-center gap-2.5 mb-10">
-          <div className="w-9 h-9 rounded-xl bg-red-600 flex items-center justify-center">
-            <span className="text-white font-bold text-sm">CT</span>
+        {/* ═══ Hero — label, week, rating, stat badges ═══ */}
+        <div className="rounded-xl bg-gradient-to-br from-primary/10 via-transparent to-purple-500/10 border border-border/30 p-4">
+          <p className="text-muted-foreground text-[10px] font-semibold tracking-widest uppercase mb-1">Your Week&apos;s Capsule</p>
+          <h2 className="text-foreground text-2xl font-black tracking-tight leading-none mb-0.5" style={{ WebkitFontSmoothing: 'antialiased', textRendering: 'optimizeLegibility' }}>
+            {weekLabel}
+          </h2>
+          <h1 className="text-foreground text-base font-medium leading-tight mb-4">
+            Dear {firstName}, this week was <span className="font-bold text-foreground">{rating.word}</span> {rating.emoji}
+          </h1>
+          {/* Stat badges — 3 across */}
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { value: String(totalWorkouts), label: 'workouts' },
+              { value: totalDistanceKm > 0 ? `${totalDistanceKm}km` : '—', label: 'distance' },
+              { value: totalDurationMin > 0 ? fmtDur(totalDurationMin) : '—', label: 'time' },
+            ].map(s => (
+              <div key={s.label} className="rounded-lg bg-foreground/5 border border-border/20 py-2.5 text-center">
+                <p className="text-xl font-black text-foreground leading-none">{s.value}</p>
+                <p className="text-[9px] text-muted-foreground mt-1 font-medium uppercase tracking-wide">{s.label}</p>
+              </div>
+            ))}
           </div>
-          <span className="text-muted-foreground text-sm font-medium tracking-widest uppercase">
-            Your Week&apos;s Capsule
-          </span>
         </div>
 
-        {/* Greeting */}
-        <h1 className="text-foreground text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-2">
-          Dear {firstName},
-        </h1>
-        <p className="text-muted-foreground text-xl sm:text-2xl mb-12">
-          this week was <span className="text-foreground font-semibold">{rating.word}</span> {rating.emoji}
-        </p>
-
-        {/* Sport stats */}
-        <div className="space-y-6 mb-12">
-          {sportStats.length === 0 ? (
-            <div className="py-12">
-              <p className="text-muted-foreground text-lg">No workouts logged this week.</p>
-              <p className="text-muted-foreground/60 text-base mt-2">Next week is a fresh start!</p>
-            </div>
+        {/* ═══ By Sport — only active sports ═══ */}
+        <div className="space-y-1.5">
+          <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">By Sport</h2>
+          {activeSports.length === 0 ? (
+            <div className="text-xs text-muted-foreground/50 text-center py-4">No workouts this week. Next week is a fresh start!</div>
           ) : (
-            sportStats.map(stat => {
-              const mainMetric = stat.distanceKm > 0
-                ? `${stat.distanceKm}km`
-                : stat.durationMin > 0
-                  ? `${stat.durationMin} min`
-                  : `${stat.count} session${stat.count > 1 ? 's' : ''}`;
-
-              const compVal = stat.distanceKm > 0
-                ? pctChange(stat.distanceKm, stat.prevDistanceKm)
-                : stat.durationMin > 0
-                  ? pctChange(stat.durationMin, stat.prevDurationMin)
-                  : pctChange(stat.count, stat.prevCount);
-
-              const isPositive = compVal?.includes('more') || compVal === 'new this week';
-
+            activeSports.map(stat => {
+              const metric = stat.distanceKm > 0 ? `${stat.distanceKm}km` : stat.durationMin > 0 ? fmtDur(stat.durationMin) : `${stat.count}x`;
+              const detail = stat.distanceKm > 0
+                ? `${stat.count} sessions · ${fmtDur(stat.durationMin)}`
+                : `${stat.count} sessions`;
+              const comp = stat.distanceKm > 0 ? pctChange(stat.distanceKm, stat.prevDistanceKm) : stat.durationMin > 0 ? pctChange(stat.durationMin, stat.prevDurationMin) : pctChange(stat.count, stat.prevCount);
               return (
-                <div key={stat.type} className="flex items-start gap-4">
-                  <span className="text-3xl sm:text-4xl mt-1">{TYPE_EMOJI[stat.type]}</span>
-                  <div>
-                    <p className="text-foreground text-xl sm:text-2xl">
-                      You{' '}
-                      <span style={{ color: TYPE_COLOR[stat.type] }} className="font-bold">
-                        {TYPE_LABEL[stat.type] || 'trained'} {mainMetric}
-                      </span>
+                <div key={stat.type} className={`flex items-center gap-2.5 rounded-xl bg-gradient-to-r ${TYPE_BG[stat.type] || TYPE_BG.other} border border-border/20 px-3 py-2`}>
+                  <span className="text-lg">{TYPE_EMOJI[stat.type]}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-foreground leading-tight" style={{ color: TYPE_COLOR[stat.type] }}>
+                      {TYPE_NAME[stat.type] || stat.type}
                     </p>
-                    {compVal && (
-                      <p className={`text-base mt-1 ${isPositive ? 'text-emerald-400' : 'text-muted-foreground'}`}>
-                        {isPositive ? '↑' : '↓'} {compVal}
-                      </p>
-                    )}
+                    <p className="text-[10px] text-muted-foreground">
+                      {metric} · {detail}
+                    </p>
                   </div>
+                  {comp && <span className={`text-[11px] font-black ${comp.positive ? 'text-emerald-400' : 'text-red-400'}`}>{comp.text}</span>}
                 </div>
               );
             })
           )}
         </div>
 
-        {/* Highlight */}
-        {highlight && (
-          <div className="rounded-2xl overflow-hidden mb-12 max-w-2xl bg-muted/30 border border-border/40">
-            {highlight.photo && (
-              <div className="h-48 sm:h-64 overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={highlight.photo} alt="Highlight" className="w-full h-full object-cover" />
-              </div>
-            )}
-            <div className="p-6">
-              <p className="text-muted-foreground text-xs uppercase tracking-widest font-medium mb-3">
-                This week&apos;s highlight
-              </p>
-              <p className="text-foreground text-xl sm:text-2xl font-medium">
-                {highlight.emoji} {highlight.label}
-              </p>
-              <p className="text-muted-foreground text-base mt-2">{highlight.detail}</p>
-            </div>
-          </div>
-        )}
-
-        {/* Footer stats */}
-        <div className="flex items-center gap-4 text-sm text-muted-foreground/60">
-          <span>{thisWeekWorkouts.length} workout{thisWeekWorkouts.length !== 1 ? 's' : ''}</span>
-          <span>·</span>
-          <span>{thisWeekWorkouts.filter(w => w.completed).length} completed</span>
-          <span>·</span>
-          <span>{weekLabel}</span>
+        {/* ═══ Footer branding ═══ */}
+        <div className="pt-1 pb-2 text-center">
+          <p className="text-[10px] text-muted-foreground/50 font-medium tracking-wider uppercase">The Daily Athlete</p>
         </div>
       </div>
 
       {/* Sticky share bar */}
-      <div className="sticky bottom-0 z-20 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-background/80 backdrop-blur-xl border-t border-border/30">
+      <div className="sticky bottom-0 z-20 px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] bg-background/80 backdrop-blur-xl border-t border-border/30">
         <div className="max-w-lg mx-auto">
           {showShare ? (
             <ShareButtons
@@ -346,10 +265,10 @@ export default function WrapPage() {
           ) : (
             <button
               onClick={() => setShowShare(true)}
-              className="w-full flex items-center justify-center gap-2.5 h-14 rounded-2xl text-base font-semibold bg-foreground text-background hover:opacity-90 active:scale-[0.98] transition-all"
+              className="w-full flex items-center justify-center gap-2 h-11 rounded-xl text-sm font-semibold bg-foreground text-background hover:opacity-90 active:scale-[0.98] transition-all"
             >
-              <Share2 className="h-5 w-5" />
-              Send to friends
+              <Share2 className="h-4 w-4" />
+              Share
             </button>
           )}
         </div>
