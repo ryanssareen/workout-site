@@ -331,6 +331,11 @@ export default function MonthlyReviewPage() {
 
       <div ref={cardRef} className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-4 space-y-4">
 
+        {/* Month label (visible in captured image) */}
+        <h2 className="text-center text-2xl font-black tracking-tight text-foreground">
+          {monthLabel}
+        </h2>
+
         {/* ═══ ROW 1: Hero — title + big stat badges ═══ */}
         <div className="rounded-xl bg-gradient-to-br from-primary/10 via-transparent to-purple-500/10 border border-border/30 p-4 sm:p-5">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
@@ -475,7 +480,7 @@ export default function MonthlyReviewPage() {
             <div className="flex items-center justify-between mb-1">
               <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Daily Activity</h2>
             </div>
-            <div className="h-[90px]">
+            <div className="h-[60px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={dailyData} barCategoryGap="10%">
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.2} vertical={false} />

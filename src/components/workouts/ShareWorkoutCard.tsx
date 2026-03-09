@@ -73,12 +73,19 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
       }
     });
 
+    // Force a fixed width so responsive grids render fully (prevents cut-off)
+    const el = cardRef.current;
+    const prevWidth = el.style.width;
+    const prevMaxWidth = el.style.maxWidth;
+    el.style.width = '1200px';
+    el.style.maxWidth = '1200px';
+
     try {
-      const result = await toPng(cardRef.current, {
+      const result = await toPng(el, {
         quality: 0.95,
         pixelRatio: 2,
+        width: 1200,
         cacheBust: true,
-        skipFonts: true,
         imagePlaceholder: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
         ...(captureBg ? { backgroundColor: captureBg } : {}),
       });
@@ -88,8 +95,10 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
       toast.error('Failed to generate share image');
       return null;
     } finally {
-      // Restore hidden images
-      hidden.forEach(({ el, display }) => { el.style.display = display; });
+      // Restore width and hidden images
+      el.style.width = prevWidth;
+      el.style.maxWidth = prevMaxWidth;
+      hidden.forEach(({ el: img, display }) => { img.style.display = display; });
       setIsGenerating(false);
     }
   }, [cardRef, captureBg]);
