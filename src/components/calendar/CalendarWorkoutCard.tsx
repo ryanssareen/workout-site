@@ -3,7 +3,9 @@
 import { Workout } from '@/types';
 import { TYPE_CONFIG, TYPE_LABELS, getTypeData, formatDur } from './types';
 import { CheckCircle2, Circle, AlertCircle, StickyNote } from 'lucide-react';
-import { format, isPast, isToday } from 'date-fns';
+import { isPast, isToday } from 'date-fns';
+import { formatInTimezone } from '@/lib/dateUtils';
+import { useAuthStore } from '@/lib/stores/authStore';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
@@ -118,7 +120,8 @@ function MiniPill({ workout, onSelect }: { workout: Workout; onSelect?: (id: str
   const cfg = noteMode ? NOTE_CONFIG : (TYPE_CONFIG[workout.type] || TYPE_CONFIG.other);
   const stats = getTypeData(workout);
   const workoutDate = workout.date.toDate();
-  const timeStr = format(workoutDate, 'h:mma').toLowerCase();
+  const userTimezone = useAuthStore((s) => s.user?.timezone);
+  const timeStr = formatInTimezone(workoutDate, 'h:mma', userTimezone).toLowerCase();
   const status = getWorkoutStatus(workout);
   const statusStyles = getStatusStyles(status, noteMode);
 
@@ -230,7 +233,8 @@ function CompactCard({
   const cfg = noteMode ? NOTE_CONFIG : (TYPE_CONFIG[workout.type] || TYPE_CONFIG.other);
   const stats = getTypeData(workout);
   const workoutDate = workout.date.toDate();
-  const timeStr = format(workoutDate, 'h:mm a');
+  const userTimezone = useAuthStore((s) => s.user?.timezone);
+  const timeStr = formatInTimezone(workoutDate, 'h:mm a', userTimezone);
   const status = getWorkoutStatus(workout);
   const statusStyles = getStatusStyles(status, noteMode);
 

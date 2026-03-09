@@ -22,6 +22,7 @@ import {
   startOfMonth,
   endOfMonth,
 } from 'date-fns';
+import { formatInTimezone } from '@/lib/dateUtils';
 import { toast } from 'sonner';
 
 // Calendar components
@@ -105,18 +106,20 @@ export default function CalendarPage() {
   }, [user, isCoach]);
 
   // ── Pre-computed workout lookup ──────────────────────────────────────
+  const userTimezone = user?.timezone;
   const workoutsByDate = useMemo(() => {
     const map = new Map<string, Workout[]>();
     workouts.forEach((w) => {
       // Apply athlete filter (coaches only)
       if (isCoach && selectedAthlete !== 'all' && w.assignedTo !== selectedAthlete) return;
 
-      const key = format(w.date.toDate(), 'yyyy-MM-dd');
+      // Use user timezone so workouts land on the correct calendar day
+      const key = formatInTimezone(w.date.toDate(), 'yyyy-MM-dd', userTimezone);
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(w);
     });
     return map;
-  }, [workouts, isCoach, selectedAthlete]);
+  }, [workouts, isCoach, selectedAthlete, userTimezone]);
 
   // ── Navigation handlers ──────────────────────────────────────────────
   const handlePrev = () => {

@@ -699,7 +699,8 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
 
       console.log(`📦 Processing ${i + 1}/${activitiesToProcess.length}: ${activity.name}`);
 
-      const activityDate = new Date(activity.start_date_local);
+      // Use start_date (actual UTC) so timezone-aware display shows correct local time
+      const activityDate = new Date(activity.start_date);
       const workoutType = mapStravaType(activity.type);
 
       // Prepare stats from Strava

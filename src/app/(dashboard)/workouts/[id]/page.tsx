@@ -12,6 +12,7 @@ import { Loader2, Edit, ArrowLeft, Calendar, Clock, CheckCircle2, Circle, Activi
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { formatInTimezone, formatTime } from '@/lib/dateUtils';
 import { CommentSection } from '@/components/workouts/comments';
 import { ShareWorkoutCard } from '@/components/workouts/ShareWorkoutCard';
 import dynamic from 'next/dynamic';
@@ -344,9 +345,12 @@ export default function WorkoutDetailPage() {
             <div className="flex items-center gap-3">
               <Calendar className="h-5 w-5 text-muted-foreground" />
               <div>
-                <p className="text-sm text-muted-foreground">Scheduled Date</p>
+                <p className="text-sm text-muted-foreground">Date</p>
                 <p className="font-medium">
-                  {format(workout.date.toDate(), 'MMMM d, yyyy')}
+                  {formatInTimezone(workout.date.toDate(), 'MMMM d, yyyy', user?.timezone)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatTime(workout.date.toDate(), user?.timezone)}
                 </p>
               </div>
             </div>

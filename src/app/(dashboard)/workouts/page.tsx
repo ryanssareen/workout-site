@@ -13,7 +13,8 @@ import { Plus, Loader2, CheckCircle2, Circle, AlertCircle, Heart, Mountain, Flam
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { TYPE_CONFIG, getTypeData, formatDur } from '@/components/calendar/types';
-import { format, isPast, isToday, isFuture, startOfDay } from 'date-fns';
+import { isPast, isToday, isFuture, startOfDay } from 'date-fns';
+import { formatInTimezone } from '@/lib/dateUtils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -87,7 +88,8 @@ function WorkoutRow({ workout, onDelete }: { workout: Workout; onDelete?: (worko
   const cfg = TYPE_CONFIG[workout.type] || TYPE_CONFIG.other;
   const stats = getTypeData(workout);
   const workoutDate = workout.date?.toDate?.() ?? new Date(workout.date as any);
-  const dateStr = format(workoutDate, 'MMM d');
+  const userTimezone = useAuthStore((s) => s.user?.timezone);
+  const dateStr = formatInTimezone(workoutDate, 'MMM d', userTimezone);
   const past = isPast(workoutDate) && !isToday(workoutDate);
   const isNote = workout.type === 'other' && workout.name === 'Note';
   const isMissed = past && !workout.completed && workout.source !== 'strava' && !isNote;

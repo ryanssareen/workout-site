@@ -18,7 +18,9 @@ import {
   Gauge,
   Trash2,
 } from 'lucide-react';
-import { format, isPast, isToday } from 'date-fns';
+import { isPast, isToday } from 'date-fns';
+import { formatInTimezone } from '@/lib/dateUtils';
+import { useAuthStore } from '@/lib/stores/authStore';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
@@ -38,6 +40,7 @@ export function WorkoutDetailPanel({
   const cfg = TYPE_CONFIG[workout.type] || TYPE_CONFIG.other;
   const stats = getTypeData(workout);
   const workoutDate = workout.date.toDate();
+  const userTimezone = useAuthStore((s) => s.user?.timezone);
   const today = isToday(workoutDate);
   const past = isPast(workoutDate) && !today;
   const isNote = workout.type === 'other' && workout.name === 'Note';
@@ -83,7 +86,7 @@ export function WorkoutDetailPanel({
       <div className="sticky top-0 z-10 bg-card border-b px-4 py-3 flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {format(workoutDate, 'EEE, MMM d')} | {TYPE_LABELS[workout.type] || workout.type}
+            {formatInTimezone(workoutDate, 'EEE, MMM d', userTimezone)} | {TYPE_LABELS[workout.type] || workout.type}
           </p>
           <h2 className="text-base font-bold truncate mt-0.5">{workout.name}</h2>
         </div>
