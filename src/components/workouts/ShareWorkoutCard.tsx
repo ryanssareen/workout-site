@@ -54,7 +54,7 @@ interface ShareButtonsProps {
   captureBg?: string;
 }
 
-function ShareButtons({ title, shareText, shareUrl, fileName, cardRef, onClose, captureBg }: ShareButtonsProps) {
+function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef, onClose, captureBg }: ShareButtonsProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -104,19 +104,50 @@ function ShareButtons({ title, shareText, shareUrl, fileName, cardRef, onClose, 
     toast.success('Image downloaded!');
   };
 
-  const handleCopyLink = async () => {
-    await navigator.clipboard.writeText(shareUrl);
+  const handleCopyCaption = async () => {
+    await navigator.clipboard.writeText(shareText);
     setCopied(true);
-    toast.success('Link copied!');
+    toast.success('Caption copied!');
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleWhatsApp = () => {
-    window.open(`https://wa.me/?text=${encodeURIComponent(shareText + '\n' + shareUrl)}`, '_blank');
+  const handleWhatsApp = async () => {
+    // Try native share with image (works on mobile)
+    const dataUrl = await generateImage();
+    if (dataUrl) {
+      try {
+        const blob = await (await fetch(dataUrl)).blob();
+        const file = new File([blob], `${fileName}.png`, { type: 'image/png' });
+        if (navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ files: [file], text: shareText });
+          return;
+        }
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return;
+      }
+      // Fallback: download image + copy caption + open WhatsApp
+      const dl = document.createElement('a');
+      dl.download = `${fileName}.png`;
+      dl.href = dataUrl;
+      dl.click();
+      try { await navigator.clipboard.writeText(shareText); } catch { /* ignore */ }
+      toast.success('Image saved! Attach it in WhatsApp');
+    }
+    window.open(`https://wa.me/`, '_blank');
   };
 
-  const handleTwitter = () => {
-    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
+  const handleTwitter = async () => {
+    // Download image + copy caption (Twitter intent doesn't support image uploads)
+    const dataUrl = await generateImage();
+    if (dataUrl) {
+      const dl = document.createElement('a');
+      dl.download = `${fileName}.png`;
+      dl.href = dataUrl;
+      dl.click();
+      try { await navigator.clipboard.writeText(shareText); } catch { /* ignore */ }
+      toast.success('Image saved! Attach it to your post');
+    }
+    window.open('https://twitter.com/compose/tweet', '_blank');
   };
 
   const handleInstagramStory = async () => {
@@ -128,8 +159,7 @@ function ShareButtons({ title, shareText, shareUrl, fileName, cardRef, onClose, 
       dl.href = dataUrl;
       dl.click();
     }
-    const caption = `${shareText}\n\n${shareUrl}`;
-    try { await navigator.clipboard.writeText(caption); } catch { /* ignore */ }
+    try { await navigator.clipboard.writeText(shareText); } catch { /* ignore */ }
 
     // Open Instagram — app on mobile, website on desktop
     window.location.href = 'https://www.instagram.com/';
@@ -150,7 +180,7 @@ function ShareButtons({ title, shareText, shareUrl, fileName, cardRef, onClose, 
       if (err?.name === 'AbortError') return;
     }
     // Fallback to sms: link
-    window.open(`sms:&body=${encodeURIComponent(shareText + '\n' + shareUrl)}`, '_blank');
+    window.open(`sms:&body=${encodeURIComponent(shareText)}`, '_blank');
   };
 
   return (
@@ -213,9 +243,9 @@ function ShareButtons({ title, shareText, shareUrl, fileName, cardRef, onClose, 
             <Download className="h-4 w-4" />
             {isGenerating ? 'Generating...' : 'Save Image'}
           </Button>
-          <Button variant="outline" size="sm" onClick={handleCopyLink} className="flex-1 gap-2">
+          <Button variant="outline" size="sm" onClick={handleCopyCaption} className="flex-1 gap-2">
             {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-            {copied ? 'Copied!' : 'Copy Link'}
+            {copied ? 'Copied!' : 'Copy Caption'}
           </Button>
         </div>
       </div>

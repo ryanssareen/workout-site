@@ -288,7 +288,7 @@ export default function MonthlyReviewPage() {
         <button onClick={() => setMonthOffset(o => o + 1)} className="p-1.5 rounded-full hover:bg-muted transition-colors">
           <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground" />
         </button>
-        <span className="text-xs font-medium text-muted-foreground min-w-[110px] text-center">{monthLabel}</span>
+        <span className="text-sm font-bold text-foreground min-w-[110px] text-center">{monthLabel}</span>
         <button disabled={isCurrentMonth} onClick={() => setMonthOffset(o => Math.max(0, o - 1))}
           className="p-1.5 rounded-full hover:bg-muted transition-colors disabled:opacity-20">
           <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
