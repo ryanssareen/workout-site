@@ -18,6 +18,7 @@ export default function Home() {
             <span className="font-bold text-lg text-white">The Daily Athlete</span>
           </Link>
           <div className="flex gap-2 items-center">
+            <Link href="/portfolio" className="text-sm text-white/40 hover:text-white/70 transition-colors hidden sm:inline mr-1">Portfolio</Link>
             <Button variant="ghost" size="sm" asChild className="text-white/70 hover:text-white hover:bg-white/10">
               <Link href="/login">Sign In</Link>
             </Button>

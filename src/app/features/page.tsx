@@ -40,6 +40,7 @@ export default function FeaturesPage() {
           </Link>
           <div className="flex items-center gap-3">
             <Link href="/" className="text-sm text-white/40 hover:text-white/70 transition-colors">Home</Link>
+            <Link href="/portfolio" className="text-sm text-white/40 hover:text-white/70 transition-colors">Portfolio</Link>
             <Link href="/contact" className="text-sm text-white/40 hover:text-white/70 transition-colors">Contact</Link>
             <Button size="sm" asChild className="bg-red-600 hover:bg-red-700 text-white border-0 ml-2">
               <Link href="/register">Get Started</Link>
