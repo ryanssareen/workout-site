@@ -466,6 +466,11 @@ export default function CalendarPage() {
               onClose={() => setSelectedWorkoutId(null)}
               onToggleComplete={handleToggleComplete}
               onDelete={handleDeleteWorkout}
+              allWorkouts={workouts}
+              onMergeComplete={() => {
+                setSelectedWorkoutId(null);
+                refreshWorkouts();
+              }}
             />
           )}
         </div>

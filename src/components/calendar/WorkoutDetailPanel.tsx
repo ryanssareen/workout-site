@@ -1,9 +1,11 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import { Workout } from '@/types';
 import { TYPE_CONFIG, TYPE_LABELS, getTypeData, formatDurLong } from './types';
 import { MiniRoutePreview } from '@/components/workouts/MiniRoutePreview';
 import { WorkoutPhotos } from '@/components/workouts/WorkoutPhotos';
+import { ManualMergeDialog } from '@/components/strava/ManualMergeDialog';
 import {
   X,
   CheckCircle2,
@@ -17,18 +19,22 @@ import {
   Zap,
   Gauge,
   Trash2,
+  GitMerge,
 } from 'lucide-react';
-import { isPast, isToday } from 'date-fns';
+import { isPast, isToday, differenceInCalendarDays } from 'date-fns';
 import { formatInTimezone } from '@/lib/dateUtils';
 import { useAuthStore } from '@/lib/stores/authStore';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface WorkoutDetailPanelProps {
   workout: Workout;
   onClose: () => void;
   onToggleComplete?: (e: React.MouseEvent, workout: Workout) => void;
   onDelete?: (workout: Workout) => void;
+  allWorkouts?: Workout[];
+  onMergeComplete?: () => void;
 }
 
 export function WorkoutDetailPanel({
@@ -36,6 +42,8 @@ export function WorkoutDetailPanel({
   onClose,
   onToggleComplete,
   onDelete,
+  allWorkouts,
+  onMergeComplete,
 }: WorkoutDetailPanelProps) {
   const cfg = TYPE_CONFIG[workout.type] || TYPE_CONFIG.other;
   const stats = getTypeData(workout);
@@ -79,6 +87,47 @@ export function WorkoutDetailPanel({
     : '--';
   const maxSpeedMs = workout.actualStats?.maxSpeed;
   const maxSpeedKmh = maxSpeedMs && maxSpeedMs > 0 ? (maxSpeedMs * 3.6).toFixed(1) : null;
+
+  // Manual merge state
+  const [showMergeDialog, setShowMergeDialog] = useState(false);
+  const [merging, setMerging] = useState(false);
+
+  // Find Strava candidates for manual merge (same type, ±1 day, standalone Strava)
+  const mergeCandidates = useMemo(() => {
+    if (!isMissed || !allWorkouts) return [];
+    return allWorkouts.filter((w) => {
+      if (w.source !== 'strava') return false;
+      if (w.type !== workout.type) return false;
+      if (!w.completed) return false;
+      const wDate = w.date?.toDate?.() ?? new Date(w.date as unknown as string);
+      return Math.abs(differenceInCalendarDays(wDate, workoutDate)) <= 1;
+    });
+  }, [isMissed, allWorkouts, workout.type, workoutDate]);
+
+  const handleManualMerge = async (stravaWorkoutId: string) => {
+    setMerging(true);
+    try {
+      const res = await fetch('/api/workouts/merge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ownerUsername: workout.ownerUsername,
+          plannedWorkoutId: workout.id,
+          stravaWorkoutId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Merge failed');
+      toast.success('Linked with Strava activity!');
+      setShowMergeDialog(false);
+      onMergeComplete?.();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to link workouts';
+      toast.error(message);
+    } finally {
+      setMerging(false);
+    }
+  };
 
   return (
     <div className="w-[380px] shrink-0 border-l bg-card overflow-y-auto flex flex-col">
@@ -227,6 +276,14 @@ export function WorkoutDetailPanel({
               )}
             </button>
           )}
+          {isMissed && mergeCandidates.length > 0 && (
+            <button
+              onClick={() => setShowMergeDialog(true)}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-[#FC4C02]/10 text-[#FC4C02] border border-[#FC4C02]/20 hover:bg-[#FC4C02]/20 transition-colors"
+            >
+              <GitMerge className="h-4 w-4" /> Link to Strava
+            </button>
+          )}
           {isNote && onDelete && (
             <button
               onClick={() => onDelete(workout)}
@@ -244,6 +301,16 @@ export function WorkoutDetailPanel({
           </Link>
         </div>
       </div>
+
+      {/* Manual merge dialog */}
+      <ManualMergeDialog
+        open={showMergeDialog}
+        onOpenChange={setShowMergeDialog}
+        plannedWorkout={workout}
+        candidates={mergeCandidates}
+        onMerge={handleManualMerge}
+        isLoading={merging}
+      />
     </div>
   );
 }
