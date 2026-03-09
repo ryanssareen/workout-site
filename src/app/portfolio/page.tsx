@@ -166,6 +166,7 @@ export default function PortfolioPage() {
           <div className="flex items-center gap-3">
             <Link href="/"        className={`text-sm transition-colors hidden sm:inline ${t.navLink}`}>Home</Link>
             <Link href="/features" className={`text-sm transition-colors hidden sm:inline ${t.navLink}`}>Features</Link>
+            <Link href="/roadmap"  className={`text-sm transition-colors hidden sm:inline ${t.navLink}`}>Roadmap</Link>
             <Link href="/contact"  className={`text-sm transition-colors hidden sm:inline ${t.navLink}`}>Contact</Link>
             {/* Theme toggle */}
             <button
