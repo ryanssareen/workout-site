@@ -5,26 +5,20 @@ import { useAuthStore } from '@/lib/stores/authStore';
 import { getUserWorkouts } from '@/lib/firebase/firestore';
 import { Workout } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import {
-  Calendar, TrendingUp, Target, Zap,
-  CheckCircle2, Clock, UserCircle, Flame, BarChart3,
-  Plus, Activity, Trophy, ChevronRight, Gift, X, CalendarRange,
+  Target, Zap,
+  CheckCircle2, Clock, Flame,
+  Activity, Trophy, ChevronRight, Gift, X, CalendarRange,
+  Circle,
 } from 'lucide-react';
-import { format, startOfWeek, endOfWeek, subWeeks, isWithinInterval, differenceInDays, isSameDay, subDays, parseISO } from 'date-fns';
+import { format, startOfWeek, endOfWeek, subWeeks, isWithinInterval, differenceInDays, isSameDay, subDays, parseISO, isPast, isToday as isTodayFn } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useStravaAutoSync } from '@/hooks/useStravaAutoSync';
 import { ProfileCompletionBar } from '@/components/dashboard/ProfileCompletionBar';
 import { DashboardAchievements } from '@/components/achievements/DashboardAchievements';
-import {
-  BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell,
-} from 'recharts';
 
-const TYPE_COLORS: Record<string, string> = {
-  run: '#ef4444', bike: '#f59e0b', swim: '#06b6d4', strength: '#a855f7', other: '#6b7280',
-};
 const TYPE_EMOJI: Record<string, string> = {
   run: '🏃', bike: '🚴', swim: '🏊', strength: '💪', other: '📋',
 };
@@ -58,6 +52,70 @@ function calculateStreak(workouts: Workout[]): number {
     }
   }
   return streak;
+}
+
+// ── Workout status + styles (matches calendar color coding) ──────────
+function getWorkoutStatus(workout: Workout) {
+  const workoutDate = getWorkoutDate(workout);
+  const today = isTodayFn(workoutDate);
+  const past = isPast(workoutDate) && !today;
+
+  const isStravaStandalone = workout.source === 'strava';
+  const isMatchedByStrava = !isStravaStandalone && workout.completed && workout.completedBy === 'strava';
+  const isLate = workout.completedLate === true;
+  const isCompletedManual = workout.completed && !isStravaStandalone && !isMatchedByStrava && !isLate;
+  const isMissed = past && !workout.completed && !isStravaStandalone;
+  const isFuture = !workout.completed && !past && !isStravaStandalone;
+
+  return { isStravaStandalone, isMatchedByStrava, isLate, isCompletedManual, isMissed, isFuture };
+}
+
+function getStatusStyles(status: ReturnType<typeof getWorkoutStatus>) {
+  if (status.isCompletedManual || status.isMatchedByStrava) {
+    return {
+      border: 'border-green-400 dark:border-green-500/70',
+      bg: 'bg-green-100/80 dark:bg-green-500/15',
+    };
+  }
+  if (status.isStravaStandalone) {
+    return {
+      border: 'border-orange-400 dark:border-orange-500/70',
+      bg: 'bg-orange-100/80 dark:bg-orange-500/15',
+    };
+  }
+  if (status.isLate) {
+    return {
+      border: 'border-amber-400 dark:border-amber-500/70',
+      bg: 'bg-amber-100/80 dark:bg-amber-500/15',
+    };
+  }
+  if (status.isMissed) {
+    return {
+      border: 'border-red-400 dark:border-red-500/70 opacity-60',
+      bg: 'bg-red-100/80 dark:bg-red-500/15',
+    };
+  }
+  if (status.isFuture) {
+    return {
+      border: 'border-blue-400/60 dark:border-blue-500/50 border-dashed',
+      bg: 'bg-blue-50/60 dark:bg-blue-500/10',
+    };
+  }
+  return { border: 'border-border/40', bg: 'bg-card/60' };
+}
+
+function getStatusIcon(status: ReturnType<typeof getWorkoutStatus>) {
+  if (status.isCompletedManual || status.isMatchedByStrava || status.isLate) {
+    return <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />;
+  }
+  if (status.isStravaStandalone) {
+    return <CheckCircle2 className="h-4 w-4 text-orange-500 shrink-0" />;
+  }
+  if (status.isMissed) {
+    return <Circle className="h-4 w-4 text-red-400 shrink-0" />;
+  }
+  // Future / planned
+  return <Clock className="h-4 w-4 text-blue-400 shrink-0" />;
 }
 
 
@@ -124,26 +182,12 @@ export default function DashboardPage() {
   const upcomingWorkouts = workouts
     .filter(w => !w.completed)
     .sort((a, b) => getWorkoutDate(a).getTime() - getWorkoutDate(b).getTime())
-    .slice(0, 4);
+    .slice(0, 2);
 
   const recentCompleted = workouts
     .filter(w => w.completed)
     .sort((a, b) => getWorkoutDate(b).getTime() - getWorkoutDate(a).getTime())
-    .slice(0, 3);
-
-  // Weekly bar chart data (Mon-Sun)
-  const weeklyChartData = useMemo(() => {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return days.map((day, i) => {
-      const dayDate = new Date(weekStart);
-      dayDate.setDate(dayDate.getDate() + i);
-      const dayWorkouts = thisWeekWorkouts.filter(w => isSameDay(getWorkoutDate(w), dayDate));
-      const completed = dayWorkouts.filter(w => w.completed).length;
-      const pending = dayWorkouts.filter(w => !w.completed).length;
-      const isToday = isSameDay(dayDate, now);
-      return { day, completed, pending, total: completed + pending, isToday };
-    });
-  }, [thisWeekWorkouts, weekStart, now]);
+    .slice(0, 2);
 
   // Event countdowns
   const eventCountdowns = useMemo(() => {
@@ -160,17 +204,6 @@ export default function DashboardPage() {
       .slice(0, 3);
   }, [user?.events, now]);
 
-  // Type distribution for mini chart
-  const typeBreakdown = useMemo(() => {
-    const counts: Record<string, number> = {};
-    workouts.filter(w => w.completed).forEach(w => {
-      counts[w.type] = (counts[w.type] || 0) + 1;
-    });
-    return Object.entries(counts)
-      .sort((a, b) => b[1] - a[1])
-      .map(([type, count]) => ({ type, count, pct: Math.round((count / completedCount) * 100) }));
-  }, [workouts, completedCount]);
-
   if (loading || !ready) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -184,6 +217,12 @@ export default function DashboardPage() {
       </div>
     );
   }
+
+  // Combine recent done + upcoming planned for unified list
+  const combinedWorkouts = [
+    ...recentCompleted.map(w => ({ workout: w, section: 'done' as const })),
+    ...upcomingWorkouts.map(w => ({ workout: w, section: 'planned' as const })),
+  ];
 
   return (
     <div className="space-y-6 pb-8">
@@ -218,28 +257,21 @@ export default function DashboardPage() {
       )}
 
       {/* ── HERO HEADER ────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-            {greeting}, <span className="text-red-500">{user?.displayName?.split(' ')[0]}</span>
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            {thisWeekCompleted > 0
-              ? `${thisWeekCompleted} workout${thisWeekCompleted > 1 ? 's' : ''} done this week. ${thisWeekTotal - thisWeekCompleted > 0 ? `${thisWeekTotal - thisWeekCompleted} to go.` : 'All caught up!'}`
-              : thisWeekTotal > 0
-                ? `${thisWeekTotal} workout${thisWeekTotal > 1 ? 's' : ''} planned this week.`
-                : "Let's get training."}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button asChild size="sm">
-            <Link href="/workouts/new"><Plus className="h-4 w-4 mr-1.5" />New Workout</Link>
-          </Button>
-        </div>
+      <div className="space-y-1">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+          {greeting}, <span className="text-red-500">{user?.displayName?.split(' ')[0]}</span>
+        </h1>
+        <p className="text-muted-foreground text-sm">
+          {thisWeekCompleted > 0
+            ? `${thisWeekCompleted} workout${thisWeekCompleted > 1 ? 's' : ''} done this week. ${thisWeekTotal - thisWeekCompleted > 0 ? `${thisWeekTotal - thisWeekCompleted} to go.` : 'All caught up!'}`
+            : thisWeekTotal > 0
+              ? `${thisWeekTotal} workout${thisWeekTotal > 1 ? 's' : ''} planned this week.`
+              : "Let's get training."}
+        </p>
       </div>
 
       {/* ── STATS ROW ──────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {/* Streak */}
         <Card className="p-4 hover:border-red-500/20 transition-all">
           <div className="flex items-center gap-3">
@@ -274,20 +306,7 @@ export default function DashboardPage() {
             </div>
             <div>
               <p className="text-2xl font-bold leading-none">{completedCount}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">All-time completed</p>
-            </div>
-          </div>
-        </Card>
-
-        {/* Total Workouts */}
-        <Card className="p-4 hover:border-red-500/20 transition-all">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-sm">
-              <Activity className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold leading-none">{workouts.length}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Total workouts</p>
+              <p className="text-xs text-muted-foreground mt-0.5">All-time</p>
             </div>
           </div>
         </Card>
@@ -296,208 +315,135 @@ export default function DashboardPage() {
       {/* ── ACHIEVEMENTS ────────────────────────────────────────── */}
       {user && <DashboardAchievements username={user.username} />}
 
-      {/* ── WEEKLY CHART + UPCOMING ────────────────────────────── */}
-      <div className="grid gap-4 lg:grid-cols-5">
-        {/* Weekly Activity Chart - 3 cols */}
-        <Card className="lg:col-span-3">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <BarChart3 className="h-4 w-4 text-red-500" />This Week
-              </CardTitle>
-              <Link href="/calendar" className="text-xs text-muted-foreground hover:text-red-500 transition-colors flex items-center gap-1">
-                Calendar <ChevronRight className="h-3 w-3" />
-              </Link>
+      {/* ── YOUR WORKOUTS (unified: recent done + upcoming) ───── */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Activity className="h-4 w-4 text-red-500" />Your Workouts
+            </CardTitle>
+            <Link href="/workouts" className="text-xs text-muted-foreground hover:text-red-500 transition-colors flex items-center gap-1">
+              View all <ChevronRight className="h-3 w-3" />
+            </Link>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {combinedWorkouts.length === 0 ? (
+            <div className="text-center py-8">
+              <Activity className="h-10 w-10 text-muted-foreground/30 mx-auto mb-2" />
+              <p className="text-sm font-medium mb-1">No workouts yet</p>
+              <p className="text-xs text-muted-foreground">Your recent and upcoming workouts will show here</p>
             </div>
-          </CardHeader>
-          <CardContent>
-            {thisWeekTotal > 0 ? (
-              <div className="h-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={weeklyChartData} barCategoryGap="20%">
-                    <XAxis dataKey="day" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                    <YAxis hide allowDecimals={false} />
-                    <Tooltip
-                      cursor={{ fill: 'hsl(var(--muted) / 0.3)' }}
-                      contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--card-foreground))', fontSize: '12px' }}
-                      formatter={((value: any, name: any) => [value, name === 'completed' ? 'Done' : 'Pending']) as any}
-                    />
-                    <Bar dataKey="completed" stackId="a" radius={[0, 0, 0, 0]} fill="#ef4444">
-                      {weeklyChartData.map((entry, i) => (
-                        <Cell key={i} fill={entry.isToday ? '#dc2626' : '#ef4444'} fillOpacity={entry.isToday ? 1 : 0.7} />
-                      ))}
-                    </Bar>
-                    <Bar dataKey="pending" stackId="a" radius={[4, 4, 0, 0]} fill="#fca5a5" fillOpacity={0.4} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <div className="h-[200px] flex flex-col items-center justify-center text-center">
-                <Calendar className="h-8 w-8 text-muted-foreground/30 mb-2" />
-                <p className="text-sm text-muted-foreground">No workouts this week</p>
-                <Button asChild size="sm" variant="link" className="text-red-500 mt-1">
-                  <Link href="/workouts/new">Create one</Link>
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          ) : (
+            <div className="space-y-2">
+              {/* Recently done */}
+              {recentCompleted.length > 0 && (
+                <>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-1">Recently done</p>
+                  {recentCompleted.map((workout) => {
+                    const wDate = getWorkoutDate(workout);
+                    const status = getWorkoutStatus(workout);
+                    const styles = getStatusStyles(status);
+                    const dateLabel = isSameDay(wDate, now) ? 'Today' : format(wDate, 'MMM d');
+                    return (
+                      <Link key={workout.id} href={`/workouts/${workout.id}`}
+                        className={cn(
+                          'flex items-center gap-3 p-3 rounded-xl border transition-all group',
+                          styles.border,
+                          styles.bg,
+                        )}>
+                        <span className="text-xl">{TYPE_EMOJI[workout.type] || '📋'}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{workout.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 capitalize">{workout.type}</Badge>
+                            {workout.duration && <span className="text-[10px] text-muted-foreground flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" />{workout.duration}m</span>}
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-xs text-muted-foreground">{dateLabel}</p>
+                        </div>
+                        {getStatusIcon(status)}
+                      </Link>
+                    );
+                  })}
+                </>
+              )}
 
-        {/* Type Breakdown - 2 cols */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Activity className="h-4 w-4 text-red-500" />Breakdown
-              </CardTitle>
-              <Link href="/reports" className="text-xs text-muted-foreground hover:text-red-500 transition-colors flex items-center gap-1">
-                Reports <ChevronRight className="h-3 w-3" />
-              </Link>
+              {/* Upcoming planned */}
+              {upcomingWorkouts.length > 0 && (
+                <>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-1 mt-3">Coming up</p>
+                  {upcomingWorkouts.map((workout) => {
+                    const wDate = getWorkoutDate(workout);
+                    const status = getWorkoutStatus(workout);
+                    const styles = getStatusStyles(status);
+                    const isToday = isSameDay(wDate, now);
+                    const isTomorrow = isSameDay(wDate, new Date(now.getTime() + 86400000));
+                    const dateLabel = isToday ? 'Today' : isTomorrow ? 'Tomorrow' : format(wDate, 'MMM d');
+                    return (
+                      <Link key={workout.id} href={`/workouts/${workout.id}`}
+                        className={cn(
+                          'flex items-center gap-3 p-3 rounded-xl border transition-all group',
+                          styles.border,
+                          styles.bg,
+                        )}>
+                        <span className="text-xl">{TYPE_EMOJI[workout.type] || '📋'}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{workout.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 capitalize">{workout.type}</Badge>
+                            {workout.duration && <span className="text-[10px] text-muted-foreground flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" />{workout.duration}m</span>}
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className={cn('text-xs font-medium', isToday ? 'text-blue-500' : 'text-muted-foreground')}>{dateLabel}</p>
+                        </div>
+                        {getStatusIcon(status)}
+                      </Link>
+                    );
+                  })}
+                </>
+              )}
             </div>
-          </CardHeader>
-          <CardContent>
-            {typeBreakdown.length > 0 ? (
-              <div className="space-y-3">
-                {typeBreakdown.map(({ type, count, pct }) => (
-                  <div key={type} className="flex items-center gap-3">
-                    <span className="text-lg w-7 text-center">{TYPE_EMOJI[type] || '📋'}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium capitalize">{type}</span>
-                        <span className="text-xs text-muted-foreground">{count} · {pct}%</span>
-                      </div>
-                      <div className="h-2 rounded-full bg-muted overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-700"
-                          style={{ width: `${pct}%`, backgroundColor: TYPE_COLORS[type] || '#6b7280' }}
-                        />
-                      </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── EVENTS + CTAs ─────────────────────────────────────── */}
+      <div className="space-y-4">
+        {/* Event Countdowns */}
+        {eventCountdowns.length > 0 && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2"><Target className="h-4 w-4 text-red-500" />Upcoming Events</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2.5">
+                {eventCountdowns.map((event, i) => (
+                  <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30">
+                    <div className={cn(
+                      'h-10 w-10 rounded-lg flex flex-col items-center justify-center text-white shrink-0',
+                      event.daysUntil <= 14 ? 'bg-red-600' : event.daysUntil <= 30 ? 'bg-orange-500' : 'bg-neutral-600'
+                    )}>
+                      <span className="text-xs font-bold leading-none">{event.daysUntil}</span>
+                      <span className="text-[8px] leading-none mt-0.5">days</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium truncate">{event.eventName || event.goal}</p>
+                      <p className="text-[10px] text-muted-foreground">{format(event.eventDateParsed, 'MMM d, yyyy')}</p>
                     </div>
                   </div>
                 ))}
               </div>
-            ) : (
-              <div className="h-[180px] flex flex-col items-center justify-center text-center">
-                <TrendingUp className="h-8 w-8 text-muted-foreground/30 mb-2" />
-                <p className="text-sm text-muted-foreground">Complete workouts to see your breakdown</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ── UPCOMING + RECENT + EVENTS ─────────────────────────── */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        {/* Upcoming Workouts */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Zap className="h-4 w-4 text-red-500" />Upcoming
-              </CardTitle>
-              <Link href="/workouts" className="text-xs text-muted-foreground hover:text-red-500 transition-colors flex items-center gap-1">
-                All workouts <ChevronRight className="h-3 w-3" />
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {upcomingWorkouts.length === 0 ? (
-              <div className="text-center py-8">
-                <CheckCircle2 className="h-10 w-10 text-red-500/30 mx-auto mb-2" />
-                <p className="text-sm font-medium mb-1">All caught up!</p>
-                <p className="text-xs text-muted-foreground">No pending workouts</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {upcomingWorkouts.map((workout) => {
-                  const wDate = getWorkoutDate(workout);
-                  const isToday = isSameDay(wDate, now);
-                  const isTomorrow = isSameDay(wDate, new Date(now.getTime() + 86400000));
-                  const dateLabel = isToday ? 'Today' : isTomorrow ? 'Tomorrow' : format(wDate, 'MMM d');
-                  return (
-                    <Link key={workout.id} href={`/workouts/${workout.id}`}
-                      className={cn(
-                        'flex items-center gap-3 p-3 rounded-xl border transition-all group hover:border-red-500/20 hover:bg-red-500/[0.02]',
-                        isToday && 'border-red-500/20 bg-red-500/[0.03]'
-                      )}>
-                      <span className="text-xl">{TYPE_EMOJI[workout.type] || '📋'}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate group-hover:text-red-500 transition-colors">{workout.name}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 capitalize">{workout.type}</Badge>
-                          {workout.duration && <span className="text-[10px] text-muted-foreground flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" />{workout.duration}m</span>}
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className={cn('text-xs font-medium', isToday ? 'text-red-500' : 'text-muted-foreground')}>{dateLabel}</p>
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-red-500 transition-colors shrink-0" />
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Right column: Recent + Events */}
-        <div className="space-y-4">
-          {/* Recent Completed */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500" />Recently Done</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {recentCompleted.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-4 text-center">No completed workouts yet</p>
-              ) : (
-                <div className="space-y-2">
-                  {recentCompleted.map((w) => (
-                    <Link key={w.id} href={`/workouts/${w.id}`} className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-muted/50 transition-colors group">
-                      <span className="text-base">{TYPE_EMOJI[w.type] || '📋'}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate group-hover:text-red-500 transition-colors">{w.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{format(getWorkoutDate(w), 'MMM d')}</p>
-                      </div>
-                      <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                    </Link>
-                  ))}
-                </div>
-              )}
             </CardContent>
           </Card>
+        )}
 
-          {/* Event Countdowns */}
-          {eventCountdowns.length > 0 && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2"><Target className="h-4 w-4 text-red-500" />Upcoming Events</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2.5">
-                  {eventCountdowns.map((event, i) => (
-                    <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30">
-                      <div className={cn(
-                        'h-10 w-10 rounded-lg flex flex-col items-center justify-center text-white shrink-0',
-                        event.daysUntil <= 14 ? 'bg-red-600' : event.daysUntil <= 30 ? 'bg-orange-500' : 'bg-neutral-600'
-                      )}>
-                        <span className="text-xs font-bold leading-none">{event.daysUntil}</span>
-                        <span className="text-[8px] leading-none mt-0.5">days</span>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium truncate">{event.eventName || event.goal}</p>
-                        <p className="text-[10px] text-muted-foreground">{format(event.eventDateParsed, 'MMM d, yyyy')}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Weekly Wrap CTA */}
+        {/* Weekly Wrap + Monthly Review CTAs */}
+        <div className="grid grid-cols-2 gap-3">
           <Link href="/wrap" className="block">
-            <Card className="p-4 hover:border-red-500/30 transition-all group cursor-pointer bg-gradient-to-br from-card to-red-500/[0.03]">
+            <Card className="p-4 hover:border-red-500/30 transition-all group cursor-pointer bg-gradient-to-br from-card to-red-500/[0.03] h-full">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
                   <Gift className="h-5 w-5 text-white" />
@@ -506,14 +452,12 @@ export default function DashboardPage() {
                   <p className="text-sm font-semibold group-hover:text-red-500 transition-colors">Weekly Wrap</p>
                   <p className="text-[10px] text-muted-foreground">Your week&apos;s capsule</p>
                 </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground/40 ml-auto group-hover:text-red-500 transition-colors" />
               </div>
             </Card>
           </Link>
 
-          {/* Monthly Review CTA */}
           <Link href="/review" className="block">
-            <Card className="p-4 hover:border-blue-500/30 transition-all group cursor-pointer bg-gradient-to-br from-card to-blue-500/[0.03]">
+            <Card className="p-4 hover:border-blue-500/30 transition-all group cursor-pointer bg-gradient-to-br from-card to-blue-500/[0.03] h-full">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
                   <CalendarRange className="h-5 w-5 text-white" />
@@ -522,28 +466,9 @@ export default function DashboardPage() {
                   <p className="text-sm font-semibold group-hover:text-blue-500 transition-colors">Monthly Review</p>
                   <p className="text-[10px] text-muted-foreground">Your month in review</p>
                 </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground/40 ml-auto group-hover:text-blue-500 transition-colors" />
               </div>
             </Card>
           </Link>
-
-          {/* Quick Links */}
-          <Card className="p-4">
-            <div className="grid grid-cols-2 gap-2">
-              <Button asChild variant="outline" size="sm" className="h-9 text-xs">
-                <Link href="/calendar"><Calendar className="h-3.5 w-3.5 mr-1.5" />Calendar</Link>
-              </Button>
-              <Button asChild variant="outline" size="sm" className="h-9 text-xs">
-                <Link href="/reports"><TrendingUp className="h-3.5 w-3.5 mr-1.5" />Reports</Link>
-              </Button>
-              <Button asChild variant="outline" size="sm" className="h-9 text-xs">
-                <Link href="/profile"><UserCircle className="h-3.5 w-3.5 mr-1.5" />Profile</Link>
-              </Button>
-              <Button asChild variant="outline" size="sm" className="h-9 text-xs">
-                <Link href="/workouts"><Target className="h-3.5 w-3.5 mr-1.5" />Workouts</Link>
-              </Button>
-            </div>
-          </Card>
         </div>
       </div>
     </div>
