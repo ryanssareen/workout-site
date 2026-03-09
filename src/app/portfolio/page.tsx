@@ -208,7 +208,7 @@ export default function PortfolioPage() {
 
           {/* Hero phone */}
           <PhoneFrame
-            src="/portfolio/Dashboard.png"
+            src="/portfolio/dashboard.png"
             alt="The Daily Athlete dashboard showing stats, recent workouts, and training summary"
             className="w-[240px] md:w-[280px]"
             priority
@@ -249,7 +249,7 @@ export default function PortfolioPage() {
                   </div>
                 </div>
                 <Image
-                  src="/portfolio/Calendar.jpeg"
+                  src="/portfolio/calendar-desktop.jpeg"
                   alt="Desktop calendar week view with color-coded Strava, completed, planned, and missed workouts"
                   width={1280}
                   height={660}
@@ -260,7 +260,7 @@ export default function PortfolioPage() {
               {/* mobile overlay in bottom-right */}
               <div className="absolute -bottom-6 -right-2 md:-right-6 z-10">
                 <PhoneFrame
-                  src="/portfolio/Calendar mobile Rupesh.png"
+                  src="/portfolio/calendar-mobile.png"
                   alt="Calendar mobile view showing planned bike and matched swim"
                   className="w-[120px] md:w-[160px]"
                 />
@@ -308,14 +308,14 @@ export default function PortfolioPage() {
         <div className="relative flex items-center justify-center">
           <div className="relative z-10 -mr-8">
             <PhoneFrame
-              src="/portfolio/Weekly wrap - Rishi.png"
+              src="/portfolio/weekly-wrap-light.png"
               alt="Weekly training wrap in light mode showing running, strength, and swimming stats"
               className="w-[200px] md:w-[220px]"
             />
           </div>
           <div className="relative z-0 mt-8">
             <PhoneFrame
-              src="/portfolio/Weekly wrap Rupesh.png"
+              src="/portfolio/weekly-wrap-dark.png"
               alt="Weekly training wrap in dark mode showing multi-sport breakdown"
               className="w-[200px] md:w-[220px]"
             />
@@ -339,7 +339,7 @@ export default function PortfolioPage() {
         ]}
       >
         <PhoneFrame
-          src="/portfolio/Screenshot - monthly review.png"
+          src="/portfolio/monthly-review.png"
           alt="Monthly review showing February 2026 stats, sport breakdown, and share dialog"
           className="w-[240px] md:w-[260px]"
         />
