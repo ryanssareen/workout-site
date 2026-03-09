@@ -19,9 +19,6 @@ import { ThemeToggle } from '@/components/dashboard/ThemeToggle';
 const TYPE_EMOJI: Record<string, string> = {
   run: '🏃', bike: '🚴', swim: '🏊', strength: '💪', other: '🏋️',
 };
-const TYPE_LABEL: Record<string, string> = {
-  run: 'ran', bike: 'cycled', swim: 'swam', strength: 'lifted', other: 'trained',
-};
 const TYPE_NAME: Record<string, string> = {
   run: 'Running', bike: 'Cycling', swim: 'Swimming', strength: 'Strength', other: 'Other',
 };
@@ -65,26 +62,6 @@ function computeMonthlySportStats(thisMonth: Workout[], lastMonth: Workout[]): S
       prevDistanceKm: Math.round(sumDist(lm) * 10) / 10, prevDurationMin: Math.round(sumDur(lm)),
     };
   }).sort((a, b) => b.count - a.count);
-}
-
-function detectMonthHighlight(workouts: Workout[]): { label: string; detail: string; emoji: string; photo?: string } | null {
-  if (workouts.length === 0) return null;
-  let longest: Workout | null = null, longestDur = 0;
-  let furthest: Workout | null = null, furthestDist = 0;
-  for (const w of workouts) {
-    const dur = w.actualStats?.duration ? w.actualStats.duration / 60 : w.duration || 0;
-    if (dur > longestDur) { longestDur = dur; longest = w; }
-    const dist = (w.actualStats?.distance || 0) / 1000;
-    if (dist > furthestDist) { furthestDist = dist; furthest = w; }
-  }
-  if (furthestDist >= 5 && furthest) return { label: `${TYPE_LABEL[furthest.type] || 'went'} ${furthestDist.toFixed(1)}km in one session`, detail: furthest.name, emoji: TYPE_EMOJI[furthest.type] || '🏋️', photo: furthest.photos?.[0] };
-  if (longestDur >= 60 && longest) {
-    const h = Math.floor(longestDur / 60), m = Math.round(longestDur % 60);
-    return { label: `${TYPE_LABEL[longest.type] || 'trained'} for ${h > 0 ? `${h}h${m > 0 ? ` ${m}m` : ''}` : `${Math.round(longestDur)}m`} non-stop`, detail: longest.name, emoji: TYPE_EMOJI[longest.type] || '🏋️', photo: longest.photos?.[0] };
-  }
-  const c = workouts.filter(w => w.completed).length;
-  if (c > 0) return { label: `Completed ${c} workout${c > 1 ? 's' : ''}`, detail: 'Keep building the habit!', emoji: '🔥' };
-  return null;
 }
 
 function getMonthRating(stats: SportStat[]): { word: string; emoji: string; color: string } {
@@ -200,7 +177,6 @@ export default function MonthlyReviewPage() {
   );
 
   const sportStats = useMemo(() => computeMonthlySportStats(thisMonthWorkouts, lastMonthWorkouts), [thisMonthWorkouts, lastMonthWorkouts]);
-  const highlight = useMemo(() => detectMonthHighlight(thisMonthWorkouts), [thisMonthWorkouts]);
   const rating = useMemo(() => getMonthRating(sportStats), [sportStats]);
 
   // Calendar data
@@ -299,7 +275,7 @@ export default function MonthlyReviewPage() {
         {/* ═══ Hero — month, rating, big stats ═══ */}
         <div className="rounded-xl bg-gradient-to-br from-primary/10 via-transparent to-purple-500/10 border border-border/30 p-4">
           <p className="text-muted-foreground text-[10px] font-semibold tracking-widest uppercase mb-1">Month in Review</p>
-          <h2 className="text-foreground text-2xl font-black tracking-tight leading-none mb-0.5">
+          <h2 className="text-foreground text-2xl font-black tracking-tight leading-none mb-0.5" style={{ WebkitFontSmoothing: 'antialiased', textRendering: 'optimizeLegibility' }}>
             {monthLabel}
           </h2>
           <h1 className="text-foreground text-base font-medium leading-tight mb-4">
@@ -348,30 +324,15 @@ export default function MonthlyReviewPage() {
           );
         })()}
 
-        {/* ═══ Highlight of the month (moved up) ═══ */}
-        {highlight && (
-          <div className="rounded-xl overflow-hidden bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20">
-            {highlight.photo && (
-              <div className="h-20 overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={highlight.photo} alt="" className="w-full h-full object-cover" crossOrigin="anonymous" />
-              </div>
-            )}
-            <div className="px-3 py-2.5 flex items-center gap-2">
-              <span className="text-lg">{highlight.emoji}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-foreground text-xs font-semibold">{highlight.label}</p>
-                <p className="text-muted-foreground text-[10px]">{highlight.detail}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* ═══ By Sport — with sport name labels ═══ */}
         <div className="space-y-1.5">
           <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">By Sport</h2>
           {sportStats.map(stat => {
-            const metric = stat.distanceKm > 0 ? `${stat.distanceKm}km` : stat.durationMin > 0 ? `${stat.durationMin}m` : `${stat.count}x`;
+            const fmtDur = (min: number) => { const h = Math.floor(min / 60); const m = min % 60; return h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`; };
+            const metric = stat.distanceKm > 0 ? `${stat.distanceKm}km` : stat.durationMin > 0 ? fmtDur(stat.durationMin) : `${stat.count}x`;
+            const detail = stat.distanceKm > 0
+              ? `${stat.count} sessions · ${fmtDur(stat.durationMin)}`
+              : `${stat.count} sessions`;
             const comp = stat.distanceKm > 0 ? pctChange(stat.distanceKm, stat.prevDistanceKm) : stat.durationMin > 0 ? pctChange(stat.durationMin, stat.prevDurationMin) : pctChange(stat.count, stat.prevCount);
             return (
               <div key={stat.type} className={`flex items-center gap-2.5 rounded-xl bg-gradient-to-r ${TYPE_BG[stat.type] || TYPE_BG.other} border border-border/20 px-3 py-2`}>
@@ -381,7 +342,7 @@ export default function MonthlyReviewPage() {
                     {TYPE_NAME[stat.type] || stat.type}
                   </p>
                   <p className="text-[10px] text-muted-foreground">
-                    {metric} · {stat.count} sessions · {stat.durationMin}m
+                    {metric} · {detail}
                   </p>
                 </div>
                 {comp && <span className={`text-[11px] font-black ${comp.positive ? 'text-emerald-400' : 'text-red-400'}`}>{comp.text}</span>}
