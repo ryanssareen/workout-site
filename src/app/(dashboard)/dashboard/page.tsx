@@ -179,8 +179,11 @@ export default function DashboardPage() {
   const completedCount = workouts.filter(w => w.completed).length;
   const streak = useMemo(() => calculateStreak(workouts), [workouts]);
 
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+
   const upcomingWorkouts = workouts
-    .filter(w => !w.completed)
+    .filter(w => !w.completed && getWorkoutDate(w) >= todayStart)
     .sort((a, b) => getWorkoutDate(a).getTime() - getWorkoutDate(b).getTime())
     .slice(0, 2);
 
