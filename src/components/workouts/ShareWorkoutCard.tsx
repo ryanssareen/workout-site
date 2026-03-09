@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, useCallback } from 'react';
-import { toPng } from 'html-to-image';
+import { toJpeg } from 'html-to-image';
 import { format } from 'date-fns';
 import { Share2, Download, Copy, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -84,13 +84,12 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
     el.style.maxWidth = `${captureWidth}px`;
 
     try {
-      const result = await toPng(el, {
-        quality: 0.95,
+      const result = await toJpeg(el, {
+        quality: 0.92,
         pixelRatio: 2,
         width: captureWidth,
         cacheBust: true,
-        imagePlaceholder: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-        ...(captureBg ? { backgroundColor: captureBg } : {}),
+        backgroundColor: captureBg || '#0a0a0a',
       });
       return result;
     } catch (err) {
@@ -110,7 +109,7 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
     const dataUrl = await generateImage();
     if (!dataUrl) return;
     const link = document.createElement('a');
-    link.download = `${fileName}-${format(new Date(), 'yyyy-MM-dd')}.png`;
+    link.download = `${fileName}-${format(new Date(), 'yyyy-MM-dd')}.jpg`;
     link.href = dataUrl;
     link.click();
     toast.success('Image downloaded!');
@@ -129,7 +128,7 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
     if (dataUrl) {
       try {
         const blob = await (await fetch(dataUrl)).blob();
-        const file = new File([blob], `${fileName}.png`, { type: 'image/png' });
+        const file = new File([blob], `${fileName}.jpg`, { type: 'image/jpeg' });
         if (navigator.canShare?.({ files: [file] })) {
           await navigator.share({ files: [file], text: shareText });
           return;
@@ -139,7 +138,7 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
       }
       // Fallback: download image + copy caption + open WhatsApp
       const dl = document.createElement('a');
-      dl.download = `${fileName}.png`;
+      dl.download = `${fileName}.jpg`;
       dl.href = dataUrl;
       dl.click();
       try { await navigator.clipboard.writeText(shareText); } catch { /* ignore */ }
@@ -153,7 +152,7 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
     const dataUrl = await generateImage();
     if (dataUrl) {
       const dl = document.createElement('a');
-      dl.download = `${fileName}.png`;
+      dl.download = `${fileName}.jpg`;
       dl.href = dataUrl;
       dl.click();
       try { await navigator.clipboard.writeText(shareText); } catch { /* ignore */ }
@@ -167,7 +166,7 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
     const dataUrl = await generateImage();
     if (dataUrl) {
       const dl = document.createElement('a');
-      dl.download = `${fileName}.png`;
+      dl.download = `${fileName}.jpg`;
       dl.href = dataUrl;
       dl.click();
     }
@@ -183,7 +182,7 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
     if (!dataUrl) return;
     try {
       const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], `${fileName}.png`, { type: 'image/png' });
+      const file = new File([blob], `${fileName}.jpg`, { type: 'image/jpeg' });
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file] });
         return;
