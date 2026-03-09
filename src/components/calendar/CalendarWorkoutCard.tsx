@@ -42,7 +42,7 @@ function getWorkoutStatus(workout: Workout) {
   const isMatchedByStrava = !isStravaStandalone && workout.completed && workout.completedBy === 'strava';
   const isLate = workout.completedLate === true;
   const isCompletedManual = workout.completed && !isStravaStandalone && !isMatchedByStrava && !isLate;
-  const isMissed = past && !workout.completed && !isStravaStandalone;
+  const isMissed = past && !workout.completed && !isStravaStandalone && !isNote(workout);
   const isFuture = !workout.completed && !past && !isStravaStandalone;
 
   return { isStravaStandalone, isMatchedByStrava, isLate, isCompletedManual, isMissed, isFuture, past, today };

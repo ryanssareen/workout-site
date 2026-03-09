@@ -65,7 +65,7 @@ export function DashboardAchievements({ username }: DashboardAchievementsProps) 
                 Recent PRs
               </CardTitle>
               <Link
-                href="/records"
+                href="/profile"
                 className="text-xs text-muted-foreground hover:text-amber-500 transition-colors flex items-center gap-1"
               >
                 All records <ChevronRight className="h-3 w-3" />
