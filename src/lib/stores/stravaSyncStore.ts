@@ -22,16 +22,7 @@ interface StravaSyncState {
   error: string | null;
   needsReconnect: boolean;
 
-  startSync: (
-    username: string,
-    decisions?: Record<string, { action: 'merge' | 'new'; workoutId?: string }>,
-    tokens?: StravaTokens
-  ) => void;
-  checkDuplicates: (username: string) => Promise<{
-    hasDuplicates: boolean;
-    duplicates: any[];
-    totalNewActivities?: number;
-  }>;
+  startSync: (username: string, tokens?: StravaTokens) => void;
   clearResult: () => void;
 }
 
@@ -104,7 +95,7 @@ export const useStravaSyncStore = create<StravaSyncState>((set, get) => ({
   error: null,
   needsReconnect: false,
 
-  startSync: (username, decisions, tokens) => {
+  startSync: (username, tokens) => {
     // Already syncing — don't fire another
     if (activeSyncPromise || get().status === 'syncing') return;
 
@@ -113,16 +104,7 @@ export const useStravaSyncStore = create<StravaSyncState>((set, get) => ({
     // If we have tokens, go straight to POST (quota-safe) mode.
     // Otherwise, try GET first and fall back to POST if quota hit.
     const doSync = async () => {
-      const hasDecisions = !!decisions && Object.keys(decisions).length > 0;
-      if (hasDecisions) {
-        // Duplicate review decisions require normal GET mode server logic.
-        const decisionsParam = `&decisions=${encodeURIComponent(JSON.stringify(decisions))}`;
-        const response = await fetch(
-          `/api/strava/sync?userId=${username}${decisionsParam}`,
-          { headers: { Accept: 'application/json' } }
-        );
-        await handleSyncResponse(response, set);
-      } else if (tokens?.stravaAccessToken) {
+      if (tokens?.stravaAccessToken) {
         // POST mode — send tokens in body, zero Firestore reads on server
         console.log('🔄 Strava sync via POST (quota-safe mode)');
         const response = await fetch('/api/strava/sync', {
@@ -134,18 +116,13 @@ export const useStravaSyncStore = create<StravaSyncState>((set, get) => ({
             stravaRefreshToken: tokens.stravaRefreshToken,
             stravaTokenExpiresAt: tokens.stravaTokenExpiresAt,
             userTimezone: tokens.userTimezone,
-            decisions: decisions || undefined,
           }),
         });
         await handleSyncResponse(response, set);
       } else {
         // GET mode — server reads tokens from Firestore
-        const decisionsParam = decisions
-          ? `&decisions=${encodeURIComponent(JSON.stringify(decisions))}`
-          : '';
-
         const response = await fetch(
-          `/api/strava/sync?userId=${username}${decisionsParam}`,
+          `/api/strava/sync?userId=${username}`,
           { headers: { Accept: 'application/json' } }
         );
 
@@ -176,33 +153,6 @@ export const useStravaSyncStore = create<StravaSyncState>((set, get) => ({
       .finally(() => {
         activeSyncPromise = null;
       });
-  },
-
-  checkDuplicates: async (username) => {
-    const response = await fetch(
-      `/api/strava/sync?userId=${username}&checkDuplicates=true`,
-      { headers: { Accept: 'application/json' } }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-      if (errorData.needsReconnect) {
-        throw new Error(errorData.error || 'Please reconnect your Strava account');
-      }
-      if (errorData.hint) {
-        throw new Error(`${errorData.error}: ${errorData.hint}`);
-      } else if (errorData.details) {
-        throw new Error(`${errorData.error}: ${errorData.details}`);
-      }
-      throw new Error(errorData.error || 'Failed to check for duplicates');
-    }
-
-    const data = await response.json();
-    return {
-      hasDuplicates: data.hasDuplicates || false,
-      duplicates: data.duplicates || [],
-      totalNewActivities: data.totalNewActivities,
-    };
   },
 
   clearResult: () => set({ status: 'idle', result: null, error: null, needsReconnect: false }),

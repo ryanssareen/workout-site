@@ -400,89 +400,6 @@ async function findMatchingImportedWorkout(
   return pickImportedMatch(activityDistance, sameDayCandidates);
 }
 
-// Find potential duplicates with constrained candidate filtering and confidence sorting
-async function findDuplicateCandidates(
-  userId: string,
-  workoutType: string,
-  activity: any,
-  userTimezone: string,
-): Promise<{ id: string; data: any; confidence: number }[]> {
-  try {
-    const activityDate = new Date(activity.start_date_local || activity.start_date);
-    const activityDayKey = getDayKey(activityDate, userTimezone);
-    const activityDistance = getActivityDistanceMeters(activity);
-    const activityDuration = getActivityDurationSeconds(activity);
-    const activityName = activity.name || '';
-
-    const workoutsSnapshot = await adminDb
-      .collection('users').doc(userId).collection('workouts')
-      .where('type', '==', workoutType)
-      .get();
-
-    const matches: { id: string; data: any; confidence: number }[] = [];
-
-    for (const doc of workoutsSnapshot.docs) {
-      const data = doc.data();
-      if (data.source === 'strava') continue;
-
-      const workoutDate = getDateFromValue(data.date);
-      const workoutDayKey = getDayKey(workoutDate, userTimezone);
-      const hoursDiff = Math.abs(activityDate.getTime() - workoutDate.getTime()) / 3.6e6;
-      const sameDay = workoutDayKey === activityDayKey;
-      if (!sameDay && hoursDiff > 24) continue;
-
-      const nameOverlap = nameOverlapScore(activityName, data.name || '');
-      const exactName = activityName.trim().toLowerCase() === (data.name || '').trim().toLowerCase();
-      const nearName = exactName || nameOverlap >= 0.45;
-
-      const workoutDistance = getWorkoutDistanceMeters(data, workoutType);
-      const workoutDuration = getWorkoutDurationSeconds(data, workoutType);
-
-      const distRatio = (activityDistance > 0 && workoutDistance > 0)
-        ? Math.abs(activityDistance - workoutDistance) / Math.max(activityDistance, workoutDistance)
-        : null;
-      const durRatio = (activityDuration > 0 && workoutDuration > 0)
-        ? Math.abs(activityDuration - workoutDuration) / Math.max(activityDuration, workoutDuration)
-        : null;
-
-      const distanceClose = distRatio !== null && distRatio <= 0.20;
-      const durationClose = durRatio !== null && durRatio <= 0.25;
-      const strongSignal = nearName || distanceClose || durationClose;
-      if (!strongSignal) continue;
-
-      const dayScore = sameDay ? 30 : 10;
-      const nameScore = exactName ? 40 : Math.round(Math.min(1, nameOverlap) * 40);
-      const distanceScore = distRatio !== null && distRatio <= 0.20
-        ? Math.round((1 - distRatio / 0.20) * 20)
-        : 0;
-      const durationScore = durRatio !== null && durRatio <= 0.25
-        ? Math.round((1 - durRatio / 0.25) * 10)
-        : 0;
-      const confidence = Math.max(0, Math.min(100, dayScore + nameScore + distanceScore + durationScore));
-
-      matches.push({ id: doc.id, data, confidence });
-    }
-
-    matches.sort((a, b) => b.confidence - a.confidence);
-    return matches;
-  } catch (error: any) {
-    console.error('❌ Error in findDuplicateCandidates:', {
-      error: error.message,
-      code: error.code,
-      details: error.details,
-      userId,
-      workoutType,
-      activityName: activity?.name,
-    });
-
-    if (error.code === 9 || error.message?.includes('index')) {
-      console.error('⚠️ MISSING FIRESTORE INDEX - Please deploy indexes with: firebase deploy --only firestore:indexes');
-    }
-
-    throw new Error(`Failed to check for duplicates: ${error.message}`);
-  }
-}
-
 // Laps/splits are now fetched on-demand via /api/strava/activity-details
 // to avoid burning through Strava's rate limit during sync (1 extra call per activity)
 
@@ -547,8 +464,6 @@ export async function POST(request: NextRequest) {
       refreshTokenOverride: refreshTokenFromClient,
       expiresAtOverride: expiresAtFromClient,
       userTimezoneOverride: typeof body.userTimezone === 'string' ? body.userTimezone : undefined,
-      checkDuplicates: url.searchParams.get('checkDuplicates') === 'true' || body.checkDuplicates === true,
-      duplicateDecisions: url.searchParams.get('decisions') || body.decisions,
       period: url.searchParams.get('period') || body.period,
       afterParam: url.searchParams.get('after') || body.after,
       quotaSafe: true, // POST mode = skip unnecessary reads
@@ -578,8 +493,6 @@ export async function GET(request: NextRequest) {
 
     return handleSync(request, {
       userId,
-      checkDuplicates: searchParams.get('checkDuplicates') === 'true',
-      duplicateDecisions: searchParams.get('decisions'),
       period: searchParams.get('period'),
       afterParam: searchParams.get('after'),
       quotaSafe: false,
@@ -603,8 +516,6 @@ interface SyncOptions {
   refreshTokenOverride?: string;
   expiresAtOverride?: number;
   userTimezoneOverride?: string;
-  checkDuplicates: boolean;
-  duplicateDecisions?: string | null;
   period?: string | null;
   afterParam?: string | null;
   quotaSafe: boolean;
@@ -615,7 +526,7 @@ interface SyncOptions {
 async function handleSync(request: NextRequest, opts: SyncOptions) {
   try {
     const {
-      userId, checkDuplicates, duplicateDecisions: duplicateDecisionsRaw,
+      userId,
       period, afterParam, quotaSafe, mode, backfillPage, userTimezoneOverride,
     } = opts;
 
@@ -832,86 +743,6 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
       console.log(`🆕 Processing ${activitiesToProcess.length} new activities`);
     }
 
-    // Parse duplicate decisions if provided
-    const decisions: Record<string, { action: 'merge' | 'new'; workoutId?: string }> = duplicateDecisionsRaw
-      ? JSON.parse(typeof duplicateDecisionsRaw === 'string' ? duplicateDecisionsRaw : JSON.stringify(duplicateDecisionsRaw))
-      : {};
-
-    // If checkDuplicates is true, find and return potential duplicates
-    // (requires Firestore reads — only works when not quota-limited)
-    if (checkDuplicates && !quotaSafe) {
-      console.log('🔍 Checking for duplicates...');
-      const potentialDuplicates: {
-        stravaActivityId: string;
-        stravaName: string;
-        stravaType: string;
-        stravaDate: string;
-        stravaDistance: number;
-        stravaDuration: number;
-        existingWorkouts: { id: string; name: string; date: string; completed: boolean; confidence?: number }[];
-      }[] = [];
-
-      try {
-        for (const activity of activitiesToProcess) {
-          const workoutType = mapStravaType(activity.type);
-
-          try {
-            const duplicates = await findDuplicateCandidates(userId, workoutType, activity, userTimezone);
-
-            if (duplicates.length > 0) {
-              potentialDuplicates.push({
-                stravaActivityId: String(activity.id),
-                stravaName: activity.name,
-                stravaType: workoutType,
-                stravaDate: activity.start_date_local,
-                stravaDistance: activity.distance || 0,
-                stravaDuration: activity.moving_time || 0,
-                existingWorkouts: duplicates.map(d => ({
-                  id: d.id,
-                  name: d.data.name,
-                  date: d.data.date?.toDate?.()?.toISOString() || '',
-                  completed: d.data.completed || false,
-                  confidence: d.confidence,
-                })),
-              });
-            }
-          } catch (activityError: any) {
-            console.error(`❌ Error checking duplicates for activity ${activity.name}:`, activityError.message);
-          }
-        }
-
-        console.log(`✅ Duplicate check complete: found ${potentialDuplicates.length} potential duplicates`);
-
-        return NextResponse.json({
-          success: true,
-          hasDuplicates: potentialDuplicates.length > 0,
-          duplicates: potentialDuplicates,
-          totalNewActivities: activitiesToProcess.length,
-        });
-      } catch (error: any) {
-        console.error('❌ Critical error during duplicate check:', error);
-
-        return NextResponse.json(
-          {
-            error: 'Failed to check for duplicates',
-            details: error.message,
-            code: error.code,
-            hint: error.code === 9 ? 'Missing Firestore index. Please run: firebase deploy --only firestore:indexes' : undefined
-          },
-          { status: 500 }
-        );
-      }
-    } else if (checkDuplicates && quotaSafe) {
-      // Can't check duplicates without reads — skip and proceed with sync
-      return NextResponse.json({
-        success: true,
-        hasDuplicates: false,
-        duplicates: [],
-        totalNewActivities: activitiesToProcess.length,
-        quotaSafe: true,
-      });
-    }
-
     // Process activities one at a time to avoid duplicates
     let newWorkoutsCount = 0;
     let mergedWorkoutsCount = 0;
@@ -919,7 +750,6 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
     const mergeStats = {
       autoPlannedMerged: 0,
       autoImportMerged: 0,
-      manualDecisionMerged: 0,
       ambiguousSkipped: 0,
     };
 
@@ -1022,97 +852,37 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
         return mergeData;
       };
 
-      // Check if there's a decision for this activity
-      const decision = decisions[stravaId];
       let shouldCreate = false;
+      const plannedMatch = await findMatchingWorkout(
+        userId,
+        workoutType,
+        activity,
+        userTimezone,
+        plannedCandidatePool
+      );
+      if (plannedMatch.ambiguous) {
+        mergeStats.ambiguousSkipped++;
+        console.log(`  ⚖️ Planned candidates ambiguous for ${activity.name}; skipping auto-planned merge`);
+      }
 
-      if (!quotaSafe && decision?.action === 'merge' && decision.workoutId) {
-        // User chose to merge with existing workout
-        console.log(`  🔗 Decision merge: ${activity.name}`);
-
-        await workoutsCollection.doc(decision.workoutId).update({
+      if (plannedMatch.match) {
+        console.log(`  🔗 Auto-planned merge: ${activity.name} → ${plannedMatch.match.data.name} (${plannedMatch.match.score})`);
+        await workoutsCollection.doc(plannedMatch.match.id).update({
           ...baseMergeData(),
           mergeMeta: {
-            method: 'duplicate_decision',
+            method: 'auto_planned',
             mergedAt: admin.firestore.FieldValue.serverTimestamp(),
             source: 'strava',
+            confidence: plannedMatch.match.confidence,
+            candidateCount: plannedMatch.candidateCount,
           },
         });
-        const inPool = plannedCandidatePool.find((candidate) => candidate.id === decision.workoutId);
-        if (inPool) {
-          inPool.data.completed = true;
-          inPool.data.stravaActivityId = stravaId;
-        }
+        plannedMatch.match.data.completed = true;
+        plannedMatch.match.data.stravaActivityId = stravaId;
         mergedWorkoutsCount++;
-        mergeStats.manualDecisionMerged++;
+        mergeStats.autoPlannedMerged++;
       } else {
-        let plannedMatch: PlannedMatchResult = { match: null, candidateCount: 0, ambiguous: false };
-        if (!decision) {
-          plannedMatch = await findMatchingWorkout(
-            userId,
-            workoutType,
-            activity,
-            userTimezone,
-            plannedCandidatePool
-          );
-          if (plannedMatch.ambiguous) {
-            mergeStats.ambiguousSkipped++;
-            console.log(`  ⚖️ Planned candidates ambiguous for ${activity.name}; skipping auto-planned merge`);
-          }
-        }
-
-        if (!decision && plannedMatch.match) {
-          console.log(`  🔗 Auto-planned merge: ${activity.name} → ${plannedMatch.match.data.name} (${plannedMatch.match.score})`);
-          await workoutsCollection.doc(plannedMatch.match.id).update({
-            ...baseMergeData(),
-            mergeMeta: {
-              method: 'auto_planned',
-              mergedAt: admin.firestore.FieldValue.serverTimestamp(),
-              source: 'strava',
-              confidence: plannedMatch.match.confidence,
-              candidateCount: plannedMatch.candidateCount,
-            },
-          });
-          plannedMatch.match.data.completed = true;
-          plannedMatch.match.data.stravaActivityId = stravaId;
-          mergedWorkoutsCount++;
-          mergeStats.autoPlannedMerged++;
-        } else if (!quotaSafe) {
-          // Proximity duplicate check (requires reads) — unchanged behavior
-          const thirtyMinBefore = new Date(activityDate.getTime() - 30 * 60 * 1000);
-          const thirtyMinAfter = new Date(activityDate.getTime() + 30 * 60 * 1000);
-          const proximitySnap = await workoutsCollection
-            .where('type', '==', workoutType)
-            .where('source', '==', 'strava')
-            .where('date', '>=', admin.firestore.Timestamp.fromDate(thirtyMinBefore))
-            .where('date', '<=', admin.firestore.Timestamp.fromDate(thirtyMinAfter))
-            .get();
-
-          let proximityDupe = false;
-          for (const pDoc of proximitySnap.docs) {
-            const pData = pDoc.data();
-            if (pData.stravaActivityId === stravaId) continue;
-            const eDur = pData.actualStats?.duration || (pData.duration || 0) * 60;
-            const nDur = activity.moving_time || 0;
-            const dClose = eDur > 0 && nDur > 0 && Math.abs(eDur - nDur) < 600;
-            const eDist = pData.actualStats?.distance || 0;
-            const nDist = activity.distance || 0;
-            const distClose = eDist > 0 && nDist > 0 && Math.abs(eDist - nDist) / Math.max(eDist, nDist) < 0.05;
-            if (dClose && distClose) {
-              console.log(`  🛑 Proximity duplicate: "${activity.name}" ~= "${pData.name}" (${pDoc.id}) — SKIPPING`);
-              proximityDupe = true;
-              skippedCount++;
-              break;
-            }
-          }
-
-          if (!proximityDupe) {
-            shouldCreate = true;
-          }
-        } else {
-          // Quota-safe mode: skip proximity checks
-          shouldCreate = true;
-        }
+        shouldCreate = true;
       }
 
       // Before creating, check if there's a matching imported (CSV/XLSX) workout to merge with
@@ -1248,29 +1018,7 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
       console.error('⚠️ Failed to update sync timestamps (non-fatal):', err);
     }
 
-    // Run Groq dedup only on full sync (year or no period specified) — skip for partial syncs and quota-safe mode
-    let dedupInfo: any = null;
-    if (!quotaSafe && (!period || period === 'year')) {
-    try {
-      console.log('🔍 Running Groq dedup after sync...');
-      const { runDedupPipeline, executeDedupDeletions } = await import('@/lib/groq-dedup');
-      const { result: dedupResult } = await runDedupPipeline(userId);
-      if (dedupResult.duplicatesFound > 0) {
-        console.log(`🗑️ Groq found ${dedupResult.duplicatesFound} duplicates — auto-deleting`);
-        const deleted = await executeDedupDeletions(dedupResult, userId);
-        console.log(`✅ Deleted ${deleted} duplicate workouts`);
-        dedupInfo = { duplicatesRemoved: deleted, model: dedupResult.model };
-      } else {
-        console.log('✅ No duplicates found after sync');
-        dedupInfo = { duplicatesRemoved: 0, model: dedupResult.model };
-      }
-    } catch (dedupErr: any) {
-      console.error('⚠️ Dedup pipeline error (non-fatal):', dedupErr.message);
-      dedupInfo = { error: dedupErr.message };
-    }
-    } else {
-      console.log(`⏩ Skipping dedup for partial sync (period=${period})`);
-    }
+    const dedupInfo: any = null;
 
     // Build response message
     let message = '';

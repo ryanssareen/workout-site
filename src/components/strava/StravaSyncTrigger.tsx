@@ -44,7 +44,7 @@ export function StravaSyncTrigger() {
         const tokens = user.stravaAccessToken
           ? { stravaAccessToken: user.stravaAccessToken, stravaRefreshToken: user.stravaRefreshToken, stravaTokenExpiresAt: user.stravaTokenExpiresAt }
           : undefined;
-        startSync(user.username, undefined, tokens);
+        startSync(user.username, tokens);
       }
     }
   }, [searchParams, user, startSync, status, router, pathname]);

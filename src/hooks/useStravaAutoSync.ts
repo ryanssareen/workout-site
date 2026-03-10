@@ -255,28 +255,6 @@ export function useStravaAutoSync(
         });
       }
 
-      // Auto-dedup: run once after all stages
-      try {
-        console.log('[auto-sync] running auto-dedup...');
-        const dedupRes = await fetch('/api/workouts/auto-dedup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId }),
-        });
-        if (dedupRes.ok) {
-          const dedupData = await dedupRes.json();
-          if (dedupData.deleted > 0) {
-            toast.success(`Cleaned up ${dedupData.deleted} duplicate workout${dedupData.deleted > 1 ? 's' : ''}`, {
-              icon: '🧹',
-              duration: 4000,
-            });
-            onNewWorkouts?.();
-          }
-        }
-      } catch (dedupErr) {
-        console.error('[auto-sync] dedup error:', dedupErr);
-      }
-
       // Update cooldown timestamp
       try {
         sessionStorage.setItem(SYNC_COOLDOWN_KEY, String(Date.now()));

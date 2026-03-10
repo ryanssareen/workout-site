@@ -5,7 +5,6 @@ import { waitUntil } from '@vercel/functions';
 import { adminDb } from '@/lib/firebase/admin';
 import admin from 'firebase-admin';
 import crypto from 'crypto';
-import { runDedupPipeline, executeDedupDeletions } from '@/lib/groq-dedup';
 import { sendPushNotification } from '@/lib/push';
 
 // Map Strava activity types to our workout types
@@ -207,18 +206,19 @@ async function processActivity(
     
     console.log(`📅 Activity: ${activity.name} (${activity.type} → ${workoutType}) on ${activityDate.toISOString()}`);
 
-    // FINAL CHECK: Proximity-based duplicate detection
-    // Catches same workout synced with slightly different Strava activity IDs
-    // (e.g. re-uploads, GPS corrections creating new activity, or 4-min drift)
-    const thirtyMinBefore = new Date(activityDate.getTime() - 30 * 60 * 1000);
-    const thirtyMinAfter = new Date(activityDate.getTime() + 30 * 60 * 1000);
-    
+    // FINAL CHECK: Current-day duplicate detection only (webhook path).
+    // Restricts reads to the activity day instead of broad/rolling windows.
+    const duplicateDayStart = new Date(activityDate);
+    duplicateDayStart.setHours(0, 0, 0, 0);
+    const duplicateDayEnd = new Date(activityDate);
+    duplicateDayEnd.setHours(23, 59, 59, 999);
+
     const proximityCheck = await adminDb
       .collection('users').doc(username).collection('workouts')
       .where('type', '==', workoutType)
       .where('source', '==', 'strava')
-      .where('date', '>=', admin.firestore.Timestamp.fromDate(thirtyMinBefore))
-      .where('date', '<=', admin.firestore.Timestamp.fromDate(thirtyMinAfter))
+      .where('date', '>=', admin.firestore.Timestamp.fromDate(duplicateDayStart))
+      .where('date', '<=', admin.firestore.Timestamp.fromDate(duplicateDayEnd))
       .get();
 
     if (!proximityCheck.empty) {
@@ -512,31 +512,17 @@ export async function POST(request: NextRequest) {
         .then(async (result) => {
           console.log('✅ Webhook processing result:', JSON.stringify(result));
           if (result.success) {
-            try {
-              const userSnap = await adminDb.collection('users')
-                .where('stravaId', '==', String(owner_id)).limit(1).get();
-              if (!userSnap.empty) {
-                const username = userSnap.docs[0].id;
+            const userSnap = await adminDb.collection('users')
+              .where('stravaId', '==', String(owner_id)).limit(1).get();
+            if (!userSnap.empty) {
+              const username = userSnap.docs[0].id;
 
-                // Send push notification for new Strava workout
-                await sendPushNotification(username, {
-                  title: '🏃 New Strava Workout',
-                  body: result.message || 'A new workout was synced from Strava',
-                  url: '/workouts',
-                }).catch(() => {}); // non-fatal
-
-                console.log('🔍 Running Groq dedup for user:', username);
-                const { result: dedupResult } = await runDedupPipeline(username);
-                if (dedupResult.duplicatesFound > 0) {
-                  console.log(`🗑️ Groq found ${dedupResult.duplicatesFound} duplicates — deleting`);
-                  const deleted = await executeDedupDeletions(dedupResult, username);
-                  console.log(`✅ Deleted ${deleted} duplicate workouts`);
-                } else {
-                  console.log('✅ No duplicates found');
-                }
-              }
-            } catch (dedupErr: any) {
-              console.error('⚠️ Dedup pipeline error (non-fatal):', dedupErr.message);
+              // Send push notification for new Strava workout
+              await sendPushNotification(username, {
+                title: '🏃 New Strava Workout',
+                body: result.message || 'A new workout was synced from Strava',
+                url: '/workouts',
+              }).catch(() => {}); // non-fatal
             }
           }
         })

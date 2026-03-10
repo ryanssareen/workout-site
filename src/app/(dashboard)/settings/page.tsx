@@ -20,7 +20,6 @@ import {
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
 import {
-  User,
   Unlink,
   Settings,
   LogOut,
@@ -38,7 +37,6 @@ import {
 } from 'lucide-react';
 import { signOut } from '@/lib/firebase/auth';
 import Link from 'next/link';
-import { StravaDuplicateDialog } from '@/components/strava/DuplicateDialog';
 import { PhotoUpload } from '@/components/profile/PhotoUpload';
 import {
   SPORT_OPTIONS,
@@ -172,17 +170,13 @@ function SettingsContent() {
 
   const [isConnectingStrava, setIsConnectingStrava] = useState(false);
   const [isDisconnectingStrava, setIsDisconnectingStrava] = useState(false);
-  const [isSyncingStrava, setIsSyncingStrava] = useState(false);
   const [profilePublic, setProfilePublic] = useState(user?.profilePublic !== false);
   const [profileCopied, setProfileCopied] = useState(false);
   const [regeneratingTagline, setRegeneratingTagline] = useState(false);
-  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
-  const [stravaDuplicates, setStravaDuplicates] = useState<any[]>([]);
 
   // Global Strava sync store (survives navigation)
   const syncStatus = useStravaSyncStore((s) => s.status);
   const startSync = useStravaSyncStore((s) => s.startSync);
-  const checkDuplicates = useStravaSyncStore((s) => s.checkDuplicates);
 
   useEffect(() => {
     const stravaStatus = searchParams.get('strava');
@@ -227,48 +221,9 @@ function SettingsContent() {
     };
   };
 
-  const handleSyncStrava = async (decisions?: Record<string, { action: 'merge' | 'new'; workoutId?: string }>) => {
+  const handleSyncStrava = () => {
     if (!user) return;
-
-    // With decisions (from duplicate dialog), go straight to sync via the global store
-    if (decisions) {
-      startSync(user.username, decisions, getStravaTokens());
-      return;
-    }
-
-    // No decisions — check for duplicates first (local interactive flow)
-    setIsSyncingStrava(true);
-    try {
-      const result = await checkDuplicates(user.username);
-      if (result.hasDuplicates && result.duplicates?.length > 0) {
-        setStravaDuplicates(result.duplicates);
-        setShowDuplicateDialog(true);
-        setIsSyncingStrava(false);
-        return;
-      }
-
-      // No duplicates — kick off sync via the global store
-      startSync(user.username, undefined, getStravaTokens());
-    } catch (error: any) {
-      // If quota exhausted, skip duplicate check and go straight to quota-safe sync
-      const isQuota = error.message?.includes('quota') || error.message?.includes('RESOURCE_EXHAUSTED') || error.message?.includes('Quota exceeded');
-      if (isQuota && getStravaTokens()) {
-        console.log('⚡ Quota hit during duplicate check — falling back to quota-safe sync');
-        startSync(user.username, undefined, getStravaTokens());
-      } else if (error.message?.includes('reconnect')) {
-        toast.error('Strava authorization expired', {
-          description: 'Disconnect and reconnect your Strava account to fix this.',
-        });
-      } else {
-        toast.error(error.message || 'Failed to sync with Strava');
-      }
-    }
-    setIsSyncingStrava(false);
-  };
-
-  const handleDuplicateDecisions = (decisions: Record<string, { action: 'merge' | 'new'; workoutId?: string }>) => {
-    setShowDuplicateDialog(false);
-    handleSyncStrava(decisions);
+    startSync(user.username, getStravaTokens());
   };
 
   const handleTogglePublicProfile = async (checked: boolean) => {
@@ -593,8 +548,8 @@ function SettingsContent() {
                     </div>
                   </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => handleSyncStrava()} disabled={isSyncingStrava || syncStatus === 'syncing'}>
-                    {syncStatus === 'syncing' ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Syncing...</> : isSyncingStrava ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Checking...</> : 'Sync'}
+                  <Button variant="outline" size="sm" onClick={() => handleSyncStrava()} disabled={syncStatus === 'syncing'}>
+                    {syncStatus === 'syncing' ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Syncing...</> : 'Sync'}
                   </Button>
                   <Button variant="outline" size="sm" onClick={handleDisconnectStrava} disabled={isDisconnectingStrava} className="text-red-500 hover:text-red-600 hover:bg-red-500/10">
                     {isDisconnectingStrava ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unlink className="h-4 w-4" />}
@@ -682,15 +637,6 @@ function SettingsContent() {
           </div>
         </div>
       )}
-
-      {/* Strava Duplicate Dialog */}
-      <StravaDuplicateDialog
-        open={showDuplicateDialog}
-        onOpenChange={setShowDuplicateDialog}
-        duplicates={stravaDuplicates}
-        onConfirm={handleDuplicateDecisions}
-        isLoading={syncStatus === 'syncing'}
-      />
     </div>
   );
 }
