@@ -9,7 +9,7 @@ export default function Home() {
       <AuthRedirect />
 
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-black/80 backdrop-blur-xl">
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-black/80 backdrop-blur-xl pt-[env(safe-area-inset-top)]">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
             <div className="h-9 w-9 rounded-xl bg-black border border-white/20 flex items-center justify-center">
@@ -29,7 +29,7 @@ export default function Home() {
         </div>
       </nav>
 
-      <main className="pt-16">
+      <main className="pt-[calc(4rem+env(safe-area-inset-top))]">
         {/* Hero */}
         <section className="relative overflow-hidden">
           <div className="absolute inset-0 -z-10">
