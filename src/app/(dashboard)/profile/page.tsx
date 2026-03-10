@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { getUserWorkouts, getPersonalRecords, getMilestones } from '@/lib/firebase/firestore';
 import { computeSummary, computeTypeDistribution } from '@/lib/analytics';
 import { PhotoUpload } from '@/components/profile/PhotoUpload';
+import { EditProfileDialog } from '@/components/profile/EditProfileDialog';
 import {
   StatCard,
   PieChart,
@@ -31,6 +32,7 @@ import {
   Star,
   Medal,
   Award,
+  Settings,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
@@ -54,9 +56,12 @@ export default function ProfilePage() {
   const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editOpen, setEditOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => {
+  const loadData = useCallback(() => {
     if (!user) return;
+    setLoading(true);
     Promise.all([
       getUserWorkouts(user.username, user.role as 'coach' | 'athlete' | 'student'),
       getPersonalRecords(user.username),
@@ -68,6 +73,10 @@ export default function ProfilePage() {
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [user]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData, refreshKey]);
 
   // Analytics
   const summary = useMemo(() => computeSummary(workouts), [workouts]);
@@ -183,9 +192,14 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <Button variant="outline" size="sm" asChild>
-          <Link href="/settings"><Pencil className="h-4 w-4 mr-1.5" />Edit Profile</Link>
-        </Button>
+        <div className="flex gap-2 justify-center">
+          <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+            <Pencil className="h-4 w-4 mr-1.5" />Edit Profile
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/settings"><Settings className="h-4 w-4 mr-1.5" />Settings</Link>
+          </Button>
+        </div>
       </section>
 
       {/* ── Stats Grid ── */}
@@ -317,6 +331,12 @@ export default function ProfilePage() {
           <p className="text-sm text-muted-foreground">Your stats and progress will appear here.</p>
         </div>
       )}
+
+      <EditProfileDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onSaved={() => setRefreshKey(k => k + 1)}
+      />
     </div>
   );
 }
