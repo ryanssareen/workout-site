@@ -55,6 +55,7 @@ export function WorkoutDetailPanel({
   const isMissed = past && !workout.completed && !isNote;
   const isStrava = workout.source === 'strava' || workout.completedBy === 'strava';
   const hasRoute = !!(workout.routeData?.polyline);
+  const canManualMerge = !workout.completed && workout.source !== 'strava' && !isNote;
 
   // Extract detailed stats for the grid
   const duration = workout.duration ? formatDurLong(workout.duration) : '--';
@@ -92,9 +93,9 @@ export function WorkoutDetailPanel({
   const [showMergeDialog, setShowMergeDialog] = useState(false);
   const [merging, setMerging] = useState(false);
 
-  // Find Strava candidates for manual merge (same type, ±1 day, standalone Strava)
+  // Find Strava candidates for manual merge (same type, same day, standalone Strava)
   const mergeCandidates = useMemo(() => {
-    if (!isMissed || !allWorkouts) return [];
+    if (!canManualMerge || !allWorkouts) return [];
     return allWorkouts.filter((w) => {
       if (w.source !== 'strava') return false;
       if (w.type !== workout.type) return false;
@@ -102,7 +103,7 @@ export function WorkoutDetailPanel({
       const wDate = w.date?.toDate?.() ?? new Date(w.date as unknown as string);
       return differenceInCalendarDays(wDate, workoutDate) === 0;
     });
-  }, [isMissed, allWorkouts, workout.type, workoutDate]);
+  }, [canManualMerge, allWorkouts, workout.type, workoutDate]);
 
   const handleManualMerge = async (stravaWorkoutId: string) => {
     setMerging(true);
@@ -276,7 +277,7 @@ export function WorkoutDetailPanel({
               )}
             </button>
           )}
-          {isMissed && mergeCandidates.length > 0 && (
+          {canManualMerge && mergeCandidates.length > 0 && (
             <button
               onClick={() => setShowMergeDialog(true)}
               className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-[#FC4C02]/10 text-[#FC4C02] border border-[#FC4C02]/20 hover:bg-[#FC4C02]/20 transition-colors"

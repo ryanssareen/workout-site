@@ -224,15 +224,9 @@ function scorePlannedCandidate(
   const exactName = (activity.name || '').trim().toLowerCase() === (workout.name || '').trim().toLowerCase();
   const nameScore = exactName ? 20 : Math.round(Math.min(1, overlap) * 20);
 
-  const activityDate = new Date(activity.start_date_local || activity.start_date);
-  const workoutDate = getDateFromValue(workout.date);
-  const hoursDiff = Math.abs(activityDate.getTime() - workoutDate.getTime()) / 3.6e6;
-  let timeScore = 0;
-  if (hoursDiff <= 3) {
-    timeScore = 10;
-  } else if (hoursDiff <= 12) {
-    timeScore = Math.round(10 * (1 - ((hoursDiff - 3) / 9)));
-  }
+  // Time-of-day is intentionally ignored for merge matching.
+  // Keep a neutral constant so existing thresholds still behave similarly.
+  const timeScore = 10;
 
   const totalScore = distanceScore + durationScore + nameScore + timeScore;
   return {
