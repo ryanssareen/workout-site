@@ -56,6 +56,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Validate same calendar day (UTC YYYY-MM-DD comparison — consistent across timezones)
+    const toDateStr = (ts: FirebaseFirestore.Timestamp | Date | string): string =>
+      (typeof ts === 'object' && 'toDate' in ts ? ts.toDate() : new Date(ts as string))
+        .toISOString()
+        .slice(0, 10);
+
+    const plannedDateStr = toDateStr(planned.date as FirebaseFirestore.Timestamp);
+    const stravaDateStr = toDateStr(strava.date as FirebaseFirestore.Timestamp);
+
+    if (plannedDateStr !== stravaDateStr) {
+      return NextResponse.json(
+        {
+          error: `Date mismatch: planned is ${plannedDateStr}, Strava is ${stravaDateStr}. Workouts must be on the same day.`,
+        },
+        { status: 400 },
+      );
+    }
+
     // Build merge data — must match auto-merge shape from sync route
     const mergeData: Record<string, unknown> = {
       completed: true,

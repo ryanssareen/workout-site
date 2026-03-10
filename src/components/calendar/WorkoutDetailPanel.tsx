@@ -100,7 +100,7 @@ export function WorkoutDetailPanel({
       if (w.type !== workout.type) return false;
       if (!w.completed) return false;
       const wDate = w.date?.toDate?.() ?? new Date(w.date as unknown as string);
-      return Math.abs(differenceInCalendarDays(wDate, workoutDate)) <= 1;
+      return differenceInCalendarDays(wDate, workoutDate) === 0;
     });
   }, [isMissed, allWorkouts, workout.type, workoutDate]);
 

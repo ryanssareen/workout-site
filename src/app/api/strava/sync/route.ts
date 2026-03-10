@@ -699,8 +699,10 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
 
       console.log(`📦 Processing ${i + 1}/${activitiesToProcess.length}: ${activity.name}`);
 
-      // Use start_date (actual UTC) so timezone-aware display shows correct local time
-      const activityDate = new Date(activity.start_date);
+      // Use start_date_local (athlete's local time) so getDayBounds() matches the correct
+      // calendar day. Using start_date (UTC) causes IST activities after ~6:30pm to be
+      // assigned to the next UTC calendar day, merging into the wrong planned workout.
+      const activityDate = new Date(activity.start_date_local);
       const workoutType = mapStravaType(activity.type);
 
       // Prepare stats from Strava
