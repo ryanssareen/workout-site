@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -27,6 +27,7 @@ interface DuplicateWorkout {
     name: string;
     date: string;
     completed: boolean;
+    confidence?: number;
   }[];
 }
 
@@ -51,6 +52,17 @@ export function StravaDuplicateDialog({
   const currentDuplicate = duplicates[currentIndex];
   const isLastDuplicate = currentIndex === duplicates.length - 1;
   const currentDecision = currentDuplicate ? decisions[currentDuplicate.stravaActivityId] : null;
+
+  useEffect(() => {
+    if (!currentDuplicate) return;
+    if (decisions[currentDuplicate.stravaActivityId]) return;
+    const topCandidate = currentDuplicate.existingWorkouts[0];
+    if (!topCandidate) return;
+    setDecisions((prev) => ({
+      ...prev,
+      [currentDuplicate.stravaActivityId]: { action: 'merge', workoutId: topCandidate.id },
+    }));
+  }, [currentDuplicate, decisions]);
 
   const handleMerge = (workoutId: string) => {
     if (!currentDuplicate) return;
@@ -137,7 +149,7 @@ export function StravaDuplicateDialog({
 
           {/* Existing Workout Options */}
           <div className="space-y-2">
-            <p className="text-sm font-medium text-muted-foreground">Existing workout with same name:</p>
+            <p className="text-sm font-medium text-muted-foreground">Best candidate matches:</p>
             {currentDuplicate.existingWorkouts.map((workout) => (
               <button
                 key={workout.id}
@@ -157,6 +169,9 @@ export function StravaDuplicateDialog({
                       {workout.date ? format(new Date(workout.date), 'MMM d, yyyy') : 'No date'}
                       {workout.completed && (
                         <Badge variant="secondary" className="text-xs">Completed</Badge>
+                      )}
+                      {typeof workout.confidence === 'number' && (
+                        <Badge variant="outline" className="text-xs">{workout.confidence}%</Badge>
                       )}
                     </div>
                   </div>

@@ -70,7 +70,7 @@ export function useStravaAutoSync(
   const fetchSync = useCallback(async (
     userId: string,
     params: SyncParams,
-    tokens?: { stravaAccessToken: string; stravaRefreshToken?: string; stravaTokenExpiresAt?: number },
+    tokens?: { stravaAccessToken: string; stravaRefreshToken?: string; stravaTokenExpiresAt?: number; userTimezone?: string },
   ): Promise<SyncResult> => {
     let res: Response;
 
@@ -87,6 +87,7 @@ export function useStravaAutoSync(
           stravaAccessToken: tokens.stravaAccessToken,
           stravaRefreshToken: tokens.stravaRefreshToken,
           stravaTokenExpiresAt: tokens.stravaTokenExpiresAt,
+          userTimezone: tokens.userTimezone,
         }),
       });
     } else {
@@ -129,7 +130,7 @@ export function useStravaAutoSync(
   const runSync = useCallback(async (
     userId: string,
     currentUser: User,
-    tokens?: { stravaAccessToken: string; stravaRefreshToken?: string; stravaTokenExpiresAt?: number },
+    tokens?: { stravaAccessToken: string; stravaRefreshToken?: string; stravaTokenExpiresAt?: number; userTimezone?: string },
   ) => {
     setSyncing(true);
     let totalNew = 0;
@@ -319,6 +320,7 @@ export function useStravaAutoSync(
       stravaAccessToken: user.stravaAccessToken,
       stravaRefreshToken: user.stravaRefreshToken,
       stravaTokenExpiresAt: user.stravaTokenExpiresAt,
+      userTimezone: user.timezone,
     } : undefined;
     console.log(`[auto-sync] firing 2-stage Strava sync${tokens ? ' (quota-safe POST mode)' : ' (GET mode)'}`);
     activeAutoSyncPromise = runSync(user.username, user, tokens)

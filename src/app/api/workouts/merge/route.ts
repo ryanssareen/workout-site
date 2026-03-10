@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as admin from 'firebase-admin';
 import { getAdminDb } from '@/lib/firebase/admin';
+import { getDayKey, normalizeTimezone } from '@/lib/dayKey';
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,8 +17,9 @@ export async function POST(req: NextRequest) {
     const db = getAdminDb();
     const workoutsCol = db.collection('users').doc(ownerUsername).collection('workouts');
 
-    // Read both docs
-    const [plannedSnap, stravaSnap] = await Promise.all([
+    // Read user + both workout docs
+    const [userSnap, plannedSnap, stravaSnap] = await Promise.all([
+      db.collection('users').doc(ownerUsername).get(),
       workoutsCol.doc(plannedWorkoutId).get(),
       workoutsCol.doc(stravaWorkoutId).get(),
     ]);
@@ -56,24 +58,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Validate same calendar day (UTC YYYY-MM-DD comparison — consistent across timezones)
-    const toDateStr = (ts: FirebaseFirestore.Timestamp | Date | string): string =>
-      (typeof ts === 'object' && 'toDate' in ts ? ts.toDate() : new Date(ts as string))
-        .toISOString()
-        .slice(0, 10);
+    const userTimezone = normalizeTimezone(userSnap.data()?.timezone);
+    const toDate = (ts: FirebaseFirestore.Timestamp | Date | string): Date =>
+      typeof ts === 'object' && ts !== null && 'toDate' in ts ? ts.toDate() : new Date(ts as string);
 
-    const plannedDateStr = toDateStr(planned.date as FirebaseFirestore.Timestamp);
-    const stravaDateStr = toDateStr(strava.date as FirebaseFirestore.Timestamp);
+    const plannedDate = toDate(planned.date as FirebaseFirestore.Timestamp);
+    const stravaDate = toDate(strava.date as FirebaseFirestore.Timestamp);
+    const plannedDayKey = getDayKey(plannedDate, userTimezone);
+    const stravaDayKey = getDayKey(stravaDate, userTimezone);
 
-    if (plannedDateStr !== stravaDateStr) {
+    if (plannedDayKey !== stravaDayKey) {
       return NextResponse.json(
         {
-          error: `Date mismatch: planned is ${plannedDateStr}, Strava is ${stravaDateStr}. Workouts must be on the same day.`,
+          error: `Date mismatch: planned is ${plannedDayKey}, Strava is ${stravaDayKey} in timezone ${userTimezone}. Workouts must be on the same day.`,
         },
         { status: 400 },
       );
     }
 
+    const mergedAtIso = new Date().toISOString();
     // Build merge data — must match auto-merge shape from sync route
     const mergeData: Record<string, unknown> = {
       completed: true,
@@ -81,6 +84,12 @@ export async function POST(req: NextRequest) {
       completedBy: 'strava',
       stravaActivityId: strava.stravaActivityId,
       actualStats: strava.actualStats || {},
+      mergeMeta: {
+        method: 'manual',
+        mergedAt: admin.firestore.FieldValue.serverTimestamp(),
+        source: 'strava',
+        sourceWorkoutId: stravaWorkoutId,
+      },
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
 
@@ -104,6 +113,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       mergedWorkoutId: plannedWorkoutId,
+      mergeMethod: 'manual',
+      mergedAt: mergedAtIso,
     });
   } catch (error: unknown) {
     console.error('Manual merge error:', error);

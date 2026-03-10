@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import admin from 'firebase-admin';
 import { sendPushNotification } from '@/lib/push';
+import { getDayKey, normalizeTimezone } from '@/lib/dayKey';
 
 // ── Strava rate-limit header parser ──────────────────────────────────────────
 function parseStravaRateLimits(resp: Response) {
@@ -118,6 +119,376 @@ function getDayBounds(date: Date): { start: Date; end: Date } {
   return { start, end };
 }
 
+function getDateFromValue(value: any): Date {
+  if (!value) return new Date(0);
+  if (value?.toDate) return value.toDate();
+  return new Date(value);
+}
+
+function getActivityDistanceMeters(activity: any): number {
+  return activity.distance || 0;
+}
+
+function getActivityDurationSeconds(activity: any): number {
+  return activity.moving_time || 0;
+}
+
+function getWorkoutDistanceMeters(workout: any, workoutType: string): number {
+  if (workout.actualStats?.distance) return workout.actualStats.distance;
+  if (workoutType === 'run' && workout.run?.distance) {
+    const unit = workout.run.distanceUnit || 'km';
+    return unit === 'miles' ? workout.run.distance * 1609.34 : workout.run.distance * 1000;
+  }
+  if (workoutType === 'bike' && workout.bike?.distance) {
+    const unit = workout.bike.distanceUnit || 'km';
+    return unit === 'miles' ? workout.bike.distance * 1609.34 : workout.bike.distance * 1000;
+  }
+  if (workoutType === 'swim' && workout.swim?.distance) {
+    const unit = workout.swim.distanceUnit || 'meters';
+    return unit === 'yards' ? workout.swim.distance * 0.9144 : workout.swim.distance;
+  }
+  return 0;
+}
+
+function getWorkoutDurationSeconds(workout: any, workoutType: string): number {
+  if (workout.actualStats?.duration) return workout.actualStats.duration;
+  if (workoutType === 'run' && workout.run?.time) return workout.run.time * 60;
+  if (workoutType === 'bike' && workout.bike?.time) return workout.bike.time * 60;
+  if (workoutType === 'swim' && workout.swim?.time) return workout.swim.time * 60;
+  if (workout.strength?.totalTime) return workout.strength.totalTime * 60;
+  if (workout.duration) return workout.duration * 60;
+  return 0;
+}
+
+function tokenizeName(name: string): Set<string> {
+  return new Set(
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .map((t) => t.trim())
+      .filter((t) => t.length > 1)
+  );
+}
+
+function nameOverlapScore(a: string, b: string): number {
+  const aTokens = tokenizeName(a);
+  const bTokens = tokenizeName(b);
+  if (aTokens.size === 0 || bTokens.size === 0) return 0;
+  let intersection = 0;
+  for (const token of aTokens) {
+    if (bTokens.has(token)) intersection++;
+  }
+  const union = new Set([...aTokens, ...bTokens]).size;
+  return union > 0 ? intersection / union : 0;
+}
+
+function scorePlannedCandidate(
+  activity: any,
+  workout: any,
+  workoutType: string
+): {
+  score: number;
+  confidence: number;
+  distanceScore: number;
+  durationScore: number;
+  nameScore: number;
+  timeScore: number;
+} {
+  const activityDistance = getActivityDistanceMeters(activity);
+  const workoutDistance = getWorkoutDistanceMeters(workout, workoutType);
+  const activityDuration = getActivityDurationSeconds(activity);
+  const workoutDuration = getWorkoutDurationSeconds(workout, workoutType);
+
+  let distanceScore = 0;
+  if (activityDistance > 0 && workoutDistance > 0) {
+    const ratio = Math.abs(activityDistance - workoutDistance) / Math.max(activityDistance, workoutDistance);
+    if (ratio <= 0.1) {
+      distanceScore = 40;
+    } else if (ratio <= 0.5) {
+      distanceScore = Math.round(40 * (1 - ((ratio - 0.1) / 0.4)));
+    }
+  }
+
+  let durationScore = 0;
+  if (activityDuration > 0 && workoutDuration > 0) {
+    const ratio = Math.abs(activityDuration - workoutDuration) / Math.max(activityDuration, workoutDuration);
+    if (ratio <= 0.2) {
+      durationScore = 30;
+    } else if (ratio <= 0.6) {
+      durationScore = Math.round(30 * (1 - ((ratio - 0.2) / 0.4)));
+    }
+  }
+
+  const overlap = nameOverlapScore(activity.name || '', workout.name || '');
+  const exactName = (activity.name || '').trim().toLowerCase() === (workout.name || '').trim().toLowerCase();
+  const nameScore = exactName ? 20 : Math.round(Math.min(1, overlap) * 20);
+
+  const activityDate = new Date(activity.start_date_local || activity.start_date);
+  const workoutDate = getDateFromValue(workout.date);
+  const hoursDiff = Math.abs(activityDate.getTime() - workoutDate.getTime()) / 3.6e6;
+  let timeScore = 0;
+  if (hoursDiff <= 3) {
+    timeScore = 10;
+  } else if (hoursDiff <= 12) {
+    timeScore = Math.round(10 * (1 - ((hoursDiff - 3) / 9)));
+  }
+
+  const totalScore = distanceScore + durationScore + nameScore + timeScore;
+  return {
+    score: totalScore,
+    confidence: Math.max(0, Math.min(100, Math.round(totalScore))),
+    distanceScore,
+    durationScore,
+    nameScore,
+    timeScore,
+  };
+}
+
+interface ScoredMatch {
+  id: string;
+  data: any;
+  score: number;
+  confidence: number;
+}
+
+interface PlannedMatchResult {
+  match: ScoredMatch | null;
+  candidateCount: number;
+  ambiguous: boolean;
+}
+
+function pickBestPlannedCandidate(
+  activity: any,
+  workoutType: string,
+  candidates: Array<{ id: string; data: any }>,
+  userTimezone: string
+): PlannedMatchResult {
+  const activityDate = new Date(activity.start_date_local || activity.start_date);
+  const activityDayKey = getDayKey(activityDate, userTimezone);
+
+  const sameDayCandidates = candidates.filter((candidate) => {
+    const workout = candidate.data;
+    if (workout.source === 'strava') return false;
+    if (workout.completed) return false;
+    if (workout.type !== workoutType) return false;
+    const workoutDayKey = getDayKey(getDateFromValue(workout.date), userTimezone);
+    return workoutDayKey === activityDayKey;
+  });
+
+  if (sameDayCandidates.length === 0) {
+    return { match: null, candidateCount: 0, ambiguous: false };
+  }
+
+  const scored: ScoredMatch[] = sameDayCandidates
+    .map((candidate) => {
+      const score = scorePlannedCandidate(activity, candidate.data, workoutType);
+      return {
+        id: candidate.id,
+        data: candidate.data,
+        score: score.score,
+        confidence: score.confidence,
+      };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  const top = scored[0];
+  const second = scored[1];
+  const scoreGap = second ? top.score - second.score : top.score;
+  const accepted = top.score >= 70 && scoreGap >= 15;
+
+  if (!accepted) {
+    return { match: null, candidateCount: scored.length, ambiguous: true };
+  }
+
+  return { match: top, candidateCount: scored.length, ambiguous: false };
+}
+
+// Find the best matching incomplete planned workout for a Strava activity
+async function findMatchingWorkout(
+  userId: string,
+  workoutType: string,
+  activity: any,
+  userTimezone: string,
+  candidatePool?: Array<{ id: string; data: any }>,
+): Promise<PlannedMatchResult> {
+  let candidates = candidatePool;
+
+  if (!candidates) {
+    const workoutsSnapshot = await adminDb
+      .collection('users').doc(userId).collection('workouts')
+      .where('type', '==', workoutType)
+      .where('completed', '==', false)
+      .get();
+    candidates = workoutsSnapshot.docs.map((doc) => ({ id: doc.id, data: doc.data() }));
+  }
+
+  return pickBestPlannedCandidate(activity, workoutType, candidates, userTimezone);
+}
+
+interface ImportedMatchResult {
+  match: { id: string; data: any } | null;
+  confidence: number;
+  candidateCount: number;
+}
+
+function pickImportedMatch(
+  activityDistance: number,
+  candidates: Array<{ id: string; data: any }>
+): ImportedMatchResult {
+  let best: { id: string; data: any } | null = null;
+  let bestConfidence = 0;
+  let candidateCount = 0;
+
+  for (const candidate of candidates) {
+    const data = candidate.data;
+    if (data.stravaActivityId) continue;
+    candidateCount++;
+
+    const importedDist = data.actualStats?.distance || 0;
+    if (activityDistance > 0 && importedDist > 0) {
+      const ratio = Math.abs(activityDistance - importedDist) / Math.max(activityDistance, importedDist);
+      if (ratio < 0.10) {
+        const confidence = Math.max(0, Math.min(100, Math.round((1 - ratio / 0.10) * 100)));
+        if (confidence > bestConfidence) {
+          bestConfidence = confidence;
+          best = candidate;
+        }
+      }
+    } else if (activityDistance === 0 && importedDist === 0) {
+      const confidence = 80;
+      if (confidence > bestConfidence) {
+        bestConfidence = confidence;
+        best = candidate;
+      }
+    }
+  }
+
+  return {
+    match: best,
+    confidence: best ? bestConfidence : 0,
+    candidateCount,
+  };
+}
+
+// Find a matching imported (CSV/XLSX) workout by date + type + near distance
+async function findMatchingImportedWorkout(
+  userId: string,
+  workoutType: string,
+  activityDate: Date,
+  activityDistance: number, // in meters
+  userTimezone: string,
+  candidatePool?: Array<{ id: string; data: any }>,
+): Promise<ImportedMatchResult> {
+  const activityDayKey = getDayKey(activityDate, userTimezone);
+
+  let candidates = candidatePool;
+  if (!candidates) {
+    const { start, end } = getDayBounds(activityDate);
+    const workoutsSnapshot = await adminDb
+      .collection('users').doc(userId).collection('workouts')
+      .where('type', '==', workoutType)
+      .where('source', '==', 'import')
+      .where('date', '>=', admin.firestore.Timestamp.fromDate(start))
+      .where('date', '<=', admin.firestore.Timestamp.fromDate(end))
+      .get();
+    candidates = workoutsSnapshot.docs.map((doc) => ({ id: doc.id, data: doc.data() }));
+  }
+
+  const sameDayCandidates = candidates.filter((candidate) => {
+    const data = candidate.data;
+    if (data.type !== workoutType) return false;
+    if (data.source !== 'import') return false;
+    const dayKey = getDayKey(getDateFromValue(data.date), userTimezone);
+    return dayKey === activityDayKey;
+  });
+
+  return pickImportedMatch(activityDistance, sameDayCandidates);
+}
+
+// Find potential duplicates with constrained candidate filtering and confidence sorting
+async function findDuplicateCandidates(
+  userId: string,
+  workoutType: string,
+  activity: any,
+  userTimezone: string,
+): Promise<{ id: string; data: any; confidence: number }[]> {
+  try {
+    const activityDate = new Date(activity.start_date_local || activity.start_date);
+    const activityDayKey = getDayKey(activityDate, userTimezone);
+    const activityDistance = getActivityDistanceMeters(activity);
+    const activityDuration = getActivityDurationSeconds(activity);
+    const activityName = activity.name || '';
+
+    const workoutsSnapshot = await adminDb
+      .collection('users').doc(userId).collection('workouts')
+      .where('type', '==', workoutType)
+      .get();
+
+    const matches: { id: string; data: any; confidence: number }[] = [];
+
+    for (const doc of workoutsSnapshot.docs) {
+      const data = doc.data();
+      if (data.source === 'strava') continue;
+
+      const workoutDate = getDateFromValue(data.date);
+      const workoutDayKey = getDayKey(workoutDate, userTimezone);
+      const hoursDiff = Math.abs(activityDate.getTime() - workoutDate.getTime()) / 3.6e6;
+      const sameDay = workoutDayKey === activityDayKey;
+      if (!sameDay && hoursDiff > 24) continue;
+
+      const nameOverlap = nameOverlapScore(activityName, data.name || '');
+      const exactName = activityName.trim().toLowerCase() === (data.name || '').trim().toLowerCase();
+      const nearName = exactName || nameOverlap >= 0.45;
+
+      const workoutDistance = getWorkoutDistanceMeters(data, workoutType);
+      const workoutDuration = getWorkoutDurationSeconds(data, workoutType);
+
+      const distRatio = (activityDistance > 0 && workoutDistance > 0)
+        ? Math.abs(activityDistance - workoutDistance) / Math.max(activityDistance, workoutDistance)
+        : null;
+      const durRatio = (activityDuration > 0 && workoutDuration > 0)
+        ? Math.abs(activityDuration - workoutDuration) / Math.max(activityDuration, workoutDuration)
+        : null;
+
+      const distanceClose = distRatio !== null && distRatio <= 0.20;
+      const durationClose = durRatio !== null && durRatio <= 0.25;
+      const strongSignal = nearName || distanceClose || durationClose;
+      if (!strongSignal) continue;
+
+      const dayScore = sameDay ? 30 : 10;
+      const nameScore = exactName ? 40 : Math.round(Math.min(1, nameOverlap) * 40);
+      const distanceScore = distRatio !== null && distRatio <= 0.20
+        ? Math.round((1 - distRatio / 0.20) * 20)
+        : 0;
+      const durationScore = durRatio !== null && durRatio <= 0.25
+        ? Math.round((1 - durRatio / 0.25) * 10)
+        : 0;
+      const confidence = Math.max(0, Math.min(100, dayScore + nameScore + distanceScore + durationScore));
+
+      matches.push({ id: doc.id, data, confidence });
+    }
+
+    matches.sort((a, b) => b.confidence - a.confidence);
+    return matches;
+  } catch (error: any) {
+    console.error('❌ Error in findDuplicateCandidates:', {
+      error: error.message,
+      code: error.code,
+      details: error.details,
+      userId,
+      workoutType,
+      activityName: activity?.name,
+    });
+
+    if (error.code === 9 || error.message?.includes('index')) {
+      console.error('⚠️ MISSING FIRESTORE INDEX - Please deploy indexes with: firebase deploy --only firestore:indexes');
+    }
+
+    throw new Error(`Failed to check for duplicates: ${error.message}`);
+  }
+}
+
 // Laps/splits are now fetched on-demand via /api/strava/activity-details
 // to avoid burning through Strava's rate limit during sync (1 extra call per activity)
 
@@ -158,136 +529,6 @@ async function refreshStravaToken(userId: string, refreshToken: string): Promise
   }
 }
 
-// Find a matching coach-assigned workout for the given activity
-async function findMatchingWorkout(
-  userId: string,
-  workoutType: string,
-  activityDate: Date
-): Promise<{ id: string; data: any } | null> {
-  const { start, end } = getDayBounds(activityDate);
-
-  // Query for workouts assigned to this user, same type, same day
-  // that are NOT from Strava and NOT completed
-  const workoutsSnapshot = await adminDb
-    .collection('users').doc(userId).collection('workouts')
-    .where('type', '==', workoutType)
-    .where('completed', '==', false)
-    .get();
-
-  // Filter by date (same calendar day) and source (not strava)
-  for (const doc of workoutsSnapshot.docs) {
-    const data = doc.data();
-
-    // Skip if it's a Strava import
-    if (data.source === 'strava') continue;
-
-    // Check if workout date is on the same day as the activity
-    const workoutDate = data.date?.toDate ? data.date.toDate() : new Date(data.date);
-    if (workoutDate >= start && workoutDate <= end) {
-      console.log(`🔗 Found matching workout: ${data.name} (${doc.id})`);
-      return { id: doc.id, data };
-    }
-  }
-
-  return null;
-}
-
-// Find a matching imported (CSV/XLSX) workout by date + type + near distance
-async function findMatchingImportedWorkout(
-  userId: string,
-  workoutType: string,
-  activityDate: Date,
-  activityDistance: number // in meters
-): Promise<{ id: string; data: any } | null> {
-  const { start, end } = getDayBounds(activityDate);
-
-  // Query for imported workouts of same type on the same day
-  const workoutsSnapshot = await adminDb
-    .collection('users').doc(userId).collection('workouts')
-    .where('type', '==', workoutType)
-    .where('source', '==', 'import')
-    .where('date', '>=', admin.firestore.Timestamp.fromDate(start))
-    .where('date', '<=', admin.firestore.Timestamp.fromDate(end))
-    .get();
-
-  for (const doc of workoutsSnapshot.docs) {
-    const data = doc.data();
-    // Already merged with Strava? Skip.
-    if (data.stravaActivityId) continue;
-
-    // Check distance proximity (within 10%)
-    const importedDist = data.actualStats?.distance || 0; // in meters
-    if (activityDistance > 0 && importedDist > 0) {
-      const ratio = Math.abs(activityDistance - importedDist) / Math.max(activityDistance, importedDist);
-      if (ratio < 0.10) {
-        console.log(`📎 Found matching imported workout: ${data.name} (${doc.id}) — distance ${(importedDist/1000).toFixed(1)}km vs ${(activityDistance/1000).toFixed(1)}km`);
-        return { id: doc.id, data };
-      }
-    } else if (activityDistance === 0 && importedDist === 0) {
-      // Both have no distance (e.g. strength workout) — match by type + date alone
-      console.log(`📎 Found matching imported workout (no distance): ${data.name} (${doc.id})`);
-      return { id: doc.id, data };
-    }
-  }
-
-  return null;
-}
-
-// Find potential duplicates by matching TYPE + NAME
-async function findDuplicatesByName(
-  userId: string,
-  workoutType: string,
-  activityName: string
-): Promise<{ id: string; data: any }[]> {
-  try {
-    console.log(`🔍 Checking duplicates for: ${activityName} (type: ${workoutType}, userId: ${userId})`);
-
-    // Normalize the activity name for comparison
-    const normalizedName = activityName.toLowerCase().trim();
-
-    // Query for workouts assigned to this user with the same type
-    const workoutsSnapshot = await adminDb
-      .collection('users').doc(userId).collection('workouts')
-      .where('type', '==', workoutType)
-      .get();
-
-    console.log(`✅ Found ${workoutsSnapshot.size} workouts with matching type`);
-
-    const matches: { id: string; data: any }[] = [];
-
-    for (const doc of workoutsSnapshot.docs) {
-      const data = doc.data();
-      // Skip if it's already a Strava import
-      if (data.source === 'strava') continue;
-
-      // Compare normalized names
-      const existingName = (data.name || '').toLowerCase().trim();
-      if (existingName === normalizedName) {
-        matches.push({ id: doc.id, data });
-      }
-    }
-
-    console.log(`🔍 Found ${matches.length} exact name matches`);
-    return matches;
-  } catch (error: any) {
-    console.error('❌ Error in findDuplicatesByName:', {
-      error: error.message,
-      code: error.code,
-      details: error.details,
-      userId,
-      workoutType,
-      activityName
-    });
-
-    // Check for missing index error
-    if (error.code === 9 || error.message?.includes('index')) {
-      console.error('⚠️ MISSING FIRESTORE INDEX - Please deploy indexes with: firebase deploy --only firestore:indexes');
-    }
-
-    throw new Error(`Failed to check for duplicates: ${error.message}`);
-  }
-}
-
 // POST handler — accepts tokens in body, works even when Firestore reads are exhausted
 export async function POST(request: NextRequest) {
   try {
@@ -311,6 +552,7 @@ export async function POST(request: NextRequest) {
       accessTokenOverride: accessTokenFromClient,
       refreshTokenOverride: refreshTokenFromClient,
       expiresAtOverride: expiresAtFromClient,
+      userTimezoneOverride: typeof body.userTimezone === 'string' ? body.userTimezone : undefined,
       checkDuplicates: url.searchParams.get('checkDuplicates') === 'true' || body.checkDuplicates === true,
       duplicateDecisions: url.searchParams.get('decisions') || body.decisions,
       period: url.searchParams.get('period') || body.period,
@@ -366,6 +608,7 @@ interface SyncOptions {
   accessTokenOverride?: string;
   refreshTokenOverride?: string;
   expiresAtOverride?: number;
+  userTimezoneOverride?: string;
   checkDuplicates: boolean;
   duplicateDecisions?: string | null;
   period?: string | null;
@@ -379,7 +622,7 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
   try {
     const {
       userId, checkDuplicates, duplicateDecisions: duplicateDecisionsRaw,
-      period, afterParam, quotaSafe, mode, backfillPage,
+      period, afterParam, quotaSafe, mode, backfillPage, userTimezoneOverride,
     } = opts;
 
     const syncMode = mode || 'recent';
@@ -388,6 +631,7 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
     // ── Resolve Strava tokens ──
     let accessToken: string;
     let refreshToken: string | undefined;
+    let userTimezone = normalizeTimezone(userTimezoneOverride);
 
     if (opts.accessTokenOverride) {
       // Tokens provided by frontend — zero Firestore reads needed
@@ -414,6 +658,7 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
       if (!userData?.stravaAccessToken) {
         return NextResponse.json({ error: 'Strava not connected' }, { status: 400 });
       }
+      userTimezone = normalizeTimezone(userData.timezone);
 
       accessToken = userData.stravaAccessToken;
       refreshToken = userData.stravaRefreshToken;
@@ -609,7 +854,7 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
         stravaDate: string;
         stravaDistance: number;
         stravaDuration: number;
-        existingWorkouts: { id: string; name: string; date: string; completed: boolean }[];
+        existingWorkouts: { id: string; name: string; date: string; completed: boolean; confidence?: number }[];
       }[] = [];
 
       try {
@@ -617,7 +862,7 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
           const workoutType = mapStravaType(activity.type);
 
           try {
-            const duplicates = await findDuplicatesByName(userId, workoutType, activity.name);
+            const duplicates = await findDuplicateCandidates(userId, workoutType, activity, userTimezone);
 
             if (duplicates.length > 0) {
               potentialDuplicates.push({
@@ -632,6 +877,7 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
                   name: d.data.name,
                   date: d.data.date?.toDate?.()?.toISOString() || '',
                   completed: d.data.completed || false,
+                  confidence: d.confidence,
                 })),
               });
             }
@@ -676,12 +922,64 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
     let newWorkoutsCount = 0;
     let mergedWorkoutsCount = 0;
     let skippedCount = 0;
+    const mergeStats = {
+      autoPlannedMerged: 0,
+      autoImportMerged: 0,
+      manualDecisionMerged: 0,
+      ambiguousSkipped: 0,
+    };
 
     // Helper function to delay between activities
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
     // Track IDs we've already processed in this sync
     const processedInThisSync = new Set<string>();
+    const workoutsCollection = adminDb.collection('users').doc(userId).collection('workouts');
+
+    // Preload candidate pools once per sync batch (especially important for quota-safe mode)
+    let plannedCandidatePool: Array<{ id: string; data: any }> = [];
+    const importedCandidatePoolsByType: Record<string, Array<{ id: string; data: any }>> = {};
+    if (activitiesToProcess.length > 0) {
+      const activityDates = activitiesToProcess
+        .map((activity) => new Date(activity.start_date_local || activity.start_date))
+        .filter((date) => !Number.isNaN(date.getTime()));
+
+      if (activityDates.length > 0) {
+        const minTimestamp = Math.min(...activityDates.map((date) => date.getTime()));
+        const maxTimestamp = Math.max(...activityDates.map((date) => date.getTime()));
+        const rangeStart = new Date(minTimestamp - (24 * 60 * 60 * 1000));
+        const rangeEnd = new Date(maxTimestamp + (24 * 60 * 60 * 1000));
+        const activityTypes = [...new Set(activitiesToProcess.map((activity) => mapStravaType(activity.type)))];
+
+        const [plannedSnapshot, ...importSnapshots] = await Promise.all([
+          workoutsCollection.where('completed', '==', false).get(),
+          ...activityTypes.map((type) =>
+            workoutsCollection
+              .where('type', '==', type)
+              .where('source', '==', 'import')
+              .where('date', '>=', admin.firestore.Timestamp.fromDate(rangeStart))
+              .where('date', '<=', admin.firestore.Timestamp.fromDate(rangeEnd))
+              .get()
+          ),
+        ]);
+
+        plannedCandidatePool = plannedSnapshot.docs
+          .map((doc) => ({ id: doc.id, data: doc.data() }))
+          .filter((candidate) => candidate.data.source !== 'strava');
+
+        for (let i = 0; i < activityTypes.length; i++) {
+          importedCandidatePoolsByType[activityTypes[i]] = importSnapshots[i].docs.map((doc) => ({
+            id: doc.id,
+            data: doc.data(),
+          }));
+        }
+
+        console.log(
+          `📚 Preloaded candidates: ${plannedCandidatePool.length} planned/manual, ` +
+          `${Object.values(importedCandidatePoolsByType).reduce((sum, list) => sum + list.length, 0)} imported`
+        );
+      }
+    }
 
     for (let i = 0; i < activitiesToProcess.length; i++) {
       const activity = activitiesToProcess[i];
@@ -694,15 +992,9 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
         continue;
       }
 
-      // existingStravaIds (built from the batch query above) already filters duplicates —
-      // no need for a per-activity Firestore read here
-
       console.log(`📦 Processing ${i + 1}/${activitiesToProcess.length}: ${activity.name}`);
 
-      // Use start_date_local (athlete's local time) so getDayBounds() matches the correct
-      // calendar day. Using start_date (UTC) causes IST activities after ~6:30pm to be
-      // assigned to the next UTC calendar day, merging into the wrong planned workout.
-      const activityDate = new Date(activity.start_date_local);
+      const activityDate = new Date(activity.start_date_local || activity.start_date);
       const workoutType = mapStravaType(activity.type);
 
       // Prepare stats from Strava
@@ -722,14 +1014,7 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
       if (activity.start_latlng) routeData.startLatLng = activity.start_latlng;
       if (activity.end_latlng) routeData.endLatLng = activity.end_latlng;
 
-      // Check if there's a decision for this activity
-      const decision = decisions[stravaId];
-      let shouldCreate = false;
-
-      if (!quotaSafe && decision?.action === 'merge' && decision.workoutId) {
-        // User chose to merge with existing workout (requires writes only)
-        console.log(`  🔗 Merging: ${activity.name}`);
-
+      const baseMergeData = (): any => {
         const mergeData: any = {
           completed: true,
           completedAt: admin.firestore.Timestamp.fromDate(activityDate),
@@ -738,31 +1023,71 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
           actualStats,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         };
-        await adminDb.collection('users').doc(userId).collection('workouts').doc(decision.workoutId).update(mergeData);
+        if (Object.keys(routeData).length > 0) mergeData.routeData = routeData;
+        if (activity.total_photo_count > 0) mergeData.hasStravaPhotos = true;
+        return mergeData;
+      };
+
+      // Check if there's a decision for this activity
+      const decision = decisions[stravaId];
+      let shouldCreate = false;
+
+      if (!quotaSafe && decision?.action === 'merge' && decision.workoutId) {
+        // User chose to merge with existing workout
+        console.log(`  🔗 Decision merge: ${activity.name}`);
+
+        await workoutsCollection.doc(decision.workoutId).update({
+          ...baseMergeData(),
+          mergeMeta: {
+            method: 'duplicate_decision',
+            mergedAt: admin.firestore.FieldValue.serverTimestamp(),
+            source: 'strava',
+          },
+        });
+        const inPool = plannedCandidatePool.find((candidate) => candidate.id === decision.workoutId);
+        if (inPool) {
+          inPool.data.completed = true;
+          inPool.data.stravaActivityId = stravaId;
+        }
         mergedWorkoutsCount++;
-      } else if (!quotaSafe) {
-        // Normal mode: try auto-merge and proximity checks (require reads)
-        const matchingWorkout = await findMatchingWorkout(userId, workoutType, activityDate);
+        mergeStats.manualDecisionMerged++;
+      } else {
+        let plannedMatch: PlannedMatchResult = { match: null, candidateCount: 0, ambiguous: false };
+        if (!decision) {
+          plannedMatch = await findMatchingWorkout(
+            userId,
+            workoutType,
+            activity,
+            userTimezone,
+            plannedCandidatePool
+          );
+          if (plannedMatch.ambiguous) {
+            mergeStats.ambiguousSkipped++;
+            console.log(`  ⚖️ Planned candidates ambiguous for ${activity.name}; skipping auto-planned merge`);
+          }
+        }
 
-        if (matchingWorkout && !decision) {
-          console.log(`  🔗 Auto-merge: ${activity.name} → ${matchingWorkout.data.name}`);
-
-          const autoMergeData: any = {
-            completed: true,
-            completedAt: admin.firestore.Timestamp.fromDate(activityDate),
-            completedBy: 'strava',
-            stravaActivityId: stravaId,
-            actualStats,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          };
-          await adminDb.collection('users').doc(userId).collection('workouts').doc(matchingWorkout.id).update(autoMergeData);
+        if (!decision && plannedMatch.match) {
+          console.log(`  🔗 Auto-planned merge: ${activity.name} → ${plannedMatch.match.data.name} (${plannedMatch.match.score})`);
+          await workoutsCollection.doc(plannedMatch.match.id).update({
+            ...baseMergeData(),
+            mergeMeta: {
+              method: 'auto_planned',
+              mergedAt: admin.firestore.FieldValue.serverTimestamp(),
+              source: 'strava',
+              confidence: plannedMatch.match.confidence,
+              candidateCount: plannedMatch.candidateCount,
+            },
+          });
+          plannedMatch.match.data.completed = true;
+          plannedMatch.match.data.stravaActivityId = stravaId;
           mergedWorkoutsCount++;
-        } else {
-          // Proximity duplicate check (requires reads)
+          mergeStats.autoPlannedMerged++;
+        } else if (!quotaSafe) {
+          // Proximity duplicate check (requires reads) — unchanged behavior
           const thirtyMinBefore = new Date(activityDate.getTime() - 30 * 60 * 1000);
           const thirtyMinAfter = new Date(activityDate.getTime() + 30 * 60 * 1000);
-          const proximitySnap = await adminDb
-            .collection('users').doc(userId).collection('workouts')
+          const proximitySnap = await workoutsCollection
             .where('type', '==', workoutType)
             .where('source', '==', 'strava')
             .where('date', '>=', admin.firestore.Timestamp.fromDate(thirtyMinBefore))
@@ -788,30 +1113,10 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
           }
 
           if (!proximityDupe) {
-            // Fall through to create workout below
             shouldCreate = true;
           }
-        }
-      } else {
-        // Quota-safe mode: still try planned workout merge (one read per activity),
-        // but skip expensive proximity duplicate checks (saves multiple reads).
-        const matchingWorkout = await findMatchingWorkout(userId, workoutType, activityDate);
-        if (matchingWorkout) {
-          console.log(`  🔗 Auto-merge (quota-safe): ${activity.name} → ${matchingWorkout.data.name}`);
-          const autoMergeData: any = {
-            completed: true,
-            completedAt: admin.firestore.Timestamp.fromDate(activityDate),
-            completedBy: 'strava',
-            stravaActivityId: stravaId,
-            actualStats,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          };
-          if (Object.keys(routeData).length > 0) autoMergeData.routeData = routeData;
-          if (activity.total_photo_count > 0) autoMergeData.hasStravaPhotos = true;
-          await adminDb.collection('users').doc(userId).collection('workouts').doc(matchingWorkout.id).update(autoMergeData);
-          mergedWorkoutsCount++;
         } else {
-          // No planned workout match — create new. Deterministic doc ID (strava_{id}) handles duplicates via set() overwrite.
+          // Quota-safe mode: skip proximity checks
           shouldCreate = true;
         }
       }
@@ -820,32 +1125,30 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
       if (shouldCreate) {
         try {
           const importedMatch = await findMatchingImportedWorkout(
-            userId, workoutType, activityDate, activity.distance || 0
+            userId,
+            workoutType,
+            activityDate,
+            activity.distance || 0,
+            userTimezone,
+            importedCandidatePoolsByType[workoutType] || []
           );
-          if (importedMatch) {
-            console.log(`  📎 Merging Strava → imported: ${activity.name} → ${importedMatch.data.name}`);
-            const mergeUpdate: any = {
-              stravaActivityId: stravaId,
-              actualStats,
-              source: 'strava', // upgrade source to strava
-              completedBy: 'strava',
-              completedAt: admin.firestore.Timestamp.fromDate(activityDate),
-              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            };
-            // Add route data if Strava has it
-            if (activity.map?.summary_polyline) {
-              mergeUpdate.routeData = {
-                polyline: activity.map.summary_polyline,
-                ...(activity.start_latlng ? { startLatLng: activity.start_latlng } : {}),
-                ...(activity.end_latlng ? { endLatLng: activity.end_latlng } : {}),
-              };
-            }
-            // Photos loaded on-demand via activity-details endpoint (saves API calls)
-            if (activity.total_photo_count > 0) {
-              mergeUpdate.hasStravaPhotos = true;
-            }
-            await adminDb.collection('users').doc(userId).collection('workouts').doc(importedMatch.id).update(mergeUpdate);
+          if (importedMatch.match) {
+            console.log(`  📎 Auto-import merge: ${activity.name} → ${importedMatch.match.data.name}`);
+            await workoutsCollection.doc(importedMatch.match.id).update({
+              ...baseMergeData(),
+              source: 'strava',
+              mergeMeta: {
+                method: 'auto_import',
+                mergedAt: admin.firestore.FieldValue.serverTimestamp(),
+                source: 'strava',
+                confidence: importedMatch.confidence,
+                candidateCount: importedMatch.candidateCount,
+              },
+            });
+            importedMatch.match.data.stravaActivityId = stravaId;
+            importedMatch.match.data.source = 'strava';
             mergedWorkoutsCount++;
+            mergeStats.autoImportMerged++;
             shouldCreate = false;
           }
         } catch (e: any) {
@@ -854,69 +1157,69 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
       }
 
       if (shouldCreate) {
-          console.log(`  ➕ Creating: ${activity.name}`);
+        console.log(`  ➕ Creating: ${activity.name}`);
 
-          const newWorkoutData: any = {
-            name: activity.name,
-            type: workoutType,
-            description: `Imported from Strava\nDistance: ${((activity.distance || 0) / 1000).toFixed(2)} km\nMoving time: ${Math.round((activity.moving_time || 0) / 60)} min`,
-            date: admin.firestore.Timestamp.fromDate(activityDate),
-            duration: Math.round((activity.moving_time || 0) / 60),
-            ownerUsername: userId,
-            createdBy: userId,
-            assignedTo: userId,
-            completed: true,
-            completedAt: admin.firestore.Timestamp.fromDate(activityDate),
-            completedBy: 'strava',
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            source: 'strava',
-            stravaActivityId: stravaId,
-            actualStats,
+        const newWorkoutData: any = {
+          name: activity.name,
+          type: workoutType,
+          description: `Imported from Strava\nDistance: ${((activity.distance || 0) / 1000).toFixed(2)} km\nMoving time: ${Math.round((activity.moving_time || 0) / 60)} min`,
+          date: admin.firestore.Timestamp.fromDate(activityDate),
+          duration: Math.round((activity.moving_time || 0) / 60),
+          ownerUsername: userId,
+          createdBy: userId,
+          assignedTo: userId,
+          completed: true,
+          completedAt: admin.firestore.Timestamp.fromDate(activityDate),
+          completedBy: 'strava',
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          source: 'strava',
+          stravaActivityId: stravaId,
+          actualStats,
+        };
+
+        // Add route data if available
+        if (Object.keys(routeData).length > 0) {
+          newWorkoutData.routeData = routeData;
+        }
+
+        // Mark if activity has photos (loaded on-demand to save API calls)
+        if (activity.total_photo_count > 0) {
+          newWorkoutData.hasStravaPhotos = true;
+        }
+
+        // Add type-specific sub-objects so workouts can be properly edited
+        const distKm = (activity.distance || 0) / 1000;
+        const timeMin = Math.round((activity.moving_time || 0) / 60);
+        if (workoutType === 'run') {
+          newWorkoutData.run = {
+            distance: Math.round(distKm * 100) / 100,
+            distanceUnit: 'km',
+            time: timeMin,
+            ...(activity.total_elevation_gain ? { elevationGain: Math.round(activity.total_elevation_gain) } : {}),
+            ...(activity.average_heartrate ? { avgHeartRate: Math.round(activity.average_heartrate) } : {}),
+            ...(distKm > 0 && timeMin > 0 ? {
+              pace: `${Math.floor(timeMin / distKm)}:${String(Math.round(((timeMin / distKm) % 1) * 60)).padStart(2, '0')}/km`
+            } : {}),
           };
+        } else if (workoutType === 'bike') {
+          newWorkoutData.bike = {
+            distance: Math.round(distKm * 100) / 100,
+            distanceUnit: 'km',
+            time: timeMin,
+            ...(activity.total_elevation_gain ? { elevationGain: Math.round(activity.total_elevation_gain) } : {}),
+            ...(activity.average_watts ? { avgPower: Math.round(activity.average_watts) } : {}),
+          };
+        } else if (workoutType === 'swim') {
+          newWorkoutData.swim = {
+            distance: Math.round(activity.distance || 0),
+            distanceUnit: 'meters',
+            time: timeMin,
+          };
+        }
 
-          // Add route data if available
-          if (Object.keys(routeData).length > 0) {
-            newWorkoutData.routeData = routeData;
-          }
-
-          // Mark if activity has photos (loaded on-demand to save API calls)
-          if (activity.total_photo_count > 0) {
-            newWorkoutData.hasStravaPhotos = true;
-          }
-
-          // Add type-specific sub-objects so workouts can be properly edited
-          const distKm = (activity.distance || 0) / 1000;
-          const timeMin = Math.round((activity.moving_time || 0) / 60);
-          if (workoutType === 'run') {
-            newWorkoutData.run = {
-              distance: Math.round(distKm * 100) / 100,
-              distanceUnit: 'km',
-              time: timeMin,
-              ...(activity.total_elevation_gain ? { elevationGain: Math.round(activity.total_elevation_gain) } : {}),
-              ...(activity.average_heartrate ? { avgHeartRate: Math.round(activity.average_heartrate) } : {}),
-              ...(distKm > 0 && timeMin > 0 ? {
-                pace: `${Math.floor(timeMin / distKm)}:${String(Math.round(((timeMin / distKm) % 1) * 60)).padStart(2, '0')}/km`
-              } : {}),
-            };
-          } else if (workoutType === 'bike') {
-            newWorkoutData.bike = {
-              distance: Math.round(distKm * 100) / 100,
-              distanceUnit: 'km',
-              time: timeMin,
-              ...(activity.total_elevation_gain ? { elevationGain: Math.round(activity.total_elevation_gain) } : {}),
-              ...(activity.average_watts ? { avgPower: Math.round(activity.average_watts) } : {}),
-            };
-          } else if (workoutType === 'swim') {
-            newWorkoutData.swim = {
-              distance: Math.round(activity.distance || 0),
-              distanceUnit: 'meters',
-              time: timeMin,
-            };
-          }
-
-          await adminDb.collection('users').doc(userId).collection('workouts').doc(`strava_${stravaId}`).set(newWorkoutData);
-          newWorkoutsCount++;
+        await workoutsCollection.doc(`strava_${stravaId}`).set(newWorkoutData);
+        newWorkoutsCount++;
       }
 
       // Mark as processed
@@ -1011,6 +1314,7 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
       period: period || (syncMode === 'backfill' ? 'backfill' : 'month'),
       newWorkouts: newWorkoutsCount,
       mergedWorkouts: mergedWorkoutsCount,
+      mergeStats,
       totalActivities: activities.length,
       message,
       dedup: dedupInfo,

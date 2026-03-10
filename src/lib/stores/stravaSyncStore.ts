@@ -13,6 +13,7 @@ interface StravaTokens {
   stravaAccessToken: string;
   stravaRefreshToken?: string;
   stravaTokenExpiresAt?: number;
+  userTimezone?: string;
 }
 
 interface StravaSyncState {
@@ -112,7 +113,16 @@ export const useStravaSyncStore = create<StravaSyncState>((set, get) => ({
     // If we have tokens, go straight to POST (quota-safe) mode.
     // Otherwise, try GET first and fall back to POST if quota hit.
     const doSync = async () => {
-      if (tokens?.stravaAccessToken) {
+      const hasDecisions = !!decisions && Object.keys(decisions).length > 0;
+      if (hasDecisions) {
+        // Duplicate review decisions require normal GET mode server logic.
+        const decisionsParam = `&decisions=${encodeURIComponent(JSON.stringify(decisions))}`;
+        const response = await fetch(
+          `/api/strava/sync?userId=${username}${decisionsParam}`,
+          { headers: { Accept: 'application/json' } }
+        );
+        await handleSyncResponse(response, set);
+      } else if (tokens?.stravaAccessToken) {
         // POST mode — send tokens in body, zero Firestore reads on server
         console.log('🔄 Strava sync via POST (quota-safe mode)');
         const response = await fetch('/api/strava/sync', {
@@ -123,6 +133,7 @@ export const useStravaSyncStore = create<StravaSyncState>((set, get) => ({
             stravaAccessToken: tokens.stravaAccessToken,
             stravaRefreshToken: tokens.stravaRefreshToken,
             stravaTokenExpiresAt: tokens.stravaTokenExpiresAt,
+            userTimezone: tokens.userTimezone,
             decisions: decisions || undefined,
           }),
         });

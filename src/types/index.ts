@@ -155,6 +155,14 @@ export interface Workout {
   // Manual completion fields
   completionNotes?: string;
   completedBy?: 'manual' | 'strava';
+  mergeMeta?: {
+    method?: 'auto_planned' | 'auto_import' | 'manual' | 'duplicate_decision';
+    mergedAt?: Timestamp;
+    source?: 'strava';
+    confidence?: number;
+    candidateCount?: number;
+    sourceWorkoutId?: string;
+  };
   completedLate?: boolean; // True if completed after due date
   rating?: number;
   feedback?: string;

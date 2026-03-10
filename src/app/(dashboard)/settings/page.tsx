@@ -223,6 +223,7 @@ function SettingsContent() {
       stravaAccessToken: user.stravaAccessToken,
       stravaRefreshToken: user.stravaRefreshToken,
       stravaTokenExpiresAt: user.stravaTokenExpiresAt,
+      userTimezone: user.timezone,
     };
   };
 
