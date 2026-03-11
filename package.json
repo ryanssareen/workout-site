@@ -41,7 +41,7 @@
     "openai": "^6.10.0",
     "papaparse": "^5.5.3",
     "polyline-encoded": "^0.0.9",
-    "posthog-js": "^1.359.1",
+    "posthog-js": "^1.360.1",
     "radix-ui": "^1.4.3",
     "react": "19.2.0",
     "react-day-picker": "^9.12.0",
