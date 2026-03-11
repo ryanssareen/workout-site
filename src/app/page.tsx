@@ -190,7 +190,10 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-white/10 py-8 pb-[calc(2rem+env(safe-area-inset-bottom))] bg-black">
+      <footer
+        className="border-t border-white/10 py-8 bg-black"
+        style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}
+      >
         <div className="container mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-black border border-white/20 flex items-center justify-center">
