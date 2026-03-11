@@ -36,6 +36,7 @@ const TAG_COLORS: Record<WorkoutTag, string> = {
   strength: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
   technique: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200',
   race: 'bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200',
+  note: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
 };
 
 // Frequency labels for display

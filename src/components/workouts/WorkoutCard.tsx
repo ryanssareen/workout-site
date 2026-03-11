@@ -27,6 +27,7 @@ const TAG_COLORS: Record<WorkoutTag, string> = {
   strength: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
   technique: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20',
   race: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
+  note: 'bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20',
 };
 
 interface WorkoutCardProps {

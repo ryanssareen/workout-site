@@ -16,6 +16,7 @@ export const WORKOUT_TAGS = [
   'strength',
   'technique',
   'race',
+  'note',
 ] as const;
 
 export type WorkoutTag = typeof WORKOUT_TAGS[number];
