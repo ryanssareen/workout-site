@@ -9,7 +9,10 @@ export default function Home() {
       <AuthRedirect />
 
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-black/80 backdrop-blur-xl pt-[env(safe-area-inset-top)]">
+      <nav
+        className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-black/80 backdrop-blur-xl"
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      >
         <div className="container mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-black border border-white/20 flex items-center justify-center">
@@ -31,7 +34,7 @@ export default function Home() {
         </div>
       </nav>
 
-      <main className="pt-14 sm:pt-16 [padding-top:calc(3.5rem+env(safe-area-inset-top))] sm:[padding-top:calc(4rem+env(safe-area-inset-top))]">
+      <main style={{ paddingTop: 'calc(3.5rem + env(safe-area-inset-top))' }}>
         {/* Hero */}
         <section className="relative overflow-hidden">
           <div className="absolute inset-0 -z-10">
