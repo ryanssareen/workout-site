@@ -225,9 +225,14 @@ function WorkoutsContent() {
     catch { return new Date(); }
   };
 
+  // Exclude calendar notes
+  const nonNotes = workouts.filter(w =>
+    !(w.tags?.includes('note') || (w.name === 'Note' && w.type === 'other'))
+  );
+
   // Time filter
   const today = startOfDay(new Date());
-  const timeFiltered = workouts.filter(w => {
+  const timeFiltered = nonNotes.filter(w => {
     if (timeFilter === 'all') return true;
     const d = getDate(w);
     if (timeFilter === 'planned') return d >= today && !w.completed;
@@ -258,9 +263,9 @@ function WorkoutsContent() {
 
   // Counts per time filter
   const timeCounts: Record<TimeFilter, number> = {
-    all: workouts.length,
-    planned: workouts.filter(w => getDate(w) >= today && !w.completed).length,
-    past: workouts.filter(w => getDate(w) < today || w.completed).length,
+    all: nonNotes.length,
+    planned: nonNotes.filter(w => getDate(w) >= today && !w.completed).length,
+    past: nonNotes.filter(w => getDate(w) < today || w.completed).length,
   };
 
   const canManageWorkouts = user?.role === 'coach' || ((user?.role === 'athlete' || user?.role === 'student') && !user?.coachUsername);

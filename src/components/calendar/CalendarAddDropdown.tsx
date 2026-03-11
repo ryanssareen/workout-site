@@ -82,6 +82,7 @@ export function CalendarAddDropdown({ date, className, onNoteAdded }: CalendarAd
           type: 'other',
           date: noteDate,
           description: noteText.trim(),
+          tags: ['note'],
           assignedTo: user.username,
         } as any,
         user.username,
