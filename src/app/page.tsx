@@ -9,29 +9,29 @@ export default function Home() {
       <AuthRedirect />
 
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-black/80 backdrop-blur-xl">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-xl bg-black border border-white/20 flex items-center justify-center">
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-black/80 backdrop-blur-xl pt-[env(safe-area-inset-top)]">
+        <div className="container mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-black border border-white/20 flex items-center justify-center">
               <Dumbbell className="h-4 w-4 text-white" />
             </div>
-            <span className="font-bold text-lg text-white">The Daily Athlete</span>
+            <span className="font-bold text-base sm:text-lg text-white">The Daily Athlete</span>
           </Link>
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-1.5 sm:gap-2 items-center">
             <Link href="/portfolio" className="text-sm text-white/40 hover:text-white/70 transition-colors hidden sm:inline mr-1">Portfolio</Link>
             <Link href="/roadmap"   className="text-sm text-white/40 hover:text-white/70 transition-colors hidden sm:inline mr-1">Roadmap</Link>
             <Link href="/comic"    className="text-sm text-white/40 hover:text-white/70 transition-colors hidden sm:inline mr-1">Our Story</Link>
-            <Button variant="ghost" size="sm" asChild className="text-white/70 hover:text-white hover:bg-white/10">
+            <Button variant="ghost" size="sm" asChild className="text-white/70 hover:text-white hover:bg-white/10 text-xs sm:text-sm px-2 sm:px-3">
               <Link href="/login">Sign In</Link>
             </Button>
-            <Button size="sm" asChild className="bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/30 border-0">
+            <Button size="sm" asChild className="bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/30 border-0 text-xs sm:text-sm px-2.5 sm:px-3">
               <Link href="/register">Get Started</Link>
             </Button>
           </div>
         </div>
       </nav>
 
-      <main className="pt-16">
+      <main className="pt-14 sm:pt-16 [padding-top:calc(3.5rem+env(safe-area-inset-top))] sm:[padding-top:calc(4rem+env(safe-area-inset-top))]">
         {/* Hero */}
         <section className="relative overflow-hidden">
           <div className="absolute inset-0 -z-10">
@@ -39,21 +39,21 @@ export default function Home() {
             <div className="absolute bottom-0 left-1/4 w-[400px] h-[300px] bg-red-900/8 rounded-full blur-[100px]" />
           </div>
 
-          <div className="container mx-auto px-4 py-24 md:py-36">
-            <div className="max-w-3xl mx-auto text-center space-y-8">
+          <div className="container mx-auto px-4 py-16 sm:py-24 md:py-36">
+            <div className="max-w-3xl mx-auto text-center space-y-6 sm:space-y-8">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-600/10 border border-red-600/20 text-red-400 text-sm font-medium">
                 <Flame className="h-3.5 w-3.5" />
                 Free during early access
               </div>
 
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-tight">
+              <h1 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight leading-tight">
                 Your training,{' '}
                 <span className="bg-gradient-to-r from-red-400 via-red-500 to-red-300 bg-clip-text text-transparent">
                   all in one place
                 </span>
               </h1>
 
-              <p className="text-lg md:text-xl text-white/50 max-w-xl mx-auto leading-relaxed">
+              <p className="text-base md:text-xl text-white/50 max-w-xl mx-auto leading-relaxed">
                 Track workouts across every sport, sync with Strava, and stay on top of your training — no coach required.
               </p>
 
@@ -187,7 +187,7 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-white/10 py-8 bg-black">
+      <footer className="border-t border-white/10 py-8 pb-[calc(2rem+env(safe-area-inset-bottom))] bg-black">
         <div className="container mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-black border border-white/20 flex items-center justify-center">
