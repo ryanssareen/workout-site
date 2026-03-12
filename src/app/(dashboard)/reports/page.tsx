@@ -71,7 +71,8 @@ export default function ReportsPage() {
       setLoadingWorkouts(false);
       setTimeout(() => setReady(true), 120);
     }
-  }, [user]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.username, user?.role]);
 
   useEffect(() => { fetchWorkouts(); }, [fetchWorkouts]);
 

@@ -6,6 +6,7 @@ import { Bell, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+const PUSH_OWNER_KEY = 'push_subscribed_username';
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -14,39 +15,67 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return Uint8Array.from(rawData, (char) => char.charCodeAt(0));
 }
 
+async function removeSubscriptionFromUser(username: string) {
+  try {
+    if (!('serviceWorker' in navigator)) return;
+    const registration = await navigator.serviceWorker.ready;
+    const sub = await registration.pushManager.getSubscription();
+    if (!sub) return;
+    await fetch('/api/push/subscribe', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, endpoint: sub.endpoint }),
+    });
+  } catch { /* non-fatal */ }
+}
+
 export function PushNotificationManager() {
   const user = useAuthStore((s) => s.user);
   const didSubscribe = useRef(false);
   const [showPrompt, setShowPrompt] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
-  // Auto-subscribe if already granted, or show prompt if default
   useEffect(() => {
-    if (!user?.username || !VAPID_PUBLIC_KEY || didSubscribe.current) return;
+    if (!VAPID_PUBLIC_KEY) return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
 
-    // Only prompt in standalone (installed) PWA mode
     const isStandalone =
       window.matchMedia('(display-mode: standalone)').matches ||
       (navigator as any).standalone === true;
-
     if (!isStandalone) return;
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+    const previousOwner = localStorage.getItem(PUSH_OWNER_KEY);
+
+    // User logged out — remove their subscription from Firestore
+    if (!user?.username) {
+      if (previousOwner) {
+        removeSubscriptionFromUser(previousOwner);
+        localStorage.removeItem(PUSH_OWNER_KEY);
+        didSubscribe.current = false;
+      }
+      return;
+    }
+
+    // Different user logged in on this device — clean up previous user first
+    if (previousOwner && previousOwner !== user.username) {
+      removeSubscriptionFromUser(previousOwner);
+      localStorage.removeItem(PUSH_OWNER_KEY);
+      didSubscribe.current = false;
+    }
+
+    if (didSubscribe.current) return;
 
     const checkPermission = async () => {
       const permission = Notification.permission;
 
       if (permission === 'granted') {
-        // Already granted — subscribe silently
         await subscribeToPush(user.username);
+        localStorage.setItem(PUSH_OWNER_KEY, user.username);
         didSubscribe.current = true;
       } else if (permission === 'default') {
-        // Not yet asked — show our custom prompt
         const wasDismissed = sessionStorage.getItem('push-prompt-dismissed');
-        if (!wasDismissed) {
-          setShowPrompt(true);
-        }
+        if (!wasDismissed) setShowPrompt(true);
       }
-      // If 'denied', do nothing
     };
 
     checkPermission();
@@ -60,6 +89,7 @@ export function PushNotificationManager() {
 
     if (permission === 'granted') {
       await subscribeToPush(user.username);
+      localStorage.setItem(PUSH_OWNER_KEY, user.username);
       didSubscribe.current = true;
     }
   };
@@ -107,7 +137,6 @@ async function subscribeToPush(username: string) {
     const registration = await navigator.serviceWorker.ready;
     const existingSub = await registration.pushManager.getSubscription();
 
-    // Use existing subscription or create new one
     const subscription =
       existingSub ||
       (await registration.pushManager.subscribe({
@@ -118,16 +147,12 @@ async function subscribeToPush(username: string) {
     const subJson = subscription.toJSON();
     if (!subJson.endpoint || !subJson.keys) return;
 
-    // Send to our API
     await fetch('/api/push/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         username,
-        subscription: {
-          endpoint: subJson.endpoint,
-          keys: subJson.keys,
-        },
+        subscription: { endpoint: subJson.endpoint, keys: subJson.keys },
       }),
     });
 
