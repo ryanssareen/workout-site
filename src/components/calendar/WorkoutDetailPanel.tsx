@@ -34,7 +34,7 @@ interface WorkoutDetailPanelProps {
   onToggleComplete?: (e: React.MouseEvent, workout: Workout) => void;
   onDelete?: (workout: Workout) => void;
   allWorkouts?: Workout[];
-  onMergeComplete?: () => void;
+  onMergeComplete?: (deletedStravaId: string) => void;
 }
 
 export function WorkoutDetailPanel({
@@ -121,7 +121,7 @@ export function WorkoutDetailPanel({
       if (!res.ok) throw new Error(data.error || 'Merge failed');
       toast.success('Linked with Strava activity!');
       setShowMergeDialog(false);
-      onMergeComplete?.();
+      onMergeComplete?.(stravaWorkoutId);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to link workouts';
       toast.error(message);

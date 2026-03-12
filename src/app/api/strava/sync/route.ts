@@ -258,7 +258,7 @@ function pickBestPlannedCandidate(
   candidates: Array<{ id: string; data: any }>,
   userTimezone: string
 ): PlannedMatchResult {
-  const activityDate = new Date(activity.start_date_local || activity.start_date);
+  const activityDate = new Date(activity.start_date);
   const activityDayKey = getDayKey(activityDate, userTimezone);
 
   const sameDayCandidates = candidates.filter((candidate) => {
@@ -765,7 +765,7 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
     const importedCandidatePoolsByType: Record<string, Array<{ id: string; data: any }>> = {};
     if (activitiesToProcess.length > 0) {
       const activityDates = activitiesToProcess
-        .map((activity) => new Date(activity.start_date_local || activity.start_date))
+        .map((activity) => new Date(activity.start_date))
         .filter((date) => !Number.isNaN(date.getTime()));
 
       if (activityDates.length > 0) {
@@ -818,7 +818,7 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
 
       console.log(`📦 Processing ${i + 1}/${activitiesToProcess.length}: ${activity.name}`);
 
-      const activityDate = new Date(activity.start_date_local || activity.start_date);
+      const activityDate = new Date(activity.start_date);
       const workoutType = mapStravaType(activity.type);
 
       // Prepare stats from Strava

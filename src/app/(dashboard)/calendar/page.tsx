@@ -467,8 +467,9 @@ export default function CalendarPage() {
               onToggleComplete={handleToggleComplete}
               onDelete={handleDeleteWorkout}
               allWorkouts={workouts}
-              onMergeComplete={() => {
+              onMergeComplete={(deletedStravaId) => {
                 setSelectedWorkoutId(null);
+                setWorkouts((prev) => prev.filter((w) => w.id !== deletedStravaId));
                 refreshWorkouts();
               }}
             />

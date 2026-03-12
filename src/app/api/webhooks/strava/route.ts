@@ -202,7 +202,7 @@ async function processActivity(
     }
 
     const workoutType = mapStravaType(activity.type);
-    const activityDate = new Date(activity.start_date_local);
+    const activityDate = new Date(activity.start_date);
     
     console.log(`📅 Activity: ${activity.name} (${activity.type} → ${workoutType}) on ${activityDate.toISOString()}`);
 
