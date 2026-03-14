@@ -3,6 +3,18 @@
     {
       "path": "/api/cron/send-weekly-wrap",
       "schedule": "0 8 * * 1"
+    },
+    {
+      "path": "/api/cron/backup?type=daily",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/backup?type=weekly",
+      "schedule": "0 3 * * 1"
+    },
+    {
+      "path": "/api/cron/backup?type=monthly",
+      "schedule": "0 4 1 * *"
     }
   ]
 }
