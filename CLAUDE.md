@@ -160,7 +160,7 @@ npx tsc --noEmit     # Type check without building
 - **Store:** `src/lib/stores/stravaSyncStore.ts` — Zustand store with `startSync`, `checkDuplicates`, `clearResult`
 - **Hook:** `src/hooks/useStravaAutoSync.ts` — auto-triggers sync on mount, handles quota exhaustion gracefully
 - **Import merge** — when syncing, matches Strava activities to imported workouts (`source: 'import'`) by same day + same type + distance within 10%. Updates imported workout with Strava data instead of creating duplicates. Strength workouts match by type+date alone (no distance).
-- **Date fix:** Always use `activity.start_date` (actual UTC) — NOT `start_date_local` (local time with misleading "Z" suffix that causes wrong UTC parsing, e.g. 5:30h offset for IST users).
+- **Date fix:** Always use `activity.start_date_local` — NOT `start_date` (UTC timestamp causes wrong local time parsing, e.g. 5:30h offset for IST users).
 
 ## Calendar
 - **Add Workout** button centered in CalendarHeader next to date label
