@@ -24,7 +24,8 @@ src/
 │   ├── (auth)/          # Login, register, reset-password
 │   ├── (dashboard)/     # Protected routes: dashboard, workouts, calendar, reports, settings, ai-coach, progress, records, profile, onboarding, wrap, review, wrapped
 │   ├── athlete/[username]/ # Public athlete profile page (SSR)
-│   ├── api/             # API routes (ai, auth, cron, push, reports, strava, webhooks, workouts)
+│   ├── admin/           # Hidden admin dashboard (standalone layout, no dashboard chrome)
+│   ├── api/             # API routes (ai, auth, admin, cron, push, reports, strava, webhooks, workouts)
 │   └── page.tsx         # Landing page
 ├── components/
 │   ├── auth/            # LoginForm, RegisterForm (Google + email)
@@ -38,7 +39,9 @@ src/
 │   └── ui/              # shadcn/ui primitives
 ├── lib/
 │   ├── analytics.ts     # computeSummary, computeTypeDistribution, computeTimeSeries, computeWeeklyRhythm, computeCalendarData, computeInsights, computePRTimeline
-│   ├── firebase/        # config.ts, auth.ts, firestore.ts, admin.ts
+│   ├── admin-auth.ts    # verifyAdminSession, checkOrigin, logAdminAction helpers for admin API routes
+│   ├── backup.ts        # createBackup — shared backup logic (used by manual trigger + cron)
+│   ├── firebase/        # config.ts, auth.ts, firestore.ts, admin.ts (+ getAdminStorage)
 │   ├── email/           # Email templates (summaryTemplate, wrapTemplate) and sending
 │   ├── schemas/         # Zod validation schemas (profile.ts has SPORT_OPTIONS, TRAINING_FOR_OPTIONS, etc.)
 │   ├── training/        # logicEngine.ts, constraints.ts, validator.ts (AI workout pipeline)
@@ -52,7 +55,9 @@ src/
 - **workouts** — Multi-sport (swim/run/bike/strength/other), assigned coach→athlete, completion tracking, Strava sync, comments subcollection
 - **personalRecords** — User PRs with history
 - **chatThreads** — AI coach conversation threads
-- **backups** — Admin backup metadata: `{ type: 'daily'|'weekly'|'monthly', createdAt, userCount, workoutCount, storagePath }`. Backup JSON files stored in Firebase Storage at `backups/{type}/{ISO-timestamp}.json`.
+- **backups** — Admin backup metadata: `{ type: 'daily'|'weekly'|'monthly'|'manual'|'pre-restore', createdAt, userCount, workoutCount, storagePath, integrityPassed, triggeredBy }`. Backup JSON files stored in Firebase Storage at `backups/{type}/{ISO-timestamp}.json`.
+- **adminLogs** — Admin action audit trail: `{ action, adminUid, timestamp, targetUid?, backupId?, type?, details? }`. Actions: `backup_triggered`, `restore_triggered`, `user_deleted`, `user_restored`, `user_restore_triggered`, `strava_sync_forced`, `cron_backup`, `cron_backup_failed`.
+- **system** — System metadata doc `lastCron`: tracks `backup_daily/weekly/monthly` timestamps for health monitoring.
 
 ### Role-Based Access
 - **Coaches** can create/assign workouts, view all their athletes' data, generate reports
@@ -160,7 +165,7 @@ npx tsc --noEmit     # Type check without building
 - **Store:** `src/lib/stores/stravaSyncStore.ts` — Zustand store with `startSync`, `checkDuplicates`, `clearResult`
 - **Hook:** `src/hooks/useStravaAutoSync.ts` — auto-triggers sync on mount, handles quota exhaustion gracefully
 - **Import merge** — when syncing, matches Strava activities to imported workouts (`source: 'import'`) by same day + same type + distance within 10%. Updates imported workout with Strava data instead of creating duplicates. Strength workouts match by type+date alone (no distance).
-- **Date fix:** Always use `activity.start_date` (actual UTC) — NOT `start_date_local` (local time with misleading "Z" suffix that causes wrong UTC parsing, e.g. 5:30h offset for IST users).
+- **Date fix:** Always use `activity.start_date_local` — NOT `start_date` (UTC timestamp causes wrong local time parsing, e.g. 5:30h offset for IST users).
 
 ## Calendar
 - **Add Workout** button centered in CalendarHeader next to date label
@@ -177,12 +182,13 @@ npx tsc --noEmit     # Type check without building
 - **Optimistic update:** Removed from local state immediately on success
 
 ## Admin Dashboard
-- **Route:** `src/app/admin/` — standalone layout (no dashboard chrome), password gate at `/admin`, dashboard at `/admin/dashboard`
-- **Security:** `POST /api/admin/verify` checks `ADMIN_PASSWORD` env var, sets signed `httpOnly` cookie (4h, signed with `ADMIN_SECRET`)
-- **Backup API:** `GET/POST /api/admin/backup`, `GET/POST /api/admin/backup/[id]` — list, create, restore snapshots from Firebase Storage
-- **Users API:** `GET /api/admin/users`, `DELETE/PATCH /api/admin/users/[uid]` — list all users, soft-delete (disable Auth + set `deletedAt`), restore (re-enable)
-- **Cron:** `src/app/api/cron/backup/route.ts` — accepts `?type=daily|weekly|monthly`, uploads JSON to Firebase Storage, prunes old backups
-- **New env vars required:** `ADMIN_PASSWORD`, `ADMIN_SECRET`, `FIREBASE_STORAGE_BUCKET`
+- **Route:** `src/app/admin/page.tsx` — single route, standalone layout (no dashboard chrome). Auth gate shown as modal overlay; no separate `/admin/dashboard` redirect needed.
+- **Security:** Firebase Auth + UID allowlist (`ADMIN_UIDS` env var, comma-separated UIDs). Flow: Google sign-in → ID token → `POST /api/admin/verify` → Firebase `createSessionCookie` → `httpOnly` cookie (4h). `GET /api/admin/verify` checks session. `DELETE /api/admin/verify` clears it. Rate limit: 5 attempts/IP/15 min with 2s delay on failures. CSRF: all mutating routes check `Origin` header.
+- **Backup API:** `GET/POST /api/admin/backup` — list/create. `GET/POST /api/admin/backup/[id]` — detail/full-restore (auto pre-restore snapshot first). `POST /api/admin/backup/[id]/restore-user` — per-user restore from snapshot. Backup logic in `src/lib/backup.ts`.
+- **Users API:** `GET /api/admin/users` (list, or `?export=csv`), `DELETE/PATCH/GET /api/admin/users/[uid]` — soft-delete, restore, JSON export
+- **Logs API:** `GET /api/admin/logs?type=actions|cron` — reads `adminLogs` Firestore collection
+- **Cron:** `src/app/api/cron/backup/route.ts` — `?type=daily|weekly|monthly`, full snapshot to Firebase Storage, integrity check, prunes old backups, writes to `adminLogs` + `system/lastCron`
+- **Env vars required:** `ADMIN_UIDS` (comma-separated Firebase UIDs), `ADMIN_SECRET` (32-char random, signs session cookie), `FIREBASE_STORAGE_BUCKET` (Firebase Storage bucket name)
 
 ## Known Issues & Active Work
 - Strava webhook subscription needs proper registration (webhook code exists but auto-sync requires env vars + API call setup)

@@ -456,7 +456,7 @@ Progress dots, back/continue navigation, skip options. Data saved to Firestore u
 | Push Notifications (Web Push API, VAPID, multi-device, Strava sync + wrap) | ✅ DONE |
 | Push notifications scoped to logged-in user — cross-user leakage fix (#74) | ✅ DONE |
 | Reports page continuous refresh loop fix (#76) — stable useCallback deps | ✅ DONE |
-| Calendar UTC timezone fix (#73) — use `start_date` not `start_date_local` from Strava | ✅ DONE |
+| Calendar UTC timezone fix (#73) — use `start_date_local` not `start_date` from Strava | ✅ DONE |
 | Calendar merge UI fix (#73) — optimistic removal of deleted Strava workout after merge | ✅ DONE |
 | iOS PWA safe-area fix (#67) — inline styles instead of Tailwind arbitrary classes | ✅ DONE |
 | Notes hidden from workouts page — filtered by `tags: ['note']` before time/type tabs | ✅ DONE |
@@ -465,6 +465,11 @@ Progress dots, back/continue navigation, skip options. Data saved to Firestore u
 | Strava-Import Merge (auto-merge imported workouts when Strava syncs) | ✅ DONE |
 | Server-Side User Creation (Admin SDK, fixes Google Sign-In registration bug) | ✅ DONE |
 | Groq Model Fallback (70B → 8B instant on rate limit) | ✅ DONE |
+| Admin Dashboard (`/admin`) — Firebase Auth + UID allowlist, session cookies, rate limiting, CSRF protection | ✅ DONE |
+| Backup System — daily/weekly/monthly cron snapshots to Firebase Storage, integrity check, manual trigger | ✅ DONE |
+| Backup Restore — full restore (with pre-restore auto-snapshot), per-user restore from any snapshot | ✅ DONE |
+| Admin Users Management — list all users, soft-delete (disable Auth), restore, CSV + JSON export | ✅ DONE |
+| Admin Action Log — all admin actions written to `adminLogs` with acting UID and timestamp | ✅ DONE |
 
 ### What's Next
 
