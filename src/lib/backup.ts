@@ -1,4 +1,4 @@
-import { getAdminDb, getAdminStorage } from '@/lib/firebase/admin';
+import { getAdminDb } from '@/lib/firebase/admin';
 import admin from 'firebase-admin';
 
 export type BackupType = 'daily' | 'weekly' | 'monthly' | 'manual' | 'pre-restore';
@@ -11,33 +11,27 @@ const KEEP_LIMITS: Record<BackupType, number> = {
   'pre-restore': 5,
 };
 
-function serializeTimestamp(val: any): number | null {
-  if (!val) return null;
-  if (typeof val.toMillis === 'function') return val.toMillis();
-  if (typeof val === 'number') return val;
-  return null;
+export interface BackupPayload {
+  createdAt: string;
+  userCount: number;
+  workoutCount: number;
+  users: any[];
+  workouts: Record<string, any[]>;
+  personalRecords: Record<string, any[]>;
 }
 
 function serializeDoc(data: Record<string, any>): Record<string, any> {
-  const result: Record<string, any> = {};
-  for (const [key, value] of Object.entries(data)) {
-    if (value && typeof value === 'object' && typeof value.toMillis === 'function') {
-      result[key] = value.toMillis();
-    } else {
-      result[key] = value;
-    }
+  const out: Record<string, any> = {};
+  for (const [k, v] of Object.entries(data)) {
+    out[k] = v && typeof v === 'object' && typeof v.toMillis === 'function' ? v.toMillis() : v;
   }
-  return result;
+  return out;
 }
 
-export async function createBackup(
-  type: BackupType,
-  triggeredBy: string = 'cron'
-): Promise<{ id: string; userCount: number; workoutCount: number; storagePath: string }> {
+// Fetches all data and returns it — used by the download endpoint
+export async function generateBackupData(): Promise<BackupPayload> {
   const db = getAdminDb();
-  const storage = getAdminStorage();
 
-  // Fetch all users
   const usersSnap = await db.collection('users').get();
   const users: any[] = [];
   const workoutsByUser: Record<string, any[]> = {};
@@ -60,7 +54,6 @@ export async function createBackup(
     totalWorkoutCount += workoutsSnap.size;
   }
 
-  // Fetch all personal records
   const prsSnap = await db.collection('personalRecords').get();
   for (const prDoc of prsSnap.docs) {
     const data = prDoc.data();
@@ -69,71 +62,69 @@ export async function createBackup(
     prsByUser[username].push({ id: prDoc.id, ...serializeDoc(data) });
   }
 
-  // Integrity check
   if (users.length !== usersSnap.size) {
     throw new Error(
       `Integrity check failed: fetched ${users.length} users but snapshot had ${usersSnap.size}`
     );
   }
 
-  const timestamp = new Date().toISOString();
-  const storagePath = `backups/${type}/${timestamp}.json`;
-
-  const backupPayload = {
-    type,
-    createdAt: timestamp,
+  return {
+    createdAt: new Date().toISOString(),
     userCount: users.length,
     workoutCount: totalWorkoutCount,
     users,
     workouts: workoutsByUser,
     personalRecords: prsByUser,
   };
+}
 
-  const file = storage.file(storagePath);
-  await file.save(JSON.stringify(backupPayload), {
-    contentType: 'application/json',
-    metadata: {
-      userCount: String(users.length),
-      workoutCount: String(totalWorkoutCount),
-    },
-  });
+// Writes a lightweight metadata-only snapshot to Firestore — no file storage needed
+export async function createBackup(
+  type: BackupType,
+  triggeredBy: string = 'cron'
+): Promise<{ id: string; userCount: number; workoutCount: number }> {
+  const db = getAdminDb();
+
+  const usersSnap = await db.collection('users').get();
+  let totalWorkoutCount = 0;
+
+  for (const userDoc of usersSnap.docs) {
+    const countSnap = await db
+      .collection('users')
+      .doc(userDoc.id)
+      .collection('workouts')
+      .count()
+      .get();
+    totalWorkoutCount += countSnap.data().count;
+  }
+
+  const userCount = usersSnap.size;
 
   const metaRef = await db.collection('backups').add({
     type,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    userCount: users.length,
+    userCount,
     workoutCount: totalWorkoutCount,
-    storagePath,
-    integrityPassed: true,
+    integrityPassed: userCount > 0,
     triggeredBy,
+    storageType: 'metadata_only',
   });
 
   await pruneOldBackups(type);
 
-  return { id: metaRef.id, userCount: users.length, workoutCount: totalWorkoutCount, storagePath };
+  return { id: metaRef.id, userCount, workoutCount: totalWorkoutCount };
 }
 
 async function pruneOldBackups(type: BackupType): Promise<void> {
   const keepCount = KEEP_LIMITS[type] ?? 5;
   const db = getAdminDb();
-  const storage = getAdminStorage();
-
   const snap = await db
     .collection('backups')
     .where('type', '==', type)
     .orderBy('createdAt', 'desc')
     .get();
 
-  const toDelete = snap.docs.slice(keepCount);
-  for (const doc of toDelete) {
-    const { storagePath } = doc.data();
-    if (storagePath) {
-      try {
-        await storage.file(storagePath).delete();
-      } catch {
-        // already gone
-      }
-    }
+  for (const doc of snap.docs.slice(keepCount)) {
     await doc.ref.delete();
   }
 }

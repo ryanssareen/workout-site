@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Shield, Database, Users, Settings, LogOut, RefreshCw,
   Trash2, RotateCcw, Download, AlertTriangle, CheckCircle,
@@ -104,10 +104,11 @@ function BackupsSection() {
   const [backups, setBackups] = useState<BackupRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [restoring, setRestoring] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [restoreUsername, setRestoreUsername] = useState('');
   const [error, setError] = useState('');
-  const [userQuery, setUserQuery] = useState('');
-  const [perUserBackup, setPerUserBackup] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -123,7 +124,7 @@ function BackupsSection() {
 
   useEffect(() => { load(); }, [load]);
 
-  async function triggerBackup() {
+  async function logSnapshot() {
     setCreating(true);
     setError('');
     try {
@@ -140,80 +141,143 @@ function BackupsSection() {
     }
   }
 
-  async function restoreFull(backupId: string) {
-    if (!confirm('This will restore ALL data from this backup. A pre-restore snapshot will be taken first. Continue?')) return;
-    setRestoring(backupId);
+  async function downloadBackup() {
+    setDownloading(true);
     setError('');
     try {
-      await apiFetch(`/api/admin/backup/${backupId}`, { method: 'POST' });
-      alert('Restore complete.');
+      const res = await fetch('/api/admin/backup/download', { credentials: 'include' });
+      if (!res.ok) throw new Error('Download failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `coachtrack-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
     } catch (e: any) {
       setError(e.message);
     } finally {
-      setRestoring(null);
+      setDownloading(false);
     }
   }
 
-  async function restoreUser(backupId: string) {
-    const username = userQuery.trim();
-    if (!username) return;
-    if (!confirm(`Restore user "${username}" from this backup?`)) return;
-    setRestoring(backupId);
+  async function restoreFromFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const username = restoreUsername.trim();
+    const confirmMsg = username
+      ? `Restore user "${username}" from this file? Their current data will be overwritten.`
+      : 'Restore ALL users and workouts from this file? Current data will be overwritten.';
+
+    if (!confirm(confirmMsg)) {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    setRestoring(true);
     setError('');
     try {
-      await apiFetch(`/api/admin/backup/${backupId}/restore-user`, {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const body: Record<string, any> = { data };
+      if (username) body.username = username;
+
+      await apiFetch('/api/admin/restore', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username }),
+        body: JSON.stringify(body),
       });
-      alert(`Restored ${username}.`);
-      setPerUserBackup(null);
-      setUserQuery('');
+
+      alert(username ? `Restored ${username}.` : 'Full restore complete.');
     } catch (e: any) {
       setError(e.message);
     } finally {
-      setRestoring(null);
+      setRestoring(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-gray-200 font-medium">Snapshots</h3>
+    <div className="space-y-6">
+      {/* Action buttons */}
+      <div className="flex items-center gap-3 flex-wrap">
         <button
-          onClick={triggerBackup}
+          onClick={logSnapshot}
           disabled={creating}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-sm text-white transition"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sm text-gray-200 disabled:opacity-50 transition"
         >
           <RefreshCw size={14} className={creating ? 'animate-spin' : ''} />
-          {creating ? 'Creating…' : 'Manual backup'}
+          {creating ? 'Logging…' : 'Log snapshot'}
         </button>
+        <button
+          onClick={downloadBackup}
+          disabled={downloading}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-sm text-white disabled:opacity-50 transition"
+        >
+          <Download size={14} className={downloading ? 'animate-spin' : ''} />
+          {downloading ? 'Generating…' : 'Download full backup'}
+        </button>
+      </div>
+
+      {/* Restore from file */}
+      <div className="bg-gray-800 rounded-lg p-4 space-y-3">
+        <p className="text-gray-300 text-sm font-medium">Restore from backup file</p>
+        <p className="text-gray-500 text-xs">
+          Upload a previously downloaded .json backup. Leave username blank to restore all data.
+        </p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            value={restoreUsername}
+            onChange={e => setRestoreUsername(e.target.value)}
+            placeholder="username (optional)"
+            className="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-white placeholder-gray-500 w-48"
+          />
+          <label
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-900/60 hover:bg-red-900 border border-red-800 text-sm text-red-200 cursor-pointer transition ${restoring ? 'opacity-50 pointer-events-none' : ''}`}
+          >
+            <RotateCcw size={14} />
+            {restoring ? 'Restoring…' : 'Choose file & restore'}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={restoreFromFile}
+              disabled={restoring}
+            />
+          </label>
+        </div>
       </div>
 
       {error && <p className="text-red-400 text-sm">{error}</p>}
 
-      {loading ? (
-        <p className="text-gray-400 text-sm">Loading…</p>
-      ) : backups.length === 0 ? (
-        <p className="text-gray-400 text-sm">No backups yet.</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-gray-400 text-left border-b border-gray-700">
-                {['Type', 'Created', 'Users', 'Workouts', 'Integrity', 'Triggered by', 'Actions'].map(h => (
-                  <th key={h} className="pb-2 pr-4 font-medium">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-800">
-              {backups.map(b => (
-                <>
+      {/* Snapshots table */}
+      <div>
+        <p className="text-gray-500 text-xs mb-2">
+          Health snapshots (counts only — use Download to get full restorable data)
+        </p>
+        {loading ? (
+          <p className="text-gray-400 text-sm">Loading…</p>
+        ) : backups.length === 0 ? (
+          <p className="text-gray-400 text-sm">No snapshots yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-gray-400 text-left border-b border-gray-700">
+                  {['Type', 'Time', 'Users', 'Workouts', 'Integrity', 'By'].map(h => (
+                    <th key={h} className="pb-2 pr-4 font-medium">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-800">
+                {backups.map(b => (
                   <tr key={b.id} className="text-gray-300">
                     <td className="py-2 pr-4">
                       <span className="capitalize px-2 py-0.5 rounded text-xs bg-gray-700">{b.type}</span>
                     </td>
-                    <td className="py-2 pr-4 whitespace-nowrap">{fmt(b.createdAt)}</td>
+                    <td className="py-2 pr-4 whitespace-nowrap text-gray-400 text-xs">{fmt(b.createdAt)}</td>
                     <td className="py-2 pr-4">{b.userCount}</td>
                     <td className="py-2 pr-4">{b.workoutCount}</td>
                     <td className="py-2 pr-4">
@@ -222,51 +286,13 @@ function BackupsSection() {
                         : <XCircle size={14} className="text-red-400" />}
                     </td>
                     <td className="py-2 pr-4 text-gray-400 text-xs">{b.triggeredBy ?? 'cron'}</td>
-                    <td className="py-2 pr-4">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => restoreFull(b.id)}
-                          disabled={restoring === b.id}
-                          className="text-xs text-indigo-400 hover:text-indigo-300 disabled:opacity-50"
-                        >
-                          {restoring === b.id ? 'Restoring…' : 'Restore all'}
-                        </button>
-                        <button
-                          onClick={() => setPerUserBackup(perUserBackup === b.id ? null : b.id)}
-                          className="text-xs text-gray-400 hover:text-gray-300"
-                        >
-                          Restore user
-                        </button>
-                      </div>
-                    </td>
                   </tr>
-                  {perUserBackup === b.id && (
-                    <tr key={`${b.id}-user`}>
-                      <td colSpan={7} className="pb-3">
-                        <div className="flex items-center gap-2 pt-1">
-                          <input
-                            value={userQuery}
-                            onChange={e => setUserQuery(e.target.value)}
-                            placeholder="username"
-                            className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white w-40"
-                          />
-                          <button
-                            onClick={() => restoreUser(b.id)}
-                            disabled={!userQuery.trim() || restoring === b.id}
-                            className="text-xs px-3 py-1 rounded bg-indigo-700 hover:bg-indigo-600 text-white disabled:opacity-50"
-                          >
-                            Restore
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
