@@ -625,18 +625,22 @@ Shared components (`PieChart`, `StatCard`, format helpers) live in `src/componen
 ### Admin Dashboard (`/admin`)
 
 - **Hidden URL** — not linked from any nav, footer, or page. Type directly to access.
-- **Password gate** (`/admin`) — standalone dark-themed page with a single password field. No username.
-  - `POST /api/admin/verify` checks `ADMIN_PASSWORD` env var
-  - Sets signed `httpOnly` cookie `admin_session` (4-hour expiry, signed with `ADMIN_SECRET`)
-  - Wrong password: generic error, no detail
-- **Dashboard** (`/admin/dashboard`) — requires valid cookie; redirects to `/admin` if missing.
-  - **Section 1 — Overview:** user count, workout count, active today, last backup timestamp, server health
-  - **Section 2 — Backups:** table of daily (7), weekly (4), monthly (12) snapshots from Firebase Storage. Restore button opens confirmation modal.
-  - **Section 3 — Users:** paginated table with search. Per-row: View (side panel), Delete (soft), Restore.
-  - **Section 4 — System Actions:** manual backup trigger, log viewer (last 50 cron runs from `adminLogs` collection)
-- **Backup storage:** Firebase Storage at `backups/{type}/{ISO-timestamp}.json`. Metadata in Firestore `backups` collection.
-- **New env vars:** `ADMIN_PASSWORD`, `ADMIN_SECRET`, `FIREBASE_STORAGE_BUCKET`
-- **Files:** `src/app/admin/layout.tsx`, `src/app/admin/page.tsx`, `src/app/admin/dashboard/page.tsx`
+- **Single route** — `src/app/admin/page.tsx`. Auth gate is a modal overlay on the same page. No separate `/admin/dashboard` route; no redirect logic needed.
+- **Auth gate** — Google Sign-In via Firebase Auth. After login, client POSTs ID token to `POST /api/admin/verify`. Server verifies token, checks UID against `ADMIN_UIDS` allowlist, issues a Firebase session cookie (4h, `httpOnly`, `sameSite=strict`). `GET /api/admin/verify` checks the cookie on page load. `DELETE /api/admin/verify` clears it (logout).
+  - Rate limit: 5 failures/IP/15 min (in-memory, best-effort in serverless)
+  - All mutating routes check `Origin` header for CSRF protection
+  - 2-second delay added to all auth failure responses
+- **Dashboard tabs:**
+  - **Overview** — user count, total workouts, last backup timestamp + integrity flag, server health
+  - **Backups** — table of snapshots (daily 7, weekly 4, monthly 12). Manual backup button. "Restore all" (full restore with auto pre-restore snapshot) + "Restore user" (per-user restore, username input).
+  - **Users** — table with search by username/email. Per-row: Download JSON (GDPR export), Disable (soft-delete) / Re-enable. Bulk CSV export.
+  - **System Actions** — Force Strava Sync All (shows confirmation dialog with rate limit math: user count, estimated API calls, 100 req/15min + 1000 req/day), log viewer (Admin Actions tab + Cron Logs tab, reads from `adminLogs`).
+- **Backup storage:** Firebase Storage at `backups/{type}/{ISO-timestamp}.json`. Metadata in Firestore `backups` collection with `integrityPassed` flag.
+- **Backup logic:** `src/lib/backup.ts` — shared between manual trigger (`POST /api/admin/backup`) and cron (`GET /api/cron/backup?type=...`).
+- **Admin action audit:** every admin action writes to `adminLogs` collection with `action`, `adminUid`, `timestamp`, and optional `targetUid`/`backupId`.
+- **Cron:** vercel.json has 3 schedules — daily 2am, weekly Monday 3am, monthly 1st 4am — all calling `/api/cron/backup?type=...`.
+- **Env vars:** `ADMIN_UIDS` (comma-separated Firebase UIDs), `ADMIN_SECRET` (32-char random, not used for cookie signing — Firebase handles session cookies natively), `FIREBASE_STORAGE_BUCKET`
+- **Files:** `src/app/admin/layout.tsx`, `src/app/admin/page.tsx`, `src/lib/admin-auth.ts`, `src/lib/backup.ts`
 
 ### Sharing Infrastructure
 
@@ -723,14 +727,19 @@ Shared components (`PieChart`, `StatCard`, format helpers) live in `src/componen
 | Route | Method | Purpose |
 |-------|--------|---------|
 | `/api/admin/assign-athletes` | POST | Manually assign athletes to coaches |
-| `/api/admin/verify` | POST | Verify admin password, set signed httpOnly session cookie |
-| `/api/admin/backup` | GET | List all backup snapshots (daily/weekly/monthly) |
+| `/api/admin/verify` | GET | Check current session (returns 401 if unauthenticated) |
+| `/api/admin/verify` | POST | Exchange Firebase ID token for session cookie (rate-limited, CSRF-checked) |
+| `/api/admin/verify` | DELETE | Logout — clear session cookie |
+| `/api/admin/backup` | GET | List all backup snapshots |
 | `/api/admin/backup` | POST | Trigger manual backup — exports Firestore to Firebase Storage JSON |
 | `/api/admin/backup/[id]` | GET | Get backup detail |
-| `/api/admin/backup/[id]` | POST | Restore from backup snapshot |
-| `/api/admin/users` | GET | List all users (Admin SDK) |
+| `/api/admin/backup/[id]` | POST | Full restore (auto pre-restore snapshot first) |
+| `/api/admin/backup/[id]/restore-user` | POST | Restore single user's data from snapshot |
+| `/api/admin/users` | GET | List all users, or `?export=csv` for bulk download |
+| `/api/admin/users/[uid]` | GET | User detail, or `?export=json` for GDPR download |
 | `/api/admin/users/[uid]` | DELETE | Soft-delete user (disable Auth + set `deletedAt`) |
 | `/api/admin/users/[uid]` | PATCH | Restore deleted user (re-enable Auth + clear `deletedAt`) |
+| `/api/admin/logs` | GET | Fetch admin action logs or cron logs (`?type=actions\|cron`) |
 | `/api/cron/backup` | GET | Scheduled backup cron handler (`?type=daily\|weekly\|monthly`) |
 
 ---
