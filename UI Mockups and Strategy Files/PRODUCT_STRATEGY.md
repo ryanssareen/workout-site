@@ -31,10 +31,10 @@
 | ~~**Report sharing UX**~~ | ✅ DONE — `/wrap` (weekly shareable card), `/review` (monthly shareable card), `/wrapped` (yearly 8-slide interactive with public sharing at `/athlete/[username]/wrapped`). All use ShareButtons (Instagram Story, WhatsApp, X, iMessage, Save Image via html-to-image, Copy Link) | ~~HIGH~~ |
 | ~~**Workouts UX**~~ | ✅ DONE — Compact mobile-first layout, AI suggestions collapsed by default behind slim trigger bar, tight spacing, Garmin-style stat chips, neutral/orange color scheme (no red), workout preview dialog | ~~MEDIUM~~ |
 | ~~**Public athlete profiles**~~ | ✅ DONE — `/athlete/[username]` with stats, pie chart, recent workouts, PRs, AI tagline | ~~HIGH~~ |
-| **Product analytics** | Zero tracking of user behavior (no PostHog, no Amplitude, nothing) | HIGH — can't improve what you can't measure |
+| ~~**Product analytics**~~ | ✅ DONE — PostHog implemented (`posthog-js`). Events: `user_signed_up`, `workout_completed`, `report_shared`, `ai_suggestion_viewed`, `ai_suggestion_accepted`, `strava_connected`, `onboarding_completed`. `NEXT_PUBLIC_POSTHOG_KEY` set in Vercel. | ~~HIGH~~ |
 | ~~**PWA / mobile install**~~ | ✅ DONE — Static manifest, service worker (cache-first static, network-first nav, offline fallback), Apple web app support, safe-area handling, installable on iOS/Android | ~~MEDIUM~~ |
 | **Monetization** | No payment system, no tiers, no pricing page | MEDIUM — not urgent pre-PMF |
-| ~~**Push notifications**~~ | ✅ DONE — Web Push API with VAPID, multi-device support, auto-cleanup. Used for Strava sync + weekly wrap. | ~~MEDIUM~~ |
+| ~~**Push notifications**~~ | ✅ DONE — Web Push API with VAPID, multi-device support, auto-cleanup, scoped to logged-in user (cross-user leakage fixed #74). Used for Strava sync + weekly wrap. | ~~MEDIUM~~ |
 | **Month calendar view** | ✅ DONE — Calendar now has 4 views (day/week/month/year) with heatmap year view | ~~LOW-MEDIUM~~ |
 | **Streak gamification** | ✅ PARTIAL — Streak counter on profile/public profile, dashboard stats row. Still missing: streak notifications, at-risk nudges, visual enhancements | MEDIUM — retention lever |
 | **Firebase Spark quota** | Quota-safe POST mode mitigates but daily 50K read limit still hit by multi-user auto-sync. Consider Blaze plan upgrade. | HIGH — affects all users when quota exhausted |
@@ -454,6 +454,12 @@ Progress dots, back/continue navigation, skip options. Data saved to Firestore u
 | Delete Planned Workouts (trash icon on hover + AlertDialog confirmation) | ✅ DONE |
 | Strava Quota-Safe Sync (POST mode, progressive auto-sync, error safety) | ✅ DONE |
 | Push Notifications (Web Push API, VAPID, multi-device, Strava sync + wrap) | ✅ DONE |
+| Push notifications scoped to logged-in user — cross-user leakage fix (#74) | ✅ DONE |
+| Reports page continuous refresh loop fix (#76) — stable useCallback deps | ✅ DONE |
+| Calendar UTC timezone fix (#73) — use `start_date` not `start_date_local` from Strava | ✅ DONE |
+| Calendar merge UI fix (#73) — optimistic removal of deleted Strava workout after merge | ✅ DONE |
+| iOS PWA safe-area fix (#67) — inline styles instead of Tailwind arbitrary classes | ✅ DONE |
+| Notes hidden from workouts page — filtered by `tags: ['note']` before time/type tabs | ✅ DONE |
 | Weekly Wrap Monday–Sunday boundaries (ISO 8601) | ✅ DONE |
 | Workout Import in Onboarding (CSV/XLSX with AI + programmatic date detection) | ✅ DONE |
 | Strava-Import Merge (auto-merge imported workouts when Strava syncs) | ✅ DONE |

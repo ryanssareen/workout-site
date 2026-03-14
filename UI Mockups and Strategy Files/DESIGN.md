@@ -622,6 +622,22 @@ Shared components (`PieChart`, `StatCard`, format helpers) live in `src/componen
 - Uses shared components from `src/components/profile/ProfileComponents.tsx`
 - **Public Wrapped sub-route:** `/athlete/[username]/wrapped` — SSR public yearly wrapped with 6 slides (no guess game), privacy-gated via `profilePublic`, dynamic OG image generation
 
+### Admin Dashboard (`/admin`)
+
+- **Hidden URL** — not linked from any nav, footer, or page. Type directly to access.
+- **Password gate** (`/admin`) — standalone dark-themed page with a single password field. No username.
+  - `POST /api/admin/verify` checks `ADMIN_PASSWORD` env var
+  - Sets signed `httpOnly` cookie `admin_session` (4-hour expiry, signed with `ADMIN_SECRET`)
+  - Wrong password: generic error, no detail
+- **Dashboard** (`/admin/dashboard`) — requires valid cookie; redirects to `/admin` if missing.
+  - **Section 1 — Overview:** user count, workout count, active today, last backup timestamp, server health
+  - **Section 2 — Backups:** table of daily (7), weekly (4), monthly (12) snapshots from Firebase Storage. Restore button opens confirmation modal.
+  - **Section 3 — Users:** paginated table with search. Per-row: View (side panel), Delete (soft), Restore.
+  - **Section 4 — System Actions:** manual backup trigger, log viewer (last 50 cron runs from `adminLogs` collection)
+- **Backup storage:** Firebase Storage at `backups/{type}/{ISO-timestamp}.json`. Metadata in Firestore `backups` collection.
+- **New env vars:** `ADMIN_PASSWORD`, `ADMIN_SECRET`, `FIREBASE_STORAGE_BUCKET`
+- **Files:** `src/app/admin/layout.tsx`, `src/app/admin/page.tsx`, `src/app/admin/dashboard/page.tsx`
+
 ### Sharing Infrastructure
 
 **`ShareButtons` component** (`src/components/workouts/ShareWorkoutCard.tsx`) — Reusable share UI used by wrap, review, wrapped, and workout detail pages:
@@ -707,6 +723,15 @@ Shared components (`PieChart`, `StatCard`, format helpers) live in `src/componen
 | Route | Method | Purpose |
 |-------|--------|---------|
 | `/api/admin/assign-athletes` | POST | Manually assign athletes to coaches |
+| `/api/admin/verify` | POST | Verify admin password, set signed httpOnly session cookie |
+| `/api/admin/backup` | GET | List all backup snapshots (daily/weekly/monthly) |
+| `/api/admin/backup` | POST | Trigger manual backup — exports Firestore to Firebase Storage JSON |
+| `/api/admin/backup/[id]` | GET | Get backup detail |
+| `/api/admin/backup/[id]` | POST | Restore from backup snapshot |
+| `/api/admin/users` | GET | List all users (Admin SDK) |
+| `/api/admin/users/[uid]` | DELETE | Soft-delete user (disable Auth + set `deletedAt`) |
+| `/api/admin/users/[uid]` | PATCH | Restore deleted user (re-enable Auth + clear `deletedAt`) |
+| `/api/cron/backup` | GET | Scheduled backup cron handler (`?type=daily\|weekly\|monthly`) |
 
 ---
 
@@ -998,3 +1023,16 @@ The app is installable as a Progressive Web App on iOS and Android.
 4. **Legacy 'student' role** — Still appears in some type definitions and old data
 5. **Firebase Spark plan quota** — Daily read quota (50K reads/day) can be exhausted by Strava auto-sync across multiple users. Quota-safe POST mode mitigates but doesn't eliminate the issue. Consider upgrading to Blaze plan.
 6. **Groq rate limits** — 100K tokens/day on `llama-3.3-70b-versatile`. Mitigated with `llama-3.1-8b-instant` fallback but both models can be rate-limited under heavy import usage.
+7. **Admin dashboard** — Planned but not yet built. See `UI Mockups and Strategy Files/ADMIN_DASHBOARD.md` for full spec.
+8. **Coaches completing workouts** — No guard prevents coaches from marking athlete workouts as complete (should be athlete-only action).
+
+## Recent Fixes (March 2026)
+
+| Issue | Fix |
+|-------|-----|
+| #67 — iOS PWA safe-area collision | Switched to inline `style={{ paddingTop: 'env(safe-area-inset-top)' }}` on landing page nav/main/footer |
+| #73 — Calendar UTC timezone | Use `activity.start_date` (actual UTC) instead of `start_date_local` (misleading "Z" suffix) in Strava sync routes |
+| #73 — Post-merge both workouts visible | Optimistic state removal of deleted Strava workout in calendar page after successful merge |
+| #74 — Push notifications cross-user | Track subscription ownership in `localStorage`; clean up previous user's Firestore entry on login/logout |
+| #76 — Reports page refresh loop | Fixed `useCallback` deps from full `user` object to stable primitives (`user?.username`, `user?.role`) |
+| Notes in workouts page | Notes (`tags: ['note']`) filtered from `/workouts` before time/type tabs |

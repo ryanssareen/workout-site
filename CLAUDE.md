@@ -52,6 +52,7 @@ src/
 - **workouts** — Multi-sport (swim/run/bike/strength/other), assigned coach→athlete, completion tracking, Strava sync, comments subcollection
 - **personalRecords** — User PRs with history
 - **chatThreads** — AI coach conversation threads
+- **backups** — Admin backup metadata: `{ type: 'daily'|'weekly'|'monthly', createdAt, userCount, workoutCount, storagePath }`. Backup JSON files stored in Firebase Storage at `backups/{type}/{ISO-timestamp}.json`.
 
 ### Role-Based Access
 - **Coaches** can create/assign workouts, view all their athletes' data, generate reports
@@ -73,7 +74,7 @@ npx tsc --noEmit     # Type check without building
 - **Registration:** `src/components/ServiceWorkerRegister.tsx` — client component, registers SW on mount
 - **Icons:** `public/icons/` — `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png`
 - **Layout:** Explicit `<link rel="manifest">` in `<head>` tag (not via `metadata.manifest` — unreliable on Vercel). Viewport has `viewportFit: 'cover'` for safe-area support. Apple web app meta tags via `metadata.appleWebApp`.
-- **Safe Areas:** Navbar uses `pt-[env(safe-area-inset-top)]`, MobileBottomNav uses `pb-[env(safe-area-inset-bottom)]`. Dashboard layout uses `overflow-x-hidden` (not `overflow-hidden` which breaks `position: sticky`).
+- **Safe Areas:** Use inline `style={{ paddingTop: 'env(safe-area-inset-top)' }}` — Tailwind arbitrary classes (`pt-[env(...)]`) are unreliable on physical iOS devices. Navbar, main content, and footer all use inline styles. Dashboard layout uses `overflow-x-hidden` (not `overflow-hidden` which breaks `position: sticky`).
 
 ## Key Conventions
 - Use `@/` path alias for imports from `src/`
@@ -104,6 +105,7 @@ npx tsc --noEmit     # Type check without building
 - `/review` — Monthly Review page. Month navigation with "not ready" gate for current month. Hero row with key stats (workouts, distance, time, active days). Activity calendar grid, per-sport stats with month-over-month comparison, pie chart breakdown, vs last month comparison (% change per metric), daily activity bar chart, weekly distance + duration area charts. Share via ShareButtons.
 - `/wrapped` — Yearly Wrapped (2025). 8-slide interactive carousel: guess (interactive workout count guess game) → reveal → stats → breakdown → records → heatmap → summary → final. Public sharing route at `/athlete/[username]/wrapped` with SSR, OG images, privacy gate. Components in `src/components/wrapped/WrappedSlides.tsx`.
 - `/dashboard` — Stats row (streak, this week, all-time, total), weekly activity bar chart, type breakdown, upcoming workouts, recently completed, event countdowns, weekly wrap CTA, monthly review CTA, quick links grid
+- `/admin` — **Hidden admin dashboard** (not linked from any nav). Password-protected via `ADMIN_PASSWORD` env var + signed `httpOnly` cookie (`ADMIN_SECRET`). Sections: Overview (user/workout counts, last backup), Backups (daily/weekly/monthly snapshots from Firebase Storage, restore), Users (list, soft-delete, restore via Admin SDK), System Actions (manual backup trigger, log viewer). Cron backups run daily/weekly/monthly via Vercel cron jobs.
 
 ## AI Workout Suggestions
 - 3-tier pipeline: Logic Engine (periodization, fatigue, deload) → Groq LLaMA 3.3 70B enhancement → Validator with retry
@@ -148,6 +150,7 @@ npx tsc --noEmit     # Type check without building
 - **Cleanup:** auto-removes expired subscriptions (410/404 responses)
 - **Use cases:** Strava sync completion, weekly wrap ready
 - **Env vars:** `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`
+- **User scoping:** Subscriptions tracked by `localStorage` key `push_subscribed_username`. On user switch, previous user's subscription is removed from Firestore before subscribing new user. On logout, subscription is removed automatically.
 
 ## Strava Sync
 - **Auto-sync** on page load via `useStravaAutoSync` hook — progressive phase-based sync (2days → 7days → 30days)
@@ -157,12 +160,14 @@ npx tsc --noEmit     # Type check without building
 - **Store:** `src/lib/stores/stravaSyncStore.ts` — Zustand store with `startSync`, `checkDuplicates`, `clearResult`
 - **Hook:** `src/hooks/useStravaAutoSync.ts` — auto-triggers sync on mount, handles quota exhaustion gracefully
 - **Import merge** — when syncing, matches Strava activities to imported workouts (`source: 'import'`) by same day + same type + distance within 10%. Updates imported workout with Strava data instead of creating duplicates. Strength workouts match by type+date alone (no distance).
+- **Date fix:** Always use `activity.start_date` (actual UTC) — NOT `start_date_local` (local time with misleading "Z" suffix that causes wrong UTC parsing, e.g. 5:30h offset for IST users).
 
 ## Calendar
 - **Add Workout** button centered in CalendarHeader next to date label
 - **Add Event** (via CalendarAddDropdown) — navigates to `/workouts/new?date=YYYY-MM-DD&tag=race`
-- **Add Note** (via CalendarAddDropdown) — inline popup with textarea, saves as "other" type workout via `createWorkout()`, refreshes calendar via `onNoteAdded` callback
+- **Add Note** (via CalendarAddDropdown) — inline popup with textarea, saves as "other" type workout via `createWorkout()` with `tags: ['note']`, refreshes calendar via `onNoteAdded` callback
 - **CalendarAddDropdown** — `src/components/calendar/CalendarAddDropdown.tsx`, uses `onNoteAdded` callback threaded through CalendarWeekView/CalendarFullMonthView to calendar page's `refreshWorkouts`
+- **Notes filtering** — workouts tagged `tags: ['note']` (type `'other'`, name `'Note'`) are excluded from the `/workouts` page. Filter applied before time and type tabs.
 
 ## Workout Deletion
 - **Delete planned workouts** — available on workouts list page for future uncompleted workouts
@@ -170,6 +175,14 @@ npx tsc --noEmit     # Type check without building
 - **Access control:** Only users who can manage workouts (coaches or unconnected athletes) see delete button
 - **Function:** `deleteWorkout(ownerUsername, id)` in `src/lib/firebase/firestore.ts`
 - **Optimistic update:** Removed from local state immediately on success
+
+## Admin Dashboard
+- **Route:** `src/app/admin/` — standalone layout (no dashboard chrome), password gate at `/admin`, dashboard at `/admin/dashboard`
+- **Security:** `POST /api/admin/verify` checks `ADMIN_PASSWORD` env var, sets signed `httpOnly` cookie (4h, signed with `ADMIN_SECRET`)
+- **Backup API:** `GET/POST /api/admin/backup`, `GET/POST /api/admin/backup/[id]` — list, create, restore snapshots from Firebase Storage
+- **Users API:** `GET /api/admin/users`, `DELETE/PATCH /api/admin/users/[uid]` — list all users, soft-delete (disable Auth + set `deletedAt`), restore (re-enable)
+- **Cron:** `src/app/api/cron/backup/route.ts` — accepts `?type=daily|weekly|monthly`, uploads JSON to Firebase Storage, prunes old backups
+- **New env vars required:** `ADMIN_PASSWORD`, `ADMIN_SECRET`, `FIREBASE_STORAGE_BUCKET`
 
 ## Known Issues & Active Work
 - Strava webhook subscription needs proper registration (webhook code exists but auto-sync requires env vars + API call setup)
