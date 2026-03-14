@@ -4,7 +4,7 @@
 
 ---
 
-## Overview
+## Overview:
 
 Two workstreams:
 1. Update project docs to reflect bug fixes shipped to production
