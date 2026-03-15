@@ -41,6 +41,11 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ logs });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    const msg = err.message ?? String(err);
+    const isQuota = msg.includes('RESOURCE_EXHAUSTED') || msg.includes('Quota exceeded') || err.code === 8;
+    return NextResponse.json(
+      { error: isQuota ? 'Firebase quota exceeded. Try again later.' : msg, isQuota },
+      { status: isQuota ? 429 : 500 }
+    );
   }
 }

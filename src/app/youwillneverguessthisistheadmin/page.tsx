@@ -65,13 +65,51 @@ function ago(ts: number | null) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+class ApiError extends Error {
+  isQuota: boolean;
+  status: number;
+  constructor(message: string, status: number, isQuota = false) {
+    super(message);
+    this.status = status;
+    this.isQuota = isQuota;
+  }
+}
+
 async function apiFetch(path: string, opts: RequestInit = {}) {
   const res = await fetch(path, { credentials: 'include', ...opts });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error ?? res.statusText);
+    throw new ApiError(
+      err.error ?? res.statusText,
+      res.status,
+      err.isQuota === true || res.status === 429
+    );
   }
   return res.json();
+}
+
+function QuotaBanner({ error, onRetry }: { error: string; onRetry?: () => void }) {
+  const quota = error.includes('quota') || error.includes('Quota') || error.includes('RESOURCE_EXHAUSTED');
+  return (
+    <div className={`flex items-center gap-3 text-sm rounded-xl px-4 py-3 ${
+      quota
+        ? 'text-amber-300 bg-amber-950/30 border border-amber-500/15'
+        : 'text-red-400 bg-red-950/30 border border-red-500/15'
+    }`}>
+      {quota ? <AlertTriangle size={15} className="shrink-0" /> : <XCircle size={15} className="shrink-0" />}
+      <span className="flex-1">
+        {quota ? 'Firebase daily quota exceeded — data will load when quota resets (Pacific midnight).' : error}
+      </span>
+      {onRetry && (
+        <button
+          onClick={onRetry}
+          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-xs font-medium text-white/60 hover:text-white transition-all"
+        >
+          <RefreshCw size={12} /> Retry
+        </button>
+      )}
+    </div>
+  );
 }
 
 // ─── Animated Background ──────────────────────────────────────────────────────
@@ -89,7 +127,14 @@ function AnimatedBackground() {
 
 // ─── Sub-sections ─────────────────────────────────────────────────────────────
 
-function OverviewSection({ stats }: { stats: OverviewStats | null }) {
+function OverviewSection({ stats, error, onRetry }: { stats: OverviewStats | null; error?: string; onRetry?: () => void }) {
+  if (error) {
+    return (
+      <div className="py-6">
+        <QuotaBanner error={error} onRetry={onRetry} />
+      </div>
+    );
+  }
   if (!stats) {
     return (
       <div className="flex items-center gap-3 py-12 justify-center">
@@ -348,12 +393,7 @@ function BackupsSection() {
         </div>
       </div>
 
-      {error && (
-        <div className="flex items-center gap-2 text-red-400 text-sm bg-red-950/30 border border-red-500/15 rounded-xl px-4 py-3">
-          <XCircle size={15} className="shrink-0" />
-          {error}
-        </div>
-      )}
+      {error && <QuotaBanner error={error} onRetry={load} />}
 
       {/* Snapshots table */}
       <div>
@@ -494,12 +534,7 @@ function UsersSection() {
         </div>
       </div>
 
-      {error && (
-        <div className="flex items-center gap-2 text-red-400 text-sm bg-red-950/30 border border-red-500/15 rounded-xl px-4 py-3">
-          <XCircle size={15} className="shrink-0" />
-          {error}
-        </div>
-      )}
+      {error && <QuotaBanner error={error} onRetry={load} />}
 
       {loading ? (
         <div className="flex items-center gap-2 py-12 justify-center">
@@ -590,21 +625,26 @@ function SystemActionsSection() {
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState('');
 
-  useEffect(() => {
-    (async () => {
-      setLogsLoading(true);
-      try {
-        const [a, c] = await Promise.all([
-          apiFetch('/api/admin/logs?type=actions'),
-          apiFetch('/api/admin/logs?type=cron'),
-        ]);
-        setLogs(a.logs);
-        setCronLogs(c.logs);
-      } finally {
-        setLogsLoading(false);
-      }
-    })();
+  const [logsError, setLogsError] = useState('');
+
+  const loadLogs = useCallback(async () => {
+    setLogsLoading(true);
+    setLogsError('');
+    try {
+      const [a, c] = await Promise.all([
+        apiFetch('/api/admin/logs?type=actions'),
+        apiFetch('/api/admin/logs?type=cron'),
+      ]);
+      setLogs(a.logs);
+      setCronLogs(c.logs);
+    } catch (e: any) {
+      setLogsError(e.message);
+    } finally {
+      setLogsLoading(false);
+    }
   }, []);
+
+  useEffect(() => { loadLogs(); }, [loadLogs]);
 
   async function openSyncDialog() {
     try {
@@ -696,12 +736,7 @@ function SystemActionsSection() {
                 </p>
               </div>
             </div>
-            {syncError && (
-              <div className="flex items-center gap-2 text-red-400 text-sm bg-red-950/30 border border-red-500/15 rounded-xl px-4 py-3">
-                <XCircle size={15} className="shrink-0" />
-                {syncError}
-              </div>
-            )}
+            {syncError && <QuotaBanner error={syncError} />}
             <div className="flex gap-3 justify-end pt-1">
               <button
                 onClick={() => setShowSyncDialog(false)}
@@ -740,12 +775,14 @@ function SystemActionsSection() {
           ))}
         </div>
 
+        {logsError && <QuotaBanner error={logsError} onRetry={loadLogs} />}
+
         {logsLoading ? (
           <div className="flex items-center gap-2 py-8 justify-center">
             <RefreshCw size={14} className="animate-spin text-white/30" />
             <p className="text-white/40 text-sm">Loading logs…</p>
           </div>
-        ) : displayLogs.length === 0 ? (
+        ) : displayLogs.length === 0 && !logsError ? (
           <p className="text-white/40 text-sm text-center py-8">No logs yet.</p>
         ) : (
           <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
@@ -881,27 +918,29 @@ const TABS: { id: Tab; label: string; icon: typeof Database }[] = [
 function Dashboard({ onLogout }: { onLogout: () => void }) {
   const [tab, setTab] = useState<Tab>('overview');
   const [stats, setStats] = useState<OverviewStats | null>(null);
+  const [statsError, setStatsError] = useState('');
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const [usersData, backupsData] = await Promise.all([
-          apiFetch('/api/admin/users'),
-          apiFetch('/api/admin/backup'),
-        ]);
-        const totalWorkouts = (usersData.users as UserRecord[]).reduce(
-          (sum: number, u: UserRecord) => sum + (u.workoutCount ?? 0), 0
-        );
-        setStats({
-          userCount: usersData.users.length,
-          workoutCount: totalWorkouts,
-          lastBackup: backupsData.backups[0] ?? null,
-        });
-      } catch {
-        // non-fatal
-      }
-    })();
+  const loadStats = useCallback(async () => {
+    setStatsError('');
+    try {
+      const [usersData, backupsData] = await Promise.all([
+        apiFetch('/api/admin/users'),
+        apiFetch('/api/admin/backup'),
+      ]);
+      const totalWorkouts = (usersData.users as UserRecord[]).reduce(
+        (sum: number, u: UserRecord) => sum + (u.workoutCount ?? 0), 0
+      );
+      setStats({
+        userCount: usersData.users.length,
+        workoutCount: totalWorkouts,
+        lastBackup: backupsData.backups[0] ?? null,
+      });
+    } catch (e: any) {
+      setStatsError(e.message);
+    }
   }, []);
+
+  useEffect(() => { loadStats(); }, [loadStats]);
 
   async function handleLogout() {
     await fetch('/api/admin/verify', { method: 'DELETE', credentials: 'include' }).catch(() => {});
@@ -982,7 +1021,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 
         {/* Tab content */}
         <div className="bg-white/[0.02] backdrop-blur-sm border border-white/[0.06] rounded-2xl p-6 sm:p-8 shadow-xl shadow-black/10">
-          {tab === 'overview' && <OverviewSection stats={stats} />}
+          {tab === 'overview' && <OverviewSection stats={stats} error={statsError} onRetry={loadStats} />}
           {tab === 'backups' && <BackupsSection />}
           {tab === 'users' && <UsersSection />}
           {tab === 'system' && <SystemActionsSection />}
