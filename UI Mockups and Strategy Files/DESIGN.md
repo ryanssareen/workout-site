@@ -41,7 +41,9 @@ src/
 │   │   │   ├── [id]/            # Workout detail view
 │   │   │   └── [id]/edit/       # Edit workout
 │   │   ├── calendar/            # Weekly calendar view
-│   │   ├── reports/             # Analytics dashboard
+│   │   ├── reports/             # Reports Hub (3-zone layout)
+│   │   │   ├── training-analysis/ # Old 6-tab dashboard (relocated)
+│   │   │   └── [reportType]/   # Dynamic AI deep-dive reports
 │   │   ├── profile/             # Read-only profile (stats, charts, PRs)
 │   │   ├── settings/            # Profile editing, Strava, account settings
 │   │   ├── onboarding/          # 3-step onboarding flow (sports, goals, about)
@@ -54,7 +56,7 @@ src/
 │   │   ├── auth/                # User creation (Admin SDK), Strava OAuth (authorize, callback, disconnect)
 │   │   ├── strava/              # Sync, webhook, cleanup, migration
 │   │   ├── workouts/            # Workout CRUD + copy + format + dedup
-│   │   ├── cron/                # send-reminders, send-summaries
+│   │   ├── cron/                # send-reminders, send-summaries, generate-insights, backup
 │   │   ├── workouts/            # Workout CRUD + import (CSV/XLSX with AI + programmatic date detection)
 │   │   ├── push/                # Web Push notification subscribe/unsubscribe
 │   │   ├── reports/             # Report generation + email
@@ -82,6 +84,7 @@ src/
 │   ├── calendar/                # Calendar views, TYPE_CONFIG, getTypeData
 │   ├── profile/                 # ProfileComponents (shared PieChart, StatCard, helpers), PhotoUpload
 │   ├── reports/                 # Report sections, charts, tables
+│   │   └── hub/                 # AIInsightCard, AskAnythingBar, YourReportsZone, ExploreCards, DeepDiveCard
 │   ├── onboarding/              # FileUploadStep, ImportPreview
 │   ├── strava/                  # DuplicateDialog
 │   ├── ai/                      # WorkoutRecommendations
@@ -98,6 +101,9 @@ src/
 │   ├── stores/
 │   │   └── authStore.ts         # Zustand auth state
 │   ├── analytics.ts             # computeSummary, computeTypeDistribution for workout stats
+│   ├── reports/
+│   │   ├── cache.ts             # getCachedReport(), setCachedReport() — Firestore TTL cache
+│   │   └── templates/           # Template registry + sport-deep-dive, trend-report, pr-timeline, recovery-report, goal-tracker
 │   ├── email/                   # Email templates (summary, reminder)
 │   ├── import/                  # CSV parsing, column mapping, enrichment
 │   ├── training/                # Training logic engines
@@ -500,9 +506,29 @@ Progress dots, back/continue navigation, skip options. Data saved to Firestore u
 
 **Components directory:** `src/components/calendar/` — types.ts (TYPE_CONFIG, getTypeData with sport-specific stats extraction, duration formatters)
 
-### Reports (`/reports`)
+### Reports Hub (`/reports`)
 
-6-tab navigation (mobile: horizontal scroll pills, desktop: sticky sidebar):
+**3-zone layout** replacing old 6-tab dashboard (max-w-3xl focused layout):
+
+**Zone 1 — AI Insight + Ask Anything:**
+- `AIInsightCard` — Gradient card showing daily AI-generated insight (from cron). Links to relevant deep-dive report. Skeleton loader while fetching. Empty state for new users.
+- `AskAnythingBar` — Search input with rotating placeholder suggestions. Calls existing `/api/ai/reports`. Renders structured report inline using `ReportRenderer` with collapsible header.
+
+**Zone 2 — Your Reports:**
+- `YourReportsZone` — Three gradient link cards to `/wrap` (weekly), `/review` (monthly), `/wrapped` (yearly) with live workout count subtitles.
+
+**Zone 3 — Explore Your Data:**
+- `ExploreCards` — Contextual deep-dive cards selected by training patterns. Max 3 cards shown, prioritized:
+  1. Sport Deep Dive (3+ sessions of one sport in 30 days)
+  2. Trend Report (2+ months of workout data)
+  3. Recovery Report (10+ workouts in 14 days)
+  4. PR Timeline (any PRs recorded)
+  5. Training Analysis (always — links to old dashboard at `/reports/training-analysis`)
+- `DeepDiveCard` — Reusable card: icon + personalized title + teaser line + arrow, links to `/reports/[reportType]`
+
+### Training Analysis (`/reports/training-analysis`)
+
+Old 6-tab dashboard relocated here (all functionality preserved):
 1. **Dashboard Overview** — Key metrics summary
 2. **Training Analysis** — Volume, intensity, frequency analysis with charts
 3. **Exercise Insights** — Strength exercise breakdowns, PRs, volume tracking
@@ -510,7 +536,20 @@ Progress dots, back/continue navigation, skip options. Data saved to Firestore u
 5. **Type Distribution** — Pie/donut charts for sport breakdown
 6. **Duplicates** — DuplicateRemover component to find/merge duplicate workouts
 
-Share Reports button with modal. Time-aware greeting.
+### AI Deep-Dive Reports (`/reports/[reportType]`)
+
+Dynamic route for template-based AI report generation. Cache-first: checks Firestore cache → miss calls `/api/ai/reports/generate` → renders with `ReportContainer` (PNG, PDF, email, copy, print export).
+
+**Report types:**
+| Type | TTL | Description |
+|------|-----|-------------|
+| `sport-deep-dive` | 12h | Single sport analysis: pace/volume/distance trends, weekly breakdown, tag distribution, PRs. Compares current 30d vs previous 30d. |
+| `trend-report` | 6h | Month-over-month comparison across all metrics and sports. Percentage changes for workouts, distance, duration, active days. |
+| `pr-timeline` | 24h | PR history grouped by exercise. Monthly timeline, progression chains (latest vs previous per exercise). |
+| `recovery-report` | 6h | 14-day daily activity, rest days, consecutive training streaks, ACWR (acute:chronic workload ratio), overtraining risk zones. |
+| `goal-tracker` | 8h | Event countdown + readiness assessment. 8-week training volume buildup, weekly breakdown, volume trend analysis, taper recommendations. Triggered when user has event within 8 weeks. |
+
+**Template architecture:** Each template exports `{ type, cacheTTL, systemPrompt, buildContext(workouts, params) }`. The `buildContext()` function pre-computes focused data into a text string. Groq 70B generates structured JSON (falls back to 8B on 429). Results cached in Firestore `users/{username}/cachedReports/{type}_{paramHash}`.
 
 ### Weekly Wrap (`/wrap`)
 
@@ -701,7 +740,8 @@ Shared components (`PieChart`, `StatCard`, format helpers) live in `src/componen
 | `/api/ai/profanity-check` | POST | Validate names/text for inappropriate content |
 | `/api/ai/suggestions` | POST | Generate workout suggestions (OpenAI) |
 | `/api/ai/workout-suggestions` | POST | AI-based workout generation |
-| `/api/ai/reports` | POST | AI-generated training reports (OpenAI) |
+| `/api/ai/reports` | POST | AI-generated training reports (OpenAI) — used by Ask Anything bar |
+| `/api/ai/reports/generate` | POST | Template-based deep-dive report generation (Groq 70B, 8B fallback). POST `{ reportType, params, userId }`. Checks Firestore cache first. |
 | `/api/ai/chat` | POST | Chat with AI coach |
 | `/api/ai/generate-plan` | POST | Generate multi-week training plans |
 | `/api/ai/format-workouts` | POST | Format imported workout descriptions |
@@ -713,6 +753,7 @@ Shared components (`PieChart`, `StatCard`, format helpers) live in `src/componen
 | `/api/send-workout-email` | POST | Send workout assignment email via Brevo |
 | `/api/cron/send-reminders` | GET | Daily cron: send next-day workout reminders |
 | `/api/cron/send-summaries` | GET | Weekly cron: send training summary emails |
+| `/api/cron/generate-insights` | GET | Daily cron (6am UTC): generate AI insights for up to 50 users via Groq 8B. Writes to `users/{username}/insights/daily` with 24h TTL. |
 | `/api/reports/send` | POST | Email weekly report |
 | `/api/reports/email` | POST | Generate and email report |
 | `/api/notifications/workout-comment` | POST | Email notification when comment posted |

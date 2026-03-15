@@ -13,7 +13,7 @@
 |------|-----------|-------|
 | **Strava Sync** | Production-ready | OAuth + webhooks + dedup + photos + routes. Well-executed. |
 | **AI Suggestions** | Genuinely advanced | 3-tier pipeline (logic engine → Groq → validator), periodization-aware, fatigue-aware, deload-aware. `max_tokens: 8000` for full workout details. Better than Final Surge, TrainingPeaks. |
-| **Report Engine** | Solid foundation | 6 section types, Recharts charts, AI-generated reports via Groq, PNG/PDF/email export. |
+| **Report Engine** | Production-ready | 7 section types (stat, chart, table, text, highlight, pr, divider), Recharts charts, AI-generated reports via Groq, PNG/PDF/email export. Reports Hub with 3-zone layout, daily AI insights cron, template-based deep-dive reports (Sport Deep Dive, Trend Report, PR Timeline, Recovery Report, Goal Tracker) with Firestore caching. |
 | **Onboarding** | Streamlined | 5 steps (Intro → Name → Age → Import workout history → Strava Connect). Profile completion bar on dashboard for deferred fields. |
 | **Landing Page** | Polished | Simplified dark-themed design: centered hero, sport pills, 3-step how-it-works, 6-card feature grid, FAQ, CTA. Welcoming tone, no aggressive branding. |
 | **Multi-Sport** | Complete | Swim, bike, run, strength, triathlon, other — all with sport-specific fields. |
@@ -72,6 +72,9 @@ Athletes love sharing training milestones. Strava's "Year in Sport" gets million
 | Year in Review (Wrapped) | ✅ DONE | `/wrapped` — 8-slide carousel, guess game, public sharing + OG images |
 | Comparison Cards | ✅ DONE | Built into `/review` as "vs Last Month" section |
 | Public Athlete Profile | ✅ DONE | `/athlete/[username]` — SSR with stats, charts, PRs, AI tagline |
+| Reports Hub (AI Deep Dives) | ✅ DONE | `/reports` hub with Sport Deep Dive, Trend Report, PR Timeline, Recovery Report, Goal Tracker — AI-generated via Groq with Firestore caching |
+| Daily AI Insight | ✅ DONE | Cron-generated 1-sentence training insight, shown in Reports Hub |
+| Ask Anything | ✅ DONE | Free-text training questions answered by AI in Reports Hub |
 | Race Recap Card | Not started | High-emotion share moment after race-tagged workouts |
 | PR Achievement Cards | Not started | Auto-detected celebration cards for personal records |
 | Milestone Badges | Not started | Achievement badges (100th workout, 1000km, streaks) |
@@ -461,6 +464,9 @@ Progress dots, back/continue navigation, skip options. Data saved to Firestore u
 | iOS PWA safe-area fix (#67) — inline styles instead of Tailwind arbitrary classes | ✅ DONE |
 | Notes hidden from workouts page — filtered by `tags: ['note']` before time/type tabs | ✅ DONE |
 | Weekly Wrap Monday–Sunday boundaries (ISO 8601) | ✅ DONE |
+| Reports Hub (3-zone layout: AI Insight + Ask Anything + periodic report links + contextual deep-dive cards) | ✅ DONE |
+| AI Deep-Dive Reports (Sport Deep Dive, Trend Report, PR Timeline, Recovery Report) with template system + Firestore caching | ✅ DONE |
+| Daily AI Insight Cron (Groq 8B, 6am UTC, 24h TTL) | ✅ DONE |
 | Workout Import in Onboarding (CSV/XLSX with AI + programmatic date detection) | ✅ DONE |
 | Strava-Import Merge (auto-merge imported workouts when Strava syncs) | ✅ DONE |
 | Server-Side User Creation (Admin SDK, fixes Google Sign-In registration bug) | ✅ DONE |

@@ -15,6 +15,7 @@ const VALID_TYPES: DeepDiveReportType[] = [
   'trend-report',
   'pr-timeline',
   'recovery-report',
+  'goal-tracker',
 ];
 
 export async function POST(req: NextRequest) {

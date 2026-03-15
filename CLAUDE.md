@@ -22,10 +22,10 @@ CoachTrack (The Daily Athlete) is a SaaS workout tracking platform connecting co
 src/
 ├── app/
 │   ├── (auth)/          # Login, register, reset-password
-│   ├── (dashboard)/     # Protected routes: dashboard, workouts, calendar, reports, settings, ai-coach, progress, records, profile, onboarding, wrap, review, wrapped
+│   ├── (dashboard)/     # Protected routes: dashboard, workouts, calendar, reports, reports/training-analysis, reports/[reportType], settings, ai-coach, progress, records, profile, onboarding, wrap, review, wrapped
 │   ├── athlete/[username]/ # Public athlete profile page (SSR)
 │   ├── admin/           # Hidden admin dashboard (standalone layout, no dashboard chrome)
-│   ├── api/             # API routes (ai, auth, admin, cron, push, reports, strava, webhooks, workouts)
+│   ├── api/             # API routes (ai, ai/reports/generate, auth, admin, cron, push, reports, strava, webhooks, workouts)
 │   └── page.tsx         # Landing page
 ├── components/
 │   ├── auth/            # LoginForm, RegisterForm (Google + email)
@@ -33,12 +33,16 @@ src/
 │   ├── dashboard/       # Navbar, layout components, ProfileCompletionBar
 │   ├── profile/         # ProfileComponents (shared PieChart, StatCard, helpers), PhotoUpload
 │   ├── reports/         # ReportContainer, ReportRenderer, section components, ReportsSections (5 chart/stat sections)
+│   │   └── hub/         # AIInsightCard, AskAnythingBar, YourReportsZone, ExploreCards, DeepDiveCard
 │   ├── wrapped/         # WrappedSlides (6 slide components + YearStats computation for yearly wrapped)
 │   ├── strava/          # DuplicateDialog for Strava sync conflicts
 │   ├── workouts/        # WorkoutCard, WorkoutForm, AIWorkoutSuggestions, StrengthForm, comments, ShareWorkoutCard
 │   └── ui/              # shadcn/ui primitives
 ├── lib/
 │   ├── analytics.ts     # computeSummary, computeTypeDistribution, computeTimeSeries, computeWeeklyRhythm, computeCalendarData, computeInsights, computePRTimeline
+│   ├── reports/         # Report template system
+│   │   ├── cache.ts     # getCachedReport(), setCachedReport() — Firestore TTL cache
+│   │   └── templates/   # Template registry + per-type templates (sport-deep-dive, trend-report, pr-timeline, recovery-report, goal-tracker)
 │   ├── admin-auth.ts    # verifyAdminSession, checkOrigin, logAdminAction helpers for admin API routes
 │   ├── backup.ts        # createBackup — shared backup logic (used by manual trigger + cron)
 │   ├── firebase/        # config.ts, auth.ts, firestore.ts, admin.ts (+ getAdminStorage)
@@ -46,7 +50,7 @@ src/
 │   ├── schemas/         # Zod validation schemas (profile.ts has SPORT_OPTIONS, TRAINING_FOR_OPTIONS, etc.)
 │   ├── training/        # logicEngine.ts, constraints.ts, validator.ts (AI workout pipeline)
 │   └── stores/          # Zustand state stores
-└── types/               # TypeScript types (index.ts, workout.ts, reports.ts, ai.ts)
+└── types/               # TypeScript types (index.ts, workout.ts, reports.ts, reports-hub.ts, ai.ts)
 ```
 
 ### Data Model (Firestore Collections)
@@ -55,6 +59,8 @@ src/
 - **workouts** — Multi-sport (swim/run/bike/strength/other), assigned coach→athlete, completion tracking, Strava sync, comments subcollection
 - **personalRecords** — User PRs with history
 - **chatThreads** — AI coach conversation threads
+- **cachedReports** (subcollection of users) — `users/{username}/cachedReports/{type}_{paramHash}` — AI-generated report cache with TTL (6-24h). Fields: `reportType`, `params`, `report` (StructuredReport JSON), `generatedAt`, `expiresAt`
+- **insights** (subcollection of users) — `users/{username}/insights/daily` — Daily AI-generated training insight. Fields: `text`, `detail`, `reportType`, `reportParams`, `generatedAt`, `expiresAt` (24h TTL)
 - **backups** — Admin backup metadata: `{ type: 'daily'|'weekly'|'monthly'|'manual'|'pre-restore', createdAt, userCount, workoutCount, storagePath, integrityPassed, triggeredBy }`. Backup JSON files stored in Firebase Storage at `backups/{type}/{ISO-timestamp}.json`.
 - **adminLogs** — Admin action audit trail: `{ action, adminUid, timestamp, targetUid?, backupId?, type?, details? }`. Actions: `backup_triggered`, `restore_triggered`, `user_deleted`, `user_restored`, `user_restore_triggered`, `strava_sync_forced`, `cron_backup`, `cron_backup_failed`.
 - **system** — System metadata doc `lastCron`: tracks `backup_daily/weekly/monthly` timestamps for health monitoring.
@@ -109,6 +115,9 @@ npx tsc --noEmit     # Type check without building
 - `/wrap` — Weekly Training Wrap ("Your Week's Capsule"). Immersive full-screen layout with week-by-week navigation. **Monday–Sunday week boundaries** (ISO 8601, `weekStartsOn: 1`). Per-sport stats with week-over-week comparison (% change), highlight of the week (longest/furthest workout with photo), rating system (incredible/solid/consistent/recovery/quiet). Share via ShareButtons (Instagram, WhatsApp, X, iMessage, save image).
 - `/review` — Monthly Review page. Month navigation with "not ready" gate for current month. Hero row with key stats (workouts, distance, time, active days). Activity calendar grid, per-sport stats with month-over-month comparison, pie chart breakdown, vs last month comparison (% change per metric), daily activity bar chart, weekly distance + duration area charts. Share via ShareButtons.
 - `/wrapped` — Yearly Wrapped (2025). 8-slide interactive carousel: guess (interactive workout count guess game) → reveal → stats → breakdown → records → heatmap → summary → final. Public sharing route at `/athlete/[username]/wrapped` with SSR, OG images, privacy gate. Components in `src/components/wrapped/WrappedSlides.tsx`.
+- `/reports` — **Reports Hub** (3-zone layout, replaced old 6-tab dashboard). Zone 1: AI Insight Card (daily Groq 8B insight from cron) + Ask Anything bar (calls `/api/ai/reports`, renders inline with ReportRenderer). Zone 2: Links to `/wrap`, `/review`, `/wrapped` with live workout count subtitles. Zone 3: Contextual deep-dive cards (Sport Deep Dive, Trend Report, PR Timeline, Recovery Report, Training Analysis) selected based on workout patterns. Max 3 cards shown. Components in `src/components/reports/hub/`.
+- `/reports/training-analysis` — Old 6-tab dashboard (DashboardOverview, TrainingAnalysis, ExerciseInsights, CalendarViews, TypeDistribution, DuplicateRemover) relocated here. All original functionality preserved.
+- `/reports/[reportType]` — Dynamic route for AI deep-dive reports. Cache-first: checks Firestore → cache miss calls `/api/ai/reports/generate` → renders with ReportContainer (full export: PNG, PDF, email, copy, print). Supports: `sport-deep-dive`, `trend-report`, `pr-timeline`, `recovery-report`, `goal-tracker`.
 - `/dashboard` — Stats row (streak, this week, all-time, total), weekly activity bar chart, type breakdown, upcoming workouts, recently completed, event countdowns, weekly wrap CTA, monthly review CTA, quick links grid
 - `/admin` — **Hidden admin dashboard** (not linked from any nav). Password-protected via `ADMIN_PASSWORD` env var + signed `httpOnly` cookie (`ADMIN_SECRET`). Sections: Overview (user/workout counts, last backup), Backups (daily/weekly/monthly snapshots from Firebase Storage, restore), Users (list, soft-delete, restore via Admin SDK), System Actions (manual backup trigger, log viewer). Cron backups run daily/weekly/monthly via Vercel cron jobs.
 
@@ -127,6 +136,16 @@ npx tsc --noEmit     # Type check without building
 - **Yearly Wrapped** (`/wrapped`) — 8-slide interactive carousel with guess game. Public sharing at `/athlete/[username]/wrapped` with SSR + OG images. Privacy-gated via `profilePublic` flag. Components in `src/components/wrapped/WrappedSlides.tsx`.
 - **ShareButtons** component (`src/components/workouts/ShareWorkoutCard.tsx`) — Reusable share UI: Instagram Story, WhatsApp, X/Twitter, iMessage, save image (PNG via `html-to-image`), copy link. Used by wrap, review, wrapped, and workout sharing.
 - **Email system** — Summary emails every 10 days via Brevo cron (`/api/cron/send-summaries`). Wrap email template at `src/lib/email/wrapTemplate.ts`.
+
+## Reports Hub & AI Deep Dives
+- **Reports Hub** (`/reports`) — 3-zone layout replacing old 6-tab dashboard. Zone 1 (AI Insight + Ask Anything), Zone 2 (periodic report links), Zone 3 (contextual deep-dive cards).
+- **AI Insight Card** — Daily cron (`/api/cron/generate-insights`, 6am UTC) uses Groq 8B to generate 1-sentence training insight per user (up to 50 users). Stored in `users/{username}/insights/daily` with 24h TTL. Links to relevant deep-dive report.
+- **Ask Anything** — Search input calling existing `/api/ai/reports`, renders structured report inline with `ReportRenderer`.
+- **Deep-Dive Reports** — Template-based AI report generation via `/api/ai/reports/generate`. Each template has `buildContext()` (pre-computes focused data), `systemPrompt`, and `cacheTTL`. Groq 70B generates JSON → parsed into `StructuredReport` → cached in Firestore. Falls back to 8B on 429.
+- **Report Types:** Sport Deep Dive (12h TTL, filters to one sport), Trend Report (6h TTL, month-over-month comparison), PR Timeline (24h TTL, PR history + progression), Recovery Report (6h TTL, ACWR + rest days + overtraining risk), Goal Tracker (8h TTL, event countdown + readiness assessment + volume progression).
+- **Caching** — `src/lib/reports/cache.ts`: `getCachedReport()` / `setCachedReport()` using `users/{username}/cachedReports/{type}_{paramHash}` with TTL-based expiration.
+- **Card Selection Rules** — Zone 3 cards appear based on training patterns: 3+ sessions of one sport → Sport Deep Dive, 2+ months data → Trend Report, event within 8 weeks → Goal Tracker, 10+ workouts in 14 days → Recovery Report, any PRs → PR Timeline, always → Training Analysis (old dashboard). Max 3 shown.
+- **Template Registry** — `src/lib/reports/templates/index.ts` with `getTemplate(type)`. Each template in its own file. `WorkoutDoc` interface matches Firestore Admin SDK shape.
 
 ## Authentication
 - **Google Sign-In + Email/Password** via Firebase Auth

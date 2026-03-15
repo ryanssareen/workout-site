@@ -4,6 +4,7 @@ import { sportDeepDiveTemplate } from './sport-deep-dive';
 import { trendReportTemplate } from './trend-report';
 import { prTimelineTemplate } from './pr-timeline';
 import { recoveryReportTemplate } from './recovery-report';
+import { goalTrackerTemplate } from './goal-tracker';
 
 /** Workout document shape from Firestore Admin SDK */
 export interface WorkoutDoc {
@@ -38,6 +39,7 @@ const TEMPLATES: Partial<Record<DeepDiveReportType, ReportTemplate>> = {
   'trend-report': trendReportTemplate,
   'pr-timeline': prTimelineTemplate,
   'recovery-report': recoveryReportTemplate,
+  'goal-tracker': goalTrackerTemplate,
 };
 
 /** Get a template by report type. Returns null for types without templates (e.g. training-analysis). */
