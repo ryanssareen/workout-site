@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Shield, Database, Users, Settings, LogOut, RefreshCw,
   Trash2, RotateCcw, Download, AlertTriangle, CheckCircle,
-  XCircle, Clock, Activity, ChevronDown, ChevronUp, Eye,
+  XCircle, Clock, Activity, ChevronDown, ChevronUp, Eye, Lock,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -76,24 +76,28 @@ async function apiFetch(path: string, opts: RequestInit = {}) {
 // ─── Sub-sections ─────────────────────────────────────────────────────────────
 
 function OverviewSection({ stats }: { stats: OverviewStats | null }) {
-  if (!stats) return <p className="text-gray-400 text-sm">Loading…</p>;
+  if (!stats) return <p className="text-white/40 text-sm">Loading…</p>;
+  const items = [
+    { label: 'Total users', value: stats.userCount, accent: false },
+    { label: 'Total workouts', value: stats.workoutCount, accent: false },
+    {
+      label: 'Last backup',
+      value: stats.lastBackup ? ago(stats.lastBackup.createdAt) : 'Never',
+      accent: true,
+    },
+    {
+      label: 'Backup integrity',
+      value: stats.lastBackup?.integrityPassed ? '✓ Passed' : '— N/A',
+      accent: false,
+      green: stats.lastBackup?.integrityPassed,
+    },
+  ];
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      {[
-        { label: 'Total users', value: stats.userCount },
-        { label: 'Total workouts', value: stats.workoutCount },
-        {
-          label: 'Last backup',
-          value: stats.lastBackup ? ago(stats.lastBackup.createdAt) : 'Never',
-        },
-        {
-          label: 'Backup integrity',
-          value: stats.lastBackup?.integrityPassed ? '✓ Passed' : '— N/A',
-        },
-      ].map(({ label, value }) => (
-        <div key={label} className="bg-gray-800 rounded-lg p-4">
-          <p className="text-gray-400 text-xs mb-1">{label}</p>
-          <p className="text-white text-xl font-semibold">{value}</p>
+      {items.map(({ label, value, accent, green }) => (
+        <div key={label} className="bg-white/[0.04] border border-white/[0.08] rounded-xl p-5">
+          <p className="text-white/40 text-xs font-medium uppercase tracking-wider mb-1.5">{label}</p>
+          <p className={`text-2xl font-bold ${green ? 'text-green-400' : accent ? 'text-indigo-300' : 'text-white'}`}>{value}</p>
         </div>
       ))}
     </div>
@@ -205,7 +209,7 @@ function BackupsSection() {
         <button
           onClick={logSnapshot}
           disabled={creating}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sm text-gray-200 disabled:opacity-50 transition"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/[0.06] hover:bg-white/10 border border-white/10 text-sm text-white/80 disabled:opacity-50 transition"
         >
           <RefreshCw size={14} className={creating ? 'animate-spin' : ''} />
           {creating ? 'Logging…' : 'Log snapshot'}
@@ -213,7 +217,7 @@ function BackupsSection() {
         <button
           onClick={downloadBackup}
           disabled={downloading}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-sm text-white disabled:opacity-50 transition"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm text-white shadow-md disabled:opacity-50 transition"
         >
           <Download size={14} className={downloading ? 'animate-spin' : ''} />
           {downloading ? 'Generating…' : 'Download full backup'}
@@ -221,9 +225,9 @@ function BackupsSection() {
       </div>
 
       {/* Restore from file */}
-      <div className="bg-gray-800 rounded-lg p-4 space-y-3">
-        <p className="text-gray-300 text-sm font-medium">Restore from backup file</p>
-        <p className="text-gray-500 text-xs">
+      <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl p-5 space-y-3">
+        <p className="text-white/80 text-sm font-medium">Restore from backup file</p>
+        <p className="text-white/30 text-xs">
           Upload a previously downloaded .json backup. Leave username blank to restore all data.
         </p>
         <div className="flex items-center gap-2 flex-wrap">
@@ -231,10 +235,10 @@ function BackupsSection() {
             value={restoreUsername}
             onChange={e => setRestoreUsername(e.target.value)}
             placeholder="username (optional)"
-            className="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-white placeholder-gray-500 w-48"
+            className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 w-48 focus:border-indigo-500/40 focus:outline-none transition"
           />
           <label
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-900/60 hover:bg-red-900 border border-red-800 text-sm text-red-200 cursor-pointer transition ${restoring ? 'opacity-50 pointer-events-none' : ''}`}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-600/15 hover:bg-red-600/25 border border-red-500/25 text-sm text-red-300 cursor-pointer transition ${restoring ? 'opacity-50 pointer-events-none' : ''}`}
           >
             <RotateCcw size={14} />
             {restoring ? 'Restoring…' : 'Choose file & restore'}
@@ -254,30 +258,30 @@ function BackupsSection() {
 
       {/* Snapshots table */}
       <div>
-        <p className="text-gray-500 text-xs mb-2">
+        <p className="text-white/25 text-xs mb-2">
           Health snapshots (counts only — use Download to get full restorable data)
         </p>
         {loading ? (
-          <p className="text-gray-400 text-sm">Loading…</p>
+          <p className="text-white/40 text-sm">Loading…</p>
         ) : backups.length === 0 ? (
-          <p className="text-gray-400 text-sm">No snapshots yet.</p>
+          <p className="text-white/40 text-sm">No snapshots yet.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-gray-400 text-left border-b border-gray-700">
+                <tr className="text-white/40 text-left border-b border-white/[0.08]">
                   {['Type', 'Time', 'Users', 'Workouts', 'Integrity', 'By'].map(h => (
                     <th key={h} className="pb-2 pr-4 font-medium">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-800">
+              <tbody className="divide-y divide-white/5">
                 {backups.map(b => (
-                  <tr key={b.id} className="text-gray-300">
+                  <tr key={b.id} className="text-white/60">
                     <td className="py-2 pr-4">
-                      <span className="capitalize px-2 py-0.5 rounded text-xs bg-gray-700">{b.type}</span>
+                      <span className="capitalize px-2 py-0.5 rounded-md text-xs bg-white/[0.08] text-white/60">{b.type}</span>
                     </td>
-                    <td className="py-2 pr-4 whitespace-nowrap text-gray-400 text-xs">{fmt(b.createdAt)}</td>
+                    <td className="py-2 pr-4 whitespace-nowrap text-white/30 text-xs">{fmt(b.createdAt)}</td>
                     <td className="py-2 pr-4">{b.userCount}</td>
                     <td className="py-2 pr-4">{b.workoutCount}</td>
                     <td className="py-2 pr-4">
@@ -285,7 +289,7 @@ function BackupsSection() {
                         ? <CheckCircle size={14} className="text-green-400" />
                         : <XCircle size={14} className="text-red-400" />}
                     </td>
-                    <td className="py-2 pr-4 text-gray-400 text-xs">{b.triggeredBy ?? 'cron'}</td>
+                    <td className="py-2 pr-4 text-white/30 text-xs">{b.triggeredBy ?? 'cron'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -362,11 +366,11 @@ function UsersSection() {
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search by username or email…"
-          className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white placeholder-gray-500 flex-1 max-w-xs"
+          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 flex-1 max-w-xs focus:border-indigo-500/40 focus:outline-none transition"
         />
         <button
           onClick={exportCSV}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-700 hover:bg-gray-600 text-sm text-gray-200 transition"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/[0.06] hover:bg-white/10 border border-white/10 text-sm text-white/80 transition"
         >
           <Download size={14} /> Export CSV
         </button>
@@ -375,38 +379,38 @@ function UsersSection() {
       {error && <p className="text-red-400 text-sm">{error}</p>}
 
       {loading ? (
-        <p className="text-gray-400 text-sm">Loading…</p>
+        <p className="text-white/40 text-sm">Loading…</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-gray-400 text-left border-b border-gray-700">
+              <tr className="text-white/40 text-left border-b border-white/[0.08]">
                 {['Username', 'Email', 'Role', 'Workouts', 'Joined', 'Status', 'Actions'].map(h => (
                   <th key={h} className="pb-2 pr-4 font-medium">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800">
+            <tbody className="divide-y divide-white/5">
               {filtered.map(u => (
-                <tr key={u.username} className={`text-gray-300 ${u.status === 'deleted' ? 'opacity-50' : ''}`}>
-                  <td className="py-2 pr-4 font-mono text-xs">{u.username}</td>
-                  <td className="py-2 pr-4 text-gray-400">{u.email}</td>
+                <tr key={u.username} className={`text-white/60 ${u.status === 'deleted' ? 'opacity-50' : ''}`}>
+                  <td className="py-2 pr-4 font-mono text-xs text-indigo-300/80">{u.username}</td>
+                  <td className="py-2 pr-4 text-white/40">{u.email}</td>
                   <td className="py-2 pr-4">
-                    <span className="capitalize text-xs px-2 py-0.5 rounded bg-gray-700">{u.role}</span>
+                    <span className="capitalize text-xs px-2 py-0.5 rounded-md bg-white/[0.08]">{u.role}</span>
                   </td>
                   <td className="py-2 pr-4">{u.workoutCount}</td>
-                  <td className="py-2 pr-4 whitespace-nowrap text-gray-400">{fmt(u.createdAt)}</td>
+                  <td className="py-2 pr-4 whitespace-nowrap text-white/30">{fmt(u.createdAt)}</td>
                   <td className="py-2 pr-4">
                     {u.status === 'active'
-                      ? <span className="text-green-400 text-xs">active</span>
-                      : <span className="text-red-400 text-xs">deleted</span>}
+                      ? <span className="text-green-400/80 text-xs">active</span>
+                      : <span className="text-red-400/80 text-xs">deleted</span>}
                   </td>
                   <td className="py-2 pr-4">
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => exportUserJSON(u.username)}
                         title="Export JSON"
-                        className="text-gray-400 hover:text-gray-300"
+                        className="text-white/30 hover:text-white/60 transition"
                       >
                         <Download size={13} />
                       </button>
@@ -415,7 +419,7 @@ function UsersSection() {
                           onClick={() => softDelete(u.username)}
                           disabled={acting === u.username}
                           title="Disable user"
-                          className="text-red-400 hover:text-red-300 disabled:opacity-50"
+                          className="text-red-400/60 hover:text-red-400 disabled:opacity-50 transition"
                         >
                           <Trash2 size={13} />
                         </button>
@@ -424,7 +428,7 @@ function UsersSection() {
                           onClick={() => restore(u.username)}
                           disabled={acting === u.username}
                           title="Re-enable user"
-                          className="text-indigo-400 hover:text-indigo-300 disabled:opacity-50"
+                          className="text-indigo-400/60 hover:text-indigo-400 disabled:opacity-50 transition"
                         >
                           <RotateCcw size={13} />
                         </button>
@@ -435,7 +439,7 @@ function UsersSection() {
               ))}
             </tbody>
           </table>
-          <p className="text-gray-500 text-xs mt-2">{filtered.length} of {users.length} users</p>
+          <p className="text-white/25 text-xs mt-2">{filtered.length} of {users.length} users</p>
         </div>
       )}
     </div>
@@ -501,11 +505,11 @@ function SystemActionsSection() {
     <div className="space-y-6">
       {/* Actions */}
       <div>
-        <h3 className="text-gray-200 font-medium mb-3">Actions</h3>
+        <h3 className="text-white/70 font-medium mb-3">Actions</h3>
         <div className="flex flex-wrap gap-3">
           <button
             onClick={openSyncDialog}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-md bg-gray-800 hover:bg-gray-700 text-sm text-gray-200 border border-gray-700 transition"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/[0.06] hover:bg-white/10 text-sm text-white/80 border border-white/10 transition"
           >
             <Activity size={14} /> Force Strava Sync All
           </button>
@@ -514,16 +518,16 @@ function SystemActionsSection() {
 
       {/* Strava sync confirmation dialog */}
       {showSyncDialog && syncStats && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 max-w-md w-full mx-4 space-y-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-gray-950 border border-white/10 rounded-2xl p-6 max-w-md w-full mx-4 space-y-4 shadow-2xl">
             <div className="flex items-center gap-2 text-amber-400">
               <AlertTriangle size={18} />
               <h3 className="font-semibold">Confirm: Force Strava Sync All</h3>
             </div>
-            <div className="bg-gray-800 rounded-lg p-4 text-sm space-y-2 text-gray-300">
-              <p><span className="text-gray-400">Active users:</span> <strong>{syncStats.userCount}</strong></p>
-              <p><span className="text-gray-400">Strava API calls:</span> <strong>~{syncStats.userCount * 5}</strong></p>
-              <p><span className="text-gray-400">Rate limit:</span> 100 req / 15 min, 1,000 req / day</p>
+            <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl p-4 text-sm space-y-2 text-white/60">
+              <p><span className="text-white/40">Active users:</span> <strong className="text-white">{syncStats.userCount}</strong></p>
+              <p><span className="text-white/40">Strava API calls:</span> <strong className="text-white">~{syncStats.userCount * 5}</strong></p>
+              <p><span className="text-white/40">Rate limit:</span> 100 req / 15 min, 1,000 req / day</p>
               <p className={syncStats.userCount * 5 > 100 ? 'text-amber-400' : 'text-green-400'}>
                 {syncStats.userCount * 5 > 1000
                   ? '⚠ Exceeds daily limit — will hit rate cap'
@@ -536,14 +540,14 @@ function SystemActionsSection() {
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowSyncDialog(false)}
-                className="px-4 py-2 rounded-md bg-gray-700 hover:bg-gray-600 text-sm text-gray-200"
+                className="px-4 py-2 rounded-lg bg-white/[0.06] hover:bg-white/10 border border-white/10 text-sm text-white/80 transition"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmSync}
                 disabled={syncing}
-                className="px-4 py-2 rounded-md bg-indigo-600 hover:bg-indigo-500 text-sm text-white disabled:opacity-50"
+                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm text-white shadow-md disabled:opacity-50 transition"
               >
                 {syncing ? 'Syncing…' : 'Confirm'}
               </button>
@@ -554,15 +558,15 @@ function SystemActionsSection() {
 
       {/* Log viewer */}
       <div>
-        <div className="flex items-center gap-1 mb-3">
+        <div className="inline-flex items-center gap-1 mb-3 bg-white/[0.03] border border-white/[0.08] rounded-lg p-1">
           {(['actions', 'cron'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setLogTab(tab)}
               className={`px-3 py-1.5 rounded-md text-sm capitalize transition ${
                 logTab === tab
-                  ? 'bg-gray-700 text-white'
-                  : 'text-gray-400 hover:text-gray-200'
+                  ? 'bg-white/10 text-white'
+                  : 'text-white/40 hover:text-white/60'
               }`}
             >
               {tab === 'actions' ? 'Admin Actions' : 'Cron Logs'}
@@ -571,18 +575,18 @@ function SystemActionsSection() {
         </div>
 
         {logsLoading ? (
-          <p className="text-gray-400 text-sm">Loading logs…</p>
+          <p className="text-white/40 text-sm">Loading logs…</p>
         ) : displayLogs.length === 0 ? (
-          <p className="text-gray-400 text-sm">No logs yet.</p>
+          <p className="text-white/40 text-sm">No logs yet.</p>
         ) : (
-          <div className="space-y-1 max-h-96 overflow-y-auto">
+          <div className="space-y-1.5 max-h-96 overflow-y-auto">
             {displayLogs.map(log => (
-              <div key={log.id} className="bg-gray-800 rounded px-3 py-2 text-xs flex items-start gap-3">
-                <span className="text-gray-500 whitespace-nowrap">{fmt(log.timestamp)}</span>
+              <div key={log.id} className="bg-white/[0.03] border border-white/5 rounded-lg px-3 py-2.5 text-xs flex items-start gap-3">
+                <span className="text-white/30 whitespace-nowrap">{fmt(log.timestamp)}</span>
                 <span className="font-mono text-indigo-300">{log.action}</span>
-                {log.targetUid && <span className="text-gray-400">user: {log.targetUid}</span>}
-                {log.type && <span className="text-gray-400">type: {log.type}</span>}
-                <span className="text-gray-500 ml-auto">by {log.adminUid}</span>
+                {log.targetUid && <span className="text-white/40">user: {log.targetUid}</span>}
+                {log.type && <span className="text-white/40">type: {log.type}</span>}
+                <span className="text-white/30 ml-auto">by {log.adminUid}</span>
               </div>
             ))}
           </div>
@@ -628,38 +632,67 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 w-full max-w-sm space-y-6">
-        <div className="flex items-center gap-2">
-          <Shield className="text-indigo-400" size={24} />
-          <h1 className="text-white text-xl font-semibold">Admin</h1>
-        </div>
-        <p className="text-gray-400 text-sm">
-          Sign in with your admin Google account to continue.
-        </p>
-        {error && (
-          <div className="flex items-center gap-2 text-red-400 text-sm bg-red-950/40 rounded-lg px-3 py-2">
-            <XCircle size={14} />
-            {error}
+    <div className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background gradient glows */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px]" />
+        <div className="absolute top-1/2 -left-40 w-[400px] h-[400px] bg-blue-900/10 rounded-full blur-[100px]" />
+        <div className="absolute -bottom-40 right-1/3 w-80 h-80 bg-indigo-600/5 rounded-full blur-[80px]" />
+      </div>
+
+      <div className="w-full max-w-sm relative z-10">
+        {/* Logo & branding */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-indigo-600/15 border border-indigo-500/20 shadow-xl shadow-indigo-900/20 mb-4">
+            <Shield className="w-8 h-8 text-indigo-400" />
           </div>
-        )}
-        <button
-          onClick={signInWithGoogle}
-          disabled={loading}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-white hover:bg-gray-100 text-gray-900 text-sm font-medium disabled:opacity-60 transition"
-        >
-          {loading ? (
-            <RefreshCw size={16} className="animate-spin" />
-          ) : (
-            <svg viewBox="0 0 24 24" width="18" height="18">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-            </svg>
+          <h1 className="text-2xl font-black text-white uppercase tracking-tight">Admin Access</h1>
+          <p className="text-white/30 mt-1 text-sm">The Daily Athlete</p>
+        </div>
+
+        {/* Card */}
+        <div className="bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl shadow-black/40 space-y-6">
+          {/* Restricted area badge */}
+          <div className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-indigo-500/[0.08] border border-indigo-500/15">
+            <Lock className="w-3.5 h-3.5 text-indigo-400/70" />
+            <span className="text-xs text-indigo-300/70 font-medium tracking-wide uppercase">Restricted Area</span>
+          </div>
+
+          <p className="text-white/40 text-sm text-center">
+            Sign in with your authorized Google account to continue.
+          </p>
+
+          {error && (
+            <div className="flex items-center gap-2.5 text-red-400 text-sm bg-red-950/40 border border-red-500/20 rounded-lg px-4 py-3">
+              <XCircle size={16} className="shrink-0" />
+              <span>{error}</span>
+            </div>
           )}
-          {loading ? 'Signing in…' : 'Continue with Google'}
-        </button>
+
+          <button
+            onClick={signInWithGoogle}
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl bg-white hover:bg-gray-50 text-gray-800 text-sm font-semibold disabled:opacity-60 transition-all duration-200 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-black/30 hover:-translate-y-0.5 active:translate-y-0"
+          >
+            {loading ? (
+              <RefreshCw size={16} className="animate-spin" />
+            ) : (
+              <svg viewBox="0 0 24 24" width="18" height="18">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+              </svg>
+            )}
+            {loading ? 'Signing in…' : 'Continue with Google'}
+          </button>
+
+          {/* Security footer */}
+          <div className="flex items-center justify-center gap-1.5 pt-2">
+            <Shield className="w-3 h-3 text-white/15" />
+            <span className="text-[11px] text-white/15">Protected by Firebase Auth</span>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -707,16 +740,18 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
+    <div className="min-h-screen bg-black text-white/80">
       {/* Header */}
-      <header className="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Shield size={20} className="text-indigo-400" />
+      <header className="bg-white/[0.02] backdrop-blur-xl border-b border-white/[0.08] px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-indigo-600/15 border border-indigo-500/20 flex items-center justify-center">
+            <Shield size={16} className="text-indigo-400" />
+          </div>
           <span className="font-semibold text-white">CoachTrack Admin</span>
         </div>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-1.5 text-gray-400 hover:text-gray-200 text-sm transition"
+          className="flex items-center gap-1.5 text-white/40 hover:text-white/70 hover:bg-white/5 rounded-lg px-3 py-1.5 text-sm transition"
         >
           <LogOut size={14} /> Sign out
         </button>
@@ -724,15 +759,15 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         {/* Tab nav */}
-        <nav className="flex gap-1">
+        <nav className="inline-flex gap-1 bg-white/[0.03] border border-white/[0.08] rounded-xl p-1">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setTab(id)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm transition ${
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm transition-all ${
                 tab === id
-                  ? 'bg-gray-800 text-white'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+                  ? 'bg-indigo-600/15 text-indigo-300 border border-indigo-500/20 shadow-sm'
+                  : 'text-white/40 hover:text-white/60 hover:bg-white/5 border border-transparent'
               }`}
             >
               <Icon size={14} />
@@ -742,7 +777,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         </nav>
 
         {/* Tab content */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <div className="bg-white/[0.02] backdrop-blur-sm border border-white/[0.08] rounded-xl p-6">
           {tab === 'overview' && <OverviewSection stats={stats} />}
           {tab === 'backups' && <BackupsSection />}
           {tab === 'users' && <UsersSection />}
@@ -767,8 +802,17 @@ export default function AdminPage() {
 
   if (checking) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <RefreshCw size={24} className="animate-spin text-gray-500" />
+      <div className="min-h-screen bg-black flex items-center justify-center relative overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px]" />
+          <div className="absolute top-1/2 -left-40 w-[400px] h-[400px] bg-blue-900/10 rounded-full blur-[100px]" />
+        </div>
+        <div className="flex flex-col items-center gap-3 relative z-10">
+          <div className="w-12 h-12 rounded-xl bg-indigo-600/15 border border-indigo-500/20 flex items-center justify-center animate-pulse">
+            <Shield className="w-6 h-6 text-indigo-400" />
+          </div>
+          <p className="text-white/30 text-xs font-medium tracking-wide">Verifying session...</p>
+        </div>
       </div>
     );
   }

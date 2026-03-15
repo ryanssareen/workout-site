@@ -27,7 +27,7 @@ export function Navbar() {
   ], []);
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-border/60 bg-card/95 backdrop-blur-lg shadow-sm pt-[env(safe-area-inset-top)]">
+    <nav className="sticky top-0 z-50 border-b border-border/60 bg-card/95 backdrop-blur-lg shadow-sm" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <Link href="/dashboard" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
