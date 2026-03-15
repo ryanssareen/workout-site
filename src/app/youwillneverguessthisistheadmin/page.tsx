@@ -141,24 +141,45 @@ function OverviewSection({ stats }: { stats: OverviewStats | null }) {
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {cards.map(({ label, value, icon: Icon, gradient, border, iconColor, valueColor }) => (
-        <div
-          key={label}
-          className={`relative overflow-hidden rounded-2xl border ${border} bg-gradient-to-br ${gradient} p-5 backdrop-blur-sm transition-all hover:scale-[1.02]`}
-        >
-          <div className="absolute top-3 right-3 opacity-[0.08]">
-            <Icon size={48} />
-          </div>
-          <div className="relative">
-            <div className={`w-9 h-9 rounded-xl bg-black/30 flex items-center justify-center mb-3`}>
-              <Icon size={18} className={iconColor} />
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {cards.map(({ label, value, icon: Icon, gradient, border, iconColor, valueColor }) => (
+          <div
+            key={label}
+            className={`group relative overflow-hidden rounded-2xl border ${border} bg-gradient-to-br ${gradient} p-5 backdrop-blur-sm transition-all duration-300 hover:scale-[1.03] hover:shadow-lg cursor-default`}
+          >
+            <div className="absolute top-3 right-3 opacity-[0.06] group-hover:opacity-[0.12] transition-opacity duration-300">
+              <Icon size={52} />
             </div>
-            <p className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-1">{label}</p>
-            <p className={`text-3xl font-black ${valueColor}`}>{value}</p>
+            <div className="relative">
+              <div className="w-10 h-10 rounded-xl bg-black/30 border border-white/[0.05] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                <Icon size={20} className={iconColor} />
+              </div>
+              <p className="text-white/45 text-[11px] font-bold uppercase tracking-widest mb-1.5">{label}</p>
+              <p className={`text-3xl font-black tracking-tight ${valueColor}`}>{value}</p>
+            </div>
           </div>
+        ))}
+      </div>
+
+      {/* Quick status bar */}
+      <div className="flex flex-wrap gap-3">
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+          <div className="w-2 h-2 rounded-full bg-green-400 shadow-lg shadow-green-400/50" />
+          <span className="text-white/40 text-xs">Firebase</span>
+          <span className="text-green-400/80 text-xs font-medium">Connected</span>
         </div>
-      ))}
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+          <div className="w-2 h-2 rounded-full bg-green-400 shadow-lg shadow-green-400/50" />
+          <span className="text-white/40 text-xs">Strava API</span>
+          <span className="text-green-400/80 text-xs font-medium">Active</span>
+        </div>
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+          <div className="w-2 h-2 rounded-full bg-green-400 shadow-lg shadow-green-400/50" />
+          <span className="text-white/40 text-xs">Cron Jobs</span>
+          <span className="text-green-400/80 text-xs font-medium">Running</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -263,24 +284,35 @@ function BackupsSection() {
 
   return (
     <div className="space-y-6">
-      {/* Action buttons */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <button
-          onClick={logSnapshot}
-          disabled={creating}
-          className="group flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/15 text-sm text-white/70 hover:text-white disabled:opacity-50 transition-all"
-        >
-          <RefreshCw size={15} className={creating ? 'animate-spin' : 'group-hover:rotate-90 transition-transform duration-300'} />
-          {creating ? 'Logging…' : 'Log snapshot'}
-        </button>
-        <button
-          onClick={downloadBackup}
-          disabled={downloading}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-sm text-white font-medium shadow-lg shadow-red-900/30 disabled:opacity-50 transition-all hover:-translate-y-0.5 active:translate-y-0"
-        >
-          <Download size={15} className={downloading ? 'animate-bounce' : ''} />
-          {downloading ? 'Generating…' : 'Download full backup'}
-        </button>
+      {/* Section header */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/15 flex items-center justify-center">
+            <Database size={16} className="text-blue-400" />
+          </div>
+          <div>
+            <h2 className="text-white font-bold text-sm">Backup Management</h2>
+            <p className="text-white/30 text-xs">Snapshots, downloads, and recovery</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={logSnapshot}
+            disabled={creating}
+            className="group flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/15 text-sm text-white/70 hover:text-white disabled:opacity-50 transition-all"
+          >
+            <RefreshCw size={15} className={creating ? 'animate-spin' : 'group-hover:rotate-90 transition-transform duration-300'} />
+            {creating ? 'Logging…' : 'Log snapshot'}
+          </button>
+          <button
+            onClick={downloadBackup}
+            disabled={downloading}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-sm text-white font-medium shadow-lg shadow-red-900/30 disabled:opacity-50 transition-all hover:-translate-y-0.5 active:translate-y-0"
+          >
+            <Download size={15} className={downloading ? 'animate-bounce' : ''} />
+            {downloading ? 'Generating…' : 'Download full backup'}
+          </button>
+        </div>
       </div>
 
       {/* Restore from file */}
@@ -431,6 +463,25 @@ function UsersSection() {
 
   return (
     <div className="space-y-4">
+      {/* Section header */}
+      <div className="flex items-center justify-between flex-wrap gap-4 mb-2">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/15 flex items-center justify-center">
+            <Users size={16} className="text-purple-400" />
+          </div>
+          <div>
+            <h2 className="text-white font-bold text-sm">User Management</h2>
+            <p className="text-white/30 text-xs">{users.length} registered users</p>
+          </div>
+        </div>
+        <button
+          onClick={exportCSV}
+          className="group flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/15 text-sm text-white/70 hover:text-white transition-all"
+        >
+          <Download size={14} className="group-hover:-translate-y-0.5 transition-transform" /> Export CSV
+        </button>
+      </div>
+
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 max-w-sm">
           <Eye size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/25" />
@@ -441,12 +492,6 @@ function UsersSection() {
             className="w-full pl-10 pr-4 py-2.5 bg-black/30 border border-white/[0.08] rounded-xl text-sm text-white placeholder-white/25 focus:border-red-500/40 focus:outline-none focus:ring-1 focus:ring-red-500/20 transition-all"
           />
         </div>
-        <button
-          onClick={exportCSV}
-          className="group flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/15 text-sm text-white/70 hover:text-white transition-all"
-        >
-          <Download size={14} className="group-hover:-translate-y-0.5 transition-transform" /> Export CSV
-        </button>
       </div>
 
       {error && (
@@ -591,9 +636,20 @@ function SystemActionsSection() {
 
   return (
     <div className="space-y-6">
+      {/* Section header */}
+      <div className="flex items-center gap-3 mb-2">
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500/20 to-amber-500/20 border border-orange-500/15 flex items-center justify-center">
+          <Settings size={16} className="text-orange-400" />
+        </div>
+        <div>
+          <h2 className="text-white font-bold text-sm">System & Actions</h2>
+          <p className="text-white/30 text-xs">Integrations, sync, and activity logs</p>
+        </div>
+      </div>
+
       {/* Actions */}
       <div>
-        <h3 className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-3">Actions</h3>
+        <h3 className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-3">Quick Actions</h3>
         <div className="flex flex-wrap gap-3">
           <button
             onClick={openSyncDialog}
@@ -857,28 +913,55 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
       <AnimatedBackground />
 
       {/* Header */}
-      <header className="relative z-10 bg-black/50 backdrop-blur-2xl border-b border-white/[0.06]">
+      <header className="relative z-10 bg-gradient-to-r from-black/80 via-red-950/20 to-black/80 backdrop-blur-2xl border-b border-white/[0.06]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-red-600/20 to-red-900/20 border border-red-500/20 flex items-center justify-center shadow-lg shadow-red-900/20">
-              <Shield size={18} className="text-red-400" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500/25 to-red-900/25 border border-red-500/25 flex items-center justify-center shadow-lg shadow-red-900/25">
+              <Shield size={20} className="text-red-400" />
             </div>
-            <div>
-              <span className="font-bold text-white text-sm">The Daily Athlete</span>
-              <span className="text-white/20 mx-2 text-xs">/</span>
-              <span className="text-red-400/60 text-xs font-medium">Admin</span>
+            <div className="flex flex-col">
+              <span className="font-black text-white text-sm tracking-tight leading-tight">THE DAILY ATHLETE</span>
+              <span className="text-red-400/50 text-[10px] font-semibold uppercase tracking-widest">Admin Console</span>
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 text-white/30 hover:text-white/70 hover:bg-white/[0.05] rounded-xl px-4 py-2 text-sm transition-all"
-          >
-            <LogOut size={15} /> Sign out
-          </button>
+          <div className="flex items-center gap-4">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/15">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+              <span className="text-green-400/80 text-xs font-medium">System Online</span>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 text-white/30 hover:text-red-300 hover:bg-red-500/10 rounded-xl px-4 py-2 text-sm transition-all"
+            >
+              <LogOut size={15} /> Sign out
+            </button>
+          </div>
         </div>
       </header>
 
       <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+        {/* Welcome banner */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-red-600/10 via-red-900/[0.08] to-orange-600/10 border border-red-500/10 p-6">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/[0.05] rounded-full blur-[80px] -translate-y-1/2 translate-x-1/3" />
+          <div className="relative flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-black text-white tracking-tight">Welcome back, Admin</h1>
+              <p className="text-white/35 text-sm mt-1">Manage users, monitor backups, and keep things running smoothly.</p>
+            </div>
+            <div className="hidden md:flex items-center gap-3">
+              <div className="text-right">
+                <p className="text-white/25 text-xs">Current time</p>
+                <p className="text-white/60 text-sm font-mono">{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
+              </div>
+              <div className="w-px h-8 bg-white/[0.06]" />
+              <div className="text-right">
+                <p className="text-white/25 text-xs">Environment</p>
+                <p className="text-emerald-400/70 text-sm font-medium">Production</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Tab nav */}
         <nav className="inline-flex gap-1 bg-black/40 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-1.5 shadow-xl shadow-black/20">
           {TABS.map(({ id, label, icon: Icon }) => (
@@ -903,6 +986,12 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           {tab === 'backups' && <BackupsSection />}
           {tab === 'users' && <UsersSection />}
           {tab === 'system' && <SystemActionsSection />}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-center gap-2 pb-4">
+          <Shield size={12} className="text-white/[0.08]" />
+          <span className="text-white/[0.08] text-xs tracking-wide">The Daily Athlete Admin Console</span>
         </div>
       </div>
     </div>
