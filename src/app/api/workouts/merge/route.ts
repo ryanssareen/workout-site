@@ -98,6 +98,9 @@ export async function POST(req: NextRequest) {
     if (strava.hasStravaPhotos) mergeData.hasStravaPhotos = true;
     if (strava.laps) mergeData.laps = strava.laps;
     if (strava.splits) mergeData.splits = strava.splits;
+    if (strava.splitsMetric) mergeData.splitsMetric = strava.splitsMetric;
+    if (strava.splitsStandard) mergeData.splitsStandard = strava.splitsStandard;
+    if (strava.stravaExtended) mergeData.stravaExtended = strava.stravaExtended;
     if (strava.photos && strava.photos.length > 0) mergeData.photos = strava.photos;
     if (strava.stravaDetailsFetched) mergeData.stravaDetailsFetched = true;
     if (strava.stravaData) mergeData.stravaData = strava.stravaData;

@@ -27,6 +27,20 @@ function getRateLimitMessage(resp: Response): { message: string; isDaily: boolea
   return { message: 'Strava rate limit reached. Try again in a few minutes.', isDaily: false, isCooldown: false };
 }
 
+async function fetchGearDetails(gearId: string | undefined, accessToken: string): Promise<any | null> {
+  if (!gearId) return null;
+  try {
+    const resp = await fetch(
+      `https://www.strava.com/api/v3/gear/${gearId}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    if (!resp.ok) return null;
+    return resp.json();
+  } catch {
+    return null;
+  }
+}
+
 /**
  * On-demand endpoint to fetch detailed Strava activity data (laps & splits)
  * for a specific workout. Used when viewing older workouts that were synced
@@ -67,6 +81,11 @@ export async function GET(request: NextRequest) {
         cached: true,
         laps: workout.laps || [],
         splits: workout.splits || [],
+        splitsMetric: workout.splitsMetric || [],
+        splitsStandard: workout.splitsStandard || [],
+        bestEfforts: workout.stravaExtended?.bestEfforts || [],
+        segmentEfforts: workout.stravaExtended?.segmentEfforts || [],
+        stravaExtended: workout.stravaExtended || null,
         photos: workout.photos || [],
       });
     }
@@ -158,7 +177,7 @@ export async function GET(request: NextRequest) {
       ...(lap.total_elevation_gain != null ? { totalElevationGain: lap.total_elevation_gain } : {}),
     }));
 
-    const splits = (detail.splits_metric || []).map((s: any) => ({
+    const splitsMetric = (detail.splits_metric || []).map((s: any) => ({
       split: s.split,
       distance: s.distance,
       elapsedTime: s.elapsed_time,
@@ -167,6 +186,79 @@ export async function GET(request: NextRequest) {
       ...(s.elevation_difference != null ? { elevationDifference: s.elevation_difference } : {}),
       ...(s.pace_zone != null ? { paceZone: s.pace_zone } : {}),
     }));
+    const splitsStandard = (detail.splits_standard || []).map((s: any) => ({
+      split: s.split,
+      distance: s.distance,
+      elapsedTime: s.elapsed_time,
+      movingTime: s.moving_time,
+      avgSpeed: s.average_speed,
+      ...(s.elevation_difference != null ? { elevationDifference: s.elevation_difference } : {}),
+      ...(s.pace_zone != null ? { paceZone: s.pace_zone } : {}),
+    }));
+    const splits = splitsMetric.length > 0 ? splitsMetric : splitsStandard;
+
+    const bestEfforts = Array.isArray(detail.best_efforts)
+      ? detail.best_efforts.map((effort: any) => ({
+          ...(effort.id != null ? { id: effort.id } : {}),
+          ...(effort.name ? { name: effort.name } : {}),
+          ...(effort.elapsed_time != null ? { elapsedTime: effort.elapsed_time } : {}),
+          ...(effort.moving_time != null ? { movingTime: effort.moving_time } : {}),
+          ...(effort.start_date ? { startDate: effort.start_date } : {}),
+          ...(effort.distance != null ? { distance: effort.distance } : {}),
+          ...(effort.pr_rank != null ? { prRank: effort.pr_rank } : {}),
+          ...(effort.achievement_count != null ? { achievementCount: effort.achievement_count } : {}),
+        }))
+      : [];
+
+    const segmentEfforts = Array.isArray(detail.segment_efforts)
+      ? detail.segment_efforts.map((effort: any) => ({
+          ...(effort.id != null ? { id: effort.id } : {}),
+          ...(effort.name ? { name: effort.name } : {}),
+          ...(effort.elapsed_time != null ? { elapsedTime: effort.elapsed_time } : {}),
+          ...(effort.moving_time != null ? { movingTime: effort.moving_time } : {}),
+          ...(effort.start_date ? { startDate: effort.start_date } : {}),
+          ...(effort.distance != null ? { distance: effort.distance } : {}),
+          ...(effort.average_cadence != null ? { averageCadence: effort.average_cadence } : {}),
+          ...(effort.average_watts != null ? { averageWatts: effort.average_watts } : {}),
+          ...(effort.device_watts != null ? { deviceWatts: effort.device_watts } : {}),
+          ...(effort.average_heartrate != null ? { averageHeartrate: effort.average_heartrate } : {}),
+          ...(effort.max_heartrate != null ? { maxHeartrate: effort.max_heartrate } : {}),
+          ...(effort.kom_rank != null ? { komRank: effort.kom_rank } : {}),
+          ...(effort.pr_rank != null ? { prRank: effort.pr_rank } : {}),
+          ...(effort.achievement_count != null ? { achievementCount: effort.achievement_count } : {}),
+        }))
+      : [];
+
+    const gearRaw = await fetchGearDetails(detail.gear_id, accessToken);
+    const gear = detail.gear_id
+      ? {
+          id: String(detail.gear_id),
+          ...(gearRaw?.name ? { name: gearRaw.name } : {}),
+          ...(gearRaw?.nickname ? { nickname: gearRaw.nickname } : {}),
+          ...(gearRaw?.brand_name ? { brandName: gearRaw.brand_name } : {}),
+          ...(gearRaw?.model_name ? { modelName: gearRaw.model_name } : {}),
+          ...(gearRaw?.distance != null ? { distance: gearRaw.distance } : {}),
+          ...(gearRaw?.primary != null ? { primary: gearRaw.primary } : {}),
+          ...(gearRaw?.resource_state != null ? { resourceState: gearRaw.resource_state } : {}),
+        }
+      : null;
+
+    const stravaExtended: any = {
+      ...(detail.elapsed_time != null ? { elapsedTime: detail.elapsed_time } : {}),
+      ...(detail.suffer_score != null ? { sufferScore: detail.suffer_score } : {}),
+      ...(detail.perceived_exertion != null ? { perceivedExertion: detail.perceived_exertion } : {}),
+      ...(detail.description ? { description: detail.description } : {}),
+      ...(detail.device_name ? { deviceName: detail.device_name } : {}),
+      ...(detail.average_cadence != null ? { averageCadence: detail.average_cadence } : {}),
+      ...(detail.average_temp != null ? { averageTemp: detail.average_temp } : {}),
+      ...(detail.weighted_average_watts != null ? { weightedAverageWatts: detail.weighted_average_watts } : {}),
+      ...(detail.kilojoules != null ? { kilojoules: detail.kilojoules } : {}),
+      ...(detail.has_heartrate != null ? { hasHeartrate: detail.has_heartrate } : {}),
+      ...(detail.pr_count != null ? { prCount: detail.pr_count } : {}),
+      ...(gear ? { gear } : {}),
+      ...(bestEfforts.length > 0 ? { bestEfforts } : {}),
+      ...(segmentEfforts.length > 0 ? { segmentEfforts } : {}),
+    };
 
     // Fetch photos if activity has them (detail response includes photo count)
     let photos: string[] = [];
@@ -194,7 +286,11 @@ export async function GET(request: NextRequest) {
     const updateData: any = { stravaDetailsFetched: true };
     if (laps.length > 0) updateData.laps = laps;
     if (splits.length > 0) updateData.splits = splits;
+    if (splitsMetric.length > 0) updateData.splitsMetric = splitsMetric;
+    if (splitsStandard.length > 0) updateData.splitsStandard = splitsStandard;
     if (photos.length > 0) updateData.photos = photos;
+    if (photos.length > 0 || detail.total_photo_count > 0 || workout.hasStravaPhotos) updateData.hasStravaPhotos = true;
+    if (Object.keys(stravaExtended).length > 0) updateData.stravaExtended = stravaExtended;
 
     await workoutRef.update(updateData);
 
@@ -202,6 +298,11 @@ export async function GET(request: NextRequest) {
       cached: false,
       laps,
       splits,
+      splitsMetric,
+      splitsStandard,
+      bestEfforts,
+      segmentEfforts,
+      stravaExtended,
       photos,
     });
   } catch (error: any) {

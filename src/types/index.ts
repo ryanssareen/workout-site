@@ -107,6 +107,62 @@ export interface StravaSplit {
   paceZone?: number;
 }
 
+export interface StravaGear {
+  id: string;
+  name?: string;
+  nickname?: string;
+  brandName?: string;
+  modelName?: string;
+  distance?: number; // meters
+  primary?: boolean;
+  resourceState?: number;
+}
+
+export interface StravaBestEffort {
+  id?: number;
+  name?: string;
+  elapsedTime?: number;
+  movingTime?: number;
+  startDate?: string;
+  distance?: number;
+  prRank?: number | null;
+  achievementCount?: number;
+}
+
+export interface StravaSegmentEffort {
+  id?: number;
+  name?: string;
+  elapsedTime?: number;
+  movingTime?: number;
+  startDate?: string;
+  distance?: number;
+  averageCadence?: number;
+  averageWatts?: number;
+  deviceWatts?: boolean;
+  averageHeartrate?: number;
+  maxHeartrate?: number;
+  komRank?: number | null;
+  prRank?: number | null;
+  achievementCount?: number;
+}
+
+export interface StravaExtendedData {
+  elapsedTime?: number; // total time including stops (seconds)
+  sufferScore?: number;
+  perceivedExertion?: number;
+  description?: string;
+  deviceName?: string;
+  averageCadence?: number;
+  averageTemp?: number;
+  weightedAverageWatts?: number;
+  kilojoules?: number;
+  hasHeartrate?: boolean;
+  prCount?: number;
+  gear?: StravaGear | null;
+  bestEfforts?: StravaBestEffort[];
+  segmentEfforts?: StravaSegmentEffort[];
+}
+
 export type WorkoutRating = 'too_easy' | 'just_right' | 'too_hard';
 
 export interface Workout {
@@ -147,11 +203,15 @@ export interface Workout {
   completionStatus?: 'pending' | 'completed' | 'skipped';
   actualStats?: StravaActivityStats;
   routeData?: RouteData; // Map route from Strava
+  hasStravaPhotos?: boolean;
   photos?: string[]; // Photo URLs (from Strava or uploaded)
   // Strava detailed data (laps & splits) — fetched via GET /activities/{id}
   stravaDetailsFetched?: boolean; // true if detailed activity data has been fetched
   laps?: StraveLap[];
   splits?: StravaSplit[];
+  splitsMetric?: StravaSplit[];
+  splitsStandard?: StravaSplit[];
+  stravaExtended?: StravaExtendedData;
   // Manual completion fields
   completionNotes?: string;
   completedBy?: 'manual' | 'strava';

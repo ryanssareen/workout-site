@@ -258,7 +258,7 @@ function pickBestPlannedCandidate(
   candidates: Array<{ id: string; data: any }>,
   userTimezone: string
 ): PlannedMatchResult {
-  const activityDate = new Date(activity.start_date);
+  const activityDate = new Date(activity.start_date_local || activity.start_date);
   const activityDayKey = getDayKey(activityDate, userTimezone);
 
   const sameDayCandidates = candidates.filter((candidate) => {
@@ -713,35 +713,11 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
     const activities = result.activities || [];
     console.log(`✅ Fetched ${activities.length} activities`);
 
-    // ── Filter already-imported activities ──
-    let activitiesToProcess: any[];
-
-    if (quotaSafe) {
-      // Quota-safe mode: skip the batch query. We use deterministic doc IDs (strava_{id})
-      // so set() will just overwrite if they exist — no reads needed.
-      activitiesToProcess = activities;
-      console.log(`📦 Quota-safe: processing all ${activities.length} activities (using deterministic doc IDs)`);
-    } else {
-      // Normal mode: query existing Strava workout IDs to filter duplicates
-      const existingWorkoutsSnapshot = await adminDb
-        .collection('users').doc(userId).collection('workouts')
-        .where('source', '==', 'strava')
-        .get();
-
-      const existingStravaIds = new Set(
-        existingWorkoutsSnapshot.docs.map(doc => String(doc.data().stravaActivityId))
-      );
-
-      console.log(`📊 Found ${existingStravaIds.size} existing Strava workouts`);
-
-      activitiesToProcess = [];
-      for (const activity of activities) {
-        if (!existingStravaIds.has(String(activity.id))) {
-          activitiesToProcess.push(activity);
-        }
-      }
-      console.log(`🆕 Processing ${activitiesToProcess.length} new activities`);
-    }
+    // Process all fetched activities so we can reconcile:
+    // - existing standalone Strava docs
+    // - later-created planned workouts that should become canonical
+    const activitiesToProcess: any[] = activities;
+    console.log(`📦 Reconciling ${activitiesToProcess.length} activities (mode=${quotaSafe ? 'quota-safe' : 'normal'})`);
 
     // Process activities one at a time to avoid duplicates
     let newWorkoutsCount = 0;
@@ -765,7 +741,7 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
     const importedCandidatePoolsByType: Record<string, Array<{ id: string; data: any }>> = {};
     if (activitiesToProcess.length > 0) {
       const activityDates = activitiesToProcess
-        .map((activity) => new Date(activity.start_date))
+        .map((activity) => new Date(activity.start_date_local || activity.start_date))
         .filter((date) => !Number.isNaN(date.getTime()));
 
       if (activityDates.length > 0) {
@@ -808,6 +784,7 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
     for (let i = 0; i < activitiesToProcess.length; i++) {
       const activity = activitiesToProcess[i];
       const stravaId = String(activity.id);
+      const standaloneId = `strava_${stravaId}`;
 
       // Skip if already processed in this sync run
       if (processedInThisSync.has(stravaId)) {
@@ -818,8 +795,12 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
 
       console.log(`📦 Processing ${i + 1}/${activitiesToProcess.length}: ${activity.name}`);
 
-      const activityDate = new Date(activity.start_date);
+      const activityDate = new Date(activity.start_date_local || activity.start_date);
       const workoutType = mapStravaType(activity.type);
+      const existingByStravaIdSnapshot = await workoutsCollection
+        .where('stravaActivityId', '==', stravaId)
+        .get();
+      const existingByStravaIdDocs = existingByStravaIdSnapshot.docs;
 
       // Prepare stats from Strava
       const actualStats: any = {};
@@ -867,7 +848,8 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
 
       if (plannedMatch.match) {
         console.log(`  🔗 Auto-planned merge: ${activity.name} → ${plannedMatch.match.data.name} (${plannedMatch.match.score})`);
-        await workoutsCollection.doc(plannedMatch.match.id).update({
+        const batch = adminDb.batch();
+        batch.update(workoutsCollection.doc(plannedMatch.match.id), {
           ...baseMergeData(),
           mergeMeta: {
             method: 'auto_planned',
@@ -877,6 +859,12 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
             candidateCount: plannedMatch.candidateCount,
           },
         });
+        for (const existingDoc of existingByStravaIdDocs) {
+          if (existingDoc.id !== plannedMatch.match.id) {
+            batch.delete(existingDoc.ref);
+          }
+        }
+        await batch.commit();
         plannedMatch.match.data.completed = true;
         plannedMatch.match.data.stravaActivityId = stravaId;
         mergedWorkoutsCount++;
@@ -898,7 +886,8 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
           );
           if (importedMatch.match) {
             console.log(`  📎 Auto-import merge: ${activity.name} → ${importedMatch.match.data.name}`);
-            await workoutsCollection.doc(importedMatch.match.id).update({
+            const batch = adminDb.batch();
+            batch.update(workoutsCollection.doc(importedMatch.match.id), {
               ...baseMergeData(),
               source: 'strava',
               mergeMeta: {
@@ -909,6 +898,12 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
                 candidateCount: importedMatch.candidateCount,
               },
             });
+            for (const existingDoc of existingByStravaIdDocs) {
+              if (existingDoc.id !== importedMatch.match.id) {
+                batch.delete(existingDoc.ref);
+              }
+            }
+            await batch.commit();
             importedMatch.match.data.stravaActivityId = stravaId;
             importedMatch.match.data.source = 'strava';
             mergedWorkoutsCount++;
@@ -921,8 +916,6 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
       }
 
       if (shouldCreate) {
-        console.log(`  ➕ Creating: ${activity.name}`);
-
         const newWorkoutData: any = {
           name: activity.name,
           type: workoutType,
@@ -982,8 +975,37 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
           };
         }
 
-        await workoutsCollection.doc(`strava_${stravaId}`).set(newWorkoutData);
-        newWorkoutsCount++;
+        // If this Strava activity already exists in any doc, reconcile instead of creating duplicate.
+        if (existingByStravaIdDocs.length > 0) {
+          const canonicalDoc =
+            existingByStravaIdDocs.find((d) => d.id !== standaloneId) ||
+            existingByStravaIdDocs.find((d) => d.id === standaloneId) ||
+            existingByStravaIdDocs[0];
+
+          const batch = adminDb.batch();
+          if (canonicalDoc.id === standaloneId) {
+            console.log(`  ♻️ Updating existing standalone Strava workout ${standaloneId}`);
+            batch.set(canonicalDoc.ref, newWorkoutData, { merge: true });
+          } else {
+            console.log(`  ♻️ Refreshing existing linked workout ${canonicalDoc.id} for Strava activity ${stravaId}`);
+            batch.update(canonicalDoc.ref, {
+              ...baseMergeData(),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
+
+          for (const existingDoc of existingByStravaIdDocs) {
+            if (existingDoc.id !== canonicalDoc.id) {
+              batch.delete(existingDoc.ref);
+            }
+          }
+          await batch.commit();
+          skippedCount++;
+        } else {
+          console.log(`  ➕ Creating: ${activity.name}`);
+          await workoutsCollection.doc(standaloneId).set(newWorkoutData);
+          newWorkoutsCount++;
+        }
       }
 
       // Mark as processed

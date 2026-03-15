@@ -127,6 +127,239 @@ async function fetchActivityDetails(activityId: string, accessToken: string) {
   return response.json();
 }
 
+async function fetchActivityPhotos(activityId: string, accessToken: string): Promise<string[]> {
+  try {
+    const resp = await fetch(
+      `https://www.strava.com/api/v3/activities/${activityId}/photos?size=600&photo_sources=true`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    if (!Array.isArray(data)) return [];
+
+    const photos: string[] = [];
+    for (const photo of data) {
+      const url = photo?.urls?.['600'] || photo?.urls?.['100'] || photo?.urls?.['0'];
+      if (typeof url === 'string' && url.length > 0) photos.push(url);
+    }
+    return photos;
+  } catch {
+    return [];
+  }
+}
+
+/** Fetch gear details — best-effort, returns null on any error or rate limit. */
+async function fetchGearDetails(gearId: string | undefined, accessToken: string): Promise<any | null> {
+  if (!gearId) return null;
+  try {
+    const resp = await fetch(
+      `https://www.strava.com/api/v3/gear/${gearId}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    if (!resp.ok) {
+      if (resp.status === 429) console.log('⚠️ Gear fetch rate-limited — skipping');
+      return null;
+    }
+    return resp.json();
+  } catch {
+    return null;
+  }
+}
+
+function mapLaps(lapsRaw: any): any[] {
+  if (!Array.isArray(lapsRaw)) return [];
+  return lapsRaw.map((lap: any, idx: number) => ({
+    index: idx + 1,
+    name: lap.name || `Lap ${idx + 1}`,
+    distance: lap.distance,
+    elapsedTime: lap.elapsed_time,
+    movingTime: lap.moving_time,
+    avgSpeed: lap.average_speed,
+    maxSpeed: lap.max_speed,
+    ...(lap.average_cadence != null ? { avgCadence: lap.average_cadence } : {}),
+    ...(lap.average_watts != null ? { avgWatts: lap.average_watts } : {}),
+    ...(lap.total_elevation_gain != null ? { totalElevationGain: lap.total_elevation_gain } : {}),
+  }));
+}
+
+function mapSplits(splitsRaw: any): any[] {
+  if (!Array.isArray(splitsRaw)) return [];
+  return splitsRaw.map((split: any) => ({
+    split: split.split,
+    distance: split.distance,
+    elapsedTime: split.elapsed_time,
+    movingTime: split.moving_time,
+    avgSpeed: split.average_speed,
+    ...(split.elevation_difference != null ? { elevationDifference: split.elevation_difference } : {}),
+    ...(split.pace_zone != null ? { paceZone: split.pace_zone } : {}),
+  }));
+}
+
+function mapBestEfforts(bestEffortsRaw: any): any[] {
+  if (!Array.isArray(bestEffortsRaw)) return [];
+  return bestEffortsRaw.map((effort: any) => ({
+    ...(effort.id != null ? { id: effort.id } : {}),
+    ...(effort.name ? { name: effort.name } : {}),
+    ...(effort.elapsed_time != null ? { elapsedTime: effort.elapsed_time } : {}),
+    ...(effort.moving_time != null ? { movingTime: effort.moving_time } : {}),
+    ...(effort.start_date ? { startDate: effort.start_date } : {}),
+    ...(effort.distance != null ? { distance: effort.distance } : {}),
+    ...(effort.pr_rank != null ? { prRank: effort.pr_rank } : {}),
+    ...(effort.achievement_count != null ? { achievementCount: effort.achievement_count } : {}),
+  }));
+}
+
+function mapSegmentEfforts(segmentEffortsRaw: any): any[] {
+  if (!Array.isArray(segmentEffortsRaw)) return [];
+  return segmentEffortsRaw.map((effort: any) => ({
+    ...(effort.id != null ? { id: effort.id } : {}),
+    ...(effort.name ? { name: effort.name } : {}),
+    ...(effort.elapsed_time != null ? { elapsedTime: effort.elapsed_time } : {}),
+    ...(effort.moving_time != null ? { movingTime: effort.moving_time } : {}),
+    ...(effort.start_date ? { startDate: effort.start_date } : {}),
+    ...(effort.distance != null ? { distance: effort.distance } : {}),
+    ...(effort.average_cadence != null ? { averageCadence: effort.average_cadence } : {}),
+    ...(effort.average_watts != null ? { averageWatts: effort.average_watts } : {}),
+    ...(effort.device_watts != null ? { deviceWatts: effort.device_watts } : {}),
+    ...(effort.average_heartrate != null ? { averageHeartrate: effort.average_heartrate } : {}),
+    ...(effort.max_heartrate != null ? { maxHeartrate: effort.max_heartrate } : {}),
+    ...(effort.kom_rank != null ? { komRank: effort.kom_rank } : {}),
+    ...(effort.pr_rank != null ? { prRank: effort.pr_rank } : {}),
+    ...(effort.achievement_count != null ? { achievementCount: effort.achievement_count } : {}),
+  }));
+}
+
+// ── Shared helpers for building workout fields from Strava activity data ──
+
+interface WorkoutFields {
+  actualStats: Record<string, any>;
+  routeData: Record<string, any>;
+  typeData: Record<string, any>;
+  stravaData: Record<string, any>;
+  stravaExtended: Record<string, any>;
+  laps: any[];
+  splits: any[];
+  splitsMetric: any[];
+  splitsStandard: any[];
+  timeMin: number;
+}
+
+function buildWorkoutFields(
+  activity: any,
+  workoutType: string,
+  photos: string[],
+  gearRaw: any | null,
+): WorkoutFields {
+  const actualStats: any = {};
+  if (activity.distance) actualStats.distance = activity.distance;
+  if (activity.moving_time) actualStats.duration = activity.moving_time;
+  if (activity.calories) actualStats.calories = activity.calories;
+  if (activity.average_heartrate) actualStats.avgHeartRate = activity.average_heartrate;
+  if (activity.max_heartrate) actualStats.maxHeartRate = activity.max_heartrate;
+  if (activity.average_speed) actualStats.avgSpeed = activity.average_speed;
+  if (activity.max_speed) actualStats.maxSpeed = activity.max_speed;
+  if (activity.total_elevation_gain) actualStats.elevationGain = activity.total_elevation_gain;
+
+  const routeData: any = {};
+  if (activity.map?.summary_polyline) routeData.polyline = activity.map.summary_polyline;
+  if (activity.start_latlng) routeData.startLatLng = activity.start_latlng;
+  if (activity.end_latlng) routeData.endLatLng = activity.end_latlng;
+
+  const distKm = (activity.distance || 0) / 1000;
+  const timeMin = Math.round((activity.moving_time || 0) / 60);
+
+  const typeData: any = {};
+  if (workoutType === 'run') {
+    typeData.run = {
+      distance: Math.round(distKm * 100) / 100,
+      distanceUnit: 'km',
+      time: timeMin,
+      ...(activity.total_elevation_gain ? { elevationGain: Math.round(activity.total_elevation_gain) } : {}),
+      ...(activity.average_heartrate ? { avgHeartRate: Math.round(activity.average_heartrate) } : {}),
+      ...(distKm > 0 && timeMin > 0 ? {
+        pace: `${Math.floor(timeMin / distKm)}:${String(Math.round(((timeMin / distKm) % 1) * 60)).padStart(2, '0')}/km`
+      } : {}),
+    };
+  } else if (workoutType === 'bike') {
+    typeData.bike = {
+      distance: Math.round(distKm * 100) / 100,
+      distanceUnit: 'km',
+      time: timeMin,
+      ...(activity.total_elevation_gain ? { elevationGain: Math.round(activity.total_elevation_gain) } : {}),
+      ...(activity.average_watts ? { avgPower: Math.round(activity.average_watts) } : {}),
+    };
+  } else if (workoutType === 'swim') {
+    typeData.swim = {
+      distance: Math.round(activity.distance || 0),
+      distanceUnit: 'meters',
+      time: timeMin,
+      ...(activity.average_heartrate ? { avgHeartRate: Math.round(activity.average_heartrate) } : {}),
+    };
+  }
+
+  const laps = mapLaps(activity.laps);
+  const splitsMetric = mapSplits(activity.splits_metric);
+  const splitsStandard = mapSplits(activity.splits_standard);
+  const splits = splitsMetric.length > 0 ? splitsMetric : splitsStandard;
+  const bestEfforts = mapBestEfforts(activity.best_efforts);
+  const segmentEfforts = mapSegmentEfforts(activity.segment_efforts);
+
+  const gear = activity.gear_id
+    ? {
+        id: String(activity.gear_id),
+        ...(gearRaw?.name ? { name: gearRaw.name } : {}),
+        ...(gearRaw?.nickname ? { nickname: gearRaw.nickname } : {}),
+        ...(gearRaw?.brand_name ? { brandName: gearRaw.brand_name } : {}),
+        ...(gearRaw?.model_name ? { modelName: gearRaw.model_name } : {}),
+        ...(gearRaw?.distance != null ? { distance: gearRaw.distance } : {}),
+        ...(gearRaw?.primary != null ? { primary: gearRaw.primary } : {}),
+        ...(gearRaw?.resource_state != null ? { resourceState: gearRaw.resource_state } : {}),
+      }
+    : null;
+
+  const stravaExtended: any = {
+    ...(activity.elapsed_time != null ? { elapsedTime: activity.elapsed_time } : {}),
+    ...(activity.suffer_score != null ? { sufferScore: activity.suffer_score } : {}),
+    ...(activity.perceived_exertion != null ? { perceivedExertion: activity.perceived_exertion } : {}),
+    ...(activity.description ? { description: activity.description } : {}),
+    ...(activity.device_name ? { deviceName: activity.device_name } : {}),
+    ...(activity.average_cadence != null ? { averageCadence: activity.average_cadence } : {}),
+    ...(activity.average_temp != null ? { averageTemp: activity.average_temp } : {}),
+    ...(activity.weighted_average_watts != null ? { weightedAverageWatts: activity.weighted_average_watts } : {}),
+    ...(activity.kilojoules != null ? { kilojoules: activity.kilojoules } : {}),
+    ...(activity.has_heartrate != null ? { hasHeartrate: activity.has_heartrate } : {}),
+    ...(activity.pr_count != null ? { prCount: activity.pr_count } : {}),
+    ...(gear ? { gear } : {}),
+    ...(bestEfforts.length > 0 ? { bestEfforts } : {}),
+    ...(segmentEfforts.length > 0 ? { segmentEfforts } : {}),
+  };
+
+  const stravaData = {
+    ...(activity.distance ? { distance: activity.distance } : {}),
+    ...(activity.moving_time ? { time: activity.moving_time } : {}),
+    ...(activity.total_elevation_gain ? { elevationGain: Math.round(activity.total_elevation_gain) } : {}),
+    ...(activity.average_heartrate ? { avgHeartRate: Math.round(activity.average_heartrate) } : {}),
+    ...(activity.max_heartrate ? { maxHeartRate: Math.round(activity.max_heartrate) } : {}),
+    ...(activity.average_watts ? { avgPower: Math.round(activity.average_watts) } : {}),
+  };
+
+  return { actualStats, routeData, typeData, stravaData, stravaExtended, laps, splits, splitsMetric, splitsStandard, timeMin };
+}
+
+/** Apply detailed fields (laps, splits, photos, stravaExtended) to a Firestore write target. */
+function applyDetailedFields(target: Record<string, any>, built: WorkoutFields, activity: any) {
+  target.stravaDetailsFetched = true;
+  if (Object.keys(built.stravaExtended).length > 0) target.stravaExtended = built.stravaExtended;
+  if (built.laps.length > 0) target.laps = built.laps;
+  if (built.splits.length > 0) target.splits = built.splits;
+  if (built.splitsMetric.length > 0) target.splitsMetric = built.splitsMetric;
+  if (built.splitsStandard.length > 0) target.splitsStandard = built.splitsStandard;
+  // Photos are passed via the activity's fetched photos array stored on the built object
+  // but photos are fetched separately and passed to the caller — check activity-level flag
+  if (activity.total_photo_count > 0) target.hasStravaPhotos = true;
+}
+
 // Process a new Strava activity - CLEAN VERSION
 async function processActivity(
   stravaAthleteId: string,
@@ -152,29 +385,13 @@ async function processActivity(
 
     console.log(`👤 Found user: ${userData.displayName} (${username})`);
 
-    // Check if we already imported this activity (STRICT CHECK)
-    const existingWorkout = await adminDb
-      .collection('users').doc(username).collection('workouts')
-      .where('stravaActivityId', '==', stravaActivityId)
-      .limit(1)
-      .get();
-
-    if (!existingWorkout.empty) {
-      console.log(`✅ Activity ${stravaActivityId} already imported as workout ${existingWorkout.docs[0].id} - SKIPPING`);
-      return { success: true, message: 'Activity already imported (duplicate prevented)' };
-    }
-
-    // DOUBLE CHECK: Also check by activity ID string conversion
-    const existingWorkout2 = await adminDb
-      .collection('users').doc(username).collection('workouts')
+    const workoutsCollection = adminDb.collection('users').doc(username).collection('workouts');
+    const existingByStravaIdSnapshot = await workoutsCollection
       .where('stravaActivityId', '==', String(stravaActivityId))
-      .limit(1)
       .get();
 
-    if (!existingWorkout2.empty) {
-      console.log(`✅ Activity ${stravaActivityId} already imported (string check) - SKIPPING`);
-      return { success: true, message: 'Activity already imported (duplicate prevented)' };
-    }
+    const existingByStravaIdDocs = existingByStravaIdSnapshot.docs;
+    const standaloneId = `strava_${stravaActivityId}`;
 
     // TRIPLE CHECK: Check if ANY workout for this user was created in last 60 seconds
     // This catches rapid duplicate webhooks
@@ -201,9 +418,15 @@ async function processActivity(
       return { success: false, message: 'Failed to fetch activity details' };
     }
 
+    const [photos, gearRaw] = await Promise.all([
+      fetchActivityPhotos(stravaActivityId, accessToken),
+      fetchGearDetails(activity.gear_id, accessToken),
+    ]);
+
     const workoutType = mapStravaType(activity.type);
-    const activityDate = new Date(activity.start_date);
-    
+    // Use start_date_local to avoid timezone offset bugs (e.g. IST users shifted by 5.5h)
+    const activityDate = new Date(activity.start_date_local || activity.start_date);
+
     console.log(`📅 Activity: ${activity.name} (${activity.type} → ${workoutType}) on ${activityDate.toISOString()}`);
 
     // FINAL CHECK: Current-day duplicate detection only (webhook path).
@@ -221,7 +444,7 @@ async function processActivity(
       .where('date', '<=', admin.firestore.Timestamp.fromDate(duplicateDayEnd))
       .get();
 
-    if (!proximityCheck.empty) {
+    if (existingByStravaIdDocs.length === 0 && !proximityCheck.empty) {
       for (const doc of proximityCheck.docs) {
         const data = doc.data();
         // Check duration proximity (within 10 minutes / 600 seconds)
@@ -240,54 +463,9 @@ async function processActivity(
       }
     }
 
-    // Prepare stats
-    const actualStats: any = {};
-    if (activity.distance) actualStats.distance = activity.distance;
-    if (activity.moving_time) actualStats.duration = activity.moving_time;
-    if (activity.calories) actualStats.calories = activity.calories;
-    if (activity.average_heartrate) actualStats.avgHeartRate = activity.average_heartrate;
-    if (activity.max_heartrate) actualStats.maxHeartRate = activity.max_heartrate;
-    if (activity.average_speed) actualStats.avgSpeed = activity.average_speed;
-    if (activity.max_speed) actualStats.maxSpeed = activity.max_speed;
-    if (activity.total_elevation_gain) actualStats.elevationGain = activity.total_elevation_gain;
-
-    // Capture route/map data
-    const routeData: any = {};
-    if (activity.map?.summary_polyline) routeData.polyline = activity.map.summary_polyline;
-    if (activity.start_latlng) routeData.startLatLng = activity.start_latlng;
-    if (activity.end_latlng) routeData.endLatLng = activity.end_latlng;
-
-    // Build type-specific sub-objects from Strava data
-    const distKm = (activity.distance || 0) / 1000;
-    const timeMin = Math.round((activity.moving_time || 0) / 60);
-    const typeData: any = {};
-    if (workoutType === 'run') {
-      typeData.run = {
-        distance: Math.round(distKm * 100) / 100,
-        distanceUnit: 'km',
-        time: timeMin,
-        ...(activity.total_elevation_gain ? { elevationGain: Math.round(activity.total_elevation_gain) } : {}),
-        ...(activity.average_heartrate ? { avgHeartRate: Math.round(activity.average_heartrate) } : {}),
-        ...(distKm > 0 && timeMin > 0 ? {
-          pace: `${Math.floor(timeMin / distKm)}:${String(Math.round(((timeMin / distKm) % 1) * 60)).padStart(2, '0')}/km`
-        } : {}),
-      };
-    } else if (workoutType === 'bike') {
-      typeData.bike = {
-        distance: Math.round(distKm * 100) / 100,
-        distanceUnit: 'km',
-        time: timeMin,
-        ...(activity.total_elevation_gain ? { elevationGain: Math.round(activity.total_elevation_gain) } : {}),
-        ...(activity.average_watts ? { avgPower: Math.round(activity.average_watts) } : {}),
-      };
-    } else if (workoutType === 'swim') {
-      typeData.swim = {
-        distance: Math.round(activity.distance || 0),
-        distanceUnit: 'meters',
-        time: timeMin,
-        ...(activity.average_heartrate ? { avgHeartRate: Math.round(activity.average_heartrate) } : {}),
-      };
-    }
+    // Build all workout fields from Strava activity data
+    const built = buildWorkoutFields(activity, workoutType, photos, gearRaw);
+    const { actualStats, routeData, typeData, stravaData, timeMin } = built;
 
     // TRY TO MATCH with an existing planned workout on the same day
     const dayStart = new Date(activityDate);
@@ -295,8 +473,7 @@ async function processActivity(
     const dayEnd = new Date(activityDate);
     dayEnd.setHours(23, 59, 59, 999);
 
-    const plannedSnapshot = await adminDb
-      .collection('users').doc(username).collection('workouts')
+    const plannedSnapshot = await workoutsCollection
       .where('type', '==', workoutType)
       .where('completed', '==', false)
       .get();
@@ -333,17 +510,20 @@ async function processActivity(
         mergeData.routeData = routeData;
       }
 
-      // Add Strava stats under stravaData for detail panel
-      mergeData.stravaData = {
-        ...(activity.distance ? { distance: activity.distance } : {}),
-        ...(activity.moving_time ? { time: activity.moving_time } : {}),
-        ...(activity.total_elevation_gain ? { elevationGain: Math.round(activity.total_elevation_gain) } : {}),
-        ...(activity.average_heartrate ? { avgHeartRate: Math.round(activity.average_heartrate) } : {}),
-        ...(activity.max_heartrate ? { maxHeartRate: Math.round(activity.max_heartrate) } : {}),
-        ...(activity.average_watts ? { avgPower: Math.round(activity.average_watts) } : {}),
-      };
+      mergeData.stravaData = stravaData;
+      applyDetailedFields(mergeData, built, activity);
+      if (photos.length > 0) mergeData.photos = photos;
 
-      await matchedDoc.ref.update(mergeData);
+      const batch = adminDb.batch();
+      batch.update(matchedDoc.ref, mergeData);
+
+      for (const existingDoc of existingByStravaIdDocs) {
+        if (existingDoc.id !== matchedDoc.id) {
+          batch.delete(existingDoc.ref);
+        }
+      }
+
+      await batch.commit();
       console.log(`✅ Merged Strava data into planned workout ${matchedDoc.id}`);
 
       return {
@@ -354,8 +534,7 @@ async function processActivity(
 
     // CHECK FOR MATCHING IMPORTED (CSV/XLSX) WORKOUT — same day, type, near distance
     try {
-      const importedSnapshot = await adminDb
-        .collection('users').doc(username).collection('workouts')
+      const importedSnapshot = await workoutsCollection
         .where('type', '==', workoutType)
         .where('source', '==', 'import')
         .where('date', '>=', admin.firestore.Timestamp.fromDate(dayStart))
@@ -385,15 +564,17 @@ async function processActivity(
             ...typeData,
           };
           if (Object.keys(routeData).length > 0) mergeUpdate.routeData = routeData;
-          mergeUpdate.stravaData = {
-            ...(activity.distance ? { distance: activity.distance } : {}),
-            ...(activity.moving_time ? { time: activity.moving_time } : {}),
-            ...(activity.total_elevation_gain ? { elevationGain: Math.round(activity.total_elevation_gain) } : {}),
-            ...(activity.average_heartrate ? { avgHeartRate: Math.round(activity.average_heartrate) } : {}),
-            ...(activity.max_heartrate ? { maxHeartRate: Math.round(activity.max_heartrate) } : {}),
-            ...(activity.average_watts ? { avgPower: Math.round(activity.average_watts) } : {}),
-          };
-          await iDoc.ref.update(mergeUpdate);
+          mergeUpdate.stravaData = stravaData;
+          applyDetailedFields(mergeUpdate, built, activity);
+          if (photos.length > 0) mergeUpdate.photos = photos;
+          const batch = adminDb.batch();
+          batch.update(iDoc.ref, mergeUpdate);
+          for (const existingDoc of existingByStravaIdDocs) {
+            if (existingDoc.id !== iDoc.id) {
+              batch.delete(existingDoc.ref);
+            }
+          }
+          await batch.commit();
           return {
             success: true,
             message: `Merged "${activity.name}" with imported workout "${iData.name}"`
@@ -404,15 +585,12 @@ async function processActivity(
       console.log(`⚠️ Import merge check failed (non-fatal): ${e.message}`);
     }
 
-    // NO MATCH — create a new Strava workout entry
-    // Use deterministic doc ID to prevent duplicates from concurrent webhook retries
-    const workoutId = `strava_${stravaActivityId}`;
-    const newWorkoutRef = adminDb.collection('users').doc(username).collection('workouts').doc(workoutId);
-
     const newWorkoutData: any = {
       name: activity.name,
       type: workoutType,
-      description: `Imported from Strava\nDistance: ${((activity.distance || 0) / 1000).toFixed(2)} km\nMoving time: ${timeMin} min`,
+      description: activity.description?.trim()
+        ? activity.description.trim()
+        : `Imported from Strava\nDistance: ${((activity.distance || 0) / 1000).toFixed(2)} km\nMoving time: ${timeMin} min`,
       date: admin.firestore.Timestamp.fromDate(activityDate),
       duration: timeMin,
       ownerUsername: username,
@@ -435,16 +613,53 @@ async function processActivity(
       console.log(`🗺️ Route data captured: ${routeData.polyline ? 'polyline available' : 'no polyline'}`);
     }
 
-    // Add Strava stats
-    newWorkoutData.stravaData = {
-      ...(activity.distance ? { distance: activity.distance } : {}),
-      ...(activity.moving_time ? { time: activity.moving_time } : {}),
-      ...(activity.total_elevation_gain ? { elevationGain: Math.round(activity.total_elevation_gain) } : {}),
-      ...(activity.average_heartrate ? { avgHeartRate: Math.round(activity.average_heartrate) } : {}),
-      ...(activity.max_heartrate ? { maxHeartRate: Math.round(activity.max_heartrate) } : {}),
-      ...(activity.average_watts ? { avgPower: Math.round(activity.average_watts) } : {}),
-    };
+    newWorkoutData.stravaData = stravaData;
+    applyDetailedFields(newWorkoutData, built, activity);
+    if (photos.length > 0) newWorkoutData.photos = photos;
+    // NO MATCH — if this Strava activity already exists anywhere, update canonical and deduplicate.
+    if (existingByStravaIdDocs.length > 0) {
+      const canonicalDoc =
+        existingByStravaIdDocs.find((d) => d.id !== standaloneId) ||
+        existingByStravaIdDocs.find((d) => d.id === standaloneId) ||
+        existingByStravaIdDocs[0];
 
+      const batch = adminDb.batch();
+      if (canonicalDoc.id === standaloneId) {
+        batch.set(canonicalDoc.ref, newWorkoutData, { merge: true });
+      } else {
+        const updateData: any = {
+          completed: true,
+          completedAt: admin.firestore.Timestamp.fromDate(activityDate),
+          completedBy: 'strava',
+          stravaActivityId: String(stravaActivityId),
+          actualStats,
+          stravaData,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          ...typeData,
+        };
+        if (activity.description?.trim()) updateData.description = activity.description.trim();
+        if (Object.keys(routeData).length > 0) updateData.routeData = routeData;
+        applyDetailedFields(updateData, built, activity);
+        if (photos.length > 0) updateData.photos = photos;
+        batch.update(canonicalDoc.ref, updateData);
+      }
+
+      for (const existingDoc of existingByStravaIdDocs) {
+        if (existingDoc.id !== canonicalDoc.id) {
+          batch.delete(existingDoc.ref);
+        }
+      }
+      await batch.commit();
+
+      return {
+        success: true,
+        message: `Reconciled Strava activity into workout "${canonicalDoc.data().name || activity.name}"`
+      };
+    }
+
+    // Truly new: create deterministic standalone Strava workout
+    const workoutId = standaloneId;
+    const newWorkoutRef = workoutsCollection.doc(workoutId);
     await newWorkoutRef.set(newWorkoutData);
     console.log(`✅ Created new workout ${workoutId} from Strava activity (no planned match)`);
 
@@ -454,6 +669,98 @@ async function processActivity(
     };
   } catch (error: any) {
     console.error('❌ Error processing activity:', error);
+    return { success: false, message: error.message || 'Unknown error' };
+  }
+}
+
+async function processActivityUpdate(
+  stravaAthleteId: string,
+  stravaActivityId: string
+): Promise<{ success: boolean; message: string }> {
+  console.log(`\n🔄 Processing Strava activity update ${stravaActivityId} for athlete ${stravaAthleteId}`);
+  // Reuse the create-path reconciliation logic:
+  // it updates existing docs, promotes planned when available, and removes redundant standalone copies.
+  return processActivity(stravaAthleteId, stravaActivityId);
+}
+
+async function processActivityDelete(
+  stravaAthleteId: string,
+  stravaActivityId: string
+): Promise<{ success: boolean; message: string }> {
+  try {
+    console.log(`\n🗑️ Processing Strava activity delete ${stravaActivityId} for athlete ${stravaAthleteId}`);
+
+    const usersSnapshot = await adminDb
+      .collection('users')
+      .where('stravaId', '==', stravaAthleteId)
+      .limit(1)
+      .get();
+
+    if (usersSnapshot.empty) {
+      return { success: false, message: `No user found with Strava ID ${stravaAthleteId}` };
+    }
+
+    const userDoc = usersSnapshot.docs[0];
+    const username = userDoc.id;
+
+    const matches = await adminDb
+      .collection('users').doc(username).collection('workouts')
+      .where('stravaActivityId', '==', String(stravaActivityId))
+      .get();
+
+    if (matches.empty) {
+      return { success: true, message: 'No linked workouts found for deleted Strava activity' };
+    }
+
+    let deletedCount = 0;
+    let unlinkedCount = 0;
+    for (const workoutDoc of matches.docs) {
+      const data = workoutDoc.data();
+      const isStandalone = workoutDoc.id === `strava_${stravaActivityId}`;
+
+      if (isStandalone) {
+        await workoutDoc.ref.delete();
+        deletedCount++;
+        continue;
+      }
+
+      const unlinkData: any = {
+        stravaActivityId: admin.firestore.FieldValue.delete(),
+        actualStats: admin.firestore.FieldValue.delete(),
+        stravaData: admin.firestore.FieldValue.delete(),
+        routeData: admin.firestore.FieldValue.delete(),
+        stravaExtended: admin.firestore.FieldValue.delete(),
+        laps: admin.firestore.FieldValue.delete(),
+        splits: admin.firestore.FieldValue.delete(),
+        splitsMetric: admin.firestore.FieldValue.delete(),
+        splitsStandard: admin.firestore.FieldValue.delete(),
+        photos: admin.firestore.FieldValue.delete(),
+        hasStravaPhotos: admin.firestore.FieldValue.delete(),
+        stravaDetailsFetched: admin.firestore.FieldValue.delete(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+
+      if (data.completedBy === 'strava') {
+        unlinkData.completed = false;
+        unlinkData.completedBy = admin.firestore.FieldValue.delete();
+        unlinkData.completedAt = admin.firestore.FieldValue.delete();
+      }
+
+      // Prevent orphan "strava" source after unlink.
+      if (data.source === 'strava') {
+        unlinkData.source = 'manual';
+      }
+
+      await workoutDoc.ref.update(unlinkData);
+      unlinkedCount++;
+    }
+
+    return {
+      success: true,
+      message: `Strava delete processed: removed ${deletedCount}, unlinked ${unlinkedCount}`
+    };
+  } catch (error: any) {
+    console.error('❌ Error processing activity delete:', error);
     return { success: false, message: error.message || 'Unknown error' };
   }
 }
@@ -499,27 +806,44 @@ export async function POST(request: NextRequest) {
 
     const { object_type, aspect_type, object_id, owner_id } = event;
 
-    // We only care about new activities
-    if (object_type !== 'activity' || aspect_type !== 'create') {
+    // We only care about activity create/update/delete events.
+    if (object_type !== 'activity') {
       console.log(`⏭️ Ignoring event: ${object_type}.${aspect_type}`);
       return NextResponse.json({ status: 'ignored' });
     }
 
+    if (!['create', 'update', 'delete'].includes(aspect_type)) {
+      console.log(`⏭️ Ignoring activity aspect: ${aspect_type}`);
+      return NextResponse.json({ status: 'ignored' });
+    }
+
+    const ownerId = String(owner_id);
+    const activityId = String(object_id);
+
     // Return 200 immediately so Strava doesn't timeout.
     // Use waitUntil() to keep the serverless function alive for background processing.
     waitUntil(
-      processActivity(String(owner_id), String(object_id))
+      (aspect_type === 'create'
+        ? processActivity(ownerId, activityId)
+        : aspect_type === 'update'
+          ? processActivityUpdate(ownerId, activityId)
+          : processActivityDelete(ownerId, activityId))
         .then(async (result) => {
           console.log('✅ Webhook processing result:', JSON.stringify(result));
           if (result.success) {
             const userSnap = await adminDb.collection('users')
-              .where('stravaId', '==', String(owner_id)).limit(1).get();
+              .where('stravaId', '==', ownerId).limit(1).get();
             if (!userSnap.empty) {
               const username = userSnap.docs[0].id;
 
-              // Send push notification for new Strava workout
+              const titleByAspect: Record<string, string> = {
+                create: '🏃 New Strava Workout',
+                update: '🔄 Strava Workout Updated',
+                delete: '🗑️ Strava Workout Removed',
+              };
+
               await sendPushNotification(username, {
-                title: '🏃 New Strava Workout',
+                title: titleByAspect[aspect_type] || '🔄 Strava Sync',
                 body: result.message || 'A new workout was synced from Strava',
                 url: '/workouts',
               }).catch(() => {}); // non-fatal
