@@ -747,7 +747,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           <div className="w-8 h-8 rounded-lg bg-indigo-600/15 border border-indigo-500/20 flex items-center justify-center">
             <Shield size={16} className="text-indigo-400" />
           </div>
-          <span className="font-semibold text-white">CoachTrack Admin</span>
+          <span className="font-semibold text-white">The Daily Athlete Admin</span>
         </div>
         <button
           onClick={handleLogout}

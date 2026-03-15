@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Admin — CoachTrack',
+  title: 'Admin — The Daily Athlete',
   robots: { index: false, follow: false },
 };
 

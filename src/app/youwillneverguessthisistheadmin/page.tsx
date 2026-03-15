@@ -5,9 +5,10 @@ import {
   Shield, Database, Users, Settings, LogOut, RefreshCw,
   Trash2, RotateCcw, Download, AlertTriangle, CheckCircle,
   XCircle, Clock, Activity, ChevronDown, ChevronUp, Eye, Lock,
+  Zap, TrendingUp, HardDrive, UserCheck,
 } from 'lucide-react';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────────────────────────────
 
 interface BackupRecord {
   id: string;
@@ -73,31 +74,89 @@ async function apiFetch(path: string, opts: RequestInit = {}) {
   return res.json();
 }
 
+// ─── Animated Background ──────────────────────────────────────────────────────
+
+function AnimatedBackground() {
+  return (
+    <div className="fixed inset-0 overflow-hidden pointer-events-none">
+      <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-red-600/[0.07] rounded-full blur-[150px] animate-pulse" style={{ animationDuration: '8s' }} />
+      <div className="absolute top-1/3 -left-60 w-[500px] h-[500px] bg-orange-600/[0.05] rounded-full blur-[130px] animate-pulse" style={{ animationDuration: '12s' }} />
+      <div className="absolute -bottom-40 right-1/4 w-[400px] h-[400px] bg-red-900/[0.06] rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '10s' }} />
+      <div className="absolute top-2/3 left-1/3 w-[300px] h-[300px] bg-rose-600/[0.04] rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '15s' }} />
+    </div>
+  );
+}
+
 // ─── Sub-sections ─────────────────────────────────────────────────────────────
 
 function OverviewSection({ stats }: { stats: OverviewStats | null }) {
-  if (!stats) return <p className="text-white/40 text-sm">Loading…</p>;
-  const items = [
-    { label: 'Total users', value: stats.userCount, accent: false },
-    { label: 'Total workouts', value: stats.workoutCount, accent: false },
+  if (!stats) {
+    return (
+      <div className="flex items-center gap-3 py-12 justify-center">
+        <RefreshCw size={16} className="animate-spin text-red-400/60" />
+        <p className="text-white/40 text-sm">Loading overview…</p>
+      </div>
+    );
+  }
+
+  const cards = [
     {
-      label: 'Last backup',
-      value: stats.lastBackup ? ago(stats.lastBackup.createdAt) : 'Never',
-      accent: true,
+      label: 'Total Users',
+      value: stats.userCount,
+      icon: UserCheck,
+      gradient: 'from-blue-500/20 to-cyan-500/20',
+      border: 'border-blue-500/20',
+      iconColor: 'text-blue-400',
+      valueColor: 'text-blue-300',
     },
     {
-      label: 'Backup integrity',
-      value: stats.lastBackup?.integrityPassed ? '✓ Passed' : '— N/A',
-      accent: false,
-      green: stats.lastBackup?.integrityPassed,
+      label: 'Total Workouts',
+      value: stats.workoutCount,
+      icon: TrendingUp,
+      gradient: 'from-emerald-500/20 to-green-500/20',
+      border: 'border-emerald-500/20',
+      iconColor: 'text-emerald-400',
+      valueColor: 'text-emerald-300',
+    },
+    {
+      label: 'Last Backup',
+      value: stats.lastBackup ? ago(stats.lastBackup.createdAt) : 'Never',
+      icon: Clock,
+      gradient: 'from-amber-500/20 to-orange-500/20',
+      border: 'border-amber-500/20',
+      iconColor: 'text-amber-400',
+      valueColor: 'text-amber-300',
+    },
+    {
+      label: 'Backup Integrity',
+      value: stats.lastBackup?.integrityPassed ? 'Passed' : 'N/A',
+      icon: stats.lastBackup?.integrityPassed ? CheckCircle : HardDrive,
+      gradient: stats.lastBackup?.integrityPassed
+        ? 'from-green-500/20 to-emerald-500/20'
+        : 'from-gray-500/20 to-gray-600/20',
+      border: stats.lastBackup?.integrityPassed ? 'border-green-500/20' : 'border-gray-500/20',
+      iconColor: stats.lastBackup?.integrityPassed ? 'text-green-400' : 'text-gray-400',
+      valueColor: stats.lastBackup?.integrityPassed ? 'text-green-300' : 'text-gray-400',
     },
   ];
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      {items.map(({ label, value, accent, green }) => (
-        <div key={label} className="bg-white/[0.04] border border-white/[0.08] rounded-xl p-5">
-          <p className="text-white/40 text-xs font-medium uppercase tracking-wider mb-1.5">{label}</p>
-          <p className={`text-2xl font-bold ${green ? 'text-green-400' : accent ? 'text-indigo-300' : 'text-white'}`}>{value}</p>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {cards.map(({ label, value, icon: Icon, gradient, border, iconColor, valueColor }) => (
+        <div
+          key={label}
+          className={`relative overflow-hidden rounded-2xl border ${border} bg-gradient-to-br ${gradient} p-5 backdrop-blur-sm transition-all hover:scale-[1.02]`}
+        >
+          <div className="absolute top-3 right-3 opacity-[0.08]">
+            <Icon size={48} />
+          </div>
+          <div className="relative">
+            <div className={`w-9 h-9 rounded-xl bg-black/30 flex items-center justify-center mb-3`}>
+              <Icon size={18} className={iconColor} />
+            </div>
+            <p className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-1">{label}</p>
+            <p className={`text-3xl font-black ${valueColor}`}>{value}</p>
+          </div>
         </div>
       ))}
     </div>
@@ -155,7 +214,7 @@ function BackupsSection() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `coachtrack-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `tda-backup-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e: any) {
@@ -209,38 +268,41 @@ function BackupsSection() {
         <button
           onClick={logSnapshot}
           disabled={creating}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/[0.06] hover:bg-white/10 border border-white/10 text-sm text-white/80 disabled:opacity-50 transition"
+          className="group flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/15 text-sm text-white/70 hover:text-white disabled:opacity-50 transition-all"
         >
-          <RefreshCw size={14} className={creating ? 'animate-spin' : ''} />
+          <RefreshCw size={15} className={creating ? 'animate-spin' : 'group-hover:rotate-90 transition-transform duration-300'} />
           {creating ? 'Logging…' : 'Log snapshot'}
         </button>
         <button
           onClick={downloadBackup}
           disabled={downloading}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm text-white shadow-md disabled:opacity-50 transition"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-sm text-white font-medium shadow-lg shadow-red-900/30 disabled:opacity-50 transition-all hover:-translate-y-0.5 active:translate-y-0"
         >
-          <Download size={14} className={downloading ? 'animate-spin' : ''} />
+          <Download size={15} className={downloading ? 'animate-bounce' : ''} />
           {downloading ? 'Generating…' : 'Download full backup'}
         </button>
       </div>
 
       {/* Restore from file */}
-      <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl p-5 space-y-3">
-        <p className="text-white/80 text-sm font-medium">Restore from backup file</p>
+      <div className="bg-gradient-to-br from-red-500/[0.06] to-orange-500/[0.04] border border-red-500/[0.12] rounded-2xl p-5 space-y-3">
+        <div className="flex items-center gap-2">
+          <RotateCcw size={15} className="text-red-400/70" />
+          <p className="text-white/80 text-sm font-semibold">Restore from backup file</p>
+        </div>
         <p className="text-white/30 text-xs">
           Upload a previously downloaded .json backup. Leave username blank to restore all data.
         </p>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap">
           <input
             value={restoreUsername}
             onChange={e => setRestoreUsername(e.target.value)}
             placeholder="username (optional)"
-            className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 w-48 focus:border-indigo-500/40 focus:outline-none transition"
+            className="bg-black/30 border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/25 w-52 focus:border-red-500/40 focus:outline-none focus:ring-1 focus:ring-red-500/20 transition-all"
           />
           <label
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-600/15 hover:bg-red-600/25 border border-red-500/25 text-sm text-red-300 cursor-pointer transition ${restoring ? 'opacity-50 pointer-events-none' : ''}`}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 hover:border-red-500/30 text-sm text-red-300 font-medium cursor-pointer transition-all ${restoring ? 'opacity-50 pointer-events-none' : ''}`}
           >
-            <RotateCcw size={14} />
+            <RotateCcw size={14} className={restoring ? 'animate-spin' : ''} />
             {restoring ? 'Restoring…' : 'Choose file & restore'}
             <input
               ref={fileInputRef}
@@ -254,42 +316,50 @@ function BackupsSection() {
         </div>
       </div>
 
-      {error && <p className="text-red-400 text-sm">{error}</p>}
+      {error && (
+        <div className="flex items-center gap-2 text-red-400 text-sm bg-red-950/30 border border-red-500/15 rounded-xl px-4 py-3">
+          <XCircle size={15} className="shrink-0" />
+          {error}
+        </div>
+      )}
 
       {/* Snapshots table */}
       <div>
-        <p className="text-white/25 text-xs mb-2">
+        <p className="text-white/30 text-xs mb-3 font-medium">
           Health snapshots (counts only — use Download to get full restorable data)
         </p>
         {loading ? (
-          <p className="text-white/40 text-sm">Loading…</p>
+          <div className="flex items-center gap-2 py-8 justify-center">
+            <RefreshCw size={14} className="animate-spin text-white/30" />
+            <p className="text-white/40 text-sm">Loading…</p>
+          </div>
         ) : backups.length === 0 ? (
-          <p className="text-white/40 text-sm">No snapshots yet.</p>
+          <p className="text-white/40 text-sm text-center py-8">No snapshots yet.</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-xl border border-white/[0.06]">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-white/40 text-left border-b border-white/[0.08]">
+                <tr className="bg-white/[0.03]">
                   {['Type', 'Time', 'Users', 'Workouts', 'Integrity', 'By'].map(h => (
-                    <th key={h} className="pb-2 pr-4 font-medium">{h}</th>
+                    <th key={h} className="text-left text-white/40 text-xs font-semibold uppercase tracking-wider px-4 py-3">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
-                {backups.map(b => (
-                  <tr key={b.id} className="text-white/60">
-                    <td className="py-2 pr-4">
-                      <span className="capitalize px-2 py-0.5 rounded-md text-xs bg-white/[0.08] text-white/60">{b.type}</span>
+              <tbody>
+                {backups.map((b, i) => (
+                  <tr key={b.id} className={`text-white/60 border-t border-white/[0.04] hover:bg-white/[0.03] transition-colors ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
+                    <td className="px-4 py-3">
+                      <span className="capitalize px-2.5 py-1 rounded-lg text-xs font-medium bg-white/[0.06] text-white/60 border border-white/[0.06]">{b.type}</span>
                     </td>
-                    <td className="py-2 pr-4 whitespace-nowrap text-white/30 text-xs">{fmt(b.createdAt)}</td>
-                    <td className="py-2 pr-4">{b.userCount}</td>
-                    <td className="py-2 pr-4">{b.workoutCount}</td>
-                    <td className="py-2 pr-4">
+                    <td className="px-4 py-3 whitespace-nowrap text-white/35 text-xs font-mono">{fmt(b.createdAt)}</td>
+                    <td className="px-4 py-3 font-semibold">{b.userCount}</td>
+                    <td className="px-4 py-3 font-semibold">{b.workoutCount}</td>
+                    <td className="px-4 py-3">
                       {b.integrityPassed
-                        ? <CheckCircle size={14} className="text-green-400" />
-                        : <XCircle size={14} className="text-red-400" />}
+                        ? <span className="inline-flex items-center gap-1 text-green-400 text-xs"><CheckCircle size={13} /> OK</span>
+                        : <span className="inline-flex items-center gap-1 text-red-400 text-xs"><XCircle size={13} /> Fail</span>}
                     </td>
-                    <td className="py-2 pr-4 text-white/30 text-xs">{b.triggeredBy ?? 'cron'}</td>
+                    <td className="px-4 py-3 text-white/30 text-xs">{b.triggeredBy ?? 'cron'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -361,56 +431,73 @@ function UsersSection() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search by username or email…"
-          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 flex-1 max-w-xs focus:border-indigo-500/40 focus:outline-none transition"
-        />
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 max-w-sm">
+          <Eye size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/25" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by username or email…"
+            className="w-full pl-10 pr-4 py-2.5 bg-black/30 border border-white/[0.08] rounded-xl text-sm text-white placeholder-white/25 focus:border-red-500/40 focus:outline-none focus:ring-1 focus:ring-red-500/20 transition-all"
+          />
+        </div>
         <button
           onClick={exportCSV}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/[0.06] hover:bg-white/10 border border-white/10 text-sm text-white/80 transition"
+          className="group flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/15 text-sm text-white/70 hover:text-white transition-all"
         >
-          <Download size={14} /> Export CSV
+          <Download size={14} className="group-hover:-translate-y-0.5 transition-transform" /> Export CSV
         </button>
       </div>
 
-      {error && <p className="text-red-400 text-sm">{error}</p>}
+      {error && (
+        <div className="flex items-center gap-2 text-red-400 text-sm bg-red-950/30 border border-red-500/15 rounded-xl px-4 py-3">
+          <XCircle size={15} className="shrink-0" />
+          {error}
+        </div>
+      )}
 
       {loading ? (
-        <p className="text-white/40 text-sm">Loading…</p>
+        <div className="flex items-center gap-2 py-12 justify-center">
+          <RefreshCw size={14} className="animate-spin text-white/30" />
+          <p className="text-white/40 text-sm">Loading…</p>
+        </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-xl border border-white/[0.06]">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-white/40 text-left border-b border-white/[0.08]">
+              <tr className="bg-white/[0.03]">
                 {['Username', 'Email', 'Role', 'Workouts', 'Joined', 'Status', 'Actions'].map(h => (
-                  <th key={h} className="pb-2 pr-4 font-medium">{h}</th>
+                  <th key={h} className="text-left text-white/40 text-xs font-semibold uppercase tracking-wider px-4 py-3">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
-              {filtered.map(u => (
-                <tr key={u.username} className={`text-white/60 ${u.status === 'deleted' ? 'opacity-50' : ''}`}>
-                  <td className="py-2 pr-4 font-mono text-xs text-indigo-300/80">{u.username}</td>
-                  <td className="py-2 pr-4 text-white/40">{u.email}</td>
-                  <td className="py-2 pr-4">
-                    <span className="capitalize text-xs px-2 py-0.5 rounded-md bg-white/[0.08]">{u.role}</span>
+            <tbody>
+              {filtered.map((u, i) => (
+                <tr key={u.username} className={`text-white/60 border-t border-white/[0.04] hover:bg-white/[0.03] transition-colors ${u.status === 'deleted' ? 'opacity-40' : ''} ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
+                  <td className="px-4 py-3">
+                    <span className="font-mono text-xs text-red-300/90 bg-red-500/[0.08] px-2 py-1 rounded-md">{u.username}</span>
                   </td>
-                  <td className="py-2 pr-4">{u.workoutCount}</td>
-                  <td className="py-2 pr-4 whitespace-nowrap text-white/30">{fmt(u.createdAt)}</td>
-                  <td className="py-2 pr-4">
+                  <td className="px-4 py-3 text-white/40 text-xs">{u.email}</td>
+                  <td className="px-4 py-3">
+                    <span className={`capitalize text-xs px-2.5 py-1 rounded-lg font-medium ${
+                      u.role === 'coach'
+                        ? 'bg-amber-500/10 text-amber-300 border border-amber-500/15'
+                        : 'bg-blue-500/10 text-blue-300 border border-blue-500/15'
+                    }`}>{u.role}</span>
+                  </td>
+                  <td className="px-4 py-3 font-semibold">{u.workoutCount}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-white/30 text-xs">{fmt(u.createdAt)}</td>
+                  <td className="px-4 py-3">
                     {u.status === 'active'
-                      ? <span className="text-green-400/80 text-xs">active</span>
-                      : <span className="text-red-400/80 text-xs">deleted</span>}
+                      ? <span className="inline-flex items-center gap-1 text-xs text-green-400"><span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" /> active</span>
+                      : <span className="inline-flex items-center gap-1 text-xs text-red-400"><span className="w-1.5 h-1.5 rounded-full bg-red-400" /> deleted</span>}
                   </td>
-                  <td className="py-2 pr-4">
-                    <div className="flex items-center gap-3">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
                       <button
                         onClick={() => exportUserJSON(u.username)}
                         title="Export JSON"
-                        className="text-white/30 hover:text-white/60 transition"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-white/25 hover:text-white/60 hover:bg-white/[0.06] transition-all"
                       >
                         <Download size={13} />
                       </button>
@@ -419,7 +506,7 @@ function UsersSection() {
                           onClick={() => softDelete(u.username)}
                           disabled={acting === u.username}
                           title="Disable user"
-                          className="text-red-400/60 hover:text-red-400 disabled:opacity-50 transition"
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-red-400/40 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-50 transition-all"
                         >
                           <Trash2 size={13} />
                         </button>
@@ -428,7 +515,7 @@ function UsersSection() {
                           onClick={() => restore(u.username)}
                           disabled={acting === u.username}
                           title="Re-enable user"
-                          className="text-indigo-400/60 hover:text-indigo-400 disabled:opacity-50 transition"
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-green-400/40 hover:text-green-400 hover:bg-green-500/10 disabled:opacity-50 transition-all"
                         >
                           <RotateCcw size={13} />
                         </button>
@@ -439,7 +526,9 @@ function UsersSection() {
               ))}
             </tbody>
           </table>
-          <p className="text-white/25 text-xs mt-2">{filtered.length} of {users.length} users</p>
+          <div className="px-4 py-2.5 bg-white/[0.02] border-t border-white/[0.04] text-white/25 text-xs">
+            {filtered.length} of {users.length} users
+          </div>
         </div>
       )}
     </div>
@@ -486,7 +575,6 @@ function SystemActionsSection() {
     setSyncing(true);
     setSyncError('');
     try {
-      // Log admin action — full sync implementation is per-user via Strava API
       await apiFetch('/api/admin/logs', {
         method: 'GET',
       });
@@ -505,51 +593,72 @@ function SystemActionsSection() {
     <div className="space-y-6">
       {/* Actions */}
       <div>
-        <h3 className="text-white/70 font-medium mb-3">Actions</h3>
+        <h3 className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-3">Actions</h3>
         <div className="flex flex-wrap gap-3">
           <button
             onClick={openSyncDialog}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/[0.06] hover:bg-white/10 text-sm text-white/80 border border-white/10 transition"
+            className="group flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-orange-500/10 to-amber-500/10 hover:from-orange-500/15 hover:to-amber-500/15 border border-orange-500/15 hover:border-orange-500/25 text-sm text-orange-300 font-medium transition-all"
           >
-            <Activity size={14} /> Force Strava Sync All
+            <Zap size={15} className="group-hover:rotate-12 transition-transform" /> Force Strava Sync All
           </button>
         </div>
       </div>
 
       {/* Strava sync confirmation dialog */}
       {showSyncDialog && syncStats && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-gray-950 border border-white/10 rounded-2xl p-6 max-w-md w-full mx-4 space-y-4 shadow-2xl">
-            <div className="flex items-center gap-2 text-amber-400">
-              <AlertTriangle size={18} />
-              <h3 className="font-semibold">Confirm: Force Strava Sync All</h3>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50">
+          <div className="bg-gray-950/95 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-6 max-w-md w-full mx-4 space-y-5 shadow-2xl shadow-black/50">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/20 flex items-center justify-center">
+                <AlertTriangle size={20} className="text-amber-400" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white">Force Strava Sync All</h3>
+                <p className="text-white/30 text-xs">This will trigger sync for all connected users</p>
+              </div>
             </div>
-            <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl p-4 text-sm space-y-2 text-white/60">
-              <p><span className="text-white/40">Active users:</span> <strong className="text-white">{syncStats.userCount}</strong></p>
-              <p><span className="text-white/40">Strava API calls:</span> <strong className="text-white">~{syncStats.userCount * 5}</strong></p>
-              <p><span className="text-white/40">Rate limit:</span> 100 req / 15 min, 1,000 req / day</p>
-              <p className={syncStats.userCount * 5 > 100 ? 'text-amber-400' : 'text-green-400'}>
-                {syncStats.userCount * 5 > 1000
-                  ? '⚠ Exceeds daily limit — will hit rate cap'
-                  : syncStats.userCount * 5 > 100
-                  ? '⚠ May hit 15-min rate limit; will self-throttle'
-                  : '✓ Within rate limits'}
-              </p>
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 text-sm space-y-2.5 text-white/60">
+              <div className="flex justify-between">
+                <span className="text-white/40">Active users</span>
+                <span className="text-white font-bold">{syncStats.userCount}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-white/40">Est. API calls</span>
+                <span className="text-white font-bold">~{syncStats.userCount * 5}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-white/40">Rate limit</span>
+                <span className="text-white/60">100 / 15 min, 1K / day</span>
+              </div>
+              <div className="pt-1.5 border-t border-white/[0.05]">
+                <p className={`text-xs font-medium ${syncStats.userCount * 5 > 100 ? 'text-amber-400' : 'text-green-400'}`}>
+                  {syncStats.userCount * 5 > 1000
+                    ? '⚠ Exceeds daily limit — will hit rate cap'
+                    : syncStats.userCount * 5 > 100
+                    ? '⚠ May hit 15-min rate limit; will self-throttle'
+                    : '✓ Within rate limits'}
+                </p>
+              </div>
             </div>
-            {syncError && <p className="text-red-400 text-sm">{syncError}</p>}
-            <div className="flex gap-3 justify-end">
+            {syncError && (
+              <div className="flex items-center gap-2 text-red-400 text-sm bg-red-950/30 border border-red-500/15 rounded-xl px-4 py-3">
+                <XCircle size={15} className="shrink-0" />
+                {syncError}
+              </div>
+            )}
+            <div className="flex gap-3 justify-end pt-1">
               <button
                 onClick={() => setShowSyncDialog(false)}
-                className="px-4 py-2 rounded-lg bg-white/[0.06] hover:bg-white/10 border border-white/10 text-sm text-white/80 transition"
+                className="px-5 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.08] text-sm text-white/60 hover:text-white transition-all"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmSync}
                 disabled={syncing}
-                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm text-white shadow-md disabled:opacity-50 transition"
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-sm text-white font-medium shadow-lg shadow-red-900/30 disabled:opacity-50 transition-all"
               >
-                {syncing ? 'Syncing…' : 'Confirm'}
+                {syncing ? 'Syncing…' : 'Confirm Sync'}
               </button>
             </div>
           </div>
@@ -558,15 +667,16 @@ function SystemActionsSection() {
 
       {/* Log viewer */}
       <div>
-        <div className="inline-flex items-center gap-1 mb-3 bg-white/[0.03] border border-white/[0.08] rounded-lg p-1">
+        <h3 className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-3">Activity Log</h3>
+        <div className="inline-flex items-center gap-1 mb-4 bg-black/30 border border-white/[0.06] rounded-xl p-1">
           {(['actions', 'cron'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setLogTab(tab)}
-              className={`px-3 py-1.5 rounded-md text-sm capitalize transition ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 logTab === tab
-                  ? 'bg-white/10 text-white'
-                  : 'text-white/40 hover:text-white/60'
+                  ? 'bg-red-500/15 text-red-300 border border-red-500/20 shadow-sm'
+                  : 'text-white/35 hover:text-white/60 hover:bg-white/[0.04] border border-transparent'
               }`}
             >
               {tab === 'actions' ? 'Admin Actions' : 'Cron Logs'}
@@ -575,18 +685,21 @@ function SystemActionsSection() {
         </div>
 
         {logsLoading ? (
-          <p className="text-white/40 text-sm">Loading logs…</p>
+          <div className="flex items-center gap-2 py-8 justify-center">
+            <RefreshCw size={14} className="animate-spin text-white/30" />
+            <p className="text-white/40 text-sm">Loading logs…</p>
+          </div>
         ) : displayLogs.length === 0 ? (
-          <p className="text-white/40 text-sm">No logs yet.</p>
+          <p className="text-white/40 text-sm text-center py-8">No logs yet.</p>
         ) : (
-          <div className="space-y-1.5 max-h-96 overflow-y-auto">
+          <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
             {displayLogs.map(log => (
-              <div key={log.id} className="bg-white/[0.03] border border-white/5 rounded-lg px-3 py-2.5 text-xs flex items-start gap-3">
-                <span className="text-white/30 whitespace-nowrap">{fmt(log.timestamp)}</span>
-                <span className="font-mono text-indigo-300">{log.action}</span>
-                {log.targetUid && <span className="text-white/40">user: {log.targetUid}</span>}
-                {log.type && <span className="text-white/40">type: {log.type}</span>}
-                <span className="text-white/30 ml-auto">by {log.adminUid}</span>
+              <div key={log.id} className="group bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.05] hover:border-white/[0.08] rounded-xl px-4 py-3 text-xs flex items-center gap-4 transition-all">
+                <span className="text-white/25 whitespace-nowrap font-mono">{fmt(log.timestamp)}</span>
+                <span className="font-mono text-red-300 bg-red-500/[0.08] px-2 py-0.5 rounded-md">{log.action}</span>
+                {log.targetUid && <span className="text-white/35">user: {log.targetUid}</span>}
+                {log.type && <span className="text-white/35">type: {log.type}</span>}
+                <span className="text-white/20 ml-auto text-[11px]">by {log.adminUid}</span>
               </div>
             ))}
           </div>
@@ -629,56 +742,59 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background gradient glows */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px]" />
-        <div className="absolute top-1/2 -left-40 w-[400px] h-[400px] bg-blue-900/10 rounded-full blur-[100px]" />
-        <div className="absolute -bottom-40 right-1/3 w-80 h-80 bg-indigo-600/5 rounded-full blur-[80px]" />
-      </div>
+      <AnimatedBackground />
 
       <div className="w-full max-w-sm relative z-10">
         {/* Logo & branding */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-indigo-600/15 border border-indigo-500/20 shadow-xl shadow-indigo-900/20 mb-4">
-            <Shield className="w-8 h-8 text-indigo-400" />
+          <div className="relative inline-block mb-5">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-red-600/20 to-red-900/20 border border-red-500/20 shadow-2xl shadow-red-900/30 flex items-center justify-center">
+              <Shield className="w-10 h-10 text-red-400" />
+            </div>
+            <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-red-500 flex items-center justify-center shadow-lg shadow-red-500/40">
+              <Lock className="w-3 h-3 text-white" />
+            </div>
           </div>
-          <h1 className="text-2xl font-black text-white uppercase tracking-tight">Admin Access</h1>
-          <p className="text-white/30 mt-1 text-sm">The Daily Athlete</p>
+          <h1 className="text-3xl font-black text-white uppercase tracking-tight">Admin Access</h1>
+          <p className="text-red-400/50 mt-1.5 text-sm font-medium tracking-wide">The Daily Athlete</p>
         </div>
 
         {/* Card */}
-        <form onSubmit={handleSubmit} className="bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl shadow-black/40 space-y-6">
+        <form onSubmit={handleSubmit} className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-2xl p-8 shadow-2xl shadow-black/50 space-y-6">
           {/* Restricted area badge */}
-          <div className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-indigo-500/[0.08] border border-indigo-500/15">
-            <Lock className="w-3.5 h-3.5 text-indigo-400/70" />
-            <span className="text-xs text-indigo-300/70 font-medium tracking-wide uppercase">Restricted Area</span>
+          <div className="flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-500/[0.08] to-orange-500/[0.06] border border-red-500/15">
+            <Lock className="w-3.5 h-3.5 text-red-400/70" />
+            <span className="text-xs text-red-300/70 font-bold tracking-widest uppercase">Restricted Area</span>
           </div>
 
-          <p className="text-white/40 text-sm text-center">
+          <p className="text-white/35 text-sm text-center">
             Enter the admin password to continue.
           </p>
 
           {error && (
-            <div className="flex items-center gap-2.5 text-red-400 text-sm bg-red-950/40 border border-red-500/20 rounded-lg px-4 py-3">
+            <div className="flex items-center gap-2.5 text-red-400 text-sm bg-red-950/40 border border-red-500/20 rounded-xl px-4 py-3 animate-in fade-in slide-in-from-top-1 duration-200">
               <XCircle size={16} className="shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
-          <input
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            placeholder="Password"
-            required
-            autoFocus
-            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 text-sm focus:outline-none focus:border-indigo-500/40 transition"
-          />
+          <div className="relative">
+            <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" />
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="Password"
+              required
+              autoFocus
+              className="w-full pl-11 pr-4 py-3.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white placeholder-white/25 text-sm focus:outline-none focus:border-red-500/40 focus:ring-1 focus:ring-red-500/20 transition-all"
+            />
+          </div>
 
           <button
             type="submit"
             disabled={loading || !password}
-            className="w-full flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold disabled:opacity-60 transition-all duration-200 shadow-lg shadow-indigo-900/30 hover:shadow-xl hover:shadow-indigo-900/40 hover:-translate-y-0.5 active:translate-y-0"
+            className="w-full flex items-center justify-center gap-2.5 px-4 py-3.5 rounded-xl bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white text-sm font-bold disabled:opacity-50 transition-all duration-200 shadow-lg shadow-red-600/25 hover:shadow-xl hover:shadow-red-600/35 hover:-translate-y-0.5 active:translate-y-0"
           >
             {loading ? <RefreshCw size={16} className="animate-spin" /> : <Shield size={16} />}
             {loading ? 'Verifying…' : 'Enter'}
@@ -686,8 +802,8 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
 
           {/* Security footer */}
           <div className="flex items-center justify-center gap-1.5 pt-2">
-            <Shield className="w-3 h-3 text-white/15" />
-            <span className="text-[11px] text-white/15">Protected by CoachTrack</span>
+            <Shield className="w-3 h-3 text-white/10" />
+            <span className="text-[11px] text-white/10 tracking-wide">Protected by The Daily Athlete</span>
           </div>
         </form>
       </div>
@@ -737,44 +853,52 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white/80">
+    <div className="min-h-screen bg-black text-white/80 relative">
+      <AnimatedBackground />
+
       {/* Header */}
-      <header className="bg-white/[0.02] backdrop-blur-xl border-b border-white/[0.08] px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-indigo-600/15 border border-indigo-500/20 flex items-center justify-center">
-            <Shield size={16} className="text-indigo-400" />
+      <header className="relative z-10 bg-black/50 backdrop-blur-2xl border-b border-white/[0.06]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-red-600/20 to-red-900/20 border border-red-500/20 flex items-center justify-center shadow-lg shadow-red-900/20">
+              <Shield size={18} className="text-red-400" />
+            </div>
+            <div>
+              <span className="font-bold text-white text-sm">The Daily Athlete</span>
+              <span className="text-white/20 mx-2 text-xs">/</span>
+              <span className="text-red-400/60 text-xs font-medium">Admin</span>
+            </div>
           </div>
-          <span className="font-semibold text-white">CoachTrack Admin</span>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 text-white/30 hover:text-white/70 hover:bg-white/[0.05] rounded-xl px-4 py-2 text-sm transition-all"
+          >
+            <LogOut size={15} /> Sign out
+          </button>
         </div>
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-1.5 text-white/40 hover:text-white/70 hover:bg-white/5 rounded-lg px-3 py-1.5 text-sm transition"
-        >
-          <LogOut size={14} /> Sign out
-        </button>
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
         {/* Tab nav */}
-        <nav className="inline-flex gap-1 bg-white/[0.03] border border-white/[0.08] rounded-xl p-1">
+        <nav className="inline-flex gap-1 bg-black/40 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-1.5 shadow-xl shadow-black/20">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setTab(id)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm transition-all ${
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
                 tab === id
-                  ? 'bg-indigo-600/15 text-indigo-300 border border-indigo-500/20 shadow-sm'
-                  : 'text-white/40 hover:text-white/60 hover:bg-white/5 border border-transparent'
+                  ? 'bg-gradient-to-r from-red-600/20 to-red-500/15 text-red-300 border border-red-500/20 shadow-lg shadow-red-900/10'
+                  : 'text-white/35 hover:text-white/60 hover:bg-white/[0.04] border border-transparent'
               }`}
             >
-              <Icon size={14} />
+              <Icon size={15} />
               {label}
             </button>
           ))}
         </nav>
 
         {/* Tab content */}
-        <div className="bg-white/[0.02] backdrop-blur-sm border border-white/[0.08] rounded-xl p-6">
+        <div className="bg-white/[0.02] backdrop-blur-sm border border-white/[0.06] rounded-2xl p-6 sm:p-8 shadow-xl shadow-black/10">
           {tab === 'overview' && <OverviewSection stats={stats} />}
           {tab === 'backups' && <BackupsSection />}
           {tab === 'users' && <UsersSection />}
@@ -800,15 +924,15 @@ export default function AdminPage() {
   if (checking) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center relative overflow-hidden">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px]" />
-          <div className="absolute top-1/2 -left-40 w-[400px] h-[400px] bg-blue-900/10 rounded-full blur-[100px]" />
-        </div>
-        <div className="flex flex-col items-center gap-3 relative z-10">
-          <div className="w-12 h-12 rounded-xl bg-indigo-600/15 border border-indigo-500/20 flex items-center justify-center animate-pulse">
-            <Shield className="w-6 h-6 text-indigo-400" />
+        <AnimatedBackground />
+        <div className="flex flex-col items-center gap-4 relative z-10">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-600/20 to-red-900/20 border border-red-500/20 flex items-center justify-center animate-pulse shadow-2xl shadow-red-900/30">
+            <Shield className="w-8 h-8 text-red-400" />
           </div>
-          <p className="text-white/30 text-xs font-medium tracking-wide">Verifying session...</p>
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping" />
+            <p className="text-white/30 text-sm font-medium tracking-wide">Verifying session</p>
+          </div>
         </div>
       </div>
     );
