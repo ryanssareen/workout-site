@@ -360,6 +360,23 @@ Today's Date: ${now.toLocaleDateString()}
       });
     }
 
+    // Normalize chart sections — auto-detect yKeys for multi-series data
+    if (parsedResponse.sections && Array.isArray(parsedResponse.sections)) {
+      for (const section of parsedResponse.sections) {
+        if (section.type === 'chart' && section.data?.length > 0 && !section.yKeys) {
+          const firstPoint = section.data[0];
+          const numericKeys = Object.keys(firstPoint).filter(
+            (k: string) => k !== section.xKey && typeof firstPoint[k] === 'number'
+          );
+          if (numericKeys.length > 1) {
+            section.yKeys = numericKeys;
+          } else if (numericKeys.length === 1 && !(section.yKey in firstPoint)) {
+            section.yKey = numericKeys[0];
+          }
+        }
+      }
+    }
+
     // Check if it's an insufficient data response
     if (parsedResponse.insufficient) {
       return NextResponse.json({

@@ -32,7 +32,9 @@ export interface ChartSection {
   data: ChartDataPoint[];
   xKey: string;
   yKey: string;
+  yKeys?: string[];   // Multiple y-keys for multi-series charts (e.g. current vs previous)
   label?: string;
+  labels?: string[];  // Labels for each yKey in multi-series charts
 }
 
 export interface ChartDataPoint {

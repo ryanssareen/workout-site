@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'AI service not configured' }, { status: 500 });
     }
 
-    const { reportType, params = {}, userId } = await req.json();
+    const { reportType, params = {}, userId, refresh = false } = await req.json();
 
     if (!reportType || !userId) {
       return NextResponse.json({ error: 'reportType and userId are required' }, { status: 400 });
@@ -42,16 +42,20 @@ export async function POST(req: NextRequest) {
     // Resolve username
     const username = await adminResolveUsername(userId);
 
-    // Check cache first
-    const cached = await getCachedReport(username, reportType, params);
-    if (cached) {
-      console.log(`📊 Cache hit for ${reportType} (${username})`);
-      return NextResponse.json({
-        report: cached,
-        isInsufficient: false,
-        hasData: true,
-        cached: true,
-      });
+    // Check cache first (skip if refresh requested)
+    if (!refresh) {
+      const cached = await getCachedReport(username, reportType, params);
+      if (cached) {
+        console.log(`📊 Cache hit for ${reportType} (${username})`);
+        return NextResponse.json({
+          report: cached,
+          isInsufficient: false,
+          hasData: true,
+          cached: true,
+        });
+      }
+    } else {
+      console.log(`📊 Refresh requested, skipping cache for ${reportType} (${username})`);
     }
 
     console.log(`📊 Generating ${reportType} for ${username}`);
@@ -124,6 +128,24 @@ export async function POST(req: NextRequest) {
         insufficientMessage: 'Failed to generate report. Please try again.',
         hasData: true,
       });
+    }
+
+    // Normalize chart sections — auto-detect yKeys for multi-series data
+    if (parsed.sections && Array.isArray(parsed.sections)) {
+      for (const section of parsed.sections) {
+        if (section.type === 'chart' && section.data?.length > 0 && !section.yKeys) {
+          const firstPoint = section.data[0];
+          const numericKeys = Object.keys(firstPoint).filter(
+            (k) => k !== section.xKey && typeof firstPoint[k] === 'number'
+          );
+          // If yKey doesn't exist in data or there are multiple numeric keys, set yKeys
+          if (numericKeys.length > 1) {
+            section.yKeys = numericKeys;
+          } else if (numericKeys.length === 1 && !(section.yKey in firstPoint)) {
+            section.yKey = numericKeys[0];
+          }
+        }
+      }
     }
 
     // Check insufficient data response

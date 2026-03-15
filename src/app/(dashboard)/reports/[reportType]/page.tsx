@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { Loader2, ArrowLeft, AlertCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ReportContainer } from '@/components/reports/ReportContainer';
@@ -28,6 +28,7 @@ export default function DeepDiveReportPage() {
   const [report, setReport] = useState<StructuredReport | null>(null);
   const [loadingReport, setLoadingReport] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isCached, setIsCached] = useState(false);
 
   const displayName = useMemo(
     () => user?.displayName || 'Athlete',
@@ -38,51 +39,53 @@ export default function DeepDiveReportPage() {
   const params = useMemo(() => {
     const p: Record<string, string> = {};
     searchParams.forEach((value, key) => {
-      p[key] = value;
+      if (key !== 'refresh') p[key] = value;
     });
     return p;
   }, [searchParams]);
 
-  useEffect(() => {
+  const generateReport = async (refresh = false) => {
     if (!user || !reportType) return;
+    setLoadingReport(true);
+    setError(null);
+    setReport(null);
 
-    const generate = async () => {
-      setLoadingReport(true);
-      setError(null);
+    try {
+      const res = await fetch('/api/ai/reports/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reportType: reportType as DeepDiveReportType,
+          params,
+          userId: user.uid,
+          refresh,
+        }),
+      });
 
-      try {
-        const res = await fetch('/api/ai/reports/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            reportType: reportType as DeepDiveReportType,
-            params,
-            userId: user.uid,
-          }),
-        });
-
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || 'Failed to generate report');
-        }
-
+      if (!res.ok) {
         const data = await res.json();
-
-        if (data.isInsufficient) {
-          setError(data.insufficientMessage || 'Not enough data for this report.');
-        } else if (data.report) {
-          setReport(data.report);
-        } else {
-          setError('Could not generate this report. Try again later.');
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Something went wrong.');
-      } finally {
-        setLoadingReport(false);
+        throw new Error(data.error || 'Failed to generate report');
       }
-    };
 
-    generate();
+      const data = await res.json();
+
+      if (data.isInsufficient) {
+        setError(data.insufficientMessage || 'Not enough data for this report.');
+      } else if (data.report) {
+        setReport(data.report);
+        setIsCached(!!data.cached);
+      } else {
+        setError('Could not generate this report. Try again later.');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
+    } finally {
+      setLoadingReport(false);
+    }
+  };
+
+  useEffect(() => {
+    generateReport(searchParams.get('refresh') === 'true');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid, reportType]);
 
@@ -99,14 +102,27 @@ export default function DeepDiveReportPage() {
 
   return (
     <div className="w-full max-w-4xl mx-auto">
-      {/* Back link */}
-      <Link
-        href="/reports"
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Reports
-      </Link>
+      {/* Back link + refresh */}
+      <div className="flex items-center justify-between mb-4">
+        <Link
+          href="/reports"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Reports
+        </Link>
+        {report && !loadingReport && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => generateReport(true)}
+            className="text-muted-foreground hover:text-foreground gap-1.5"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            {isCached ? 'Regenerate' : 'Refresh'}
+          </Button>
+        )}
+      </div>
 
       {/* Loading state */}
       {loadingReport && (
