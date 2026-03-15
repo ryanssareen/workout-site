@@ -2,7 +2,13 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminAuth } from '@/lib/firebase/admin';
-import { verifyAdminSession, getAdminUids, checkOrigin } from '@/lib/admin-auth';
+import {
+  verifyAdminSession,
+  getAdminUids,
+  checkOrigin,
+  checkPasswordMatches,
+  createPasswordSessionToken,
+} from '@/lib/admin-auth';
 
 // In-memory rate limiter (best-effort in serverless — resets on cold start)
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
@@ -37,7 +43,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ authenticated: true, uid: session.uid });
 }
 
-// POST — exchange Firebase ID token for a session cookie
+// POST — exchange password or Firebase ID token for a session cookie
 export async function POST(request: NextRequest) {
   const ip =
     request.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown';
@@ -54,21 +60,45 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let idToken: string;
+  let body: Record<string, unknown>;
   try {
-    const body = await request.json();
-    if (!body.idToken || typeof body.idToken !== 'string') throw new Error();
-    idToken = body.idToken;
+    body = await request.json();
   } catch {
     await delay(2000);
-    return NextResponse.json({ error: 'Missing idToken' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+  }
+
+  // ── Password-based auth ────────────────────────────────────────────────────
+  if (typeof body.password === 'string') {
+    if (!checkPasswordMatches(body.password)) {
+      await delay(2000);
+      return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
+    }
+
+    const token = createPasswordSessionToken();
+    const expiresInMs = 4 * 60 * 60 * 1000;
+    const response = NextResponse.json({ authenticated: true, uid: 'password-admin' });
+    response.cookies.set('admin_pw_session', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: expiresInMs / 1000,
+      path: '/',
+    });
+    return response;
+  }
+
+  // ── Firebase ID token auth ─────────────────────────────────────────────────
+  if (typeof body.idToken !== 'string' || !body.idToken) {
+    await delay(2000);
+    return NextResponse.json({ error: 'Missing password or idToken' }, { status: 400 });
   }
 
   const adminAuth = getAdminAuth();
 
   let decodedToken: { uid: string };
   try {
-    decodedToken = await adminAuth.verifyIdToken(idToken);
+    decodedToken = await adminAuth.verifyIdToken(body.idToken);
   } catch {
     await delay(2000);
     return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
@@ -84,7 +114,7 @@ export async function POST(request: NextRequest) {
   const expiresInMs = 4 * 60 * 60 * 1000;
   let sessionCookie: string;
   try {
-    sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn: expiresInMs });
+    sessionCookie = await adminAuth.createSessionCookie(body.idToken, { expiresIn: expiresInMs });
   } catch {
     return NextResponse.json({ error: 'Failed to create session' }, { status: 500 });
   }
@@ -107,6 +137,13 @@ export async function DELETE(request: NextRequest) {
   }
   const response = NextResponse.json({ authenticated: false });
   response.cookies.set('admin_session', '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 0,
+    path: '/',
+  });
+  response.cookies.set('admin_pw_session', '', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
