@@ -85,6 +85,40 @@ function getRateLimitMessage(resp: Response): {
 }
 
 // Map Strava activity types to our workout types
+function buildTypeSpecificFields(workoutType: string, activity: any): Record<string, any> {
+  const distKm = (activity.distance || 0) / 1000;
+  const timeMin = Math.round((activity.moving_time || 0) / 60);
+  const fields: Record<string, any> = {};
+
+  if (workoutType === 'run') {
+    fields.run = {
+      distance: Math.round(distKm * 100) / 100,
+      distanceUnit: 'km',
+      time: timeMin,
+      ...(activity.total_elevation_gain ? { elevationGain: Math.round(activity.total_elevation_gain) } : {}),
+      ...(activity.average_heartrate ? { avgHeartRate: Math.round(activity.average_heartrate) } : {}),
+      ...(distKm > 0 && timeMin > 0 ? {
+        pace: `${Math.floor(timeMin / distKm)}:${String(Math.round(((timeMin / distKm) % 1) * 60)).padStart(2, '0')}/km`
+      } : {}),
+    };
+  } else if (workoutType === 'bike') {
+    fields.bike = {
+      distance: Math.round(distKm * 100) / 100,
+      distanceUnit: 'km',
+      time: timeMin,
+      ...(activity.total_elevation_gain ? { elevationGain: Math.round(activity.total_elevation_gain) } : {}),
+      ...(activity.average_watts ? { avgPower: Math.round(activity.average_watts) } : {}),
+    };
+  } else if (workoutType === 'swim') {
+    fields.swim = {
+      distance: Math.round(activity.distance || 0),
+      distanceUnit: 'meters',
+      time: timeMin,
+    };
+  }
+  return fields;
+}
+
 function mapStravaType(stravaType: string): 'swim' | 'run' | 'bike' | 'strength' {
   const typeMap: Record<string, 'swim' | 'run' | 'bike' | 'strength'> = {
     'Run': 'run',
@@ -861,9 +895,12 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
         const mergeData: any = {
           completed: true,
           completedAt: admin.firestore.Timestamp.fromDate(activityDate),
+          date: admin.firestore.Timestamp.fromDate(activityDate),
+          duration: Math.round((activity.moving_time || 0) / 60),
           completedBy: 'strava',
           stravaActivityId: stravaId,
           actualStats,
+          ...buildTypeSpecificFields(workoutType, activity),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         };
         if (Object.keys(routeData).length > 0) mergeData.routeData = routeData;
@@ -984,34 +1021,7 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
         }
 
         // Add type-specific sub-objects so workouts can be properly edited
-        const distKm = (activity.distance || 0) / 1000;
-        const timeMin = Math.round((activity.moving_time || 0) / 60);
-        if (workoutType === 'run') {
-          newWorkoutData.run = {
-            distance: Math.round(distKm * 100) / 100,
-            distanceUnit: 'km',
-            time: timeMin,
-            ...(activity.total_elevation_gain ? { elevationGain: Math.round(activity.total_elevation_gain) } : {}),
-            ...(activity.average_heartrate ? { avgHeartRate: Math.round(activity.average_heartrate) } : {}),
-            ...(distKm > 0 && timeMin > 0 ? {
-              pace: `${Math.floor(timeMin / distKm)}:${String(Math.round(((timeMin / distKm) % 1) * 60)).padStart(2, '0')}/km`
-            } : {}),
-          };
-        } else if (workoutType === 'bike') {
-          newWorkoutData.bike = {
-            distance: Math.round(distKm * 100) / 100,
-            distanceUnit: 'km',
-            time: timeMin,
-            ...(activity.total_elevation_gain ? { elevationGain: Math.round(activity.total_elevation_gain) } : {}),
-            ...(activity.average_watts ? { avgPower: Math.round(activity.average_watts) } : {}),
-          };
-        } else if (workoutType === 'swim') {
-          newWorkoutData.swim = {
-            distance: Math.round(activity.distance || 0),
-            distanceUnit: 'meters',
-            time: timeMin,
-          };
-        }
+        Object.assign(newWorkoutData, buildTypeSpecificFields(workoutType, activity));
 
         // If this Strava activity already exists in any doc, reconcile instead of creating duplicate.
         if (existingByStravaIdDocs.length > 0) {
