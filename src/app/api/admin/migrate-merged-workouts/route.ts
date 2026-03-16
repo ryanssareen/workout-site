@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase/admin';
-import { verifyAdminSession, checkOrigin, logAdminAction } from '@/lib/admin-auth';
+import { verifyAdminSession, logAdminAction } from '@/lib/admin-auth';
 
 const BATCH_SIZE = 490;
 
@@ -43,12 +43,31 @@ function buildTypeFieldsFromStats(
   return fields;
 }
 
-// POST — one-time migration to backfill merged workouts missing date/duration/type-specific fields
+// Shared auth: admin session OR secret query param for browser access
+async function authenticate(request: NextRequest): Promise<{ uid: string } | null> {
+  // Allow ?secret=ADMIN_SECRET for browser GET access
+  const secret = request.nextUrl.searchParams.get('secret');
+  if (secret && secret === process.env.ADMIN_SECRET) {
+    return { uid: 'admin-via-secret' };
+  }
+  // Fall back to admin session cookie
+  return verifyAdminSession(request);
+}
+
+// GET/POST — one-time migration to backfill merged workouts missing date/duration/type-specific fields
 // ?dryRun=true to preview without writing
+// ?secret=ADMIN_SECRET for browser access
+export async function GET(request: NextRequest) {
+  return runMigration(request);
+}
+
 export async function POST(request: NextRequest) {
-  const session = await verifyAdminSession(request);
+  return runMigration(request);
+}
+
+async function runMigration(request: NextRequest) {
+  const session = await authenticate(request);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (!checkOrigin(request)) return NextResponse.json({ error: 'CSRF check failed' }, { status: 403 });
 
   const dryRun = request.nextUrl.searchParams.get('dryRun') === 'true';
   const db = getAdminDb();
