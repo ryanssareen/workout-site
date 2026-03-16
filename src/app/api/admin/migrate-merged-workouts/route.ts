@@ -93,41 +93,44 @@ async function runMigration(request: NextRequest) {
         totalScanned++;
         const data = workoutDoc.data();
 
-        // Only migrate workouts that were merged (have mergeMeta)
-        if (!data.mergeMeta) continue;
+        // Skip if no actualStats to build from
+        if (!data.actualStats) continue;
 
         const type = data.type as string;
         const typeKey = type === 'run' ? 'run' : type === 'bike' ? 'bike' : type === 'swim' ? 'swim' : null;
 
-        // Skip if type-specific sub-object already exists and has data
-        if (typeKey && data[typeKey] && Object.keys(data[typeKey]).length > 0) continue;
-
-        // Skip if no actualStats to build from
-        if (!data.actualStats) continue;
-
-        // Build update
         const update: Record<string, any> = {};
+        let needsUpdate = false;
 
-        // Fix date: copy completedAt → date (fixes the 12:00 issue)
-        if (data.completedAt) {
-          update.date = data.completedAt;
+        // Fix date: if date is stuck at 12:00 but completedAt has real time, copy it
+        if (data.completedAt && data.date) {
+          const dateVal = data.date.toDate ? data.date.toDate() : new Date(data.date);
+          const completedVal = data.completedAt.toDate ? data.completedAt.toDate() : new Date(data.completedAt);
+          const dateHours = dateVal.getHours();
+          const dateMinutes = dateVal.getMinutes();
+          // If date is exactly 12:00 (the planned workout default) and completedAt differs
+          if (dateHours === 12 && dateMinutes === 0 && dateVal.getTime() !== completedVal.getTime()) {
+            update.date = data.completedAt;
+            needsUpdate = true;
+          }
         }
 
-        // Fix duration from actualStats
-        if (data.actualStats.duration) {
+        // Fix duration from actualStats if missing or zero
+        if (data.actualStats.duration && (!data.duration || data.duration === 0)) {
           update.duration = Math.round(data.actualStats.duration / 60);
+          needsUpdate = true;
         }
 
-        // Build type-specific sub-object from actualStats
-        const durationMin = data.actualStats.duration
-          ? Math.round(data.actualStats.duration / 60)
-          : (data.duration || 0);
-
-        if (typeKey) {
+        // Build type-specific sub-object if missing
+        if (typeKey && (!data[typeKey] || Object.keys(data[typeKey]).length === 0)) {
+          const durationMin = data.actualStats.duration
+            ? Math.round(data.actualStats.duration / 60)
+            : (data.duration || 0);
           Object.assign(update, buildTypeFieldsFromStats(type, data.actualStats, durationMin));
+          needsUpdate = true;
         }
 
-        if (Object.keys(update).length === 0) continue;
+        if (!needsUpdate) continue;
 
         if (!dryRun) {
           batch.update(workoutDoc.ref, update);
