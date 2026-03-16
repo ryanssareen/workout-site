@@ -136,6 +136,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     let userId = searchParams.get('userId');
     const email = searchParams.get('email');
+    const workoutId = (searchParams.get('workoutId') || '').trim();
+    let targetStravaActivityId = (searchParams.get('stravaActivityId') || '').trim();
     const dryRunParam = (searchParams.get('dryRun') || '').toLowerCase();
     const dryRun = dryRunParam === '1' || dryRunParam === 'true' || dryRunParam === 'yes';
 
@@ -158,12 +160,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User ID or email is required' }, { status: 400 });
     }
 
-    // Pull all workouts and group by stravaActivityId so we can keep one canonical doc and merge data into it.
-    const workoutsSnapshot = await adminDb
-      .collection('users')
-      .doc(userId)
-      .collection('workouts')
-      .get();
+    const workoutsCollection = adminDb.collection('users').doc(userId).collection('workouts');
+
+    // Optional targeted mode: resolve stravaActivityId from workoutId first (minimal reads).
+    if (!targetStravaActivityId && workoutId) {
+      const workoutSnap = await workoutsCollection.doc(workoutId).get();
+      if (!workoutSnap.exists) {
+        return NextResponse.json({ error: `Workout not found: ${workoutId}` }, { status: 404 });
+      }
+      const linkedStravaId = workoutSnap.data()?.stravaActivityId;
+      if (!linkedStravaId) {
+        return NextResponse.json(
+          { error: `Workout ${workoutId} is not linked to any Strava activity.` },
+          { status: 400 }
+        );
+      }
+      targetStravaActivityId = String(linkedStravaId);
+    }
+
+    // Quota-safe read strategy:
+    // - targeted stravaActivityId => one equality query
+    // - otherwise scan only Strava-linked docs (not full workout history)
+    const workoutsSnapshot = targetStravaActivityId
+      ? await workoutsCollection.where('stravaActivityId', '==', targetStravaActivityId).get()
+      : await workoutsCollection.where('stravaActivityId', '!=', null).get();
 
     const workoutsByStravaId: Record<string, WorkoutEntry[]> = {};
     for (const doc of workoutsSnapshot.docs) {
@@ -239,11 +259,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       dryRun,
-      totalWorkouts: workoutsSnapshot.size,
+      scannedLinkedWorkouts: workoutsSnapshot.size,
+      queryMode: targetStravaActivityId ? 'targeted' : 'all-linked',
+      targetStravaActivityId: targetStravaActivityId || null,
       duplicateGroups: reconciledGroups.length,
       updatedWorkouts: updatedCount,
       deletedWorkouts: deletedCount,
-      remainingWorkouts: workoutsSnapshot.size - deletedCount,
+      remainingScannedWorkouts: workoutsSnapshot.size - deletedCount,
       groups: reconciledGroups,
       message: reconciledGroups.length > 0
         ? dryRun
@@ -253,7 +275,17 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to cleanup duplicates';
+    const isQuotaExceeded = message.includes('RESOURCE_EXHAUSTED') || message.toLowerCase().includes('quota exceeded');
     console.error('Cleanup error:', error);
+    if (isQuotaExceeded) {
+      return NextResponse.json(
+        {
+          error: 'Firestore quota exceeded. Try targeted mode: /api/strava/cleanup?userId=<username>&workoutId=<workoutId>&dryRun=true or use stravaActivityId directly.',
+          details: message,
+        },
+        { status: 429 }
+      );
+    }
     return NextResponse.json(
       { error: message },
       { status: 500 }
