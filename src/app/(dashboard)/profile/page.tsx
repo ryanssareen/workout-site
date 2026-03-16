@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { getUserWorkouts, getPersonalRecords, getMilestones } from '@/lib/firebase/firestore';
+import { getPersonalRecords, getMilestones } from '@/lib/firebase/firestore';
+import { useWorkoutStore } from '@/lib/stores/workoutStore';
 import { computeSummary, computeTypeDistribution } from '@/lib/analytics';
 import { PhotoUpload } from '@/components/profile/PhotoUpload';
 import { EditProfileDialog } from '@/components/profile/EditProfileDialog';
@@ -59,11 +60,13 @@ export default function ProfilePage() {
   const [editOpen, setEditOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
+  const { getWorkouts } = useWorkoutStore();
+
   const loadData = useCallback(() => {
     if (!user) return;
     setLoading(true);
     Promise.all([
-      getUserWorkouts(user.username, user.role as 'coach' | 'athlete' | 'student'),
+      getWorkouts(user.username, user.role as 'coach' | 'athlete' | 'student'),
       getPersonalRecords(user.username),
       getMilestones(user.username),
     ]).then(([w, pr, ms]) => {
@@ -72,7 +75,7 @@ export default function ProfilePage() {
       setMilestones(ms);
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, [user]);
+  }, [user, getWorkouts]);
 
   useEffect(() => {
     loadData();

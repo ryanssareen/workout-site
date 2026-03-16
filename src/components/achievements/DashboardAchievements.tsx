@@ -22,14 +22,26 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 interface DashboardAchievementsProps {
   username: string;
+  /** Pre-fetched PRs — if provided, skips Firestore read */
+  prefetchedPRs?: PersonalRecord[];
+  /** Pre-fetched milestones — if provided, skips Firestore read */
+  prefetchedMilestones?: Milestone[];
 }
 
-export function DashboardAchievements({ username }: DashboardAchievementsProps) {
-  const [prs, setPrs] = useState<PersonalRecord[]>([]);
-  const [milestones, setMilestones] = useState<Milestone[]>([]);
-  const [loading, setLoading] = useState(true);
+export function DashboardAchievements({ username, prefetchedPRs, prefetchedMilestones }: DashboardAchievementsProps) {
+  const [prs, setPrs] = useState<PersonalRecord[]>(prefetchedPRs?.slice(0, 3) ?? []);
+  const [milestones, setMilestones] = useState<Milestone[]>(prefetchedMilestones?.slice(0, 3) ?? []);
+  const [loading, setLoading] = useState(!prefetchedPRs && !prefetchedMilestones);
 
   useEffect(() => {
+    // Skip fetch if data was provided via props
+    if (prefetchedPRs || prefetchedMilestones) {
+      if (prefetchedPRs) setPrs(prefetchedPRs.slice(0, 3));
+      if (prefetchedMilestones) setMilestones(prefetchedMilestones.slice(0, 3));
+      setLoading(false);
+      return;
+    }
+
     async function load() {
       try {
         const [prData, msData] = await Promise.all([
@@ -45,7 +57,7 @@ export function DashboardAchievements({ username }: DashboardAchievementsProps) 
       }
     }
     load();
-  }, [username]);
+  }, [username, prefetchedPRs, prefetchedMilestones]);
 
   if (loading) return null;
 

@@ -15,6 +15,15 @@ import { adminDb } from '@/lib/firebase/admin';
  *   https://your-site.vercel.app/api/strava/sync-all?after=2025-01-01
  */
 export async function GET(request: NextRequest) {
+  // Auth guard — require CRON_SECRET or ADMIN_SECRET
+  const authHeader = request.headers.get('authorization');
+  const cronSecret = process.env.CRON_SECRET;
+  const adminSecret = process.env.ADMIN_SECRET;
+  const token = authHeader?.replace('Bearer ', '');
+  if (!token || (token !== cronSecret && token !== adminSecret)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const startTime = Date.now();
   const { searchParams } = new URL(request.url);
   const after = searchParams.get('after'); // e.g. '2025-01-01'

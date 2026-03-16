@@ -140,6 +140,19 @@ export async function getUserProfile(uid: string): Promise<User | null> {
     const username = await getUsernameFromUid(uid);
     if (!username) return null;
 
+    return getUserProfileByUsername(username);
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    return null;
+  }
+}
+
+/**
+ * Fetch user profile by username directly — skips the UID→username lookup.
+ * Use when you already have the username (e.g. from authStore which resolves it once).
+ */
+export async function getUserProfileByUsername(username: string): Promise<User | null> {
+  try {
     const userDoc = await getDoc(doc(getDbInstance(), 'users', username));
     if (userDoc.exists()) {
       return { username: userDoc.id, ...userDoc.data() } as User;

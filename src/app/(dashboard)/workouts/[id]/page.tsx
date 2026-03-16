@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { getWorkout, completeWorkout, getUserWorkouts } from '@/lib/firebase/firestore';
+import { getWorkout, completeWorkout } from '@/lib/firebase/firestore';
+import { useWorkoutStore } from '@/lib/stores/workoutStore';
 import { Workout, AchievementResult } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -122,7 +123,8 @@ export default function WorkoutDetailPage() {
       // Check for achievements (non-blocking — show toast immediately, celebration after)
       toast.success('Workout marked as complete!');
       try {
-        const allWorkouts = await getUserWorkouts(user.username, user.role);
+        const { invalidate } = useWorkoutStore.getState();
+        const allWorkouts = await invalidate(user.username, user.role);
         const result = await checkAchievements(user.username, user.uid, updatedWorkout, allWorkouts);
         if (result.newPRs.length > 0 || result.newMilestones.length > 0) {
           setAchievements(result);

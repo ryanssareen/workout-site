@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { getUserWorkouts } from '@/lib/firebase/firestore';
+import { useWorkoutStore } from '@/lib/stores/workoutStore';
 import { Workout } from '@/types';
 import { ShareButtons } from '@/components/workouts/ShareWorkoutCard';
 import { Loader2, X, Share2, ChevronRight, ArrowRight } from 'lucide-react';
@@ -34,7 +34,8 @@ export default function YearlyWrappedPage() {
     async function load() {
       if (!user || fetchedRef.current) return;
       fetchedRef.current = true;
-      const data = await getUserWorkouts(user.username, user.role);
+      const { getWorkouts } = useWorkoutStore.getState();
+      const data = await getWorkouts(user.username, user.role);
       statsRef.current = computeYearStats(data);
       setLoading(false);
     }

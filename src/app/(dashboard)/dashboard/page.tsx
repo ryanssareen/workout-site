@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { getUserWorkouts } from '@/lib/firebase/firestore';
-import { Workout } from '@/types';
+import { useWorkoutStore } from '@/lib/stores/workoutStore';
+import { getPersonalRecords, getMilestones } from '@/lib/firebase/firestore';
+import { Workout, PersonalRecord } from '@/types';
+import type { Milestone } from '@/types/achievements';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import {
@@ -122,6 +124,8 @@ function getStatusIcon(status: ReturnType<typeof getWorkoutStatus>) {
 export default function DashboardPage() {
   const user = useAuthStore((state) => state.user);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [loading, setLoading] = useState(true);
   const [ready, setReady] = useState(false);
   const [wrapBannerDismissed, setWrapBannerDismissed] = useState(false);
@@ -133,12 +137,14 @@ export default function DashboardPage() {
     return 'Good evening';
   }, []);
 
-  // Refresh workouts from Firestore (used by auto-sync callback)
+  const { getWorkouts, invalidate: invalidateWorkouts } = useWorkoutStore();
+
+  // Refresh workouts (used by auto-sync callback) — invalidates cache so fresh data is fetched
   const refreshWorkouts = useCallback(async () => {
     if (!user) return;
-    const workoutData = await getUserWorkouts(user.username, user.role);
+    const workoutData = await invalidateWorkouts(user.username, user.role);
     setWorkouts(workoutData);
-  }, [user]);
+  }, [user, invalidateWorkouts]);
 
   // Auto-sync Strava in background on regular login
   useStravaAutoSync(user, refreshWorkouts);
@@ -146,13 +152,20 @@ export default function DashboardPage() {
   useEffect(() => {
     async function loadData() {
       if (!user) return;
-      const workoutData = await getUserWorkouts(user.username, user.role);
+      // Fetch workouts (cached), PRs, and milestones in parallel
+      const [workoutData, prData, msData] = await Promise.all([
+        getWorkouts(user.username, user.role),
+        getPersonalRecords(user.username),
+        getMilestones(user.username),
+      ]);
       setWorkouts(workoutData);
+      setPersonalRecords(prData);
+      setMilestones(msData);
       setLoading(false);
       setTimeout(() => setReady(true), 100);
     }
     loadData();
-  }, [user]);
+  }, [user, getWorkouts]);
 
   // ── Derived data ──────────────────────────────────────────
   const now = new Date();
@@ -316,7 +329,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── ACHIEVEMENTS ────────────────────────────────────────── */}
-      {user && <DashboardAchievements username={user.username} />}
+      {user && <DashboardAchievements username={user.username} prefetchedPRs={personalRecords} prefetchedMilestones={milestones} />}
 
       {/* ── YOUR WORKOUTS (unified: recent done + upcoming) ───── */}
       <Card>

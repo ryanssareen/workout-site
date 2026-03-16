@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { getUserWorkouts } from '@/lib/firebase/firestore';
+import { useWorkoutStore } from '@/lib/stores/workoutStore';
 import { Workout, WorkoutType } from '@/types';
 import { ShareButtons } from '@/components/workouts/ShareWorkoutCard';
 import {
@@ -117,7 +117,8 @@ export default function WrapPage() {
     async function load() {
       if (!user) return;
       if (workouts.length === 0) setLoading(true);
-      const data = await getUserWorkouts(user.username, user.role);
+      const { getWorkouts } = useWorkoutStore.getState();
+      const data = await getWorkouts(user.username, user.role);
       setWorkouts(data);
       setLoading(false);
     }

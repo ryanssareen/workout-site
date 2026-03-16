@@ -482,8 +482,26 @@ export async function POST(request: NextRequest) {
 }
 
 // GET handler — reads tokens from Firestore (original behavior)
+// Guarded: only accepts requests from our own origin (blocks external callers)
 export async function GET(request: NextRequest) {
   try {
+    // Origin/Referer check — reject calls not originating from our own app
+    const origin = request.headers.get('origin');
+    const referer = request.headers.get('referer');
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    const isInternalCall = (
+      // Same-origin fetch from our frontend
+      (origin && appUrl && origin.startsWith(appUrl)) ||
+      (referer && appUrl && referer.startsWith(appUrl)) ||
+      // Server-side call (no origin/referer) from sync-all
+      (!origin && !referer) ||
+      // Local dev
+      (origin && (origin.includes('localhost') || origin.includes('127.0.0.1')))
+    );
+    if (!isInternalCall) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
 
@@ -752,7 +770,11 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
         const activityTypes = [...new Set(activitiesToProcess.map((activity) => mapStravaType(activity.type)))];
 
         const [plannedSnapshot, ...importSnapshots] = await Promise.all([
-          workoutsCollection.where('completed', '==', false).get(),
+          workoutsCollection
+            .where('completed', '==', false)
+            .where('date', '>=', admin.firestore.Timestamp.fromDate(rangeStart))
+            .where('date', '<=', admin.firestore.Timestamp.fromDate(rangeEnd))
+            .get(),
           ...activityTypes.map((type) =>
             workoutsCollection
               .where('type', '==', type)
@@ -781,6 +803,25 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
       }
     }
 
+    // Batch-preload existing stravaActivityId lookups (Firestore `in` supports up to 30 values)
+    const existingByStravaIdMap = new Map<string, FirebaseFirestore.QueryDocumentSnapshot[]>();
+    {
+      const allStravaIds = activitiesToProcess.map((a) => String(a.id));
+      const BATCH_SIZE = 30; // Firestore `in` query limit
+      for (let batchStart = 0; batchStart < allStravaIds.length; batchStart += BATCH_SIZE) {
+        const batch = allStravaIds.slice(batchStart, batchStart + BATCH_SIZE);
+        const snap = await workoutsCollection
+          .where('stravaActivityId', 'in', batch)
+          .get();
+        for (const doc of snap.docs) {
+          const sid = doc.data().stravaActivityId as string;
+          if (!existingByStravaIdMap.has(sid)) existingByStravaIdMap.set(sid, []);
+          existingByStravaIdMap.get(sid)!.push(doc);
+        }
+      }
+      console.log(`📚 Pre-checked ${allStravaIds.length} stravaActivityIds in ${Math.ceil(allStravaIds.length / BATCH_SIZE)} batched queries, found ${existingByStravaIdMap.size} existing`);
+    }
+
     for (let i = 0; i < activitiesToProcess.length; i++) {
       const activity = activitiesToProcess[i];
       const stravaId = String(activity.id);
@@ -797,10 +838,7 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
 
       const activityDate = new Date(activity.start_date_local || activity.start_date);
       const workoutType = mapStravaType(activity.type);
-      const existingByStravaIdSnapshot = await workoutsCollection
-        .where('stravaActivityId', '==', stravaId)
-        .get();
-      const existingByStravaIdDocs = existingByStravaIdSnapshot.docs;
+      const existingByStravaIdDocs = existingByStravaIdMap.get(stravaId) || [];
 
       // Prepare stats from Strava
       const actualStats: any = {};

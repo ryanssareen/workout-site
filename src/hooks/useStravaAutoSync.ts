@@ -226,7 +226,7 @@ export function useStravaAutoSync(
 
           if (backfillResult.newWorkouts + backfillResult.merged > 0) {
             console.log(`[auto-sync] Stage 2 page ${page}: ${backfillResult.newWorkouts} new, ${backfillResult.merged} merged`);
-            onNewWorkouts?.();
+            // Don't call onNewWorkouts per page — we'll call once after backfill completes
           }
 
           // Server tells us when backfill is done (fewer than 200 activities returned)
@@ -241,10 +241,15 @@ export function useStravaAutoSync(
         console.log('[auto-sync] Stage 2: skipped (full backfill already completed)');
       }
 
+      // Single refresh callback after all stages complete (instead of per-page during backfill)
+      const grandTotal = totalNew + totalMerged;
+      if (grandTotal > 0) {
+        onNewWorkouts?.();
+      }
+
       setSyncResult({ newWorkouts: totalNew, merged: totalMerged });
 
       // Show summary toast
-      const grandTotal = totalNew + totalMerged;
       if (grandTotal > 0) {
         const parts: string[] = [];
         if (totalNew > 0) parts.push(`${totalNew} new`);

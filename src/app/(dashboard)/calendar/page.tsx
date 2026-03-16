@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useSearchParams } from 'next/navigation';
-import { getUserWorkouts, completeWorkout, deleteWorkout, getCoachStudents } from '@/lib/firebase/firestore';
+import { completeWorkout, deleteWorkout, getCoachStudents } from '@/lib/firebase/firestore';
+import { useWorkoutStore } from '@/lib/stores/workoutStore';
 import { Workout } from '@/types';
 import { CalendarViewMode } from '@/components/calendar/types';
 import { useStravaAutoSync, SYNC_COOLDOWN_UNTIL_KEY } from '@/hooks/useStravaAutoSync';
@@ -73,12 +74,14 @@ export default function CalendarPage() {
     }
   }, [fromStrava]);
 
+  const { getWorkouts, invalidate: invalidateWorkouts } = useWorkoutStore();
+
   const refreshWorkouts = useCallback(async () => {
     if (!user) return;
-    const data = await getUserWorkouts(user.username, user.role);
+    const data = await invalidateWorkouts(user.username, user.role);
     setWorkouts(data);
     setLoading(false);
-  }, [user]);
+  }, [user, invalidateWorkouts]);
 
   const { syncing, syncPhaseLabel } = useStravaAutoSync(
     fromStrava ? user : null,
@@ -89,7 +92,7 @@ export default function CalendarPage() {
   // ── Data loading ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!user) return;
-    getUserWorkouts(user.username, user.role).then((data) => {
+    getWorkouts(user.username, user.role).then((data) => {
       setWorkouts(data);
       setLoading(false);
     });
@@ -172,7 +175,7 @@ export default function CalendarPage() {
     e.stopPropagation();
     try {
       await completeWorkout(workout.ownerUsername, workout.id, !workout.completed);
-      const data = await getUserWorkouts(user!.username, user!.role);
+      const data = await invalidateWorkouts(user!.username, user!.role);
       setWorkouts(data);
       toast.success(workout.completed ? 'Marked incomplete' : 'Marked complete!');
     } catch (err: any) {

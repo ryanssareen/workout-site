@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DuplicateRemover } from '@/components/reports/dashboard/DuplicateRemover';
-import { getUserWorkouts } from '@/lib/firebase/firestore';
+import { useWorkoutStore } from '@/lib/stores/workoutStore';
 import { Workout } from '@/types';
 import { cn } from '@/lib/utils';
 import {
@@ -43,12 +43,14 @@ export default function TrainingAnalysisPage() {
   const [ready, setReady] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
+  const { getWorkouts } = useWorkoutStore();
+
   const fetchWorkouts = useCallback(async () => {
     if (!user) return;
     setLoadingWorkouts(true);
     try {
       const role = user.role === 'student' ? 'athlete' : user.role;
-      const data = await getUserWorkouts(user.username, role as 'coach' | 'athlete');
+      const data = await getWorkouts(user.username, role as 'coach' | 'athlete');
       setWorkouts(data);
     } catch (err) {
       console.error('Failed to fetch workouts:', err);

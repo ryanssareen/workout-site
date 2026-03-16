@@ -342,24 +342,31 @@ export async function deleteWorkoutComment(ownerUsername: string, workoutId: str
   }
 }
 
+// In-memory cache for coach students (rarely changes, expensive query)
+const coachStudentsCache = new Map<string, { data: any[]; fetchedAt: number }>();
+const COACH_STUDENTS_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
 export async function getCoachStudents(coachUsername: string): Promise<any[]> {
   try {
+    // Check cache first
+    const cached = coachStudentsCache.get(coachUsername);
+    if (cached && Date.now() - cached.fetchedAt < COACH_STUDENTS_CACHE_TTL) {
+      return cached.data;
+    }
+
     const usersRef = collection(getDbInstance(), 'users');
 
-    // Query for both 'athlete' and legacy 'student' roles
-    // Firestore doesn't support OR in where, so we run two queries
-    const athleteQuery = query(usersRef, where('coachUsername', '==', coachUsername), where('role', '==', 'athlete'));
-    const studentQuery = query(usersRef, where('coachUsername', '==', coachUsername), where('role', '==', 'student'));
+    // Single query with 'in' operator for both 'athlete' and legacy 'student' roles
+    const q = query(
+      usersRef,
+      where('coachUsername', '==', coachUsername),
+      where('role', 'in', ['athlete', 'student'])
+    );
+    const snapshot = await getDocs(q);
+    const athletes = snapshot.docs.map(d => ({ uid: d.id, ...d.data() }));
 
-    const [athleteSnapshot, studentSnapshot] = await Promise.all([
-      getDocs(athleteQuery),
-      getDocs(studentQuery)
-    ]);
-
-    const athletes = [
-      ...athleteSnapshot.docs.map(d => ({ uid: d.id, ...d.data() })),
-      ...studentSnapshot.docs.map(d => ({ uid: d.id, ...d.data() }))
-    ];
+    // Cache result
+    coachStudentsCache.set(coachUsername, { data: athletes, fetchedAt: Date.now() });
 
     console.log('Found athletes:', athletes.length);
     return athletes;

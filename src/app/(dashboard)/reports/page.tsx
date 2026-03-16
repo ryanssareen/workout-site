@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { Loader2, Sparkles } from 'lucide-react';
-import { getUserWorkouts } from '@/lib/firebase/firestore';
+import { useWorkoutStore } from '@/lib/stores/workoutStore';
 import { getDbInstance } from '@/lib/firebase/config';
 import { doc, getDoc } from 'firebase/firestore';
 import { Workout } from '@/types';
@@ -42,13 +42,15 @@ export default function ReportsHubPage() {
   );
   const greeting = useMemo(() => getTimeGreeting(new Date()), []);
 
+  const { getWorkouts } = useWorkoutStore();
+
   // Fetch workouts
   const fetchWorkouts = useCallback(async () => {
     if (!user) return;
     setLoadingWorkouts(true);
     try {
       const role = user.role === 'student' ? 'athlete' : user.role;
-      const data = await getUserWorkouts(user.username, role as 'coach' | 'athlete');
+      const data = await getWorkouts(user.username, role as 'coach' | 'athlete');
       setWorkouts(data);
     } catch (err) {
       console.error('Failed to fetch workouts:', err);
@@ -56,7 +58,7 @@ export default function ReportsHubPage() {
       setLoadingWorkouts(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.username, user?.role]);
+  }, [user?.username, user?.role, getWorkouts]);
 
   // Fetch cached daily insight from Firestore
   const fetchInsight = useCallback(async () => {

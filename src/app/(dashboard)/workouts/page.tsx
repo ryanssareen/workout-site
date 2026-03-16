@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { getUserWorkouts, deleteWorkout, completeWorkout } from '@/lib/firebase/firestore';
+import { deleteWorkout, completeWorkout } from '@/lib/firebase/firestore';
+import { useWorkoutStore } from '@/lib/stores/workoutStore';
 import { Workout, WorkoutType } from '@/types';
 import { AIWorkoutSuggestions } from '@/components/workouts/AIWorkoutSuggestions';
 import { Button } from '@/components/ui/button';
@@ -194,13 +195,15 @@ function WorkoutsContent() {
   const [workoutToDelete, setWorkoutToDelete] = useState<Workout | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  const { getWorkouts, invalidate: invalidateWorkouts } = useWorkoutStore();
+
   const loadWorkouts = useCallback(async () => {
     if (!user) return;
-    const data = await getUserWorkouts(user.username, user.role);
+    const data = await getWorkouts(user.username, user.role);
     setWorkouts(data);
     setLoading(false);
     setTimeout(() => setReady(true), 120);
-  }, [user]);
+  }, [user, getWorkouts]);
 
   useEffect(() => { loadWorkouts(); }, [loadWorkouts]);
 
@@ -210,6 +213,7 @@ function WorkoutsContent() {
     try {
       await deleteWorkout(user.username, workoutToDelete.id);
       setWorkouts(prev => prev.filter(w => w.id !== workoutToDelete.id));
+      invalidateWorkouts(user.username, user.role); // refresh cache for other pages
       toast.success('Workout deleted');
       setWorkoutToDelete(null);
     } catch (err: any) {
