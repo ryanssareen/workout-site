@@ -91,20 +91,18 @@ async function runMigration(request: NextRequest) {
     let batchCount = 0;
 
     for (const username of usernames) {
+      // Only query merged workouts (planned/imported that got Strava data overlaid)
+      // This is a tiny subset vs all 12k+ Strava workouts
       const workoutsSnap = await db
         .collection('users')
         .doc(username)
         .collection('workouts')
-        .where('completedBy', '==', 'strava')
+        .where('mergeMeta.method', 'in', ['auto_planned', 'auto_import', 'manual', 'duplicate_decision'])
         .get();
 
       for (const workoutDoc of workoutsSnap.docs) {
         totalScanned++;
         const data = workoutDoc.data();
-
-        // Skip if no actualStats to build from
-        if (!data.actualStats) continue;
-
         const type = data.type as string;
         const typeKey = type === 'run' ? 'run' : type === 'bike' ? 'bike' : type === 'swim' ? 'swim' : null;
 
@@ -125,13 +123,13 @@ async function runMigration(request: NextRequest) {
         }
 
         // Fix duration from actualStats if missing or zero
-        if (data.actualStats.duration && (!data.duration || data.duration === 0)) {
+        if (data.actualStats?.duration && (!data.duration || data.duration === 0)) {
           update.duration = Math.round(data.actualStats.duration / 60);
           needsUpdate = true;
         }
 
         // Build type-specific sub-object if missing
-        if (typeKey && (!data[typeKey] || Object.keys(data[typeKey]).length === 0)) {
+        if (typeKey && data.actualStats && (!data[typeKey] || Object.keys(data[typeKey]).length === 0)) {
           const durationMin = data.actualStats.duration
             ? Math.round(data.actualStats.duration / 60)
             : (data.duration || 0);
