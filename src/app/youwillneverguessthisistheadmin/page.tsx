@@ -5,7 +5,7 @@ import {
   Shield, Database, Users, Settings, LogOut, RefreshCw,
   Trash2, RotateCcw, Download, AlertTriangle, CheckCircle,
   XCircle, Clock, Activity, ChevronDown, ChevronUp, Eye, Lock,
-  Zap, TrendingUp, HardDrive, UserCheck,
+  Zap, TrendingUp, HardDrive, UserCheck, Upload,
 } from 'lucide-react';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -236,9 +236,11 @@ function BackupsSection() {
   const [creating, setCreating] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [seeding, setSeeding] = useState(false);
   const [restoreUsername, setRestoreUsername] = useState('');
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const seedInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -328,6 +330,45 @@ function BackupsSection() {
     }
   }
 
+  async function seedFromFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!confirm(`Upload "${file.name}" as the seed full backup? This registers it in Storage for the tiered backup system.`)) {
+      if (seedInputRef.current) seedInputRef.current.value = '';
+      return;
+    }
+
+    setSeeding(true);
+    setError('');
+    try {
+      const buffer = await file.arrayBuffer();
+      // Compress with CompressionStream to fit under Vercel's 4.5MB body limit
+      const cs = new CompressionStream('gzip');
+      const writer = cs.writable.getWriter();
+      writer.write(new Uint8Array(buffer));
+      writer.close();
+      const compressed = await new Response(cs.readable).arrayBuffer();
+
+      const res = await fetch('/api/admin/backup/seed', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Encoding': 'gzip', 'Content-Type': 'application/octet-stream' },
+        body: compressed,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Seed upload failed');
+
+      alert(`Seed backup registered: ${data.userCount} users, ${data.workoutCount} workouts`);
+      await load();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSeeding(false);
+      if (seedInputRef.current) seedInputRef.current.value = '';
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Section header */}
@@ -374,6 +415,20 @@ function BackupsSection() {
             <Download size={13} className={downloading ? 'animate-bounce' : ''} />
             {downloading ? 'Generating…' : 'Download'}
           </button>
+          <label
+            className={`group flex items-center gap-2 px-3 py-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/15 border border-purple-500/15 hover:border-purple-500/25 text-xs text-purple-300 font-medium cursor-pointer transition-all ${seeding ? 'opacity-50 pointer-events-none' : ''}`}
+          >
+            <Upload size={13} className={seeding ? 'animate-pulse' : ''} />
+            {seeding ? 'Uploading…' : 'Upload seed'}
+            <input
+              ref={seedInputRef}
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={seedFromFile}
+              disabled={seeding}
+            />
+          </label>
         </div>
       </div>
 
