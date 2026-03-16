@@ -11,11 +11,7 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { Dumbbell, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 
-interface Props {
-  dark?: boolean;
-}
-
-export function LoginForm({ dark = true }: Props) {
+export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
@@ -71,20 +67,20 @@ export function LoginForm({ dark = true }: Props) {
     <div className="w-full max-w-md">
       {/* Logo */}
       <div className="text-center mb-8">
-        <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl shadow-xl mb-4 ${dark ? 'bg-black shadow-black/25' : 'bg-gray-900 shadow-gray-900/20'}`}>
-          <Dumbbell className="w-8 h-8 text-white" />
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl shadow-xl bg-foreground shadow-foreground/10 mb-4">
+          <Dumbbell className="w-8 h-8 text-background" />
         </div>
-        <h1 className={`text-2xl font-black uppercase tracking-tight ${dark ? 'text-white' : 'text-gray-900'}`}>Welcome Back</h1>
-        <p className={`mt-1 ${dark ? 'text-white/40' : 'text-gray-400'}`}>Sign in to The Daily Athlete</p>
+        <h1 className="text-2xl font-black uppercase tracking-tight text-foreground">Welcome Back</h1>
+        <p className="mt-1 text-muted-foreground">Sign in to The Daily Athlete</p>
       </div>
 
       {/* Form Card */}
-      <div className={`backdrop-blur-xl rounded-2xl p-8 shadow-2xl ${dark ? 'bg-white/[0.03] border border-white/10 shadow-black/40' : 'bg-white border border-gray-100 shadow-gray-200/60'}`}>
+      <div className="backdrop-blur-xl rounded-2xl p-8 shadow-2xl bg-card border border-border shadow-foreground/5">
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="email" className={`text-sm font-medium ${dark ? 'text-white/70' : 'text-gray-600'}`}>Email</Label>
+            <Label htmlFor="email" className="text-sm font-medium text-foreground/70">Email</Label>
             <div className="relative">
-              <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${dark ? 'text-white/30' : 'text-gray-400'}`} />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 id="email"
                 type="email"
@@ -92,24 +88,20 @@ export function LoginForm({ dark = true }: Props) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className={`pl-10 h-11 transition-colors ${
-                  dark
-                    ? 'bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-red-500 focus:ring-red-500/20'
-                    : 'bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-red-400 focus:ring-red-400/20'
-                }`}
+                className="pl-10 h-11 bg-muted/50 border-border text-foreground placeholder:text-muted-foreground/50 focus:border-red-500 focus:ring-red-500/20 transition-colors"
               />
             </div>
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="password" className={`text-sm font-medium ${dark ? 'text-white/70' : 'text-gray-600'}`}>Password</Label>
-              <Link href="/reset-password" className={`text-xs transition-colors ${dark ? 'text-white/30 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}`}>
+              <Label htmlFor="password" className="text-sm font-medium text-foreground/70">Password</Label>
+              <Link href="/reset-password" className="text-xs text-muted-foreground hover:text-red-500 transition-colors">
                 Forgot password?
               </Link>
             </div>
             <div className="relative">
-              <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${dark ? 'text-white/30' : 'text-gray-400'}`} />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 id="password"
                 type="password"
@@ -117,11 +109,7 @@ export function LoginForm({ dark = true }: Props) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className={`pl-10 h-11 transition-colors ${
-                  dark
-                    ? 'bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-red-500 focus:ring-red-500/20'
-                    : 'bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-red-400 focus:ring-red-400/20'
-                }`}
+                className="pl-10 h-11 bg-muted/50 border-border text-foreground placeholder:text-muted-foreground/50 focus:border-red-500 focus:ring-red-500/20 transition-colors"
               />
             </div>
           </div>
@@ -132,9 +120,9 @@ export function LoginForm({ dark = true }: Props) {
               type="checkbox"
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
-              className={`h-4 w-4 rounded accent-red-600 ${dark ? 'border-white/20 bg-white/5' : 'border-gray-300 bg-white'}`}
+              className="h-4 w-4 rounded accent-red-600 border-border bg-muted/50"
             />
-            <Label htmlFor="rememberMe" className={`text-sm cursor-pointer select-none ${dark ? 'text-white/50' : 'text-gray-500'}`}>Remember me</Label>
+            <Label htmlFor="rememberMe" className="text-sm cursor-pointer select-none text-muted-foreground">Remember me</Label>
           </div>
 
           <Button type="submit" className="w-full h-11 font-bold bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/25 border-0 transition-all" disabled={loading || waitingForAuth || googleLoading}>
@@ -145,17 +133,17 @@ export function LoginForm({ dark = true }: Props) {
 
           <div className="relative my-4">
             <div className="absolute inset-0 flex items-center">
-              <div className={`w-full border-t ${dark ? 'border-white/10' : 'border-gray-200'}`} />
+              <div className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className={`px-2 ${dark ? 'bg-transparent text-white/30' : 'bg-white text-gray-400'}`}>or</span>
+              <span className="px-2 bg-card text-muted-foreground">or</span>
             </div>
           </div>
 
           <Button
             type="button"
             variant="outline"
-            className={`w-full h-11 font-medium ${dark ? 'bg-white hover:bg-gray-50 text-gray-700 border-white/20' : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200'}`}
+            className="w-full h-11 font-medium bg-white hover:bg-gray-50 text-gray-700 border-border dark:bg-white dark:hover:bg-gray-50 dark:text-gray-700"
             onClick={handleGoogleSignIn}
             disabled={loading || waitingForAuth || googleLoading}
           >
@@ -174,7 +162,7 @@ export function LoginForm({ dark = true }: Props) {
         </form>
 
         <div className="mt-6 text-center">
-          <p className={`text-sm ${dark ? 'text-white/30' : 'text-gray-500'}`}>
+          <p className="text-sm text-muted-foreground">
             Don&apos;t have an account?{' '}
             <Link href="/register" className="text-red-500 hover:text-red-400 font-medium transition-colors">Sign up free</Link>
           </p>
@@ -182,7 +170,7 @@ export function LoginForm({ dark = true }: Props) {
       </div>
 
       <div className="mt-6 text-center">
-        <Link href="/" className={`text-sm transition-colors ${dark ? 'text-white/20 hover:text-white/50' : 'text-gray-300 hover:text-gray-500'}`}>&larr; Back to home</Link>
+        <Link href="/" className="text-sm text-muted-foreground/60 hover:text-muted-foreground transition-colors">&larr; Back to home</Link>
       </div>
     </div>
   );

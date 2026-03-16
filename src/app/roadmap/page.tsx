@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/dashboard/ThemeToggle';
 import {
   Activity, BarChart3, Bell, Brain, Calendar, CheckCircle2,
   Circle, Clock, Code2, Dumbbell, Eye, Flag, Flame, GitMerge,
-  Globe, Heart, Layers, Link2, Mail, Map, Moon, Rocket,
-  Share2, Shield, Smartphone, Sparkles, Star, Sun, Target,
+  Globe, Heart, Layers, Link2, Mail, Map, Rocket,
+  Share2, Shield, Smartphone, Sparkles, Star, Target,
   TrendingUp, Trophy, Upload, Users, Video, Zap,
 } from 'lucide-react';
 
@@ -148,63 +148,35 @@ const FEAT_CONFIG: Record<FeatureStatus, {
   future:   { dot: 'bg-purple-400',                       dotAnim: '',              pill: 'bg-purple-500/10 border-purple-400/20',   pillText: 'text-purple-500',  label: 'Future'   },
 };
 
-/* ── Theme ──────────────────────────────────────────────────── */
-const dark = {
-  page:       'bg-black text-white',
-  header:     'border-white/10 bg-black/80',
-  logo:       'bg-black border-white/20',
-  logoIcon:   'text-white',
-  navLink:    'text-white/40 hover:text-white/70',
+/* ── Theme-aware styles ─────────────────────────────────────── */
+const styles = {
+  page:       'bg-background text-foreground',
+  header:     'border-border bg-background/80',
+  logo:       'bg-foreground',
+  logoIcon:   'text-background',
+  navLink:    'text-muted-foreground hover:text-foreground/70',
   heroBadge:  'bg-red-600/10 border-red-600/20 text-red-400',
-  heroSub:    'text-white/40',
-  progress:   'bg-white/5 border-white/10',
+  heroSub:    'text-muted-foreground',
+  progress:   'bg-muted/50 border-border',
   progFill:   'bg-gradient-to-r from-emerald-500 to-emerald-400',
-  progLabel:  'text-white/40',
-  legend:     'border-white/10 bg-white/[0.02]',
-  legendText: 'text-white/50',
-  phaseWrap:  'bg-white/[0.01]',
-  phaseNum:   'text-white/[0.04]',
-  phaseName:  'text-white',
-  phaseTag:   'text-white/40',
-  featCard:   'bg-white/[0.02] border-white/[0.06] hover:border-white/[0.12]',
-  featName:   'text-white',
-  featDesc:   'text-white/40',
-  footer:     'border-white/10 bg-black',
-  footerText: 'text-white/30 hover:text-white/60',
-  footerCopy: 'text-white/30',
-  toggle:     'bg-white/10 hover:bg-white/20 text-white',
-};
-
-const light = {
-  page:       'bg-gray-50 text-gray-900',
-  header:     'border-gray-200 bg-white/90',
-  logo:       'bg-white border-gray-200',
-  logoIcon:   'text-gray-900',
-  navLink:    'text-gray-500 hover:text-gray-900',
-  heroBadge:  'bg-red-50 border-red-200 text-red-600',
-  heroSub:    'text-gray-500',
-  progress:   'bg-white border-gray-200',
-  progFill:   'bg-gradient-to-r from-emerald-500 to-emerald-400',
-  progLabel:  'text-gray-500',
-  legend:     'border-gray-200 bg-white',
-  legendText: 'text-gray-600',
-  phaseWrap:  'bg-white',
-  phaseNum:   'text-gray-900/[0.04]',
-  phaseName:  'text-gray-900',
-  phaseTag:   'text-gray-500',
-  featCard:   'bg-gray-50 border-gray-200 hover:border-gray-300',
-  featName:   'text-gray-900',
-  featDesc:   'text-gray-500',
-  footer:     'border-gray-200 bg-white',
-  footerText: 'text-gray-400 hover:text-gray-700',
-  footerCopy: 'text-gray-400',
-  toggle:     'bg-gray-900/10 hover:bg-gray-900/20 text-gray-700',
+  progLabel:  'text-muted-foreground',
+  legend:     'border-border bg-muted/30',
+  legendText: 'text-foreground/50',
+  phaseWrap:  'bg-muted/20',
+  phaseNum:   'text-foreground/[0.04]',
+  phaseName:  'text-foreground',
+  phaseTag:   'text-muted-foreground',
+  featCard:   'bg-muted/30 border-border hover:border-foreground/[0.12]',
+  featName:   'text-foreground',
+  featDesc:   'text-muted-foreground',
+  footer:     'border-border bg-background',
+  footerText: 'text-muted-foreground hover:text-foreground/60',
+  footerCopy: 'text-muted-foreground',
 };
 
 /* ── Page ───────────────────────────────────────────────────── */
 export default function RoadmapPage() {
-  const [isDark, setIsDark] = useState(false);
-  const t = isDark ? dark : light;
+  const t = styles;
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${t.page}`}>
@@ -213,7 +185,7 @@ export default function RoadmapPage() {
       <header className={`border-b ${t.header} backdrop-blur-xl sticky top-0 z-50`}>
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className={`h-9 w-9 rounded-xl border flex items-center justify-center ${t.logo}`}>
+            <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${t.logo}`}>
               <Dumbbell className={`h-4 w-4 ${t.logoIcon}`} />
             </div>
             <span className={`font-bold text-lg ${t.logoIcon}`}>The Daily Athlete</span>
@@ -224,13 +196,7 @@ export default function RoadmapPage() {
             <Link href="/portfolio" className={`text-sm transition-colors hidden sm:inline ${t.navLink}`}>Portfolio</Link>
             <Link href="/comic"    className={`text-sm transition-colors hidden sm:inline ${t.navLink}`}>Our Story</Link>
             <Link href="/contact"   className={`text-sm transition-colors hidden sm:inline ${t.navLink}`}>Contact</Link>
-            <button
-              onClick={() => setIsDark(!isDark)}
-              className={`p-2 rounded-lg transition-colors ${t.toggle}`}
-              aria-label="Toggle theme"
-            >
-              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </button>
+            <ThemeToggle />
             <Button size="sm" asChild className="bg-red-600 hover:bg-red-700 text-white border-0 ml-1">
               <Link href="/register">Get Started</Link>
             </Button>
@@ -265,7 +231,7 @@ export default function RoadmapPage() {
               <span className={`text-sm font-semibold ${t.phaseName}`}>{doneCount} features shipped</span>
               <span className={`text-sm font-black text-emerald-500`}>{pct}%</span>
             </div>
-            <div className={`h-3 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
+            <div className="h-3 rounded-full overflow-hidden bg-muted/50">
               <div
                 className={`h-full rounded-full transition-all duration-700 ${t.progFill}`}
                 style={{ width: `${pct}%` }}
@@ -331,7 +297,7 @@ export default function RoadmapPage() {
                       {/* Mini progress for non-complete phases */}
                       {phase.status !== 'complete' && (
                         <div className="flex items-center gap-2 mt-2">
-                          <div className={`h-1.5 w-24 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-gray-200'}`}>
+                          <div className="h-1.5 w-24 rounded-full overflow-hidden bg-muted/50">
                             <div
                               className={`h-full rounded-full ${t.progFill}`}
                               style={{ width: `${phasePct}%` }}
@@ -400,7 +366,7 @@ export default function RoadmapPage() {
       <footer className={`border-t py-8 ${t.footer}`}>
         <div className="container mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className={`h-8 w-8 rounded-lg border flex items-center justify-center ${t.logo}`}>
+            <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${t.logo}`}>
               <Dumbbell className={`h-4 w-4 ${t.logoIcon}`} />
             </div>
             <span className="font-bold">The Daily Athlete</span>

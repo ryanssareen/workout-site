@@ -1,30 +1,32 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Dumbbell, Calendar, TrendingUp, ArrowRight, Activity, CheckCircle2, Target, Bike, Waves, Zap, Clock, Smartphone, HelpCircle, Flame, Sparkles } from 'lucide-react';
+import { Dumbbell, Calendar, TrendingUp, ArrowRight, Activity, Target, Bike, Waves, Clock, Smartphone, Flame, Sparkles } from 'lucide-react';
 import { AuthRedirect } from '@/components/auth/AuthRedirect';
+import { ThemeToggle } from '@/components/dashboard/ThemeToggle';
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-background text-foreground">
       <AuthRedirect />
 
       {/* Navigation */}
       <nav
-        className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-black/80 backdrop-blur-xl"
+        className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl"
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
         <div className="container mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-black border border-white/20 flex items-center justify-center">
-              <Dumbbell className="h-4 w-4 text-white" />
+            <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-foreground flex items-center justify-center">
+              <Dumbbell className="h-4 w-4 text-background" />
             </div>
-            <span className="font-bold text-base sm:text-lg text-white">The Daily Athlete</span>
+            <span className="font-bold text-base sm:text-lg">The Daily Athlete</span>
           </Link>
           <div className="flex gap-1.5 sm:gap-2 items-center">
-            <Link href="/portfolio" className="text-sm text-white/40 hover:text-white/70 transition-colors hidden sm:inline mr-1">Portfolio</Link>
-            <Link href="/roadmap"   className="text-sm text-white/40 hover:text-white/70 transition-colors hidden sm:inline mr-1">Roadmap</Link>
-            <Link href="/comic"    className="text-sm text-white/40 hover:text-white/70 transition-colors hidden sm:inline mr-1">Our Story</Link>
-            <Button variant="ghost" size="sm" asChild className="text-white/70 hover:text-white hover:bg-white/10 text-xs sm:text-sm px-2 sm:px-3">
+            <Link href="/portfolio" className="text-sm text-muted-foreground hover:text-foreground/70 transition-colors hidden sm:inline mr-1">Portfolio</Link>
+            <Link href="/roadmap"   className="text-sm text-muted-foreground hover:text-foreground/70 transition-colors hidden sm:inline mr-1">Roadmap</Link>
+            <Link href="/comic"    className="text-sm text-muted-foreground hover:text-foreground/70 transition-colors hidden sm:inline mr-1">Our Story</Link>
+            <ThemeToggle />
+            <Button variant="ghost" size="sm" asChild className="text-foreground/70 hover:text-foreground hover:bg-muted text-xs sm:text-sm px-2 sm:px-3">
               <Link href="/login">Sign In</Link>
             </Button>
             <Button size="sm" asChild className="bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/30 border-0 text-xs sm:text-sm px-2.5 sm:px-3">
@@ -44,19 +46,19 @@ export default function Home() {
 
           <div className="container mx-auto px-4 py-16 sm:py-24 md:py-36">
             <div className="max-w-3xl mx-auto text-center space-y-6 sm:space-y-8">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-600/10 border border-red-600/20 text-red-400 text-sm font-medium">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-600/10 border border-red-600/20 text-red-500 dark:text-red-400 text-sm font-medium">
                 <Flame className="h-3.5 w-3.5" />
                 Free during early access
               </div>
 
               <h1 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight leading-tight">
                 Your training,{' '}
-                <span className="bg-gradient-to-r from-red-400 via-red-500 to-red-300 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-red-500 via-red-600 to-red-400 dark:from-red-400 dark:via-red-500 dark:to-red-300 bg-clip-text text-transparent">
                   all in one place
                 </span>
               </h1>
 
-              <p className="text-base md:text-xl text-white/50 max-w-xl mx-auto leading-relaxed">
+              <p className="text-base md:text-xl text-muted-foreground max-w-xl mx-auto leading-relaxed">
                 Track workouts across every sport, sync with Strava, and stay on top of your training — no coach required.
               </p>
 
@@ -67,7 +69,7 @@ export default function Home() {
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
-                <Button asChild variant="outline" size="lg" className="h-13 px-8 border-white/20 text-white hover:bg-white/5 hover:text-white font-semibold text-base">
+                <Button asChild variant="outline" size="lg" className="h-13 px-8 border-border text-foreground hover:bg-muted font-semibold text-base">
                   <Link href="/login">I have an account</Link>
                 </Button>
               </div>
@@ -81,8 +83,8 @@ export default function Home() {
                   { icon: Dumbbell, name: 'Strength' },
                   { icon: Target, name: 'Triathlon' },
                 ].map((sport, i) => (
-                  <div key={i} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-sm text-white/50">
-                    <sport.icon className="h-3.5 w-3.5 text-red-400" />
+                  <div key={i} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border bg-muted/50 text-sm text-muted-foreground">
+                    <sport.icon className="h-3.5 w-3.5 text-red-500 dark:text-red-400" />
                     {sport.name}
                   </div>
                 ))}
@@ -92,7 +94,7 @@ export default function Home() {
         </section>
 
         {/* How it works */}
-        <section className="py-20 md:py-24 border-y border-white/10 bg-white/[0.02]">
+        <section className="py-20 md:py-24 border-y border-border bg-muted/30">
           <div className="container mx-auto px-4">
             <h2 className="text-2xl md:text-3xl font-bold text-center mb-14">
               Get started in minutes
@@ -105,10 +107,10 @@ export default function Home() {
               ].map((item) => (
                 <div key={item.step} className="text-center">
                   <div className="w-10 h-10 rounded-full bg-red-600/15 border border-red-600/30 flex items-center justify-center mx-auto mb-4">
-                    <span className="text-sm font-bold text-red-400">{item.step}</span>
+                    <span className="text-sm font-bold text-red-500 dark:text-red-400">{item.step}</span>
                   </div>
                   <h3 className="font-semibold text-lg mb-2">{item.title}</h3>
-                  <p className="text-sm text-white/40 leading-relaxed">{item.desc}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
                 </div>
               ))}
             </div>
@@ -121,7 +123,7 @@ export default function Home() {
             <h2 className="text-2xl md:text-3xl font-bold text-center mb-4">
               Everything you need to train smarter
             </h2>
-            <p className="text-white/40 text-center mb-14 max-w-md mx-auto">
+            <p className="text-muted-foreground text-center mb-14 max-w-md mx-auto">
               Simple tools that help you stay consistent and see progress over time.
             </p>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-4xl mx-auto">
@@ -133,12 +135,12 @@ export default function Home() {
                 { icon: Smartphone, title: 'Multi-Sport', desc: 'Running, swimming, cycling, strength — all your training in one app.' },
                 { icon: Clock, title: 'Email Reminders', desc: 'Get notified about upcoming workouts so you never miss a planned session.' },
               ].map((feature, i) => (
-                <div key={i} className="p-5 rounded-2xl border border-white/10 bg-white/[0.02] hover:border-red-500/20 transition-colors">
+                <div key={i} className="p-5 rounded-2xl border border-border bg-card hover:border-red-500/20 transition-colors">
                   <div className="p-2 rounded-lg bg-red-600/10 w-fit mb-3">
-                    <feature.icon className="h-4.5 w-4.5 text-red-400" />
+                    <feature.icon className="h-4.5 w-4.5 text-red-500 dark:text-red-400" />
                   </div>
                   <h3 className="font-semibold mb-1.5">{feature.title}</h3>
-                  <p className="text-sm text-white/40 leading-relaxed">{feature.desc}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{feature.desc}</p>
                 </div>
               ))}
             </div>
@@ -146,7 +148,7 @@ export default function Home() {
         </section>
 
         {/* FAQ */}
-        <section className="py-20 md:py-24 border-t border-white/10 bg-white/[0.02]">
+        <section className="py-20 md:py-24 border-t border-border bg-muted/30">
           <div className="container mx-auto px-4">
             <h2 className="text-2xl md:text-3xl font-bold text-center mb-14">
               Frequently asked questions
@@ -158,9 +160,9 @@ export default function Home() {
                 { q: 'Does it work with my watch?', a: 'If your device syncs to Strava, your workouts will appear automatically.' },
                 { q: 'What sports are supported?', a: 'Running, swimming, cycling, triathlon, and strength training.' },
               ].map((faq, i) => (
-                <div key={i} className="p-5 rounded-2xl border border-white/10 bg-white/[0.02]">
+                <div key={i} className="p-5 rounded-2xl border border-border bg-card">
                   <h3 className="font-semibold mb-2">{faq.q}</h3>
-                  <p className="text-sm text-white/40 leading-relaxed">{faq.a}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{faq.a}</p>
                 </div>
               ))}
             </div>
@@ -176,7 +178,7 @@ export default function Home() {
             <h2 className="text-3xl md:text-4xl font-bold">
               Ready to start training?
             </h2>
-            <p className="text-white/40 text-lg">
+            <p className="text-muted-foreground text-lg">
               Join athletes who track every session and build the habit. Free to use, no credit card needed.
             </p>
             <Button asChild size="lg" className="h-13 px-10 bg-red-600 hover:bg-red-700 text-white shadow-xl shadow-red-600/25 border-0 font-semibold text-lg">
@@ -191,19 +193,19 @@ export default function Home() {
 
       {/* Footer */}
       <footer
-        className="border-t border-white/10 py-8 bg-black"
+        className="border-t border-border py-8 bg-background"
         style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}
       >
         <div className="container mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-black border border-white/20 flex items-center justify-center">
-              <Dumbbell className="h-4 w-4 text-white" />
+            <div className="h-8 w-8 rounded-lg bg-foreground flex items-center justify-center">
+              <Dumbbell className="h-4 w-4 text-background" />
             </div>
-            <span className="font-bold text-white">The Daily Athlete</span>
+            <span className="font-bold">The Daily Athlete</span>
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/contact" className="text-sm text-white/30 hover:text-white/60 transition-colors">Contact</Link>
-            <p className="text-sm text-white/30">&copy; {new Date().getFullYear()} The Daily Athlete</p>
+            <Link href="/contact" className="text-sm text-muted-foreground/70 hover:text-muted-foreground transition-colors">Contact</Link>
+            <p className="text-sm text-muted-foreground/70">&copy; {new Date().getFullYear()} The Daily Athlete</p>
           </div>
         </div>
       </footer>

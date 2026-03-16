@@ -1,87 +1,50 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/dashboard/ThemeToggle';
 import {
   Activity,
   Brain,
   Dumbbell,
   Eye,
-  Moon,
   Share2,
   Smartphone,
-  Sun,
   Trophy,
   Users,
 } from 'lucide-react';
 
-/* ── theme definitions ──────────────────────────────────────── */
-const dark = {
-  page:         'bg-black text-white',
-  header:       'border-white/10 bg-black/80',
-  logo:         'bg-black border-white/20',
-  logoIcon:     'text-white',
-  logoText:     'text-white',
-  navLink:      'text-white/40 hover:text-white/70',
+/* ── theme-aware styles ─────────────────────────────────────── */
+const styles = {
+  page:         'bg-background text-foreground',
+  header:       'border-border bg-background/80',
+  logo:         'bg-foreground',
+  logoIcon:     'text-background',
+  logoText:     'text-foreground',
+  navLink:      'text-muted-foreground hover:text-foreground/70',
   heroBadge:    'bg-red-600/10 border-red-600/20 text-red-400',
-  heroSub:      'text-white/40',
-  stepNum:      'text-white/[0.03]',
-  sectionSub:   'text-white/40',
-  bullet:       'text-white/50',
-  divider:      'border-white/[0.05]',
-  browserWrap:  'border-white/[0.08] bg-black/60 shadow-black/60',
-  browserBar:   'border-white/[0.06] bg-white/[0.02]',
-  browserDot:   'bg-white/10',
-  browserUrl:   'bg-white/[0.04]',
-  phone:        'border-white/[0.08] bg-black/60 shadow-black/60',
-  notch:        'bg-black',
-  sportPill:    'bg-white/[0.04] border-white/10',
+  heroSub:      'text-muted-foreground',
+  stepNum:      'text-foreground/[0.03]',
+  sectionSub:   'text-muted-foreground',
+  bullet:       'text-foreground/50',
+  divider:      'border-border',
+  browserWrap:  'border-border bg-background/60 shadow-foreground/10',
+  browserBar:   'border-border bg-muted/40',
+  browserDot:   'bg-muted/50',
+  browserUrl:   'bg-muted/40',
+  phone:        'border-border bg-background/60 shadow-foreground/10',
+  notch:        'bg-foreground',
+  sportPill:    'bg-muted/40 border-border',
   sportText:    '',
-  featureGrid:  'border-white/[0.05] bg-white/[0.01]',
-  featureCard:  'border-white/[0.06] bg-white/[0.02] hover:border-red-500/30',
-  featureDesc:  'text-white/40',
+  featureGrid:  'border-border bg-muted/30',
+  featureCard:  'border-border bg-muted/30 hover:border-red-500/30',
+  featureDesc:  'text-muted-foreground',
   featureHover: 'group-hover:text-red-400',
-  footer:       'border-white/10 bg-black',
-  footerLogo:   'bg-black border-white/20',
-  footerText:   'text-white/30 hover:text-white/60',
-  footerCopy:   'text-white/30',
-  toggleBg:     'bg-white/10 hover:bg-white/20',
-  toggleIcon:   'text-white',
-};
-
-const light = {
-  page:         'bg-gray-50 text-gray-900',
-  header:       'border-gray-200 bg-white/90',
-  logo:         'bg-white border-gray-200',
-  logoIcon:     'text-gray-900',
-  logoText:     'text-gray-900',
-  navLink:      'text-gray-500 hover:text-gray-900',
-  heroBadge:    'bg-red-50 border-red-200 text-red-600',
-  heroSub:      'text-gray-500',
-  stepNum:      'text-gray-900/[0.03]',
-  sectionSub:   'text-gray-500',
-  bullet:       'text-gray-600',
-  divider:      'border-gray-100',
-  browserWrap:  'border-gray-200 bg-white shadow-gray-200/80',
-  browserBar:   'border-gray-200 bg-gray-50',
-  browserDot:   'bg-gray-300',
-  browserUrl:   'bg-gray-100',
-  phone:        'border-gray-300 bg-gray-100 shadow-gray-300/60',
-  notch:        'bg-gray-900',
-  sportPill:    'bg-white border-gray-200',
-  sportText:    'text-gray-700',
-  featureGrid:  'border-gray-100 bg-gray-100/50',
-  featureCard:  'border-gray-200 bg-white hover:border-red-300',
-  featureDesc:  'text-gray-500',
-  featureHover: 'group-hover:text-red-600',
-  footer:       'border-gray-200 bg-white',
-  footerLogo:   'bg-white border-gray-200',
-  footerText:   'text-gray-400 hover:text-gray-700',
-  footerCopy:   'text-gray-400',
-  toggleBg:     'bg-gray-900/10 hover:bg-gray-900/20',
-  toggleIcon:   'text-gray-700',
+  footer:       'border-border bg-background',
+  footerLogo:   'bg-foreground',
+  footerText:   'text-muted-foreground hover:text-foreground/60',
+  footerCopy:   'text-muted-foreground',
 };
 
 /* ── phone frame ────────────────────────────────────────────── */
@@ -89,13 +52,13 @@ function PhoneFrame({
   src, alt, className = '', priority = false, t,
 }: {
   src: string; alt: string; className?: string; priority?: boolean;
-  t: typeof dark;
+  t: typeof styles;
 }) {
   return (
     <div className={`relative mx-auto ${className}`}>
       <div className={`rounded-[2.5rem] border-[5px] ${t.phone} p-1.5 shadow-2xl`}>
         <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-20 h-5 ${t.notch} rounded-b-xl z-10`} />
-        <div className="rounded-[2rem] overflow-hidden bg-black">
+        <div className="rounded-[2rem] overflow-hidden bg-background">
           <Image src={src} alt={alt} width={320} height={693} className="w-full h-auto" priority={priority} />
         </div>
       </div>
@@ -108,7 +71,7 @@ function FeatureSection({
   step, title, description, bullets, children, reverse = false, t,
 }: {
   step: string; title: string; description: string; bullets: string[];
-  children: React.ReactNode; reverse?: boolean; t: typeof dark;
+  children: React.ReactNode; reverse?: boolean; t: typeof styles;
 }) {
   return (
     <section className="py-16 md:py-24 relative overflow-hidden">
@@ -148,8 +111,7 @@ const secondaryFeatures = [
 
 /* ── page ────────────────────────────────────────────────────── */
 export default function PortfolioPage() {
-  const [isDark, setIsDark] = useState(false);
-  const t = isDark ? dark : light;
+  const t = styles;
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${t.page}`}>
@@ -158,7 +120,7 @@ export default function PortfolioPage() {
       <header className={`border-b ${t.header} backdrop-blur-xl sticky top-0 z-50`}>
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className={`h-9 w-9 rounded-xl border flex items-center justify-center ${t.logo}`}>
+            <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${t.logo}`}>
               <Dumbbell className={`h-4 w-4 ${t.logoIcon}`} />
             </div>
             <span className={`font-bold text-lg ${t.logoText}`}>The Daily Athlete</span>
@@ -169,16 +131,7 @@ export default function PortfolioPage() {
             <Link href="/roadmap"  className={`text-sm transition-colors hidden sm:inline ${t.navLink}`}>Roadmap</Link>
             <Link href="/comic"   className={`text-sm transition-colors hidden sm:inline ${t.navLink}`}>Our Story</Link>
             <Link href="/contact"  className={`text-sm transition-colors hidden sm:inline ${t.navLink}`}>Contact</Link>
-            {/* Theme toggle */}
-            <button
-              onClick={() => setIsDark(!isDark)}
-              className={`p-2 rounded-lg transition-colors ${t.toggleBg}`}
-              aria-label="Toggle theme"
-            >
-              {isDark
-                ? <Sun  className={`h-4 w-4 ${t.toggleIcon}`} />
-                : <Moon className={`h-4 w-4 ${t.toggleIcon}`} />}
-            </button>
+            <ThemeToggle />
             <Button size="sm" asChild className="bg-red-600 hover:bg-red-700 text-white border-0 ml-1">
               <Link href="/register">Get Started</Link>
             </Button>
@@ -393,7 +346,7 @@ export default function PortfolioPage() {
       <footer className={`border-t py-8 ${t.footer}`}>
         <div className="container mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className={`h-8 w-8 rounded-lg border flex items-center justify-center ${t.footerLogo}`}>
+            <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${t.footerLogo}`}>
               <Dumbbell className={`h-4 w-4 ${t.logoIcon}`} />
             </div>
             <span className="font-bold">The Daily Athlete</span>

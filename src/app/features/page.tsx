@@ -5,6 +5,7 @@ import {
   Mail, Smartphone, Sparkles,
   Zap, Target, TrendingUp, Shield, ArrowRight, Flame
 } from 'lucide-react';
+import { ThemeToggle } from '@/components/dashboard/ThemeToggle';
 
 const features = [
   { icon: Activity, title: 'Strava Integration', description: 'Auto-sync workouts from Strava. Activities are automatically matched and marked complete.', badge: 'Integration' },
@@ -28,21 +29,22 @@ const workoutTags = [
 
 export default function FeaturesPage() {
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
-      <header className="border-b border-white/10 bg-black/80 backdrop-blur-xl sticky top-0 z-50">
+      <header className="border-b border-border bg-background/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-xl bg-black border border-white/20 flex items-center justify-center">
-              <Dumbbell className="h-4 w-4 text-white" />
+            <div className="h-9 w-9 rounded-xl bg-foreground flex items-center justify-center">
+              <Dumbbell className="h-4 w-4 text-background" />
             </div>
             <span className="font-bold text-lg">The Daily Athlete</span>
           </Link>
           <div className="flex items-center gap-3">
-            <Link href="/" className="text-sm text-white/40 hover:text-white/70 transition-colors">Home</Link>
-            <Link href="/portfolio" className="text-sm text-white/40 hover:text-white/70 transition-colors">Portfolio</Link>
-            <Link href="/roadmap"   className="text-sm text-white/40 hover:text-white/70 transition-colors">Roadmap</Link>
-            <Link href="/contact"   className="text-sm text-white/40 hover:text-white/70 transition-colors">Contact</Link>
+            <Link href="/" className="text-sm text-muted-foreground hover:text-foreground/70 transition-colors">Home</Link>
+            <Link href="/portfolio" className="text-sm text-muted-foreground hover:text-foreground/70 transition-colors">Portfolio</Link>
+            <Link href="/roadmap"   className="text-sm text-muted-foreground hover:text-foreground/70 transition-colors">Roadmap</Link>
+            <Link href="/contact"   className="text-sm text-muted-foreground hover:text-foreground/70 transition-colors">Contact</Link>
+            <ThemeToggle />
             <Button size="sm" asChild className="bg-red-600 hover:bg-red-700 text-white border-0 ml-2">
               <Link href="/register">Get Started</Link>
             </Button>
@@ -65,7 +67,7 @@ export default function FeaturesPage() {
             Everything you need to
             <span className="block bg-gradient-to-r from-red-400 via-red-500 to-red-300 bg-clip-text text-transparent mt-2">train smarter</span>
           </h1>
-          <p className="text-lg md:text-xl text-white/40 max-w-2xl mx-auto mb-8">
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
             A complete self-coaching platform for endurance athletes.
             Powered by AI, integrated with Strava, built for results.
           </p>
@@ -75,7 +77,7 @@ export default function FeaturesPage() {
                 Get Started <ArrowRight className="h-4 w-4 ml-2" />
               </Link>
             </Button>
-            <Button asChild size="lg" variant="outline" className="h-12 px-8 border-white/20 text-white hover:bg-white/5 hover:text-white font-bold">
+            <Button asChild size="lg" variant="outline" className="h-12 px-8 border-border text-foreground hover:bg-muted/50 hover:text-foreground font-bold">
               <Link href="#features">View All Features</Link>
             </Button>
           </div>
@@ -90,29 +92,29 @@ export default function FeaturesPage() {
             { icon: TrendingUp, title: 'See progress instantly', desc: 'Calendar with completion signals, weekly stats, and visual progress.' },
             { icon: Clock, title: 'Save time', desc: 'Strava auto-completion, email reminders, and one-click summaries.' },
           ].map((item) => (
-            <div key={item.title} className="p-6 rounded-2xl border border-white/10 bg-white/[0.02] hover:border-red-500/30 transition-all">
+            <div key={item.title} className="p-6 rounded-2xl border border-border bg-card hover:border-red-500/30 transition-all">
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 rounded-lg bg-red-600/20">
                   <item.icon className="h-5 w-5 text-red-400" />
                 </div>
                 <h3 className="font-bold">{item.title}</h3>
               </div>
-              <p className="text-sm text-white/40">{item.desc}</p>
+              <p className="text-sm text-muted-foreground">{item.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* Workout Tags */}
-      <section className="py-16 border-y border-white/10 bg-white/[0.02]">
+      <section className="py-16 border-y border-border bg-card">
         <div className="container mx-auto px-4">
           <div className="text-center mb-8">
             <h2 className="text-2xl font-black uppercase tracking-tight mb-2">Smart Workout Tags</h2>
-            <p className="text-white/40">AI automatically categorizes your workouts</p>
+            <p className="text-muted-foreground">AI automatically categorizes your workouts</p>
           </div>
           <div className="flex flex-wrap justify-center gap-2 max-w-2xl mx-auto">
             {workoutTags.map((tag) => (
-              <span key={tag} className="px-4 py-2 rounded-full text-sm font-medium capitalize bg-white/5 border border-white/10 text-white/60 hover:border-red-500/30 hover:text-white/80 transition-all">
+              <span key={tag} className="px-4 py-2 rounded-full text-sm font-medium capitalize bg-muted/50 border border-border text-foreground/60 hover:border-red-500/30 hover:text-foreground/80 transition-all">
                 {tag}
               </span>
             ))}
@@ -128,22 +130,22 @@ export default function FeaturesPage() {
         <div className="container mx-auto px-4">
           <div className="text-center mb-14">
             <h2 className="text-3xl md:text-4xl font-black mb-4 uppercase tracking-tight">Powerful Features</h2>
-            <p className="text-white/40 max-w-2xl mx-auto">
+            <p className="text-muted-foreground max-w-2xl mx-auto">
               Everything you need to structure your training, track progress, and crush your goals.
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {features.map((feature) => (
-              <div key={feature.title} className="p-6 rounded-2xl border border-white/10 bg-white/[0.02] hover:border-red-500/30 transition-all duration-300 group">
+              <div key={feature.title} className="p-6 rounded-2xl border border-border bg-card hover:border-red-500/30 transition-all duration-300 group">
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-2.5 rounded-xl bg-red-600 shadow-lg shadow-red-600/20">
                     <feature.icon className="h-5 w-5 text-white" />
                   </div>
-                  <span className="text-[10px] font-bold tracking-widest text-white/20 uppercase">{feature.badge}</span>
+                  <span className="text-[10px] font-bold tracking-widest text-muted-foreground/50 uppercase">{feature.badge}</span>
                 </div>
                 <h3 className="font-bold text-lg mb-2 group-hover:text-red-400 transition-colors">{feature.title}</h3>
-                <p className="text-sm text-white/40">{feature.description}</p>
+                <p className="text-sm text-muted-foreground">{feature.description}</p>
               </div>
             ))}
           </div>
@@ -151,11 +153,11 @@ export default function FeaturesPage() {
       </section>
 
       {/* How It Works */}
-      <section className="py-20 border-y border-white/10 bg-white/[0.02]">
+      <section className="py-20 border-y border-border bg-card">
         <div className="container mx-auto px-4">
           <div className="text-center mb-14">
             <h2 className="text-3xl md:text-4xl font-black mb-3 uppercase tracking-tight">3 Steps. That&apos;s It.</h2>
-            <p className="text-white/40">No complicated setup. No learning curve.</p>
+            <p className="text-muted-foreground">No complicated setup. No learning curve.</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
@@ -168,7 +170,7 @@ export default function FeaturesPage() {
                 <div className="text-5xl font-black text-red-600/20 group-hover:text-red-600/40 transition-colors mb-4">{item.step}</div>
                 <item.icon className="h-6 w-6 text-red-400 mx-auto mb-3" />
                 <h3 className="font-bold text-lg mb-2">{item.title}</h3>
-                <p className="text-sm text-white/40">{item.desc}</p>
+                <p className="text-sm text-muted-foreground">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -187,7 +189,7 @@ export default function FeaturesPage() {
             Ready to elevate<br />
             <span className="bg-gradient-to-r from-red-400 to-red-200 bg-clip-text text-transparent">your training?</span>
           </h2>
-          <p className="text-white/40 text-lg">
+          <p className="text-muted-foreground text-lg">
             Join athletes already using The Daily Athlete to train with purpose.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
@@ -196,7 +198,7 @@ export default function FeaturesPage() {
                 Get Started <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
             </Button>
-            <Button asChild size="lg" variant="outline" className="h-14 px-10 border-white/20 text-white hover:bg-white/5 hover:text-white font-bold text-lg">
+            <Button asChild size="lg" variant="outline" className="h-14 px-10 border-border text-foreground hover:bg-muted/50 hover:text-foreground font-bold text-lg">
               <Link href="/">Back to Home</Link>
             </Button>
           </div>
@@ -204,17 +206,17 @@ export default function FeaturesPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/10 py-8 bg-black">
+      <footer className="border-t border-border py-8 bg-background">
         <div className="container mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-black border border-white/20 flex items-center justify-center">
-              <Dumbbell className="h-4 w-4 text-white" />
+            <div className="h-8 w-8 rounded-lg bg-foreground flex items-center justify-center">
+              <Dumbbell className="h-4 w-4 text-background" />
             </div>
             <span className="font-bold">The Daily Athlete</span>
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/contact" className="text-sm text-white/30 hover:text-white/60 transition-colors">Contact</Link>
-            <p className="text-sm text-white/30">&copy; {new Date().getFullYear()} The Daily Athlete</p>
+            <Link href="/contact" className="text-sm text-muted-foreground/70 hover:text-foreground/60 transition-colors">Contact</Link>
+            <p className="text-sm text-muted-foreground/70">&copy; {new Date().getFullYear()} The Daily Athlete</p>
           </div>
         </div>
       </footer>

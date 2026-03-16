@@ -180,20 +180,20 @@ export function RegisterForm() {
   return (
     <div className="w-full max-w-md relative z-10">
       <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-black shadow-xl shadow-black/25 mb-4">
-          <Dumbbell className="w-8 h-8 text-white" />
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-foreground shadow-xl shadow-foreground/10 mb-4">
+          <Dumbbell className="w-8 h-8 text-background" />
         </div>
-        <h1 className="text-2xl font-black text-white uppercase tracking-tight">Join The Daily Athlete</h1>
-        <p className="text-white/40 mt-1">Start building your training discipline</p>
+        <h1 className="text-2xl font-black text-foreground uppercase tracking-tight">Join The Daily Athlete</h1>
+        <p className="text-muted-foreground mt-1">Start building your training discipline</p>
       </div>
 
-      <div className="bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
+      <div className="bg-card backdrop-blur-xl border border-border rounded-2xl p-8 shadow-2xl">
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="displayName" className="text-sm font-medium text-white/70">Full Name</Label>
+            <Label htmlFor="displayName" className="text-sm font-medium text-foreground/70">Full Name</Label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-              <Input id="displayName" type="text" placeholder="John Doe" value={formData.displayName} onChange={(e) => { setFormData({ ...formData, displayName: e.target.value }); setNameError(''); }} required maxLength={50} className={`pl-10 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-red-500 focus:ring-red-500/20 transition-colors ${nameError ? 'border-red-500' : ''}`} />
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
+              <Input id="displayName" type="text" placeholder="John Doe" value={formData.displayName} onChange={(e) => { setFormData({ ...formData, displayName: e.target.value }); setNameError(''); }} required maxLength={50} className={`pl-10 h-11 bg-muted/50 border-border text-foreground placeholder:text-muted-foreground/50 focus:border-red-500 focus:ring-red-500/20 transition-colors ${nameError ? 'border-red-500' : ''}`} />
             </div>
             {nameError && (
               <div className="flex items-center gap-1.5 text-red-400 text-sm animate-in fade-in slide-in-from-top-1 duration-200">
@@ -204,11 +204,11 @@ export function RegisterForm() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="username" className="text-sm font-medium text-white/70">Username</Label>
+            <Label htmlFor="username" className="text-sm font-medium text-foreground/70">Username</Label>
             <div className="relative">
-              <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-              <Input id="username" type="text" placeholder="johndoe" value={formData.username} onChange={(e) => handleUsernameChange(e.target.value)} required maxLength={20} autoComplete="off" className={`pl-10 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-red-500 focus:ring-red-500/20 transition-colors ${usernameError ? 'border-red-500' : ''}`} />
-              {usernameChecking && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 animate-spin" />}
+              <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
+              <Input id="username" type="text" placeholder="johndoe" value={formData.username} onChange={(e) => handleUsernameChange(e.target.value)} required maxLength={20} autoComplete="off" className={`pl-10 h-11 bg-muted/50 border-border text-foreground placeholder:text-muted-foreground/50 focus:border-red-500 focus:ring-red-500/20 transition-colors ${usernameError ? 'border-red-500' : ''}`} />
+              {usernameChecking && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70 animate-spin" />}
             </div>
             {usernameError && (
               <div className="flex items-center gap-1.5 text-red-400 text-sm animate-in fade-in slide-in-from-top-1 duration-200">
@@ -222,22 +222,22 @@ export function RegisterForm() {
                 <span>{usernameWarning}</span>
               </div>
             )}
-            <p className="text-xs text-white/25">Lowercase letters, numbers, underscores. 3-20 characters.</p>
+            <p className="text-xs text-muted-foreground/60">Lowercase letters, numbers, underscores. 3-20 characters.</p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-sm font-medium text-white/70">Email</Label>
+            <Label htmlFor="email" className="text-sm font-medium text-foreground/70">Email</Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-              <Input id="email" type="email" placeholder="john@example.com" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required className="pl-10 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-red-500 focus:ring-red-500/20 transition-colors" />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
+              <Input id="email" type="email" placeholder="john@example.com" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required className="pl-10 h-11 bg-muted/50 border-border text-foreground placeholder:text-muted-foreground/50 focus:border-red-500 focus:ring-red-500/20 transition-colors" />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password" className="text-sm font-medium text-white/70">Password</Label>
+            <Label htmlFor="password" className="text-sm font-medium text-foreground/70">Password</Label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-              <Input id="password" type="password" placeholder="Min 6 characters" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} required minLength={6} className="pl-10 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-red-500 focus:ring-red-500/20 transition-colors" />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
+              <Input id="password" type="password" placeholder="Min 6 characters" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} required minLength={6} className="pl-10 h-11 bg-muted/50 border-border text-foreground placeholder:text-muted-foreground/50 focus:border-red-500 focus:ring-red-500/20 transition-colors" />
             </div>
           </div>
 
@@ -246,11 +246,11 @@ export function RegisterForm() {
           </Button>
 
           <div className="relative my-4">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10" /></div>
-            <div className="relative flex justify-center text-xs uppercase"><span className="bg-transparent px-2 text-white/30">or</span></div>
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
+            <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">or</span></div>
           </div>
 
-          <Button type="button" variant="outline" className="w-full h-11 bg-white hover:bg-gray-50 text-gray-700 border-white/20 font-medium" onClick={handleGoogleSignUp} disabled={loading || googleLoading}>
+          <Button type="button" variant="outline" className="w-full h-11 bg-white hover:bg-gray-50 text-gray-700 border-border font-medium" onClick={handleGoogleSignUp} disabled={loading || googleLoading}>
             {googleLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : (
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -264,12 +264,12 @@ export function RegisterForm() {
         </form>
 
         <div className="mt-6 text-center">
-          <p className="text-sm text-white/30">Already have an account?{' '}<Link href="/login" className="text-red-400 hover:text-red-300 font-medium transition-colors">Sign in</Link></p>
+          <p className="text-sm text-muted-foreground">Already have an account?{' '}<Link href="/login" className="text-red-400 hover:text-red-300 font-medium transition-colors">Sign in</Link></p>
         </div>
       </div>
 
       <div className="mt-6 text-center">
-        <Link href="/" className="text-sm text-white/20 hover:text-white/50 transition-colors">&larr; Back to home</Link>
+        <Link href="/" className="text-sm text-muted-foreground/60 hover:text-foreground/60 transition-colors">&larr; Back to home</Link>
       </div>
     </div>
   );

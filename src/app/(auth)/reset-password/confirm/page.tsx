@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Lock, CheckCircle, Eye, EyeOff, Dumbbell } from 'lucide-react';
 import Link from 'next/link';
+import { ThemeToggle } from '@/components/dashboard/ThemeToggle';
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -72,7 +73,8 @@ function ResetPasswordForm() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-black relative overflow-hidden">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-background relative overflow-hidden">
+        <div className="absolute top-4 right-4 z-10"><ThemeToggle /></div>
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-red-600/10 rounded-full blur-[120px]" />
         </div>
@@ -81,11 +83,11 @@ function ResetPasswordForm() {
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-green-600 shadow-xl shadow-green-600/25 mb-4">
               <CheckCircle className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-2xl font-black text-white uppercase tracking-tight">Password Reset!</h1>
-            <p className="text-white/40 mt-2">Your password has been successfully reset.</p>
+            <h1 className="text-2xl font-black text-foreground uppercase tracking-tight">Password Reset!</h1>
+            <p className="text-muted-foreground mt-2">Your password has been successfully reset.</p>
           </div>
-          <div className="bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl text-center">
-            <p className="text-sm text-white/40 mb-4">Redirecting you to login...</p>
+          <div className="bg-card backdrop-blur-xl border border-border rounded-2xl p-8 shadow-2xl text-center">
+            <p className="text-sm text-muted-foreground mb-4">Redirecting you to login...</p>
             <Button asChild className="w-full h-11 bg-red-600 hover:bg-red-700 text-white border-0 font-bold">
               <Link href="/login">Go to Login</Link>
             </Button>
@@ -96,7 +98,8 @@ function ResetPasswordForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-black relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-background relative overflow-hidden">
+      <div className="absolute top-4 right-4 z-10"><ThemeToggle /></div>
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-red-600/10 rounded-full blur-[120px]" />
         <div className="absolute bottom-0 -left-40 w-[400px] h-[400px] bg-red-900/15 rounded-full blur-[100px]" />
@@ -106,16 +109,16 @@ function ResetPasswordForm() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-red-600 to-red-800 shadow-xl shadow-red-600/25 mb-4">
             <Dumbbell className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-black text-white uppercase tracking-tight">Set New Password</h1>
-          <p className="text-white/40 mt-1">Enter your new password below</p>
+          <h1 className="text-2xl font-black text-foreground uppercase tracking-tight">Set New Password</h1>
+          <p className="text-muted-foreground mt-1">Enter your new password below</p>
         </div>
 
-        <div className="bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
+        <div className="bg-card backdrop-blur-xl border border-border rounded-2xl p-8 shadow-2xl">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium text-white/70">New Password</Label>
+              <Label htmlFor="password" className="text-sm font-medium text-foreground/70">New Password</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
@@ -124,23 +127,23 @@ function ResetPasswordForm() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={6}
-                  className="pl-10 pr-10 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-red-500 focus:ring-red-500/20 transition-colors"
+                  className="pl-10 pr-10 h-11 bg-muted/50 border-border text-foreground placeholder:text-muted-foreground/50 focus:border-red-500 focus:ring-red-500/20 transition-colors"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/50 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/70 hover:text-foreground/50 transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              <p className="text-xs text-white/30">Must be at least 6 characters</p>
+              <p className="text-xs text-muted-foreground/70">Must be at least 6 characters</p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-sm font-medium text-white/70">Confirm Password</Label>
+              <Label htmlFor="confirmPassword" className="text-sm font-medium text-foreground/70">Confirm Password</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
                 <Input
                   id="confirmPassword"
                   type={showConfirm ? 'text' : 'password'}
@@ -149,12 +152,12 @@ function ResetPasswordForm() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   minLength={6}
-                  className="pl-10 pr-10 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-red-500 focus:ring-red-500/20 transition-colors"
+                  className="pl-10 pr-10 h-11 bg-muted/50 border-border text-foreground placeholder:text-muted-foreground/50 focus:border-red-500 focus:ring-red-500/20 transition-colors"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirm(!showConfirm)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/50 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/70 hover:text-foreground/50 transition-colors"
                 >
                   {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -178,8 +181,8 @@ function ResetPasswordForm() {
 export default function ResetPasswordConfirmPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <div className="text-center text-white/40">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center text-muted-foreground">Loading...</div>
       </div>
     }>
       <ResetPasswordForm />

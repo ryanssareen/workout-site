@@ -7,6 +7,7 @@ import {
   XCircle, Clock, Activity, ChevronDown, ChevronUp, Eye, Lock,
   Zap, TrendingUp, HardDrive, UserCheck, Upload,
 } from 'lucide-react';
+import { ThemeToggle } from '@/components/dashboard/ThemeToggle';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -104,7 +105,7 @@ function QuotaBanner({ error, onRetry }: { error: string; onRetry?: () => void }
       {onRetry && (
         <button
           onClick={onRetry}
-          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-xs font-medium text-white/60 hover:text-white transition-all"
+          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted/60 hover:bg-muted border border-border text-xs font-medium text-foreground/60 hover:text-foreground transition-all"
         >
           <RefreshCw size={12} /> Retry
         </button>
@@ -140,7 +141,7 @@ function OverviewSection({ stats, error, onRetry }: { stats: OverviewStats | nul
     return (
       <div className="flex items-center gap-3 py-12 justify-center">
         <RefreshCw size={16} className="animate-spin text-red-400/60" />
-        <p className="text-white/40 text-sm">Loading overview…</p>
+        <p className="text-muted-foreground text-sm">Loading overview...</p>
       </div>
     );
   }
@@ -198,10 +199,10 @@ function OverviewSection({ stats, error, onRetry }: { stats: OverviewStats | nul
               <Icon size={52} />
             </div>
             <div className="relative">
-              <div className="w-10 h-10 rounded-xl bg-black/30 border border-white/[0.05] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+              <div className="w-10 h-10 rounded-xl bg-muted/50 border border-border/50 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
                 <Icon size={20} className={iconColor} />
               </div>
-              <p className="text-white/45 text-[11px] font-bold uppercase tracking-widest mb-1.5">{label}</p>
+              <p className="text-muted-foreground text-[11px] font-bold uppercase tracking-widest mb-1.5">{label}</p>
               <p className={`text-3xl font-black tracking-tight ${valueColor}`}>{value}</p>
             </div>
           </div>
@@ -210,19 +211,19 @@ function OverviewSection({ stats, error, onRetry }: { stats: OverviewStats | nul
 
       {/* Quick status bar */}
       <div className="flex flex-wrap gap-3">
-        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-muted/25 border border-border/50">
           <div className="w-2 h-2 rounded-full bg-green-400 shadow-lg shadow-green-400/50" />
-          <span className="text-white/40 text-xs">Firebase</span>
+          <span className="text-muted-foreground text-xs">Firebase</span>
           <span className="text-green-400/80 text-xs font-medium">Connected</span>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-muted/25 border border-border/50">
           <div className="w-2 h-2 rounded-full bg-green-400 shadow-lg shadow-green-400/50" />
-          <span className="text-white/40 text-xs">Strava API</span>
+          <span className="text-muted-foreground text-xs">Strava API</span>
           <span className="text-green-400/80 text-xs font-medium">Active</span>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-muted/25 border border-border/50">
           <div className="w-2 h-2 rounded-full bg-green-400 shadow-lg shadow-green-400/50" />
-          <span className="text-white/40 text-xs">Cron Jobs</span>
+          <span className="text-muted-foreground text-xs">Cron Jobs</span>
           <span className="text-green-400/80 text-xs font-medium">Running</span>
         </div>
       </div>
@@ -378,15 +379,15 @@ function BackupsSection() {
             <Database size={16} className="text-blue-400" />
           </div>
           <div>
-            <h2 className="text-white font-bold text-sm">Backup Management</h2>
-            <p className="text-white/30 text-xs">Snapshots, downloads, and recovery</p>
+            <h2 className="text-foreground font-bold text-sm">Backup Management</h2>
+            <p className="text-muted-foreground/70 text-xs">Snapshots, downloads, and recovery</p>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => triggerBackup('delta')}
             disabled={creating}
-            className="group flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/15 text-xs text-white/70 hover:text-white disabled:opacity-50 transition-all"
+            className="group flex items-center gap-2 px-3 py-2 rounded-xl bg-muted/50 hover:bg-muted/70 border border-border hover:border-border text-xs text-foreground/70 hover:text-foreground disabled:opacity-50 transition-all"
           >
             <RefreshCw size={13} className={creating ? 'animate-spin' : 'group-hover:rotate-90 transition-transform duration-300'} />
             {creating ? 'Running…' : 'Delta'}
@@ -436,9 +437,9 @@ function BackupsSection() {
       <div className="bg-gradient-to-br from-red-500/[0.06] to-orange-500/[0.04] border border-red-500/[0.12] rounded-2xl p-5 space-y-3">
         <div className="flex items-center gap-2">
           <RotateCcw size={15} className="text-red-400/70" />
-          <p className="text-white/80 text-sm font-semibold">Restore from backup file</p>
+          <p className="text-foreground/80 text-sm font-semibold">Restore from backup file</p>
         </div>
-        <p className="text-white/30 text-xs">
+        <p className="text-muted-foreground/70 text-xs">
           Upload a previously downloaded .json backup. Leave username blank to restore all data.
         </p>
         <div className="flex items-center gap-3 flex-wrap">
@@ -446,7 +447,7 @@ function BackupsSection() {
             value={restoreUsername}
             onChange={e => setRestoreUsername(e.target.value)}
             placeholder="username (optional)"
-            className="bg-black/30 border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/25 w-52 focus:border-red-500/40 focus:outline-none focus:ring-1 focus:ring-red-500/20 transition-all"
+            className="bg-muted/50 border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder-muted-foreground/50 w-52 focus:border-red-500/40 focus:outline-none focus:ring-1 focus:ring-red-500/20 transition-all"
           />
           <label
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 hover:border-red-500/30 text-sm text-red-300 font-medium cursor-pointer transition-all ${restoring ? 'opacity-50 pointer-events-none' : ''}`}
@@ -469,31 +470,31 @@ function BackupsSection() {
 
       {/* Snapshots table */}
       <div>
-        <p className="text-white/30 text-xs mb-3 font-medium">
-          Backup history — Full backups in Storage, Deltas capture only changed docs
+        <p className="text-muted-foreground/70 text-xs mb-3 font-medium">
+          Backup history -- Full backups in Storage, Deltas capture only changed docs
         </p>
         {loading ? (
           <div className="flex items-center gap-2 py-8 justify-center">
-            <RefreshCw size={14} className="animate-spin text-white/30" />
-            <p className="text-white/40 text-sm">Loading…</p>
+            <RefreshCw size={14} className="animate-spin text-muted-foreground/70" />
+            <p className="text-muted-foreground text-sm">Loading...</p>
           </div>
         ) : backups.length === 0 ? (
-          <p className="text-white/40 text-sm text-center py-8">No snapshots yet.</p>
+          <p className="text-muted-foreground text-sm text-center py-8">No snapshots yet.</p>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-white/[0.06]">
+          <div className="overflow-x-auto rounded-xl border border-border/60">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-white/[0.03]">
+                <tr className="bg-muted/30">
                   {['Type', 'Tier', 'Time', 'Users', 'Workouts', 'Storage', 'By'].map(h => (
-                    <th key={h} className="text-left text-white/40 text-xs font-semibold uppercase tracking-wider px-4 py-3">{h}</th>
+                    <th key={h} className="text-left text-muted-foreground text-xs font-semibold uppercase tracking-wider px-4 py-3">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {backups.map((b, i) => (
-                  <tr key={b.id} className={`text-white/60 border-t border-white/[0.04] hover:bg-white/[0.03] transition-colors ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
+                  <tr key={b.id} className={`text-foreground/60 border-t border-border/50 hover:bg-muted/30 transition-colors ${i % 2 === 0 ? 'bg-muted/20' : ''}`}>
                     <td className="px-4 py-3">
-                      <span className="capitalize px-2.5 py-1 rounded-lg text-xs font-medium bg-white/[0.06] text-white/60 border border-white/[0.06]">{b.type}</span>
+                      <span className="capitalize px-2.5 py-1 rounded-lg text-xs font-medium bg-muted/60 text-foreground/60 border border-border/60">{b.type}</span>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-md text-xs font-medium ${
@@ -501,18 +502,18 @@ function BackupsSection() {
                           ? 'bg-blue-500/15 text-blue-300 border border-blue-500/15'
                           : b.tier === 'delta'
                           ? 'bg-amber-500/15 text-amber-300 border border-amber-500/15'
-                          : 'bg-white/[0.06] text-white/40 border border-white/[0.06]'
+                          : 'bg-muted/60 text-muted-foreground border border-border/60'
                       }`}>{b.tier ?? 'legacy'}</span>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-white/35 text-xs font-mono">{fmt(b.createdAt)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-muted-foreground/70 text-xs font-mono">{fmt(b.createdAt)}</td>
                     <td className="px-4 py-3 font-semibold">{b.userCount}</td>
                     <td className="px-4 py-3 font-semibold">{b.workoutCount}</td>
                     <td className="px-4 py-3">
                       {b.storagePath
                         ? <span className="inline-flex items-center gap-1 text-green-400 text-xs"><CheckCircle size={13} /> Yes</span>
-                        : <span className="text-white/25 text-xs">—</span>}
+                        : <span className="text-muted-foreground/70 text-xs">—</span>}
                     </td>
-                    <td className="px-4 py-3 text-white/30 text-xs">{b.triggeredBy ?? 'cron'}</td>
+                    <td className="px-4 py-3 text-muted-foreground/70 text-xs">{b.triggeredBy ?? 'cron'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -591,13 +592,13 @@ function UsersSection() {
             <Users size={16} className="text-purple-400" />
           </div>
           <div>
-            <h2 className="text-white font-bold text-sm">User Management</h2>
-            <p className="text-white/30 text-xs">{users.length} registered users</p>
+            <h2 className="text-foreground font-bold text-sm">User Management</h2>
+            <p className="text-muted-foreground/70 text-xs">{users.length} registered users</p>
           </div>
         </div>
         <button
           onClick={exportCSV}
-          className="group flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/15 text-sm text-white/70 hover:text-white transition-all"
+          className="group flex items-center gap-2 px-4 py-2.5 rounded-xl bg-muted/50 hover:bg-muted/70 border border-border hover:border-border text-sm text-foreground/70 hover:text-foreground transition-all"
         >
           <Download size={14} className="group-hover:-translate-y-0.5 transition-transform" /> Export CSV
         </button>
@@ -605,12 +606,12 @@ function UsersSection() {
 
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 max-w-sm">
-          <Eye size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/25" />
+          <Eye size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/70" />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search by username or email…"
-            className="w-full pl-10 pr-4 py-2.5 bg-black/30 border border-white/[0.08] rounded-xl text-sm text-white placeholder-white/25 focus:border-red-500/40 focus:outline-none focus:ring-1 focus:ring-red-500/20 transition-all"
+            placeholder="Search by username or email..."
+            className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border border-border rounded-xl text-sm text-foreground placeholder-muted-foreground/50 focus:border-red-500/40 focus:outline-none focus:ring-1 focus:ring-red-500/20 transition-all"
           />
         </div>
       </div>
@@ -619,26 +620,26 @@ function UsersSection() {
 
       {loading ? (
         <div className="flex items-center gap-2 py-12 justify-center">
-          <RefreshCw size={14} className="animate-spin text-white/30" />
-          <p className="text-white/40 text-sm">Loading…</p>
+          <RefreshCw size={14} className="animate-spin text-muted-foreground/70" />
+          <p className="text-muted-foreground text-sm">Loading...</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-white/[0.06]">
+        <div className="overflow-x-auto rounded-xl border border-border/60">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-white/[0.03]">
+              <tr className="bg-muted/30">
                 {['Username', 'Email', 'Role', 'Workouts', 'Joined', 'Status', 'Actions'].map(h => (
-                  <th key={h} className="text-left text-white/40 text-xs font-semibold uppercase tracking-wider px-4 py-3">{h}</th>
+                  <th key={h} className="text-left text-muted-foreground text-xs font-semibold uppercase tracking-wider px-4 py-3">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.map((u, i) => (
-                <tr key={u.username} className={`text-white/60 border-t border-white/[0.04] hover:bg-white/[0.03] transition-colors ${u.status === 'deleted' ? 'opacity-40' : ''} ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
+                <tr key={u.username} className={`text-foreground/60 border-t border-border/50 hover:bg-muted/30 transition-colors ${u.status === 'deleted' ? 'opacity-40' : ''} ${i % 2 === 0 ? 'bg-muted/20' : ''}`}>
                   <td className="px-4 py-3">
                     <span className="font-mono text-xs text-red-300/90 bg-red-500/[0.08] px-2 py-1 rounded-md">{u.username}</span>
                   </td>
-                  <td className="px-4 py-3 text-white/40 text-xs">{u.email}</td>
+                  <td className="px-4 py-3 text-muted-foreground text-xs">{u.email}</td>
                   <td className="px-4 py-3">
                     <span className={`capitalize text-xs px-2.5 py-1 rounded-lg font-medium ${
                       u.role === 'coach'
@@ -647,7 +648,7 @@ function UsersSection() {
                     }`}>{u.role}</span>
                   </td>
                   <td className="px-4 py-3 font-semibold">{u.workoutCount}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-white/30 text-xs">{fmt(u.createdAt)}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-muted-foreground/70 text-xs">{fmt(u.createdAt)}</td>
                   <td className="px-4 py-3">
                     {u.status === 'active'
                       ? <span className="inline-flex items-center gap-1 text-xs text-green-400"><span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" /> active</span>
@@ -658,7 +659,7 @@ function UsersSection() {
                       <button
                         onClick={() => exportUserJSON(u.username)}
                         title="Export JSON"
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-white/25 hover:text-white/60 hover:bg-white/[0.06] transition-all"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground/70 hover:text-foreground/60 hover:bg-muted/60 transition-all"
                       >
                         <Download size={13} />
                       </button>
@@ -687,7 +688,7 @@ function UsersSection() {
               ))}
             </tbody>
           </table>
-          <div className="px-4 py-2.5 bg-white/[0.02] border-t border-white/[0.04] text-white/25 text-xs">
+          <div className="px-4 py-2.5 bg-muted/25 border-t border-border/50 text-muted-foreground/70 text-xs">
             {filtered.length} of {users.length} users
           </div>
         </div>
@@ -763,14 +764,14 @@ function SystemActionsSection() {
           <Settings size={16} className="text-orange-400" />
         </div>
         <div>
-          <h2 className="text-white font-bold text-sm">System & Actions</h2>
-          <p className="text-white/30 text-xs">Integrations, sync, and activity logs</p>
+          <h2 className="text-foreground font-bold text-sm">System & Actions</h2>
+          <p className="text-muted-foreground/70 text-xs">Integrations, sync, and activity logs</p>
         </div>
       </div>
 
       {/* Actions */}
       <div>
-        <h3 className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-3">Quick Actions</h3>
+        <h3 className="text-foreground/60 text-xs font-semibold uppercase tracking-widest mb-3">Quick Actions</h3>
         <div className="flex flex-wrap gap-3">
           <button
             onClick={openSyncDialog}
@@ -783,31 +784,31 @@ function SystemActionsSection() {
 
       {/* Strava sync confirmation dialog */}
       {showSyncDialog && syncStats && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50">
-          <div className="bg-gray-950/95 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-6 max-w-md w-full mx-4 space-y-5 shadow-2xl shadow-black/50">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center z-50">
+          <div className="bg-card/95 backdrop-blur-xl border border-border rounded-2xl p-6 max-w-md w-full mx-4 space-y-5 shadow-2xl shadow-foreground/5">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/20 flex items-center justify-center">
                 <AlertTriangle size={20} className="text-amber-400" />
               </div>
               <div>
-                <h3 className="font-bold text-white">Force Strava Sync All</h3>
-                <p className="text-white/30 text-xs">This will trigger sync for all connected users</p>
+                <h3 className="font-bold text-foreground">Force Strava Sync All</h3>
+                <p className="text-muted-foreground/70 text-xs">This will trigger sync for all connected users</p>
               </div>
             </div>
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 text-sm space-y-2.5 text-white/60">
+            <div className="bg-muted/30 border border-border/60 rounded-xl p-4 text-sm space-y-2.5 text-foreground/60">
               <div className="flex justify-between">
-                <span className="text-white/40">Active users</span>
-                <span className="text-white font-bold">{syncStats.userCount}</span>
+                <span className="text-muted-foreground">Active users</span>
+                <span className="text-foreground font-bold">{syncStats.userCount}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-white/40">Est. API calls</span>
-                <span className="text-white font-bold">~{syncStats.userCount * 5}</span>
+                <span className="text-muted-foreground">Est. API calls</span>
+                <span className="text-foreground font-bold">~{syncStats.userCount * 5}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-white/40">Rate limit</span>
-                <span className="text-white/60">100 / 15 min, 1K / day</span>
+                <span className="text-muted-foreground">Rate limit</span>
+                <span className="text-foreground/60">100 / 15 min, 1K / day</span>
               </div>
-              <div className="pt-1.5 border-t border-white/[0.05]">
+              <div className="pt-1.5 border-t border-border/50">
                 <p className={`text-xs font-medium ${syncStats.userCount * 5 > 100 ? 'text-amber-400' : 'text-green-400'}`}>
                   {syncStats.userCount * 5 > 1000
                     ? '⚠ Exceeds daily limit — will hit rate cap'
@@ -821,7 +822,7 @@ function SystemActionsSection() {
             <div className="flex gap-3 justify-end pt-1">
               <button
                 onClick={() => setShowSyncDialog(false)}
-                className="px-5 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.08] text-sm text-white/60 hover:text-white transition-all"
+                className="px-5 py-2.5 rounded-xl bg-muted/50 hover:bg-muted/70 border border-border text-sm text-foreground/60 hover:text-foreground transition-all"
               >
                 Cancel
               </button>
@@ -839,8 +840,8 @@ function SystemActionsSection() {
 
       {/* Log viewer */}
       <div>
-        <h3 className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-3">Activity Log</h3>
-        <div className="inline-flex items-center gap-1 mb-4 bg-black/30 border border-white/[0.06] rounded-xl p-1">
+        <h3 className="text-foreground/60 text-xs font-semibold uppercase tracking-widest mb-3">Activity Log</h3>
+        <div className="inline-flex items-center gap-1 mb-4 bg-muted/50 border border-border/60 rounded-xl p-1">
           {(['actions', 'cron'] as const).map(tab => (
             <button
               key={tab}
@@ -848,7 +849,7 @@ function SystemActionsSection() {
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 logTab === tab
                   ? 'bg-red-500/15 text-red-300 border border-red-500/20 shadow-sm'
-                  : 'text-white/35 hover:text-white/60 hover:bg-white/[0.04] border border-transparent'
+                  : 'text-muted-foreground hover:text-foreground/60 hover:bg-muted/40 border border-transparent'
               }`}
             >
               {tab === 'actions' ? 'Admin Actions' : 'Cron Logs'}
@@ -860,20 +861,20 @@ function SystemActionsSection() {
 
         {logsLoading ? (
           <div className="flex items-center gap-2 py-8 justify-center">
-            <RefreshCw size={14} className="animate-spin text-white/30" />
-            <p className="text-white/40 text-sm">Loading logs…</p>
+            <RefreshCw size={14} className="animate-spin text-muted-foreground/70" />
+            <p className="text-muted-foreground text-sm">Loading logs...</p>
           </div>
         ) : displayLogs.length === 0 && !logsError ? (
-          <p className="text-white/40 text-sm text-center py-8">No logs yet.</p>
+          <p className="text-muted-foreground text-sm text-center py-8">No logs yet.</p>
         ) : (
           <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
             {displayLogs.map(log => (
-              <div key={log.id} className="group bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.05] hover:border-white/[0.08] rounded-xl px-4 py-3 text-xs flex items-center gap-4 transition-all">
-                <span className="text-white/25 whitespace-nowrap font-mono">{fmt(log.timestamp)}</span>
+              <div key={log.id} className="group bg-muted/25 hover:bg-muted/40 border border-border/50 hover:border-border rounded-xl px-4 py-3 text-xs flex items-center gap-4 transition-all">
+                <span className="text-muted-foreground/70 whitespace-nowrap font-mono">{fmt(log.timestamp)}</span>
                 <span className="font-mono text-red-300 bg-red-500/[0.08] px-2 py-0.5 rounded-md">{log.action}</span>
-                {log.targetUid && <span className="text-white/35">user: {log.targetUid}</span>}
-                {log.type && <span className="text-white/35">type: {log.type}</span>}
-                <span className="text-white/20 ml-auto text-[11px]">by {log.adminUid}</span>
+                {log.targetUid && <span className="text-muted-foreground/70">user: {log.targetUid}</span>}
+                {log.type && <span className="text-muted-foreground/70">type: {log.type}</span>}
+                <span className="text-muted-foreground/70 ml-auto text-[11px]">by {log.adminUid}</span>
               </div>
             ))}
           </div>
@@ -915,7 +916,7 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
   }
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
       <AnimatedBackground />
 
       <div className="w-full max-w-sm relative z-10">
@@ -929,19 +930,19 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
               <Lock className="w-3 h-3 text-white" />
             </div>
           </div>
-          <h1 className="text-3xl font-black text-white uppercase tracking-tight">Admin Access</h1>
+          <h1 className="text-3xl font-black text-foreground uppercase tracking-tight">Admin Access</h1>
           <p className="text-red-400/50 mt-1.5 text-sm font-medium tracking-wide">The Daily Athlete</p>
         </div>
 
         {/* Card */}
-        <form onSubmit={handleSubmit} className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-2xl p-8 shadow-2xl shadow-black/50 space-y-6">
+        <form onSubmit={handleSubmit} className="bg-muted/30 backdrop-blur-xl border border-border rounded-2xl p-8 shadow-2xl shadow-foreground/5 space-y-6">
           {/* Restricted area badge */}
           <div className="flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-500/[0.08] to-orange-500/[0.06] border border-red-500/15">
             <Lock className="w-3.5 h-3.5 text-red-400/70" />
             <span className="text-xs text-red-300/70 font-bold tracking-widest uppercase">Restricted Area</span>
           </div>
 
-          <p className="text-white/35 text-sm text-center">
+          <p className="text-muted-foreground text-sm text-center">
             Enter the admin password to continue.
           </p>
 
@@ -953,7 +954,7 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
           )}
 
           <div className="relative">
-            <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" />
+            <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/70" />
             <input
               type="password"
               value={password}
@@ -961,7 +962,7 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
               placeholder="Password"
               required
               autoFocus
-              className="w-full pl-11 pr-4 py-3.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white placeholder-white/25 text-sm focus:outline-none focus:border-red-500/40 focus:ring-1 focus:ring-red-500/20 transition-all"
+              className="w-full pl-11 pr-4 py-3.5 rounded-xl bg-muted/40 border border-border text-foreground placeholder-muted-foreground/50 text-sm focus:outline-none focus:border-red-500/40 focus:ring-1 focus:ring-red-500/20 transition-all"
             />
           </div>
 
@@ -976,8 +977,8 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
 
           {/* Security footer */}
           <div className="flex items-center justify-center gap-1.5 pt-2">
-            <Shield className="w-3 h-3 text-white/10" />
-            <span className="text-[11px] text-white/10 tracking-wide">Protected by The Daily Athlete</span>
+            <Shield className="w-3 h-3 text-muted-foreground/30" />
+            <span className="text-[11px] text-muted-foreground/30 tracking-wide">Protected by The Daily Athlete</span>
           </div>
         </form>
       </div>
@@ -1029,18 +1030,18 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white/80 relative">
+    <div className="min-h-screen bg-background text-foreground/80 relative">
       <AnimatedBackground />
 
       {/* Header */}
-      <header className="relative z-10 bg-gradient-to-r from-black/80 via-red-950/20 to-black/80 backdrop-blur-2xl border-b border-white/[0.06]">
+      <header className="relative z-10 bg-gradient-to-r from-background/80 via-red-950/20 to-background/80 backdrop-blur-2xl border-b border-border/60">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500/25 to-red-900/25 border border-red-500/25 flex items-center justify-center shadow-lg shadow-red-900/25">
               <Shield size={20} className="text-red-400" />
             </div>
             <div className="flex flex-col">
-              <span className="font-black text-white text-sm tracking-tight leading-tight">THE DAILY ATHLETE</span>
+              <span className="font-black text-foreground text-sm tracking-tight leading-tight">THE DAILY ATHLETE</span>
               <span className="text-red-400/50 text-[10px] font-semibold uppercase tracking-widest">Admin Console</span>
             </div>
           </div>
@@ -1049,9 +1050,10 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
               <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
               <span className="text-green-400/80 text-xs font-medium">System Online</span>
             </div>
+            <ThemeToggle />
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 text-white/30 hover:text-red-300 hover:bg-red-500/10 rounded-xl px-4 py-2 text-sm transition-all"
+              className="flex items-center gap-2 text-muted-foreground hover:text-red-300 hover:bg-red-500/10 rounded-xl px-4 py-2 text-sm transition-all"
             >
               <LogOut size={15} /> Sign out
             </button>
@@ -1065,17 +1067,17 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/[0.05] rounded-full blur-[80px] -translate-y-1/2 translate-x-1/3" />
           <div className="relative flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-black text-white tracking-tight">Welcome back, Admin</h1>
-              <p className="text-white/35 text-sm mt-1">Manage users, monitor backups, and keep things running smoothly.</p>
+              <h1 className="text-2xl font-black text-foreground tracking-tight">Welcome back, Admin</h1>
+              <p className="text-muted-foreground text-sm mt-1">Manage users, monitor backups, and keep things running smoothly.</p>
             </div>
             <div className="hidden md:flex items-center gap-3">
               <div className="text-right">
-                <p className="text-white/25 text-xs">Current time</p>
-                <p className="text-white/60 text-sm font-mono">{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
+                <p className="text-muted-foreground/70 text-xs">Current time</p>
+                <p className="text-foreground/60 text-sm font-mono">{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
               </div>
-              <div className="w-px h-8 bg-white/[0.06]" />
+              <div className="w-px h-8 bg-border/60" />
               <div className="text-right">
-                <p className="text-white/25 text-xs">Environment</p>
+                <p className="text-muted-foreground/70 text-xs">Environment</p>
                 <p className="text-emerald-400/70 text-sm font-medium">Production</p>
               </div>
             </div>
@@ -1083,7 +1085,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         </div>
 
         {/* Tab nav */}
-        <nav className="inline-flex gap-1 bg-black/40 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-1.5 shadow-xl shadow-black/20">
+        <nav className="inline-flex gap-1 bg-muted/40 backdrop-blur-xl border border-border/60 rounded-2xl p-1.5 shadow-xl shadow-foreground/5">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -1091,7 +1093,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
               className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
                 tab === id
                   ? 'bg-gradient-to-r from-red-600/20 to-red-500/15 text-red-300 border border-red-500/20 shadow-lg shadow-red-900/10'
-                  : 'text-white/35 hover:text-white/60 hover:bg-white/[0.04] border border-transparent'
+                  : 'text-muted-foreground hover:text-foreground/60 hover:bg-muted/40 border border-transparent'
               }`}
             >
               <Icon size={15} />
@@ -1101,7 +1103,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         </nav>
 
         {/* Tab content */}
-        <div className="bg-white/[0.02] backdrop-blur-sm border border-white/[0.06] rounded-2xl p-6 sm:p-8 shadow-xl shadow-black/10">
+        <div className="bg-muted/25 backdrop-blur-sm border border-border/60 rounded-2xl p-6 sm:p-8 shadow-xl shadow-foreground/5">
           {tab === 'overview' && <OverviewSection stats={stats} error={statsError} onRetry={loadStats} />}
           {tab === 'backups' && <BackupsSection />}
           {tab === 'users' && <UsersSection />}
@@ -1110,8 +1112,8 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 
         {/* Footer */}
         <div className="flex items-center justify-center gap-2 pb-4">
-          <Shield size={12} className="text-white/[0.08]" />
-          <span className="text-white/[0.08] text-xs tracking-wide">The Daily Athlete Admin Console</span>
+          <Shield size={12} className="text-muted-foreground/30" />
+          <span className="text-muted-foreground/30 text-xs tracking-wide">The Daily Athlete Admin Console</span>
         </div>
       </div>
     </div>
@@ -1132,7 +1134,7 @@ export default function AdminPage() {
 
   if (checking) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center relative overflow-hidden">
+      <div className="min-h-screen bg-background flex items-center justify-center relative overflow-hidden">
         <AnimatedBackground />
         <div className="flex flex-col items-center gap-4 relative z-10">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-600/20 to-red-900/20 border border-red-500/20 flex items-center justify-center animate-pulse shadow-2xl shadow-red-900/30">
@@ -1140,7 +1142,7 @@ export default function AdminPage() {
           </div>
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping" />
-            <p className="text-white/30 text-sm font-medium tracking-wide">Verifying session</p>
+            <p className="text-muted-foreground/70 text-sm font-medium tracking-wide">Verifying session</p>
           </div>
         </div>
       </div>

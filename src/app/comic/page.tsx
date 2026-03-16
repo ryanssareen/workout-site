@@ -3,95 +3,56 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/dashboard/ThemeToggle';
 import {
-  Activity, ArrowLeft, ArrowRight, Brain, Calendar,
-  ChevronLeft, ChevronRight, Dumbbell, Moon, Share2, Sun,
+  Activity, ArrowRight, Brain, Calendar,
+  ChevronLeft, ChevronRight, Dumbbell, Share2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /* ═══════════════════════════════════════════════════════════════
-   Theme
+   Theme-aware styles
    ═══════════════════════════════════════════════════════════════ */
-const dark = {
-  page:         'bg-black text-white',
-  header:       'border-white/10 bg-black/80',
-  logo:         'bg-black border-white/20',
-  logoIcon:     'text-white',
-  navLink:      'text-white/40 hover:text-white/70',
-  toggle:       'bg-white/10 hover:bg-white/20 text-white',
-  panelBg:      'bg-gray-900',
-  panelBorder:  'border-white/20',
-  panelShadow:  'shadow-[6px_6px_0_0_rgba(255,255,255,0.08)]',
-  bubbleBg:     'bg-gray-800',
-  bubbleBorder: 'border-white/30',
-  bubbleText:   'text-white',
-  bubbleTail:   'border-t-white/30',
-  thinkDot:     'border-white/30 bg-gray-800',
+const styles = {
+  page:         'bg-background text-foreground',
+  header:       'border-border bg-background/80',
+  logo:         'bg-foreground',
+  logoIcon:     'text-background',
+  navLink:      'text-muted-foreground hover:text-foreground/70',
+  panelBg:      'bg-card',
+  panelBorder:  'border-foreground',
+  panelShadow:  'shadow-[6px_6px_0_0_hsl(var(--foreground)/0.15)]',
+  bubbleBg:     'bg-card',
+  bubbleBorder: 'border-foreground',
+  bubbleText:   'text-foreground',
+  bubbleTail:   'border-t-foreground',
+  thinkDot:     'border-foreground bg-card',
   narrationBg:  'bg-amber-900/30 border-amber-400/20',
   narrationText:'text-amber-200',
-  textMuted:    'text-white/50',
-  textSubtle:   'text-white/30',
-  halftone:     'text-white',
-  dotInactive:  'bg-white/20',
+  textMuted:    'text-muted-foreground',
+  textSubtle:   'text-muted-foreground',
+  halftone:     'text-foreground',
+  dotInactive:  'bg-muted-foreground/30',
   dotActive:    'bg-red-500',
-  navBtn:       'bg-white/10 hover:bg-white/20 text-white',
-  navBtnDis:    'bg-white/5 text-white/20',
-  footer:       'border-white/10 bg-black',
-  footerText:   'text-white/30 hover:text-white/60',
-  footerCopy:   'text-white/30',
+  navBtn:       'bg-muted/50 hover:bg-muted text-foreground',
+  navBtnDis:    'bg-muted/30 text-muted-foreground/30',
+  footer:       'border-border bg-background',
+  footerText:   'text-muted-foreground hover:text-foreground/60',
+  footerCopy:   'text-muted-foreground',
   // Slide-specific
-  phoneBg:      'bg-gray-800 border-white/20',
-  phoneScreen:  'bg-gray-900',
-  laptopBg:     'bg-gray-800 border-white/20',
-  laptopScreen: 'bg-gray-950',
-  socialBg:     'bg-gray-800 border-white/20',
-  cellBg:       'bg-white/10',
+  phoneBg:      'bg-muted border-border',
+  phoneScreen:  'bg-background',
+  laptopBg:     'bg-muted border-border',
+  laptopScreen: 'bg-background',
+  socialBg:     'bg-card border-border',
+  cellBg:       'bg-muted/50',
   lockBanner:   'bg-orange-600/90',
-  miniPanel:    'bg-gray-800 border-white/15',
+  miniPanel:    'bg-card border-border',
   starburstBg:  'bg-red-600/10',
   glowBg:       'bg-yellow-500/10',
 };
 
-const light = {
-  page:         'bg-gray-50 text-gray-900',
-  header:       'border-gray-200 bg-white/90',
-  logo:         'bg-white border-gray-200',
-  logoIcon:     'text-gray-900',
-  navLink:      'text-gray-500 hover:text-gray-900',
-  toggle:       'bg-gray-900/10 hover:bg-gray-900/20 text-gray-700',
-  panelBg:      'bg-white',
-  panelBorder:  'border-gray-900',
-  panelShadow:  'shadow-[6px_6px_0_0_rgba(0,0,0,0.75)]',
-  bubbleBg:     'bg-white',
-  bubbleBorder: 'border-gray-900',
-  bubbleText:   'text-gray-900',
-  bubbleTail:   'border-t-gray-900',
-  thinkDot:     'border-gray-900 bg-white',
-  narrationBg:  'bg-amber-50 border-amber-300',
-  narrationText:'text-amber-900',
-  textMuted:    'text-gray-500',
-  textSubtle:   'text-gray-400',
-  halftone:     'text-gray-900',
-  dotInactive:  'bg-gray-300',
-  dotActive:    'bg-red-500',
-  navBtn:       'bg-gray-200 hover:bg-gray-300 text-gray-700',
-  navBtnDis:    'bg-gray-100 text-gray-300',
-  footer:       'border-gray-200 bg-white',
-  footerText:   'text-gray-400 hover:text-gray-700',
-  footerCopy:   'text-gray-400',
-  phoneBg:      'bg-gray-100 border-gray-300',
-  phoneScreen:  'bg-gray-50',
-  laptopBg:     'bg-gray-100 border-gray-300',
-  laptopScreen: 'bg-white',
-  socialBg:     'bg-white border-gray-200',
-  cellBg:       'bg-gray-200',
-  lockBanner:   'bg-orange-500',
-  miniPanel:    'bg-white border-gray-300',
-  starburstBg:  'bg-red-50',
-  glowBg:       'bg-yellow-100',
-};
-
-type Theme = typeof dark;
+type Theme = typeof styles;
 
 /* ═══════════════════════════════════════════════════════════════
    Reusable comic primitives
@@ -517,11 +478,10 @@ const SLIDES: { key: string; render: (t: Theme) => React.ReactNode }[] = [
    Page
    ═══════════════════════════════════════════════════════════════ */
 export default function ComicPage() {
-  const [isDark, setIsDark] = useState(false);
   const [current, setCurrent] = useState(0);
   const [animateIn, setAnimateIn] = useState(true);
   const touchStartX = useRef(0);
-  const t = isDark ? dark : light;
+  const t = styles;
 
   const goTo = useCallback((idx: number) => {
     if (idx < 0 || idx >= SLIDES.length) return;
@@ -552,7 +512,7 @@ export default function ComicPage() {
       <header className={cn('border-b backdrop-blur-xl sticky top-0 z-50', t.header)}>
         <div className="container mx-auto px-4 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className={cn('h-8 w-8 rounded-lg border flex items-center justify-center', t.logo)}>
+            <div className={cn('h-8 w-8 rounded-lg flex items-center justify-center', t.logo)}>
               <Dumbbell className={cn('h-3.5 w-3.5', t.logoIcon)} />
             </div>
             <span className={cn('font-bold text-base hidden sm:inline', t.logoIcon)}>The Daily Athlete</span>
@@ -561,9 +521,7 @@ export default function ComicPage() {
             <Link href="/"          className={cn('text-xs sm:text-sm transition-colors hidden sm:inline', t.navLink)}>Home</Link>
             <Link href="/portfolio" className={cn('text-xs sm:text-sm transition-colors hidden sm:inline', t.navLink)}>Portfolio</Link>
             <Link href="/roadmap"   className={cn('text-xs sm:text-sm transition-colors hidden sm:inline', t.navLink)}>Roadmap</Link>
-            <button onClick={() => setIsDark(!isDark)} className={cn('p-1.5 rounded-lg transition-colors', t.toggle)} aria-label="Toggle theme">
-              {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-            </button>
+            <ThemeToggle />
             <Button size="sm" asChild className="bg-red-600 hover:bg-red-700 text-white border-0 text-xs h-8">
               <Link href="/register">Get Started</Link>
             </Button>

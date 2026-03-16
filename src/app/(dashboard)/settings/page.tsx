@@ -20,7 +20,12 @@ import {
   Globe,
   RefreshCw,
   Pencil,
+  Palette,
+  Sun,
+  Moon,
+  Monitor,
 } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { signOut } from '@/lib/firebase/auth';
 import Link from 'next/link';
 import { EditProfileDialog } from '@/components/profile/EditProfileDialog';
@@ -38,6 +43,7 @@ function SettingsContent() {
   const [profilePublic, setProfilePublic] = useState(user?.profilePublic !== false);
   const [profileCopied, setProfileCopied] = useState(false);
   const [regeneratingTagline, setRegeneratingTagline] = useState(false);
+  const { theme, setTheme } = useTheme();
 
   // Global Strava sync store (survives navigation)
   const syncStatus = useStravaSyncStore((s) => s.status);
@@ -168,6 +174,36 @@ function SettingsContent() {
           <Button variant="outline" size="sm" asChild>
             <Link href="/profile"><ExternalLink className="h-4 w-4 mr-1.5" />View Profile</Link>
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* ═══════════════════ Appearance ═══════════════════ */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2"><Palette className="h-4 w-4 text-primary" />Appearance</CardTitle>
+          <CardDescription>Choose your default theme</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-3">
+            {([
+              { value: 'light', label: 'Light', icon: Sun },
+              { value: 'dark', label: 'Dark', icon: Moon },
+              { value: 'system', label: 'System', icon: Monitor },
+            ] as const).map(({ value, label, icon: Icon }) => (
+              <button
+                key={value}
+                onClick={() => setTheme(value)}
+                className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                  theme === value
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border bg-card hover:border-primary/30 text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+                <span className="text-sm font-medium">{label}</span>
+              </button>
+            ))}
+          </div>
         </CardContent>
       </Card>
 

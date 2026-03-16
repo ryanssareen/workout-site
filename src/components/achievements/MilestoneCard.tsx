@@ -44,8 +44,8 @@ export const MilestoneCard = forwardRef<HTMLDivElement, MilestoneCardProps>(
         {/* Header */}
         <div className="relative flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-black flex items-center justify-center">
-              <Dumbbell className="h-3.5 w-3.5 text-white" />
+            <div className="h-8 w-8 rounded-lg bg-foreground flex items-center justify-center">
+              <Dumbbell className="h-3.5 w-3.5 text-background" />
             </div>
             <span className="text-xs font-medium text-gray-400">The Daily Athlete</span>
           </div>

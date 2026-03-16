@@ -6,6 +6,7 @@ import {
   Trash2, RotateCcw, Download, AlertTriangle, CheckCircle,
   XCircle, Clock, Activity, ChevronDown, ChevronUp, Eye, Lock,
 } from 'lucide-react';
+import { ThemeToggle } from '@/components/dashboard/ThemeToggle';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -76,7 +77,7 @@ async function apiFetch(path: string, opts: RequestInit = {}) {
 // ─── Sub-sections ─────────────────────────────────────────────────────────────
 
 function OverviewSection({ stats }: { stats: OverviewStats | null }) {
-  if (!stats) return <p className="text-white/40 text-sm">Loading…</p>;
+  if (!stats) return <p className="text-muted-foreground text-sm">Loading…</p>;
   const items = [
     { label: 'Total users', value: stats.userCount, accent: false },
     { label: 'Total workouts', value: stats.workoutCount, accent: false },
@@ -95,9 +96,9 @@ function OverviewSection({ stats }: { stats: OverviewStats | null }) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {items.map(({ label, value, accent, green }) => (
-        <div key={label} className="bg-white/[0.04] border border-white/[0.08] rounded-xl p-5">
-          <p className="text-white/40 text-xs font-medium uppercase tracking-wider mb-1.5">{label}</p>
-          <p className={`text-2xl font-bold ${green ? 'text-green-400' : accent ? 'text-indigo-300' : 'text-white'}`}>{value}</p>
+        <div key={label} className="bg-muted/40 border border-border rounded-xl p-5">
+          <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider mb-1.5">{label}</p>
+          <p className={`text-2xl font-bold ${green ? 'text-green-400' : accent ? 'text-indigo-300' : 'text-foreground'}`}>{value}</p>
         </div>
       ))}
     </div>
@@ -209,7 +210,7 @@ function BackupsSection() {
         <button
           onClick={logSnapshot}
           disabled={creating}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/[0.06] hover:bg-white/10 border border-white/10 text-sm text-white/80 disabled:opacity-50 transition"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-muted/60 hover:bg-muted border border-border text-sm text-foreground/80 disabled:opacity-50 transition"
         >
           <RefreshCw size={14} className={creating ? 'animate-spin' : ''} />
           {creating ? 'Logging…' : 'Log snapshot'}
@@ -217,7 +218,7 @@ function BackupsSection() {
         <button
           onClick={downloadBackup}
           disabled={downloading}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm text-white shadow-md disabled:opacity-50 transition"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm text-white shadow-md shadow-foreground/10 disabled:opacity-50 transition"
         >
           <Download size={14} className={downloading ? 'animate-spin' : ''} />
           {downloading ? 'Generating…' : 'Download full backup'}
@@ -225,9 +226,9 @@ function BackupsSection() {
       </div>
 
       {/* Restore from file */}
-      <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl p-5 space-y-3">
-        <p className="text-white/80 text-sm font-medium">Restore from backup file</p>
-        <p className="text-white/30 text-xs">
+      <div className="bg-muted/40 border border-border rounded-xl p-5 space-y-3">
+        <p className="text-foreground/80 text-sm font-medium">Restore from backup file</p>
+        <p className="text-muted-foreground/70 text-xs">
           Upload a previously downloaded .json backup. Leave username blank to restore all data.
         </p>
         <div className="flex items-center gap-2 flex-wrap">
@@ -235,7 +236,7 @@ function BackupsSection() {
             value={restoreUsername}
             onChange={e => setRestoreUsername(e.target.value)}
             placeholder="username (optional)"
-            className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 w-48 focus:border-indigo-500/40 focus:outline-none transition"
+            className="bg-muted/50 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder-muted-foreground/50 w-48 focus:border-indigo-500/40 focus:outline-none transition"
           />
           <label
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-600/15 hover:bg-red-600/25 border border-red-500/25 text-sm text-red-300 cursor-pointer transition ${restoring ? 'opacity-50 pointer-events-none' : ''}`}
@@ -258,30 +259,30 @@ function BackupsSection() {
 
       {/* Snapshots table */}
       <div>
-        <p className="text-white/25 text-xs mb-2">
+        <p className="text-muted-foreground/70 text-xs mb-2">
           Health snapshots (counts only — use Download to get full restorable data)
         </p>
         {loading ? (
-          <p className="text-white/40 text-sm">Loading…</p>
+          <p className="text-muted-foreground text-sm">Loading…</p>
         ) : backups.length === 0 ? (
-          <p className="text-white/40 text-sm">No snapshots yet.</p>
+          <p className="text-muted-foreground text-sm">No snapshots yet.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-white/40 text-left border-b border-white/[0.08]">
+                <tr className="text-muted-foreground text-left border-b border-border">
                   {['Type', 'Time', 'Users', 'Workouts', 'Integrity', 'By'].map(h => (
                     <th key={h} className="pb-2 pr-4 font-medium">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-border/50">
                 {backups.map(b => (
-                  <tr key={b.id} className="text-white/60">
+                  <tr key={b.id} className="text-foreground/60">
                     <td className="py-2 pr-4">
-                      <span className="capitalize px-2 py-0.5 rounded-md text-xs bg-white/[0.08] text-white/60">{b.type}</span>
+                      <span className="capitalize px-2 py-0.5 rounded-md text-xs bg-muted/70 text-foreground/60">{b.type}</span>
                     </td>
-                    <td className="py-2 pr-4 whitespace-nowrap text-white/30 text-xs">{fmt(b.createdAt)}</td>
+                    <td className="py-2 pr-4 whitespace-nowrap text-muted-foreground/70 text-xs">{fmt(b.createdAt)}</td>
                     <td className="py-2 pr-4">{b.userCount}</td>
                     <td className="py-2 pr-4">{b.workoutCount}</td>
                     <td className="py-2 pr-4">
@@ -289,7 +290,7 @@ function BackupsSection() {
                         ? <CheckCircle size={14} className="text-green-400" />
                         : <XCircle size={14} className="text-red-400" />}
                     </td>
-                    <td className="py-2 pr-4 text-white/30 text-xs">{b.triggeredBy ?? 'cron'}</td>
+                    <td className="py-2 pr-4 text-muted-foreground/70 text-xs">{b.triggeredBy ?? 'cron'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -366,11 +367,11 @@ function UsersSection() {
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search by username or email…"
-          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 flex-1 max-w-xs focus:border-indigo-500/40 focus:outline-none transition"
+          className="bg-muted/50 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder-muted-foreground/50 flex-1 max-w-xs focus:border-indigo-500/40 focus:outline-none transition"
         />
         <button
           onClick={exportCSV}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/[0.06] hover:bg-white/10 border border-white/10 text-sm text-white/80 transition"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-muted/60 hover:bg-muted border border-border text-sm text-foreground/80 transition"
         >
           <Download size={14} /> Export CSV
         </button>
@@ -379,27 +380,27 @@ function UsersSection() {
       {error && <p className="text-red-400 text-sm">{error}</p>}
 
       {loading ? (
-        <p className="text-white/40 text-sm">Loading…</p>
+        <p className="text-muted-foreground text-sm">Loading…</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-white/40 text-left border-b border-white/[0.08]">
+              <tr className="text-muted-foreground text-left border-b border-border">
                 {['Username', 'Email', 'Role', 'Workouts', 'Joined', 'Status', 'Actions'].map(h => (
                   <th key={h} className="pb-2 pr-4 font-medium">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-border/50">
               {filtered.map(u => (
-                <tr key={u.username} className={`text-white/60 ${u.status === 'deleted' ? 'opacity-50' : ''}`}>
+                <tr key={u.username} className={`text-foreground/60 ${u.status === 'deleted' ? 'opacity-50' : ''}`}>
                   <td className="py-2 pr-4 font-mono text-xs text-indigo-300/80">{u.username}</td>
-                  <td className="py-2 pr-4 text-white/40">{u.email}</td>
+                  <td className="py-2 pr-4 text-muted-foreground">{u.email}</td>
                   <td className="py-2 pr-4">
-                    <span className="capitalize text-xs px-2 py-0.5 rounded-md bg-white/[0.08]">{u.role}</span>
+                    <span className="capitalize text-xs px-2 py-0.5 rounded-md bg-muted/70">{u.role}</span>
                   </td>
                   <td className="py-2 pr-4">{u.workoutCount}</td>
-                  <td className="py-2 pr-4 whitespace-nowrap text-white/30">{fmt(u.createdAt)}</td>
+                  <td className="py-2 pr-4 whitespace-nowrap text-muted-foreground/70">{fmt(u.createdAt)}</td>
                   <td className="py-2 pr-4">
                     {u.status === 'active'
                       ? <span className="text-green-400/80 text-xs">active</span>
@@ -410,7 +411,7 @@ function UsersSection() {
                       <button
                         onClick={() => exportUserJSON(u.username)}
                         title="Export JSON"
-                        className="text-white/30 hover:text-white/60 transition"
+                        className="text-muted-foreground/70 hover:text-foreground/60 transition"
                       >
                         <Download size={13} />
                       </button>
@@ -439,7 +440,7 @@ function UsersSection() {
               ))}
             </tbody>
           </table>
-          <p className="text-white/25 text-xs mt-2">{filtered.length} of {users.length} users</p>
+          <p className="text-muted-foreground/70 text-xs mt-2">{filtered.length} of {users.length} users</p>
         </div>
       )}
     </div>
@@ -505,11 +506,11 @@ function SystemActionsSection() {
     <div className="space-y-6">
       {/* Actions */}
       <div>
-        <h3 className="text-white/70 font-medium mb-3">Actions</h3>
+        <h3 className="text-foreground/70 font-medium mb-3">Actions</h3>
         <div className="flex flex-wrap gap-3">
           <button
             onClick={openSyncDialog}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/[0.06] hover:bg-white/10 text-sm text-white/80 border border-white/10 transition"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-muted/60 hover:bg-muted text-sm text-foreground/80 border border-border transition"
           >
             <Activity size={14} /> Force Strava Sync All
           </button>
@@ -518,16 +519,16 @@ function SystemActionsSection() {
 
       {/* Strava sync confirmation dialog */}
       {showSyncDialog && syncStats && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-gray-950 border border-white/10 rounded-2xl p-6 max-w-md w-full mx-4 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-background border border-border rounded-2xl p-6 max-w-md w-full mx-4 space-y-4 shadow-2xl shadow-foreground/10">
             <div className="flex items-center gap-2 text-amber-400">
               <AlertTriangle size={18} />
               <h3 className="font-semibold">Confirm: Force Strava Sync All</h3>
             </div>
-            <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl p-4 text-sm space-y-2 text-white/60">
-              <p><span className="text-white/40">Active users:</span> <strong className="text-white">{syncStats.userCount}</strong></p>
-              <p><span className="text-white/40">Strava API calls:</span> <strong className="text-white">~{syncStats.userCount * 5}</strong></p>
-              <p><span className="text-white/40">Rate limit:</span> 100 req / 15 min, 1,000 req / day</p>
+            <div className="bg-muted/40 border border-border rounded-xl p-4 text-sm space-y-2 text-foreground/60">
+              <p><span className="text-muted-foreground">Active users:</span> <strong className="text-foreground">{syncStats.userCount}</strong></p>
+              <p><span className="text-muted-foreground">Strava API calls:</span> <strong className="text-foreground">~{syncStats.userCount * 5}</strong></p>
+              <p><span className="text-muted-foreground">Rate limit:</span> 100 req / 15 min, 1,000 req / day</p>
               <p className={syncStats.userCount * 5 > 100 ? 'text-amber-400' : 'text-green-400'}>
                 {syncStats.userCount * 5 > 1000
                   ? '⚠ Exceeds daily limit — will hit rate cap'
@@ -540,14 +541,14 @@ function SystemActionsSection() {
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowSyncDialog(false)}
-                className="px-4 py-2 rounded-lg bg-white/[0.06] hover:bg-white/10 border border-white/10 text-sm text-white/80 transition"
+                className="px-4 py-2 rounded-lg bg-muted/60 hover:bg-muted border border-border text-sm text-foreground/80 transition"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmSync}
                 disabled={syncing}
-                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm text-white shadow-md disabled:opacity-50 transition"
+                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm text-white shadow-md shadow-foreground/10 disabled:opacity-50 transition"
               >
                 {syncing ? 'Syncing…' : 'Confirm'}
               </button>
@@ -558,15 +559,15 @@ function SystemActionsSection() {
 
       {/* Log viewer */}
       <div>
-        <div className="inline-flex items-center gap-1 mb-3 bg-white/[0.03] border border-white/[0.08] rounded-lg p-1">
+        <div className="inline-flex items-center gap-1 mb-3 bg-muted/30 border border-border rounded-lg p-1">
           {(['actions', 'cron'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setLogTab(tab)}
               className={`px-3 py-1.5 rounded-md text-sm capitalize transition ${
                 logTab === tab
-                  ? 'bg-white/10 text-white'
-                  : 'text-white/40 hover:text-white/60'
+                  ? 'bg-muted text-foreground'
+                  : 'text-muted-foreground hover:text-foreground/60'
               }`}
             >
               {tab === 'actions' ? 'Admin Actions' : 'Cron Logs'}
@@ -575,18 +576,18 @@ function SystemActionsSection() {
         </div>
 
         {logsLoading ? (
-          <p className="text-white/40 text-sm">Loading logs…</p>
+          <p className="text-muted-foreground text-sm">Loading logs…</p>
         ) : displayLogs.length === 0 ? (
-          <p className="text-white/40 text-sm">No logs yet.</p>
+          <p className="text-muted-foreground text-sm">No logs yet.</p>
         ) : (
           <div className="space-y-1.5 max-h-96 overflow-y-auto">
             {displayLogs.map(log => (
-              <div key={log.id} className="bg-white/[0.03] border border-white/5 rounded-lg px-3 py-2.5 text-xs flex items-start gap-3">
-                <span className="text-white/30 whitespace-nowrap">{fmt(log.timestamp)}</span>
+              <div key={log.id} className="bg-muted/30 border border-border/50 rounded-lg px-3 py-2.5 text-xs flex items-start gap-3">
+                <span className="text-muted-foreground/70 whitespace-nowrap">{fmt(log.timestamp)}</span>
                 <span className="font-mono text-indigo-300">{log.action}</span>
-                {log.targetUid && <span className="text-white/40">user: {log.targetUid}</span>}
-                {log.type && <span className="text-white/40">type: {log.type}</span>}
-                <span className="text-white/30 ml-auto">by {log.adminUid}</span>
+                {log.targetUid && <span className="text-muted-foreground">user: {log.targetUid}</span>}
+                {log.type && <span className="text-muted-foreground">type: {log.type}</span>}
+                <span className="text-muted-foreground/70 ml-auto">by {log.adminUid}</span>
               </div>
             ))}
           </div>
@@ -632,7 +633,7 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
   }
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background gradient glows */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px]" />
@@ -646,19 +647,19 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-indigo-600/15 border border-indigo-500/20 shadow-xl shadow-indigo-900/20 mb-4">
             <Shield className="w-8 h-8 text-indigo-400" />
           </div>
-          <h1 className="text-2xl font-black text-white uppercase tracking-tight">Admin Access</h1>
-          <p className="text-white/30 mt-1 text-sm">The Daily Athlete</p>
+          <h1 className="text-2xl font-black text-foreground uppercase tracking-tight">Admin Access</h1>
+          <p className="text-muted-foreground/70 mt-1 text-sm">The Daily Athlete</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl shadow-black/40 space-y-6">
+        <div className="bg-muted/30 backdrop-blur-xl border border-border rounded-2xl p-8 shadow-2xl shadow-foreground/10 space-y-6">
           {/* Restricted area badge */}
           <div className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-indigo-500/[0.08] border border-indigo-500/15">
             <Lock className="w-3.5 h-3.5 text-indigo-400/70" />
             <span className="text-xs text-indigo-300/70 font-medium tracking-wide uppercase">Restricted Area</span>
           </div>
 
-          <p className="text-white/40 text-sm text-center">
+          <p className="text-muted-foreground text-sm text-center">
             Sign in with your authorized Google account to continue.
           </p>
 
@@ -672,7 +673,7 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
           <button
             onClick={signInWithGoogle}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl bg-white hover:bg-gray-50 text-gray-800 text-sm font-semibold disabled:opacity-60 transition-all duration-200 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-black/30 hover:-translate-y-0.5 active:translate-y-0"
+            className="w-full flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl bg-white hover:bg-gray-50 text-gray-800 text-sm font-semibold disabled:opacity-60 transition-all duration-200 shadow-lg shadow-foreground/10 hover:shadow-xl hover:shadow-foreground/10 hover:-translate-y-0.5 active:translate-y-0"
           >
             {loading ? (
               <RefreshCw size={16} className="animate-spin" />
@@ -689,8 +690,8 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
 
           {/* Security footer */}
           <div className="flex items-center justify-center gap-1.5 pt-2">
-            <Shield className="w-3 h-3 text-white/15" />
-            <span className="text-[11px] text-white/15">Protected by Firebase Auth</span>
+            <Shield className="w-3 h-3 text-muted-foreground/50" />
+            <span className="text-[11px] text-muted-foreground/50">Protected by Firebase Auth</span>
           </div>
         </div>
       </div>
@@ -740,26 +741,29 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white/80">
+    <div className="min-h-screen bg-background text-foreground/80">
       {/* Header */}
-      <header className="bg-white/[0.02] backdrop-blur-xl border-b border-white/[0.08] px-6 py-4 flex items-center justify-between">
+      <header className="bg-muted/25 backdrop-blur-xl border-b border-border px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-indigo-600/15 border border-indigo-500/20 flex items-center justify-center">
             <Shield size={16} className="text-indigo-400" />
           </div>
-          <span className="font-semibold text-white">The Daily Athlete Admin</span>
+          <span className="font-semibold text-foreground">The Daily Athlete Admin</span>
         </div>
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-1.5 text-white/40 hover:text-white/70 hover:bg-white/5 rounded-lg px-3 py-1.5 text-sm transition"
-        >
-          <LogOut size={14} /> Sign out
-        </button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground/70 hover:bg-muted/50 rounded-lg px-3 py-1.5 text-sm transition"
+          >
+            <LogOut size={14} /> Sign out
+          </button>
+        </div>
       </header>
 
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         {/* Tab nav */}
-        <nav className="inline-flex gap-1 bg-white/[0.03] border border-white/[0.08] rounded-xl p-1">
+        <nav className="inline-flex gap-1 bg-muted/30 border border-border rounded-xl p-1">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -767,7 +771,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm transition-all ${
                 tab === id
                   ? 'bg-indigo-600/15 text-indigo-300 border border-indigo-500/20 shadow-sm'
-                  : 'text-white/40 hover:text-white/60 hover:bg-white/5 border border-transparent'
+                  : 'text-muted-foreground hover:text-foreground/60 hover:bg-muted/50 border border-transparent'
               }`}
             >
               <Icon size={14} />
@@ -777,7 +781,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         </nav>
 
         {/* Tab content */}
-        <div className="bg-white/[0.02] backdrop-blur-sm border border-white/[0.08] rounded-xl p-6">
+        <div className="bg-muted/25 backdrop-blur-sm border border-border rounded-xl p-6">
           {tab === 'overview' && <OverviewSection stats={stats} />}
           {tab === 'backups' && <BackupsSection />}
           {tab === 'users' && <UsersSection />}
@@ -802,7 +806,7 @@ export default function AdminPage() {
 
   if (checking) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center relative overflow-hidden">
+      <div className="min-h-screen bg-background flex items-center justify-center relative overflow-hidden">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px]" />
           <div className="absolute top-1/2 -left-40 w-[400px] h-[400px] bg-blue-900/10 rounded-full blur-[100px]" />
@@ -811,7 +815,7 @@ export default function AdminPage() {
           <div className="w-12 h-12 rounded-xl bg-indigo-600/15 border border-indigo-500/20 flex items-center justify-center animate-pulse">
             <Shield className="w-6 h-6 text-indigo-400" />
           </div>
-          <p className="text-white/30 text-xs font-medium tracking-wide">Verifying session...</p>
+          <p className="text-muted-foreground/70 text-xs font-medium tracking-wide">Verifying session...</p>
         </div>
       </div>
     );
