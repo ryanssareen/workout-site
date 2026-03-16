@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createBackup, BackupType } from '@/lib/backup';
+import { createDeltaBackup, compactFullBackup, BackupType } from '@/lib/backup';
 import { logAdminAction } from '@/lib/admin-auth';
 import { getAdminDb } from '@/lib/firebase/admin';
 import admin from 'firebase-admin';
@@ -24,14 +24,21 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    const result = await createBackup(type, 'cron');
+    // Dispatch by tier:
+    // - monthly → compact (merge full + deltas from Storage, 0 Firestore data reads)
+    // - weekly/daily → delta (only changed docs since last backup)
+    const result = type === 'monthly'
+      ? await compactFullBackup('cron')
+      : await createDeltaBackup(type as 'daily' | 'weekly', 'cron');
 
     // Log to adminLogs
     await logAdminAction('cron', 'cron_backup', {
       type,
+      tier: result.tier,
       backupId: result.id,
       userCount: result.userCount,
       workoutCount: result.workoutCount,
+      storagePath: result.storagePath,
       durationMs: Date.now() - startTime,
     });
 

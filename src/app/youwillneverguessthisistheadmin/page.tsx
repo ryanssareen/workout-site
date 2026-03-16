@@ -13,10 +13,11 @@ import {
 interface BackupRecord {
   id: string;
   type: string;
+  tier?: 'full' | 'delta';
   createdAt: number | null;
   userCount: number;
   workoutCount: number;
-  storagePath: string;
+  storagePath: string | null;
   integrityPassed: boolean;
   triggeredBy?: string;
 }
@@ -253,14 +254,14 @@ function BackupsSection() {
 
   useEffect(() => { load(); }, [load]);
 
-  async function logSnapshot() {
+  async function triggerBackup(tier: 'full' | 'delta' | 'compact') {
     setCreating(true);
     setError('');
     try {
       await apiFetch('/api/admin/backup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'manual' }),
+        body: JSON.stringify({ tier }),
       });
       await load();
     } catch (e: any) {
@@ -340,22 +341,38 @@ function BackupsSection() {
             <p className="text-white/30 text-xs">Snapshots, downloads, and recovery</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
-            onClick={logSnapshot}
+            onClick={() => triggerBackup('delta')}
             disabled={creating}
-            className="group flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/15 text-sm text-white/70 hover:text-white disabled:opacity-50 transition-all"
+            className="group flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/15 text-xs text-white/70 hover:text-white disabled:opacity-50 transition-all"
           >
-            <RefreshCw size={15} className={creating ? 'animate-spin' : 'group-hover:rotate-90 transition-transform duration-300'} />
-            {creating ? 'Logging…' : 'Log snapshot'}
+            <RefreshCw size={13} className={creating ? 'animate-spin' : 'group-hover:rotate-90 transition-transform duration-300'} />
+            {creating ? 'Running…' : 'Delta'}
+          </button>
+          <button
+            onClick={() => triggerBackup('full')}
+            disabled={creating}
+            className="group flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/15 hover:border-blue-500/25 text-xs text-blue-300 font-medium disabled:opacity-50 transition-all"
+          >
+            <Database size={13} />
+            {creating ? 'Running…' : 'Full seed'}
+          </button>
+          <button
+            onClick={() => triggerBackup('compact')}
+            disabled={creating}
+            className="group flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/15 hover:border-emerald-500/25 text-xs text-emerald-300 font-medium disabled:opacity-50 transition-all"
+          >
+            <HardDrive size={13} />
+            {creating ? 'Running…' : 'Compact'}
           </button>
           <button
             onClick={downloadBackup}
             disabled={downloading}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-sm text-white font-medium shadow-lg shadow-red-900/30 disabled:opacity-50 transition-all hover:-translate-y-0.5 active:translate-y-0"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-xs text-white font-medium shadow-lg shadow-red-900/30 disabled:opacity-50 transition-all hover:-translate-y-0.5 active:translate-y-0"
           >
-            <Download size={15} className={downloading ? 'animate-bounce' : ''} />
-            {downloading ? 'Generating…' : 'Download full backup'}
+            <Download size={13} className={downloading ? 'animate-bounce' : ''} />
+            {downloading ? 'Generating…' : 'Download'}
           </button>
         </div>
       </div>
@@ -398,7 +415,7 @@ function BackupsSection() {
       {/* Snapshots table */}
       <div>
         <p className="text-white/30 text-xs mb-3 font-medium">
-          Health snapshots (counts only — use Download to get full restorable data)
+          Backup history — Full backups in Storage, Deltas capture only changed docs
         </p>
         {loading ? (
           <div className="flex items-center gap-2 py-8 justify-center">
@@ -412,7 +429,7 @@ function BackupsSection() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-white/[0.03]">
-                  {['Type', 'Time', 'Users', 'Workouts', 'Integrity', 'By'].map(h => (
+                  {['Type', 'Tier', 'Time', 'Users', 'Workouts', 'Storage', 'By'].map(h => (
                     <th key={h} className="text-left text-white/40 text-xs font-semibold uppercase tracking-wider px-4 py-3">{h}</th>
                   ))}
                 </tr>
@@ -423,13 +440,22 @@ function BackupsSection() {
                     <td className="px-4 py-3">
                       <span className="capitalize px-2.5 py-1 rounded-lg text-xs font-medium bg-white/[0.06] text-white/60 border border-white/[0.06]">{b.type}</span>
                     </td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-0.5 rounded-md text-xs font-medium ${
+                        b.tier === 'full'
+                          ? 'bg-blue-500/15 text-blue-300 border border-blue-500/15'
+                          : b.tier === 'delta'
+                          ? 'bg-amber-500/15 text-amber-300 border border-amber-500/15'
+                          : 'bg-white/[0.06] text-white/40 border border-white/[0.06]'
+                      }`}>{b.tier ?? 'legacy'}</span>
+                    </td>
                     <td className="px-4 py-3 whitespace-nowrap text-white/35 text-xs font-mono">{fmt(b.createdAt)}</td>
                     <td className="px-4 py-3 font-semibold">{b.userCount}</td>
                     <td className="px-4 py-3 font-semibold">{b.workoutCount}</td>
                     <td className="px-4 py-3">
-                      {b.integrityPassed
-                        ? <span className="inline-flex items-center gap-1 text-green-400 text-xs"><CheckCircle size={13} /> OK</span>
-                        : <span className="inline-flex items-center gap-1 text-red-400 text-xs"><XCircle size={13} /> Fail</span>}
+                      {b.storagePath
+                        ? <span className="inline-flex items-center gap-1 text-green-400 text-xs"><CheckCircle size={13} /> Yes</span>
+                        : <span className="text-white/25 text-xs">—</span>}
                     </td>
                     <td className="px-4 py-3 text-white/30 text-xs">{b.triggeredBy ?? 'cron'}</td>
                   </tr>
