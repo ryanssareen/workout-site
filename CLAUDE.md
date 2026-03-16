@@ -197,6 +197,21 @@ npx tsc --noEmit     # Type check without building
 - Custom domain (thedailyathlete.in) has DNS/NXDOMAIN issues — likely Squarespace registration problem
 - Groq rate limits (100K tokens/day on 70B model) — mitigated with 8B fallback but can still hit both limits
 
+## Firestore Read Budget
+This project runs on Firebase with a **50k reads/day limit**. Every API route, migration, and cron job must be designed with read cost as a primary constraint.
+
+**Design rules:**
+- **Always estimate read cost before writing code.** Count: 1 read per document returned by a query (not per query call). A query returning 500 docs = 500 reads.
+- **Never scan all workouts.** With 500 users × 4000 workouts = 2M docs. Use targeted queries (`where` filters, `mergeMeta.method`, date ranges) to read only the documents you need.
+- **Use `select()` for metadata-only queries.** `db.collection('users').select().get()` returns doc IDs without field data — still counts as reads but transfers less data.
+- **Use `count().get()` instead of `.get()` when you only need counts.** Counts as 1 read regardless of collection size.
+- **Use `collectionGroup()` for cross-user queries** instead of iterating per-user subcollections (e.g., `collectionGroup('workouts').where('updatedAt', '>', ts)` = 1 query vs N per-user queries).
+- **Use Firestore `in` operator** to batch lookups (up to 30 values per query) instead of 1 query per value.
+- **Add date bounds** to queries that could return large result sets (e.g., planned workouts, sync ranges).
+- **Cache aggressively** on the client (Zustand stores with TTL) and server (in-memory caches for coach students, etc.).
+- **For migrations/backfills:** always support `?username=X` param for per-user execution. Never assume you can read all data in one request. Always provide `?dryRun=true` mode.
+- **Cron jobs:** daily crons should target only changed data (delta queries with `updatedAt > lastRun`), not full collection scans.
+
 ## Code Style
 - Prefer functional components with hooks
 - Use `async/await` over `.then()` chains
