@@ -70,18 +70,27 @@ async function runMigration(request: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const dryRun = request.nextUrl.searchParams.get('dryRun') === 'true';
+  const targetUsername = request.nextUrl.searchParams.get('username');
   const db = getAdminDb();
 
   try {
-    const usersSnap = await db.collection('users').get();
+    // If username provided, only process that user. Otherwise list all users.
+    let usernames: string[];
+    if (targetUsername) {
+      usernames = [targetUsername];
+    } else {
+      // Only fetch usernames (select() returns docs with no field data = 0 field reads)
+      const usersSnap = await db.collection('users').select().get();
+      usernames = usersSnap.docs.map(d => d.id);
+    }
+
     let totalMigrated = 0;
     let totalScanned = 0;
     const byType: Record<string, number> = {};
     let batch = db.batch();
     let batchCount = 0;
 
-    for (const userDoc of usersSnap.docs) {
-      const username = userDoc.id;
+    for (const username of usernames) {
       const workoutsSnap = await db
         .collection('users')
         .doc(username)
