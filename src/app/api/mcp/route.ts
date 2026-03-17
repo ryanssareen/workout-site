@@ -316,7 +316,7 @@ function createMcpServer(): McpServer {
       description: 'Creates a new workout and assigns it to a user. Returns the new workout ID.',
       inputSchema: {
         name: z.string().min(1).max(200),
-        type: z.enum(['swim', 'bike', 'run', 'strength', 'other']),
+        type: z.enum(['swim', 'bike', 'run', 'walk', 'strength', 'other']),
         date: z.string().describe('ISO 8601 date string, e.g. 2026-03-01T18:30:00.000Z'),
         assignedTo: z.string().min(1).max(128).describe('Username of the athlete to assign to'),
         createdBy: z.string().min(1).max(128).describe('Username of the coach/creator'),
@@ -368,7 +368,7 @@ function createMcpServer(): McpServer {
         date: z.string().optional().describe('ISO 8601 date string'),
         duration: z.number().int().min(1).optional(),
         tags: z.array(z.string()).optional(),
-        type: z.enum(['swim', 'bike', 'run', 'strength', 'other']).optional(),
+        type: z.enum(['swim', 'bike', 'run', 'walk', 'strength', 'other']).optional(),
       },
     },
     async (input: {

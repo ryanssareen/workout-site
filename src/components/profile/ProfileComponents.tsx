@@ -4,15 +4,15 @@ import { cn } from '@/lib/utils';
 
 // ── Constants ──
 export const TYPE_EMOJI: Record<string, string> = {
-  run: '🏃', bike: '🚴', swim: '🏊', strength: '💪', other: '⚡',
+  run: '🏃', bike: '🚴', swim: '🏊', walk: '🚶', strength: '💪', other: '⚡',
 };
 
 export const TYPE_COLORS: Record<string, string> = {
-  swim: '#3b82f6', run: '#22c55e', bike: '#f97316', strength: '#a855f7', other: '#6b7280',
+  swim: '#3b82f6', run: '#22c55e', walk: '#10b981', bike: '#f97316', strength: '#a855f7', other: '#6b7280',
 };
 
 export const SPORT_LABELS: Record<string, string> = {
-  run: 'Running', bike: 'Cycling', swim: 'Swimming', strength: 'Strength',
+  run: 'Running', bike: 'Cycling', swim: 'Swimming', walk: 'Walking', strength: 'Strength',
 };
 
 export const FEATURED_SPORTS = new Set(['run', 'bike', 'swim', 'strength']);

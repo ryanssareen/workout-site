@@ -13,13 +13,13 @@ import { sendPushNotification } from '@/lib/push';
 const MAX_USERS_PER_RUN = 50;
 
 const TYPE_EMOJI: Record<string, string> = {
-  run: '🏃', bike: '🚴', swim: '🏊', strength: '💪', other: '🏋️',
+  run: '🏃', bike: '🚴', swim: '🏊', walk: '🚶', strength: '💪', other: '🏋️',
 };
 const TYPE_LABEL: Record<string, string> = {
-  run: 'ran', bike: 'cycled', swim: 'swam', strength: 'lifted', other: 'trained',
+  run: 'ran', bike: 'cycled', swim: 'swam', walk: 'walked', strength: 'lifted', other: 'trained',
 };
 const TYPE_COLOR: Record<string, string> = {
-  run: '#22c55e', bike: '#f97316', swim: '#3b82f6', strength: '#a855f7', other: '#6b7280',
+  run: '#22c55e', bike: '#f97316', swim: '#3b82f6', walk: '#10b981', strength: '#a855f7', other: '#6b7280',
 };
 
 interface WorkoutDoc {

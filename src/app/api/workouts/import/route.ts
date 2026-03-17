@@ -10,7 +10,7 @@ import Papa from 'papaparse';
 const MAX_ROWS = 500;
 const MAX_WORKOUTS = 200;
 
-type WorkoutType = 'swim' | 'run' | 'bike' | 'strength' | 'other';
+type WorkoutType = 'swim' | 'run' | 'walk' | 'bike' | 'strength' | 'other';
 
 interface ParsedWorkout {
   name: string;
@@ -361,8 +361,8 @@ export async function POST(request: NextRequest) {
     const extractionRules = `For each data row, extract:
 - rowIndex: the ROW# from the first column (REQUIRED — we use this to validate)
 - name: workout name/title (use activity type if no name)
-- type: MUST be one of: "run", "bike", "swim", "strength", "other"
-  Mapping: Running/Jogging/Walk→run, Cycling/Biking/Spinning→bike, Swimming/Pool→swim, Weight Training/Gym/CrossFit/Yoga/HIIT→strength, anything else→other
+- type: MUST be one of: "run", "walk", "bike", "swim", "strength", "other"
+  Mapping: Running/Jogging→run, Walk/Hike→walk, Cycling/Biking/Spinning→bike, Swimming/Pool→swim, Weight Training/Gym/CrossFit/Yoga/HIIT→strength, anything else→other
 - date: ISO 8601 date (YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss)${dateDetection ? ' — copy from data directly' : ''}
 - duration: minutes (convert from hours/seconds if needed)
 - distance: km (convert from miles/meters if needed)

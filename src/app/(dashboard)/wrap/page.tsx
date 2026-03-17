@@ -19,21 +19,21 @@ function toDate(w: Workout): Date {
 }
 
 const TYPE_EMOJI: Record<string, string> = {
-  run: '🏃', bike: '🚴', swim: '🏊', strength: '💪', other: '🏋️',
+  run: '🏃', bike: '🚴', swim: '🏊', walk: '🚶', strength: '💪', other: '🏋️',
 };
 
 const TYPE_NAME: Record<string, string> = {
-  run: 'Running', bike: 'Cycling', swim: 'Swimming', strength: 'Strength', other: 'Other',
+  run: 'Running', bike: 'Cycling', swim: 'Swimming', walk: 'Walking', strength: 'Strength', other: 'Other',
 };
 
 const TYPE_BG: Record<string, string> = {
   run: 'from-green-500/20 to-green-500/5', bike: 'from-orange-500/20 to-orange-500/5',
-  swim: 'from-blue-500/20 to-blue-500/5', strength: 'from-purple-500/20 to-purple-500/5',
-  other: 'from-gray-500/20 to-gray-500/5',
+  swim: 'from-blue-500/20 to-blue-500/5', walk: 'from-emerald-500/20 to-emerald-500/5',
+  strength: 'from-purple-500/20 to-purple-500/5', other: 'from-gray-500/20 to-gray-500/5',
 };
 
 const TYPE_COLOR: Record<string, string> = {
-  run: '#22c55e', bike: '#f97316', swim: '#3b82f6', strength: '#a855f7', other: '#6b7280',
+  run: '#22c55e', bike: '#f97316', swim: '#3b82f6', walk: '#10b981', strength: '#a855f7', other: '#6b7280',
 };
 
 interface SportStat {

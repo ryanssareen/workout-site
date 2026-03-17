@@ -45,7 +45,7 @@ Duration (if set): ${workout.duration ? workout.duration + ' minutes' : 'not set
 
 Extract the following into a JSON object:
 {
-  "type": "swim|run|bike|strength|other",
+  "type": "swim|run|walk|bike|strength|other",
   "name": "cleaned up workout name if the original is vague, otherwise keep it",
   "duration": number_in_minutes_or_null,
   "tags": ["up to 3 tags from: easy, moderate, hard, recovery, speed, endurance, intervals, tempo, long, strength, technique, race"],
@@ -173,7 +173,7 @@ export async function POST(req: NextRequest) {
       const update: any = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
 
       // Update type if Groq inferred one and current is missing/unknown
-      if (parsed.type && ['swim', 'run', 'bike', 'strength', 'other'].includes(parsed.type)) {
+      if (parsed.type && ['swim', 'run', 'walk', 'bike', 'strength', 'other'].includes(parsed.type)) {
         update.type = parsed.type;
       }
 

@@ -72,7 +72,7 @@ export async function generateMetadata({ params }: PreviewPageProps): Promise<Me
     return { title: 'Workout Not Found | The Daily Athlete' };
   }
 
-  const typeEmoji: Record<string, string> = { run: '🏃', bike: '🚴', swim: '🏊', strength: '💪', other: '⚡' };
+  const typeEmoji: Record<string, string> = { run: '🏃', bike: '🚴', swim: '🏊', walk: '🚶', strength: '💪', other: '⚡' };
   const emoji = typeEmoji[workout.type] || '⚡';
   const title = `${emoji} ${workout.name} | The Daily Athlete`;
 

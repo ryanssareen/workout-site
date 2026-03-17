@@ -9,11 +9,13 @@ import admin from 'firebase-admin';
 // Or: POST with body { userId, activityId } or { userId, mockActivity: {...} }
 
 // Map Strava activity types to our workout types
-function mapStravaType(stravaType: string): 'swim' | 'run' | 'bike' | 'strength' {
-  const typeMap: Record<string, 'swim' | 'run' | 'bike' | 'strength'> = {
+function mapStravaType(stravaType: string): 'swim' | 'run' | 'walk' | 'bike' | 'strength' {
+  const typeMap: Record<string, 'swim' | 'run' | 'walk' | 'bike' | 'strength'> = {
     'Run': 'run',
     'TrailRun': 'run',
     'VirtualRun': 'run',
+    'Walk': 'walk',
+    'Hike': 'walk',
     'Ride': 'bike',
     'VirtualRide': 'bike',
     'MountainBikeRide': 'bike',
@@ -78,7 +80,7 @@ async function getAccessToken(username: string, userData: any): Promise<string |
 async function findMatchingWorkout(
   username: string,
   activityDate: Date,
-  activityType: 'swim' | 'run' | 'bike' | 'strength',
+  activityType: 'swim' | 'run' | 'walk' | 'bike' | 'strength',
   stravaActivityId: string
 ) {
   const startOfDay = new Date(activityDate);

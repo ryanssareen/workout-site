@@ -204,6 +204,7 @@ export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAt
             <SelectItem value="swim">🏊 Swim</SelectItem>
             <SelectItem value="bike">🚴 Bike</SelectItem>
             <SelectItem value="run">🏃 Run</SelectItem>
+            <SelectItem value="walk">🚶 Walk</SelectItem>
             <SelectItem value="strength">💪 Strength</SelectItem>
             <SelectItem value="other">📋 Other</SelectItem>
           </SelectContent>
@@ -241,7 +242,7 @@ export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAt
             />
           )}
 
-          {selectedType === 'run' && (
+          {(selectedType === 'run' || selectedType === 'walk') && (
             <RunForm
               data={runData || {}}
               onChange={(data) => setValue('run', data as any)}

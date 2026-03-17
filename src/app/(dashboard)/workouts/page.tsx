@@ -34,6 +34,7 @@ const FILTER_OPTIONS: { value: WorkoutType | 'all'; label: string; emoji?: strin
   { value: 'run', label: 'Run', emoji: '🏃' },
   { value: 'bike', label: 'Bike', emoji: '🚴' },
   { value: 'swim', label: 'Swim', emoji: '🏊' },
+  { value: 'walk', label: 'Walk', emoji: '🚶' },
   { value: 'strength', label: 'Strength', emoji: '💪' },
   { value: 'other', label: 'Other', emoji: '📋' },
 ];

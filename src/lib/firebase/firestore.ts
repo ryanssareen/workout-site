@@ -199,7 +199,7 @@ export async function updateWorkout(ownerUsername: string, id: string, data: Par
     if (data.date) { updateData.date = Timestamp.fromDate(data.date); }
 
     // When type changes, explicitly delete old type-specific fields
-    const TYPE_FIELDS = ['swim', 'bike', 'run', 'strength', 'other'] as const;
+    const TYPE_FIELDS = ['swim', 'bike', 'run', 'walk', 'strength', 'other'] as const;
     if (data.type) {
       for (const field of TYPE_FIELDS) {
         if (field !== data.type) {

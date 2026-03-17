@@ -8,7 +8,7 @@
 
 import { addDays, startOfTomorrow, getDay } from 'date-fns';
 
-type WorkoutType = 'run' | 'swim' | 'bike' | 'strength' | 'other';
+type WorkoutType = 'run' | 'walk' | 'swim' | 'bike' | 'strength' | 'other';
 type Intensity = 'easy' | 'moderate' | 'hard' | 'recovery';
 
 export interface WorkoutSkeleton {
@@ -81,6 +81,7 @@ const FOCUS_BY_INTENSITY: Record<Intensity, string[]> = {
 
 const BASE_DURATION: Record<WorkoutType, Record<Intensity, number>> = {
   run:      { easy: 40, moderate: 50, hard: 45, recovery: 30 },
+  walk:     { easy: 30, moderate: 40, hard: 35, recovery: 25 },
   swim:     { easy: 45, moderate: 55, hard: 50, recovery: 30 },
   bike:     { easy: 60, moderate: 75, hard: 60, recovery: 40 },
   strength: { easy: 40, moderate: 50, hard: 55, recovery: 30 },

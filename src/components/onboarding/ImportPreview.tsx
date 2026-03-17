@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { MappingOverride } from './MappingOverride';
 
 const TYPE_EMOJI: Record<string, string> = {
-  run: '🏃', bike: '🚴', swim: '🏊', strength: '💪', other: '📋',
+  run: '🏃', bike: '🚴', swim: '🏊', walk: '🚶', strength: '💪', other: '📋',
 };
 
 interface ImportPreviewProps {

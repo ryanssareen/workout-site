@@ -14,10 +14,10 @@ import { cn } from '@/lib/utils';
 // ── Constants ──────────────────────────────────────────────────────
 
 export const YEAR = 2025;
-export const TYPE_EMOJI: Record<string, string> = { run: '🏃', bike: '🚴', swim: '🏊', strength: '💪', other: '🏋️' };
-export const TYPE_LABEL: Record<string, string> = { run: 'Run', bike: 'Bike', swim: 'Swim', strength: 'Strength', other: 'Other' };
+export const TYPE_EMOJI: Record<string, string> = { run: '🏃', bike: '🚴', swim: '🏊', walk: '🚶', strength: '💪', other: '🏋️' };
+export const TYPE_LABEL: Record<string, string> = { run: 'Run', bike: 'Bike', swim: 'Swim', walk: 'Walk', strength: 'Strength', other: 'Other' };
 export const TYPE_COLOR: Record<string, string> = {
-  run: '#ef4444', bike: '#f59e0b', swim: '#06b6d4', strength: '#a855f7', other: '#6b7280',
+  run: '#ef4444', bike: '#f59e0b', swim: '#06b6d4', walk: '#10b981', strength: '#a855f7', other: '#6b7280',
 };
 export const PIE_COLORS = ['#ef4444', '#f59e0b', '#06b6d4', '#a855f7', '#6b7280', '#ec4899'];
 

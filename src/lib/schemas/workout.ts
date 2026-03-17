@@ -61,7 +61,7 @@ export type RecurringFrequency = typeof RECURRING_FREQUENCIES[number];
 // Main workout schema with type-specific data
 export const workoutSchema = z.object({
   name: z.string().min(1, 'Workout name is required').max(100),
-  type: z.enum(['swim', 'run', 'bike', 'strength', 'other'], {
+  type: z.enum(['swim', 'run', 'walk', 'bike', 'strength', 'other'], {
     message: 'Please select a workout type',
   }),
   date: z.date({

@@ -161,14 +161,15 @@ const TYPE_KEYWORDS: Record<WorkoutType, string[]> = {
   run: ['run', 'jog', 'sprint', 'marathon', 'half marathon', '5k', '10k', 'trail', 'fartlek', 'tempo run'],
   bike: ['bike', 'cycle', 'cycling', 'ride', 'spin', 'zwift', 'peloton', 'century'],
   swim: ['swim', 'pool', 'open water', 'laps', 'freestyle', 'backstroke', 'butterfly'],
+  walk: ['walk', 'hike', 'hiking', 'trekking'],
   strength: ['strength', 'lift', 'weight', 'gym', 'bench', 'squat', 'deadlift', 'press', 'curl', 'row', 'pullup', 'push-up', 'leg day', 'chest', 'back day', 'arms', 'shoulders'],
-  other: ['yoga', 'stretch', 'rest', 'recovery', 'walk', 'hike', 'cross-train', 'pilates', 'mobility'],
+  other: ['yoga', 'stretch', 'rest', 'recovery', 'cross-train', 'pilates', 'mobility'],
 };
 
 function normalizeType(val: string): WorkoutType {
   const lower = val.toLowerCase().trim();
   // Direct match
-  if (['run', 'bike', 'swim', 'strength', 'other'].includes(lower)) return lower as WorkoutType;
+  if (['run', 'walk', 'bike', 'swim', 'strength', 'other'].includes(lower)) return lower as WorkoutType;
   if (lower === 'running' || lower === 'run') return 'run';
   if (lower === 'cycling' || lower === 'ride' || lower === 'biking') return 'bike';
   if (lower === 'swimming') return 'swim';

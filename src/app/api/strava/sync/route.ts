@@ -90,7 +90,7 @@ function buildTypeSpecificFields(workoutType: string, activity: any): Record<str
   const timeMin = Math.round((activity.moving_time || 0) / 60);
   const fields: Record<string, any> = {};
 
-  if (workoutType === 'run') {
+  if (workoutType === 'run' || workoutType === 'walk') {
     fields.run = {
       distance: Math.round(distKm * 100) / 100,
       distanceUnit: 'km',
@@ -119,11 +119,13 @@ function buildTypeSpecificFields(workoutType: string, activity: any): Record<str
   return fields;
 }
 
-function mapStravaType(stravaType: string): 'swim' | 'run' | 'bike' | 'strength' {
-  const typeMap: Record<string, 'swim' | 'run' | 'bike' | 'strength'> = {
+function mapStravaType(stravaType: string): 'swim' | 'run' | 'walk' | 'bike' | 'strength' {
+  const typeMap: Record<string, 'swim' | 'run' | 'walk' | 'bike' | 'strength'> = {
     'Run': 'run',
     'TrailRun': 'run',
     'VirtualRun': 'run',
+    'Walk': 'walk',
+    'Hike': 'walk',
     'Ride': 'bike',
     'VirtualRide': 'bike',
     'MountainBikeRide': 'bike',

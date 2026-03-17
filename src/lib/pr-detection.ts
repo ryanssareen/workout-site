@@ -134,7 +134,7 @@ export function extractPRCandidates(workout: Workout): DetectedPR[] {
   if (stravaDistance && stravaDistance > 0 && workout.type !== 'strength') {
     const distKm = stravaDistance / 1000; // Strava stores in meters
     if (distKm > 0) {
-      const typeName = workout.type === 'run' ? 'Run' : workout.type === 'bike' ? 'Ride' : workout.type === 'swim' ? 'Swim' : 'Activity';
+      const typeName = workout.type === 'run' ? 'Run' : workout.type === 'walk' ? 'Walk' : workout.type === 'bike' ? 'Ride' : workout.type === 'swim' ? 'Swim' : 'Activity';
       // Only add if we didn't already add a distance PR from type-specific data
       if (!candidates.some(c => c.name.startsWith('Longest'))) {
         candidates.push({

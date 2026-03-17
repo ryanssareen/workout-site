@@ -5,7 +5,7 @@ import admin from 'firebase-admin';
 import { adminDb } from '@/lib/firebase/admin';
 
 type UserRole = 'coach' | 'athlete' | 'student';
-type WorkoutType = 'swim' | 'run' | 'bike' | 'strength' | 'other';
+type WorkoutType = 'swim' | 'run' | 'walk' | 'bike' | 'strength' | 'other';
 
 interface CreateWorkoutBody extends Record<string, unknown> {
   name?: unknown;
@@ -24,7 +24,7 @@ interface CreateWorkoutBody extends Record<string, unknown> {
   other?: unknown;
 }
 
-const WORKOUT_TYPES = new Set<WorkoutType>(['swim', 'run', 'bike', 'strength', 'other']);
+const WORKOUT_TYPES = new Set<WorkoutType>(['swim', 'run', 'walk', 'bike', 'strength', 'other']);
 
 function isWorkoutType(value: unknown): value is WorkoutType {
   return typeof value === 'string' && WORKOUT_TYPES.has(value as WorkoutType);
@@ -239,7 +239,7 @@ export async function POST(_: NextRequest) {
       workoutData.tags = tags;
     }
 
-    (['swim', 'bike', 'run', 'strength', 'other'] as const).forEach((key) => {
+    (['swim', 'bike', 'run', 'walk', 'strength', 'other'] as const).forEach((key) => {
       const value = body[key];
       if (isPlainObject(value)) {
         workoutData[key] = value;

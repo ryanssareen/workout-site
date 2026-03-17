@@ -63,7 +63,7 @@ HEADERS: ${JSON.stringify(headers)}
 SAMPLE DATA (first ${sampleRows.length} rows):
 ${sampleRows.map((r, i) => `Row ${i + 1}: ${JSON.stringify(r)}`).join('\n')}
 
-Map each column to the closest field. The app tracks these workout types: swim, run, bike, strength, other.
+Map each column to the closest field. The app tracks these workout types: swim, run, walk, bike, strength, other.
 
 Return ONLY valid JSON matching this schema:
 {
@@ -89,7 +89,7 @@ Return ONLY valid JSON matching this schema:
   "typeInference": {
     "column": "which column to derive workout type from, if 'type' column doesn't exist",
     "rules": [
-      {"pattern": "regex or keyword", "type": "run|bike|swim|strength|other"}
+      {"pattern": "regex or keyword", "type": "run|walk|bike|swim|strength|other"}
     ]
   },
   "tagSuggestions": [

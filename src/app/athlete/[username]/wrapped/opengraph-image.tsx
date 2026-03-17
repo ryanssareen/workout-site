@@ -78,7 +78,7 @@ export default async function OGImage({ params }: { params: Promise<{ username: 
   totalDistanceKm = Math.round(totalDistanceKm);
   totalHours = Math.round(totalHours);
   const topType = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
-  const emoji: Record<string, string> = { run: '🏃', bike: '🚴', swim: '🏊', strength: '💪', other: '📋' };
+  const emoji: Record<string, string> = { run: '🏃', bike: '🚴', swim: '🏊', walk: '🚶', strength: '💪', other: '📋' };
   const topEmoji = emoji[topType] || '🏋️';
 
   return new ImageResponse(

@@ -4,7 +4,7 @@
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
-export type WorkoutType = 'run' | 'swim' | 'bike' | 'strength' | 'other';
+export type WorkoutType = 'run' | 'walk' | 'swim' | 'bike' | 'strength' | 'other';
 export type Intensity = 'easy' | 'moderate' | 'hard';
 export type TrainingPhase = 'base' | 'build' | 'peak' | 'taper' | 'recovery' | 'general';
 

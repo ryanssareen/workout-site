@@ -1,7 +1,7 @@
 import type { ReportTemplate, WorkoutDoc } from './index';
 
 const SPORT_LABELS: Record<string, string> = {
-  run: 'Running', bike: 'Cycling', swim: 'Swimming', strength: 'Strength Training', other: 'Training',
+  run: 'Running', bike: 'Cycling', swim: 'Swimming', walk: 'Walking', strength: 'Strength Training', other: 'Training',
 };
 
 export const sportDeepDiveTemplate: ReportTemplate = {

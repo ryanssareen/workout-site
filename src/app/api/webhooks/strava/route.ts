@@ -8,11 +8,13 @@ import crypto from 'crypto';
 import { sendPushNotification } from '@/lib/push';
 
 // Map Strava activity types to our workout types
-function mapStravaType(stravaType: string): 'swim' | 'run' | 'bike' | 'strength' {
-  const typeMap: Record<string, 'swim' | 'run' | 'bike' | 'strength'> = {
+function mapStravaType(stravaType: string): 'swim' | 'run' | 'walk' | 'bike' | 'strength' {
+  const typeMap: Record<string, 'swim' | 'run' | 'walk' | 'bike' | 'strength'> = {
     'Run': 'run',
     'TrailRun': 'run',
     'VirtualRun': 'run',
+    'Walk': 'walk',
+    'Hike': 'walk',
     'Ride': 'bike',
     'VirtualRide': 'bike',
     'MountainBikeRide': 'bike',

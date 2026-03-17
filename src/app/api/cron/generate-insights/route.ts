@@ -9,7 +9,7 @@ import Groq from 'groq-sdk';
 const MAX_USERS_PER_RUN = 50;
 
 const SPORT_LABELS: Record<string, string> = {
-  run: 'running', bike: 'cycling', swim: 'swimming', strength: 'strength', other: 'training',
+  run: 'running', bike: 'cycling', swim: 'swimming', walk: 'walking', strength: 'strength', other: 'training',
 };
 
 const SYSTEM_PROMPT = `You are a friendly sports coach analyzing an athlete's recent training data. Generate a single personalized insight — something non-obvious that helps the athlete understand their training.

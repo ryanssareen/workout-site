@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 
 interface ExtractedWorkout {
   name: string;
-  type: 'swim' | 'run' | 'bike' | 'strength';
+  type: 'swim' | 'run' | 'walk' | 'bike' | 'strength';
   description: string;
   date?: string;
   duration?: number;

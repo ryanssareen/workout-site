@@ -1,7 +1,7 @@
 import { Timestamp } from 'firebase/firestore';
 
 export type UserRole = 'coach' | 'athlete' | 'student'; // 'student' is legacy, use 'athlete'
-export type WorkoutType = 'swim' | 'run' | 'bike' | 'strength' | 'other';
+export type WorkoutType = 'swim' | 'run' | 'walk' | 'bike' | 'strength' | 'other';
 
 // Import and re-export workout tags
 import { WORKOUT_TAGS, WorkoutTag } from './workout';

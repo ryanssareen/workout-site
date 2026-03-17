@@ -8,6 +8,7 @@ export const TYPE_CONFIG: Record<string, { emoji: string; color: string; border:
   run: { emoji: '🏃', color: 'text-red-500', border: 'border-l-red-500', bg: 'bg-red-500/8' },
   bike: { emoji: '🚴', color: 'text-amber-500', border: 'border-l-amber-500', bg: 'bg-amber-500/8' },
   swim: { emoji: '🏊', color: 'text-cyan-500', border: 'border-l-cyan-500', bg: 'bg-cyan-500/8' },
+  walk: { emoji: '🚶', color: 'text-green-500', border: 'border-l-green-500', bg: 'bg-green-500/8' },
   strength: { emoji: '💪', color: 'text-purple-500', border: 'border-l-purple-500', bg: 'bg-purple-500/8' },
   other: { emoji: '📋', color: 'text-gray-400', border: 'border-l-gray-400', bg: 'bg-gray-500/8' },
 };
@@ -39,6 +40,15 @@ export function getTypeData(w: Workout): Record<string, string> {
     d.hr = '--';
     d.hrLabel = 'AVG HR';
     d.stat4 = '--';
+    d.stat4Label = 'PACE';
+  } else if (w.type === 'walk') {
+    const run = w.run;
+    d.primary = run?.distance ? `${run.distance} ${run.distanceUnit || 'km'}` : '--';
+    d.primaryLabel = 'DISTANCE';
+    d.time = run?.time ? formatDur(run.time) : (w.duration ? formatDur(w.duration) : '0:00');
+    d.hr = run?.avgHeartRate ? `${run.avgHeartRate}` : '--';
+    d.hrLabel = 'AVG HR';
+    d.stat4 = run?.pace ? `${run.pace}` : '--';
     d.stat4Label = 'PACE';
   } else if (w.type === 'strength' && w.strength) {
     const exCount = w.strength.exercises?.length || 0;
@@ -84,6 +94,7 @@ export const TYPE_LABELS: Record<string, string> = {
   run: 'Running',
   bike: 'Cycling',
   swim: 'Swimming',
+  walk: 'Walking',
   strength: 'Strength Training',
   other: 'Other',
 };

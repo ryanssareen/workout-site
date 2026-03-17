@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       // fallback to 'TBD'
     }
 
-    const typeEmoji: Record<string, string> = { run: '🏃', bike: '🚴', swim: '🏊', strength: '💪', other: '⚡' };
+    const typeEmoji: Record<string, string> = { run: '🏃', bike: '🚴', swim: '🏊', walk: '🚶', strength: '💪', other: '⚡' };
     const emoji = typeEmoji[workout.type] || '⚡';
 
     const emailHtml = `

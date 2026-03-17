@@ -22,7 +22,7 @@ import { ProfileCompletionBar } from '@/components/dashboard/ProfileCompletionBa
 import { DashboardAchievements } from '@/components/achievements/DashboardAchievements';
 
 const TYPE_EMOJI: Record<string, string> = {
-  run: '🏃', bike: '🚴', swim: '🏊', strength: '💪', other: '📋',
+  run: '🏃', bike: '🚴', swim: '🏊', walk: '🚶', strength: '💪', other: '📋',
 };
 
 function getWorkoutDate(w: Workout): Date {

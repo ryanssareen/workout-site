@@ -220,6 +220,7 @@ export interface TypeDistribution {
 const TYPE_COLORS: Record<string, string> = {
   swim: '#3b82f6',
   run: '#22c55e',
+  walk: '#10b981',
   bike: '#f97316',
   strength: '#a855f7',
   other: '#6b7280',

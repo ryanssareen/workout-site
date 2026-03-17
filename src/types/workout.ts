@@ -1,6 +1,6 @@
 // Enhanced Workout Type System
 
-export type WorkoutType = 'swim' | 'bike' | 'run' | 'strength' | 'other';
+export type WorkoutType = 'swim' | 'bike' | 'run' | 'walk' | 'strength' | 'other';
 
 // Predefined workout tags
 export const WORKOUT_TAGS = [
