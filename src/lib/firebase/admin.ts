@@ -43,7 +43,6 @@ function initializeFirebaseAdmin() {
 
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
-      storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
     });
 
     console.log('✅ Firebase Admin initialized successfully!');
@@ -68,17 +67,6 @@ export const getAdminDb = () => {
     throw new Error('Firebase Admin SDK failed to initialize. Check FIREBASE_SERVICE_ACCOUNT env var.');
   }
   return admin.firestore();
-};
-
-export const getAdminStorage = () => {
-  initializeFirebaseAdmin();
-  if (!initialized && admin.apps.length === 0) {
-    throw new Error('Firebase Admin SDK failed to initialize. Check FIREBASE_SERVICE_ACCOUNT env var.');
-  }
-  if (!process.env.FIREBASE_STORAGE_BUCKET) {
-    throw new Error('FIREBASE_STORAGE_BUCKET env var not set.');
-  }
-  return admin.storage().bucket();
 };
 
 // For backward compatibility - these now use getters

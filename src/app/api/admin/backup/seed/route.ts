@@ -3,11 +3,12 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminSession, checkOrigin, logAdminAction } from '@/lib/admin-auth';
 import { BackupPayload } from '@/lib/backup';
-import { getAdminDb, getAdminStorage } from '@/lib/firebase/admin';
+import { getAdminDb } from '@/lib/firebase/admin';
+import { put } from '@vercel/blob';
 import admin from 'firebase-admin';
 import { gunzipSync } from 'zlib';
 
-// POST — upload a local backup JSON as the seed full backup in Storage
+// POST — upload a local backup JSON as the seed full backup in Vercel Blob
 // Body: gzip-compressed JSON (Content-Encoding: gzip) or raw JSON
 export async function POST(request: NextRequest) {
   const session = await verifyAdminSession(request);
@@ -31,11 +32,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid backup format — need users and workouts' }, { status: 400 });
     }
 
-    // Upload to Firebase Storage
+    // Upload to Vercel Blob
     const storagePath = `backups/full/${data.createdAt || new Date().toISOString()}.json`;
-    const bucket = getAdminStorage();
-    const file = bucket.file(storagePath);
-    await file.save(jsonStr, { contentType: 'application/json', gzip: true });
+    const blob = await put(storagePath, jsonStr, {
+      access: 'private',
+      contentType: 'application/json',
+      addRandomSuffix: false,
+    });
 
     // Register metadata in Firestore
     const db = getAdminDb();
@@ -47,14 +50,14 @@ export async function POST(request: NextRequest) {
       workoutCount: data.workoutCount ?? 0,
       integrityPassed: data.users.length > 0,
       triggeredBy: session.uid,
-      storagePath,
+      storagePath: blob.url,
     });
 
     await logAdminAction(session.uid, 'backup_seed_uploaded', {
       backupId: metaRef.id,
       userCount: data.userCount,
       workoutCount: data.workoutCount,
-      storagePath,
+      storagePath: blob.url,
       originalCreatedAt: data.createdAt,
     });
 
@@ -63,7 +66,7 @@ export async function POST(request: NextRequest) {
       id: metaRef.id,
       userCount: data.userCount ?? data.users.length,
       workoutCount: data.workoutCount ?? 0,
-      storagePath,
+      storagePath: blob.url,
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

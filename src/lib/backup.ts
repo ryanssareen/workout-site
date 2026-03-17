@@ -1,4 +1,5 @@
-import { getAdminDb, getAdminStorage } from '@/lib/firebase/admin';
+import { getAdminDb } from '@/lib/firebase/admin';
+import { put, del, list, get } from '@vercel/blob';
 import admin from 'firebase-admin';
 
 export type BackupType = 'daily' | 'weekly' | 'monthly' | 'manual' | 'pre-restore';
@@ -132,22 +133,52 @@ export async function createBackup(
   return { id: metaRef.id, userCount, workoutCount: totalWorkoutCount };
 }
 
-// ─── Storage helpers ────────────────────────────────────────────────────────
+// ─── Storage helpers (Vercel Blob) ──────────────────────────────────────────
 
-async function uploadToStorage(path: string, data: object): Promise<void> {
-  const bucket = getAdminStorage();
-  const file = bucket.file(path);
-  await file.save(JSON.stringify(data), {
+async function uploadToStorage(path: string, data: object): Promise<string> {
+  const blob = await put(path, JSON.stringify(data), {
+    access: 'private',
     contentType: 'application/json',
-    gzip: true,
+    addRandomSuffix: false,
   });
+  return blob.url;
+}
+
+async function uploadRawToStorage(path: string, raw: string): Promise<string> {
+  const blob = await put(path, raw, {
+    access: 'private',
+    contentType: 'application/json',
+    addRandomSuffix: false,
+  });
+  return blob.url;
 }
 
 async function downloadFromStorage<T>(path: string): Promise<T> {
-  const bucket = getAdminStorage();
-  const file = bucket.file(path);
-  const [contents] = await file.download();
-  return JSON.parse(contents.toString('utf-8')) as T;
+  // path could be a full Vercel Blob URL or a relative path
+  const url = path.startsWith('http') ? path : await getBlobUrl(path);
+  const result = await get(url, { access: 'private' });
+  if (!result || result.statusCode !== 200) throw new Error(`Blob not found: ${path}`);
+  const response = new Response(result.stream);
+  return (await response.json()) as T;
+}
+
+async function getBlobUrl(path: string): Promise<string> {
+  const { blobs } = await list({ prefix: path, limit: 1 });
+  if (blobs.length === 0) throw new Error(`Blob not found: ${path}`);
+  return blobs[0].url;
+}
+
+async function deleteFromStorage(path: string): Promise<void> {
+  try {
+    if (path.startsWith('http')) {
+      await del(path);
+    } else {
+      const url = await getBlobUrl(path);
+      await del(url);
+    }
+  } catch {
+    // Non-fatal — blob may already be gone
+  }
 }
 
 // ─── Seed Backup (full snapshot to Storage) ─────────────────────────────────
@@ -573,16 +604,8 @@ async function pruneOldBackups(type: BackupType | string): Promise<void> {
 
   const toDelete = snap.docs.slice(keepCount);
   for (const doc of toDelete) {
-    // Also delete from Storage if it has a storagePath
     const sp = doc.data().storagePath;
-    if (sp) {
-      try {
-        const bucket = getAdminStorage();
-        await bucket.file(sp).delete();
-      } catch {
-        // Non-fatal — file may already be gone
-      }
-    }
+    if (sp) await deleteFromStorage(sp);
     await doc.ref.delete();
   }
 }
@@ -598,14 +621,7 @@ async function pruneBackupsByTier(tier: BackupTier, keepCount: number): Promise<
   const toDelete = snap.docs.slice(keepCount);
   for (const doc of toDelete) {
     const sp = doc.data().storagePath;
-    if (sp) {
-      try {
-        const bucket = getAdminStorage();
-        await bucket.file(sp).delete();
-      } catch {
-        // Non-fatal
-      }
-    }
+    if (sp) await deleteFromStorage(sp);
     await doc.ref.delete();
   }
 }
