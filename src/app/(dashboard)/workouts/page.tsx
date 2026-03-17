@@ -14,7 +14,7 @@ import { Plus, Loader2, CheckCircle2, Circle, AlertCircle, Heart, Mountain, Flam
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { TYPE_CONFIG, getTypeData, formatDur } from '@/components/calendar/types';
-import { isPast, isToday, isFuture, startOfDay } from 'date-fns';
+import { isPast, isToday, isFuture, startOfDay, addDays } from 'date-fns';
 import { formatInTimezone } from '@/lib/dateUtils';
 import {
   AlertDialog,
@@ -237,10 +237,16 @@ function WorkoutsContent() {
 
   // Time filter
   const today = startOfDay(new Date());
+  const recurringHorizon = addDays(today, 7);
   const timeFiltered = nonNotes.filter(w => {
     if (timeFilter === 'all') return true;
     const d = getDate(w);
-    if (timeFilter === 'planned') return d >= today && !w.completed;
+    if (timeFilter === 'planned') {
+      if (d < today || w.completed) return false;
+      // Recurring workouts only show within the next 7 days
+      if ((w as any).isRecurring && d > recurringHorizon) return false;
+      return true;
+    }
     return d < today || w.completed; // past
   });
 
@@ -269,7 +275,12 @@ function WorkoutsContent() {
   // Counts per time filter
   const timeCounts: Record<TimeFilter, number> = {
     all: nonNotes.length,
-    planned: nonNotes.filter(w => getDate(w) >= today && !w.completed).length,
+    planned: nonNotes.filter(w => {
+      const d = getDate(w);
+      if (d < today || w.completed) return false;
+      if ((w as any).isRecurring && d > recurringHorizon) return false;
+      return true;
+    }).length,
     past: nonNotes.filter(w => getDate(w) < today || w.completed).length,
   };
 
