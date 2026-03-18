@@ -11,6 +11,25 @@ export function normalizeTimezone(timezone?: string | null): string {
   }
 }
 
+/**
+ * Parse a local-time ISO string (no timezone suffix) into a proper UTC Date.
+ * Strava's `start_date_local` is local time but has no offset — on a UTC
+ * server `new Date(str)` misinterprets it as UTC, shifting the date.
+ */
+export function parseLocalDate(localDateStr: string, timezone: string): Date {
+  const match = localDateStr.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+  if (!match) return new Date(localDateStr);
+
+  const [, y, mo, d, h, mi, s] = match.map(Number);
+  const naiveUtc = new Date(Date.UTC(y, mo - 1, d, h, mi, s));
+
+  const utcStr = naiveUtc.toLocaleString('en-US', { timeZone: 'UTC' });
+  const tzStr = naiveUtc.toLocaleString('en-US', { timeZone: timezone });
+  const offsetMs = new Date(tzStr).getTime() - new Date(utcStr).getTime();
+
+  return new Date(naiveUtc.getTime() - offsetMs);
+}
+
 export function getDayKey(input: Date | string | number, timezone?: string | null): string {
   const date = input instanceof Date ? input : new Date(input);
   const tz = normalizeTimezone(timezone);
