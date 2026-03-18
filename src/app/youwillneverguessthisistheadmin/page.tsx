@@ -6,7 +6,7 @@ import {
   Trash2, RotateCcw, Download, AlertTriangle, CheckCircle,
   XCircle, Clock, Activity, ChevronDown, ChevronUp, Eye, Lock,
   Zap, TrendingUp, HardDrive, UserCheck, Upload, Terminal,
-  Search, Play, Loader2,
+  Search, Play, Loader2, Bot, Send, Copy, Check,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/dashboard/ThemeToggle';
 import { API_REGISTRY, API_CATEGORIES, getEndpointsByCategory, type ApiEndpoint } from '@/lib/api-registry';
@@ -1156,6 +1156,207 @@ function ApiEndpointsSection() {
   );
 }
 
+// ─── AI Assistant Section ────────────────────────────────────────────────────
+
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+function AiAssistantSection() {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [copied, setCopied] = useState<number | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const sendMessage = async () => {
+    const trimmed = input.trim();
+    if (!trimmed || loading) return;
+
+    const userMsg: ChatMessage = { role: 'user', content: trimmed };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
+    setInput('');
+    setError('');
+    setLoading(true);
+
+    try {
+      const apiMessages = newMessages.map(m => ({ role: m.role, content: m.content }));
+      const res = await fetch('/api/admin/ai', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: apiMessages }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      const textBlock = data.content?.find((b: { type: string }) => b.type === 'text');
+      if (textBlock) {
+        setMessages(prev => [...prev, { role: 'assistant', content: textBlock.text }]);
+      } else {
+        setError('No text response from Claude');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send message');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copyMessage = (idx: number, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(idx);
+    setTimeout(() => setCopied(null), 2000);
+  };
+
+  const clearChat = () => {
+    setMessages([]);
+    setError('');
+  };
+
+  const presets = [
+    'How many users signed up this week?',
+    'Summarize recent admin actions',
+    'What are the most popular workout types?',
+    'Draft an email to announce a new feature',
+  ];
+
+  return (
+    <div className="flex flex-col h-[600px]">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600/20 to-purple-900/20 border border-purple-500/20 flex items-center justify-center">
+            <Bot className="w-5 h-5 text-purple-400" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-foreground">AI Assistant</h2>
+            <p className="text-xs text-muted-foreground">Powered by Claude &middot; {messages.length} messages</p>
+          </div>
+        </div>
+        {messages.length > 0 && (
+          <button onClick={clearChat} className="text-xs text-muted-foreground hover:text-foreground px-3 py-1.5 bg-muted/30 hover:bg-muted/50 border border-border/40 rounded-lg transition-all">
+            Clear
+          </button>
+        )}
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-1">
+        {messages.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-full gap-6">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-600/10 to-indigo-600/10 border border-purple-500/15 flex items-center justify-center">
+              <Bot className="w-8 h-8 text-purple-400/60" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-foreground/60 mb-1">Ask anything about your platform</p>
+              <p className="text-xs text-muted-foreground/50">Data analysis, user management, feature planning</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">
+              {presets.map((preset, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setInput(preset); textareaRef.current?.focus(); }}
+                  className="text-left text-xs px-3 py-2.5 bg-muted/20 hover:bg-muted/40 border border-border/30 rounded-lg text-muted-foreground hover:text-foreground transition-all"
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {messages.map((msg, i) => (
+          <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+            {msg.role === 'assistant' && (
+              <div className="w-7 h-7 rounded-lg bg-purple-600/15 border border-purple-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                <Bot size={14} className="text-purple-400" />
+              </div>
+            )}
+            <div className={`relative group max-w-[80%] ${
+              msg.role === 'user'
+                ? 'bg-indigo-600/15 border border-indigo-500/20 rounded-2xl rounded-br-md px-4 py-2.5'
+                : 'bg-muted/30 border border-border/30 rounded-2xl rounded-bl-md px-4 py-2.5'
+            }`}>
+              <div className="text-sm text-foreground/90 whitespace-pre-wrap break-words">{msg.content}</div>
+              {msg.role === 'assistant' && (
+                <button
+                  onClick={() => copyMessage(i, msg.content)}
+                  className="absolute -right-2 -top-2 opacity-0 group-hover:opacity-100 p-1 bg-muted border border-border/40 rounded-md transition-opacity"
+                >
+                  {copied === i ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} className="text-muted-foreground" />}
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+
+        {loading && (
+          <div className="flex gap-3">
+            <div className="w-7 h-7 rounded-lg bg-purple-600/15 border border-purple-500/20 flex items-center justify-center shrink-0">
+              <Bot size={14} className="text-purple-400" />
+            </div>
+            <div className="bg-muted/30 border border-border/30 rounded-2xl rounded-bl-md px-4 py-3">
+              <div className="flex gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-purple-400/60 animate-bounce" style={{ animationDelay: '0ms' }} />
+                <div className="w-2 h-2 rounded-full bg-purple-400/60 animate-bounce" style={{ animationDelay: '150ms' }} />
+                <div className="w-2 h-2 rounded-full bg-purple-400/60 animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-400">
+            <XCircle size={14} />
+            {error}
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input */}
+      <div className="flex gap-2 items-end">
+        <textarea
+          ref={textareaRef}
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              sendMessage();
+            }
+          }}
+          placeholder="Ask Claude..."
+          rows={1}
+          className="flex-1 resize-none px-4 py-2.5 text-sm bg-muted/30 border border-border/60 rounded-xl text-foreground placeholder-muted-foreground/40 focus:border-purple-500/40 focus:outline-none"
+          style={{ minHeight: '42px', maxHeight: '120px' }}
+        />
+        <button
+          onClick={sendMessage}
+          disabled={!input.trim() || loading}
+          className="p-2.5 bg-purple-600/15 hover:bg-purple-600/25 border border-purple-500/20 rounded-xl text-purple-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {loading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Auth Gate ────────────────────────────────────────────────────────────────
 
 function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
@@ -1260,7 +1461,7 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
-type Tab = 'overview' | 'backups' | 'users' | 'system' | 'api';
+type Tab = 'overview' | 'backups' | 'users' | 'system' | 'api' | 'ai';
 
 const TABS: { id: Tab; label: string; icon: typeof Database }[] = [
   { id: 'overview', label: 'Overview', icon: Activity },
@@ -1268,6 +1469,7 @@ const TABS: { id: Tab; label: string; icon: typeof Database }[] = [
   { id: 'users', label: 'Users', icon: Users },
   { id: 'system', label: 'System', icon: Settings },
   { id: 'api', label: 'API', icon: Terminal },
+  { id: 'ai', label: 'AI', icon: Bot },
 ];
 
 function Dashboard({ onLogout }: { onLogout: () => void }) {
@@ -1382,6 +1584,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           {tab === 'users' && <UsersSection />}
           {tab === 'system' && <SystemActionsSection />}
           {tab === 'api' && <ApiEndpointsSection />}
+          {tab === 'ai' && <AiAssistantSection />}
         </div>
 
         {/* Footer */}

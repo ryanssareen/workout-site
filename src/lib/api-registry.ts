@@ -52,6 +52,7 @@ export const API_REGISTRY: ApiEndpoint[] = [
   { method: 'POST', path: '/api/admin/assign-athletes', category: 'admin', description: 'Assign athletes to coach (legacy)', testable: false, auth: 'admin' },
   { method: 'POST', path: '/api/admin/migrate-merged-workouts', category: 'admin', description: 'Run merge migration', testable: false, auth: 'admin', dangerous: true },
   { method: 'POST', path: '/api/admin/restore', category: 'admin', description: 'Full restore from file (legacy)', testable: false, auth: 'admin', dangerous: true },
+  { method: 'POST', path: '/api/admin/ai', category: 'admin', description: 'Claude AI assistant proxy', testable: false, auth: 'admin' },
 
   // ── Cron ──
   { method: 'GET', path: '/api/cron/backup', category: 'cron', description: 'Trigger cron backup', testable: false, auth: 'cron', dangerous: true, params: '?type=daily|weekly|monthly' },
