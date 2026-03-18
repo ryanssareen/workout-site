@@ -220,7 +220,7 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://workout-tracker.onrender.com';
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://thedailyathlete.in';
 
       // Send reminder
       const sent = await sendReminderEmail(

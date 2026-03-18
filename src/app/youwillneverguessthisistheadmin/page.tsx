@@ -5,9 +5,11 @@ import {
   Shield, Database, Users, Settings, LogOut, RefreshCw,
   Trash2, RotateCcw, Download, AlertTriangle, CheckCircle,
   XCircle, Clock, Activity, ChevronDown, ChevronUp, Eye, Lock,
-  Zap, TrendingUp, HardDrive, UserCheck, Upload,
+  Zap, TrendingUp, HardDrive, UserCheck, Upload, Terminal,
+  Search, Play, Loader2,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/dashboard/ThemeToggle';
+import { API_REGISTRY, API_CATEGORIES, getEndpointsByCategory, type ApiEndpoint } from '@/lib/api-registry';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -884,6 +886,276 @@ function SystemActionsSection() {
   );
 }
 
+// ─── API Endpoints Section ───────────────────────────────────────────────────
+
+interface TestResult {
+  status: number;
+  ok: boolean;
+  duration: number;
+  timestamp: number;
+  preview?: string;
+}
+
+const METHOD_COLORS: Record<string, string> = {
+  GET: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
+  POST: 'bg-blue-500/15 text-blue-400 border-blue-500/20',
+  PUT: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
+  PATCH: 'bg-purple-500/15 text-purple-400 border-purple-500/20',
+  DELETE: 'bg-red-500/15 text-red-400 border-red-500/20',
+};
+
+const AUTH_COLORS: Record<string, string> = {
+  admin: 'bg-red-500/10 text-red-400 border-red-500/15',
+  user: 'bg-blue-500/10 text-blue-400 border-blue-500/15',
+  cron: 'bg-amber-500/10 text-amber-400 border-amber-500/15',
+  public: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/15',
+};
+
+function ApiEndpointsSection() {
+  const [search, setSearch] = useState('');
+  const [methodFilter, setMethodFilter] = useState('ALL');
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
+    new Set(API_CATEGORIES.map(c => c.id))
+  );
+  const [testResults, setTestResults] = useState<Record<string, TestResult>>({});
+  const [testing, setTesting] = useState<string | null>(null);
+  const [expandedResult, setExpandedResult] = useState<string | null>(null);
+  const [testingAll, setTestingAll] = useState(false);
+
+  const grouped = getEndpointsByCategory();
+  const methods = ['ALL', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+
+  const filteredGrouped = Object.entries(grouped).map(([catId, endpoints]) => {
+    const filtered = endpoints.filter(e => {
+      if (methodFilter !== 'ALL' && e.method !== methodFilter) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        return e.path.toLowerCase().includes(q) || e.description.toLowerCase().includes(q);
+      }
+      return true;
+    });
+    return [catId, filtered] as [string, ApiEndpoint[]];
+  }).filter(([, endpoints]) => endpoints.length > 0);
+
+  const totalEndpoints = API_REGISTRY.length;
+  const testableCount = API_REGISTRY.filter(e => e.testable).length;
+  const testedCount = Object.keys(testResults).length;
+  const healthyCount = Object.values(testResults).filter(r => r.ok).length;
+
+  const toggleGroup = (catId: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(catId)) next.delete(catId);
+      else next.add(catId);
+      return next;
+    });
+  };
+
+  const testEndpoint = async (endpoint: ApiEndpoint) => {
+    const key = `${endpoint.method}:${endpoint.path}`;
+    setTesting(key);
+    const start = performance.now();
+    try {
+      const url = endpoint.params ? `${endpoint.path}${endpoint.params.split('|')[0]}` : endpoint.path;
+      const res = await fetch(url, { credentials: 'include' });
+      const duration = Math.round(performance.now() - start);
+      const body = await res.text();
+      let preview = body.slice(0, 300);
+      try { preview = JSON.stringify(JSON.parse(body), null, 2).slice(0, 500); } catch {}
+      setTestResults(prev => ({ ...prev, [key]: { status: res.status, ok: res.ok, duration, timestamp: Date.now(), preview } }));
+      setExpandedResult(key);
+    } catch (err) {
+      const duration = Math.round(performance.now() - start);
+      setTestResults(prev => ({
+        ...prev,
+        [key]: { status: 0, ok: false, duration, timestamp: Date.now(), preview: err instanceof Error ? err.message : 'Network error' },
+      }));
+      setExpandedResult(key);
+    } finally {
+      setTesting(null);
+    }
+  };
+
+  const testAll = async () => {
+    setTestingAll(true);
+    const testable = API_REGISTRY.filter(e => e.testable);
+    for (const endpoint of testable) {
+      await testEndpoint(endpoint);
+      await new Promise(r => setTimeout(r, 150));
+    }
+    setTestingAll(false);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600/20 to-indigo-900/20 border border-indigo-500/20 flex items-center justify-center">
+            <Terminal className="w-5 h-5 text-indigo-400" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-foreground">API Endpoints</h2>
+            <p className="text-xs text-muted-foreground">{totalEndpoints} endpoints &middot; {testableCount} testable &middot; {testedCount} tested &middot; {healthyCount} healthy</p>
+          </div>
+        </div>
+        <button
+          onClick={testAll}
+          disabled={testingAll || !!testing}
+          className="flex items-center gap-2 px-4 py-2 text-xs font-medium bg-indigo-600/15 hover:bg-indigo-600/25 border border-indigo-500/20 text-indigo-300 rounded-lg transition-all disabled:opacity-50"
+        >
+          {testingAll ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+          Test All
+        </button>
+      </div>
+
+      {/* Search + Method Filter */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" />
+          <input
+            type="text"
+            placeholder="Search endpoints..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 text-sm bg-muted/30 border border-border/60 rounded-lg text-foreground placeholder-muted-foreground/40 focus:border-indigo-500/40 focus:outline-none"
+          />
+        </div>
+        <div className="flex gap-1 bg-muted/30 border border-border/60 rounded-lg p-1">
+          {methods.map(m => (
+            <button
+              key={m}
+              onClick={() => setMethodFilter(m)}
+              className={`px-2.5 py-1 text-xs font-mono rounded-md transition-all ${
+                methodFilter === m
+                  ? 'bg-foreground/10 text-foreground border border-border/60'
+                  : 'text-muted-foreground hover:text-foreground/60'
+              }`}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Endpoint Groups */}
+      <div className="space-y-3">
+        {filteredGrouped.map(([catId, endpoints]) => {
+          const cat = API_CATEGORIES.find(c => c.id === catId);
+          const isExpanded = expandedGroups.has(catId);
+          return (
+            <div key={catId} className="bg-muted/20 border border-border/40 rounded-xl overflow-hidden">
+              <button
+                onClick={() => toggleGroup(catId)}
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-foreground">{cat?.label ?? catId}</span>
+                  <span className="text-xs text-muted-foreground bg-muted/40 px-2 py-0.5 rounded-md">{endpoints.length}</span>
+                </div>
+                {isExpanded ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
+              </button>
+
+              {isExpanded && (
+                <div className="border-t border-border/30 divide-y divide-border/20">
+                  {endpoints.map((ep) => {
+                    const key = `${ep.method}:${ep.path}`;
+                    const result = testResults[key];
+                    const isCurrentlyTesting = testing === key;
+                    const isResultExpanded = expandedResult === key;
+                    return (
+                      <div key={key}>
+                        <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/20 transition-colors">
+                          {/* Method badge */}
+                          <span className={`text-[10px] font-bold font-mono px-2 py-0.5 rounded border shrink-0 ${METHOD_COLORS[ep.method]}`}>
+                            {ep.method}
+                          </span>
+
+                          {/* Path */}
+                          <span className="font-mono text-xs text-foreground/80 shrink-0">{ep.path}</span>
+                          {ep.params && <span className="text-[10px] text-muted-foreground/50 font-mono hidden sm:inline">{ep.params}</span>}
+
+                          {/* Description */}
+                          <span className="text-xs text-muted-foreground hidden md:inline flex-1 truncate">{ep.description}</span>
+
+                          {/* Spacer */}
+                          <div className="flex-1 md:flex-none" />
+
+                          {/* Auth badge */}
+                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border hidden sm:inline ${AUTH_COLORS[ep.auth]}`}>
+                            {ep.auth}
+                          </span>
+
+                          {/* Dangerous marker */}
+                          {ep.dangerous && (
+                            <AlertTriangle size={12} className="text-amber-500/60 shrink-0" />
+                          )}
+
+                          {/* Health dot */}
+                          <div className={`w-2 h-2 rounded-full shrink-0 ${
+                            !result ? 'bg-muted-foreground/20'
+                            : result.ok ? 'bg-emerald-400 shadow-sm shadow-emerald-400/50'
+                            : 'bg-red-400 shadow-sm shadow-red-400/50'
+                          }`} />
+
+                          {/* Test button */}
+                          {ep.testable && (
+                            <button
+                              onClick={() => testEndpoint(ep)}
+                              disabled={!!testing || testingAll}
+                              className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium bg-muted/40 hover:bg-muted/60 border border-border/40 rounded-md text-muted-foreground hover:text-foreground transition-all disabled:opacity-40"
+                            >
+                              {isCurrentlyTesting ? <Loader2 size={10} className="animate-spin" /> : <Play size={10} />}
+                              Test
+                            </button>
+                          )}
+
+                          {/* Expand result */}
+                          {result && (
+                            <button
+                              onClick={() => setExpandedResult(isResultExpanded ? null : key)}
+                              className="text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+                            >
+                              <Eye size={12} />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Result panel */}
+                        {isResultExpanded && result && (
+                          <div className="mx-4 mb-3 p-3 bg-background/50 border border-border/30 rounded-lg">
+                            <div className="flex items-center gap-4 mb-2 text-xs">
+                              <span className={`font-bold ${result.ok ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {result.status || 'ERR'}
+                              </span>
+                              <span className="text-muted-foreground">{result.duration}ms</span>
+                              <span className="text-muted-foreground/40">{new Date(result.timestamp).toLocaleTimeString()}</span>
+                            </div>
+                            {result.preview && (
+                              <pre className="text-[11px] text-muted-foreground/70 bg-muted/20 rounded-md p-2 max-h-48 overflow-y-auto whitespace-pre-wrap break-all font-mono">
+                                {result.preview}
+                              </pre>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {filteredGrouped.length === 0 && (
+        <div className="text-center py-12 text-muted-foreground/50 text-sm">
+          No endpoints match your search
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Auth Gate ────────────────────────────────────────────────────────────────
 
 function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
@@ -988,13 +1260,14 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
-type Tab = 'overview' | 'backups' | 'users' | 'system';
+type Tab = 'overview' | 'backups' | 'users' | 'system' | 'api';
 
 const TABS: { id: Tab; label: string; icon: typeof Database }[] = [
   { id: 'overview', label: 'Overview', icon: Activity },
   { id: 'backups', label: 'Backups', icon: Database },
   { id: 'users', label: 'Users', icon: Users },
   { id: 'system', label: 'System', icon: Settings },
+  { id: 'api', label: 'API', icon: Terminal },
 ];
 
 function Dashboard({ onLogout }: { onLogout: () => void }) {
@@ -1108,6 +1381,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           {tab === 'backups' && <BackupsSection />}
           {tab === 'users' && <UsersSection />}
           {tab === 'system' && <SystemActionsSection />}
+          {tab === 'api' && <ApiEndpointsSection />}
         </div>
 
         {/* Footer */}

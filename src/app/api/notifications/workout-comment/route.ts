@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
       process.env.BREVO_API_KEY || ''
     );
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://workout-tracker.onrender.com';
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://thedailyathlete.in';
     const workoutUrl = `${appUrl}/workouts/${workoutId}`;
 
     const sendSmtpEmail = new brevo.SendSmtpEmail();

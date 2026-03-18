@@ -5,7 +5,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { adminResolveUsername } from '@/lib/firebase/adminUserMapping';
 
 export async function GET(request: NextRequest) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://workout-site-hac0.onrender.com';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://thedailyathlete.in';
 
   try {
     const searchParams = request.nextUrl.searchParams;

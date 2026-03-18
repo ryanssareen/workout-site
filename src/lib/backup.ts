@@ -51,6 +51,9 @@ function serializeDoc(data: Record<string, any>): Record<string, any> {
 
 // ─── Legacy: generateBackupData (used by download endpoint) ─────────────────
 
+// WARNING: Full DB read — costs 1 read per user doc + 1 read per workout doc + all PRs.
+// This is intentional for backups (need complete snapshot). Only call from
+// admin-triggered or cron backup flows, never from user-facing endpoints.
 export async function generateBackupData(): Promise<BackupPayload> {
   const db = getAdminDb();
 

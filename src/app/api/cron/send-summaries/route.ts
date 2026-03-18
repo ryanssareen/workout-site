@@ -103,10 +103,11 @@ export async function GET(request: NextRequest) {
     console.log(`📧 Starting summary email job at ${now.toISOString()}`);
     console.log(`Looking for users who haven't received summary since: ${cutoffDate.toISOString()}`);
 
-    // Get all athletes who need summaries (query both 'athlete' and legacy 'student' roles)
+    // Get athletes who need summaries (query both 'athlete' and legacy 'student' roles).
+    // Limit each query to MAX_USERS_PER_RUN to avoid reading the entire users collection.
     const [athleteSnapshot, studentSnapshot] = await Promise.all([
-      adminDb.collection('users').where('role', '==', 'athlete').get(),
-      adminDb.collection('users').where('role', '==', 'student').get()
+      adminDb.collection('users').where('role', '==', 'athlete').limit(MAX_USERS_PER_RUN).get(),
+      adminDb.collection('users').where('role', '==', 'student').limit(MAX_USERS_PER_RUN).get()
     ]);
 
     const allUserDocs = [...athleteSnapshot.docs, ...studentSnapshot.docs];
@@ -218,7 +219,7 @@ export async function GET(request: NextRequest) {
           byType,
           stravaStats,
           periodDays: SUMMARY_INTERVAL_DAYS,
-          appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://workout-tracker.onrender.com',
+          appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://thedailyathlete.in',
         };
 
         // Send email

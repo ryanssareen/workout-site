@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     console.log('✅ Token stored!');
 
     // Create reset link
-    const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password/confirm?token=${resetToken}`;
+    const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'https://thedailyathlete.in'}/reset-password/confirm?token=${resetToken}`;
     console.log('🔗 Reset link:', resetLink);
 
     // Send email using Brevo

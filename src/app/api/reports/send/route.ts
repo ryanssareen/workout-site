@@ -73,7 +73,7 @@ async function buildSummary(username: string, periodDays: number): Promise<{ sum
     byType,
     stravaStats,
     periodDays,
-    appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://workout-site-hac0.onrender.com',
+    appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://thedailyathlete.in',
   };
 
   let coachEmail: string | null = null;

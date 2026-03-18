@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const db = getAdminDb();
-    const snap = await db.collection('users').orderBy('createdAt', 'desc').get();
+    const snap = await db.collection('users').orderBy('createdAt', 'desc').limit(100).get();
 
     const users = snap.docs.map(doc => {
       const d = doc.data();
@@ -49,7 +49,8 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Count workouts per user
+    // Count workouts per user — costs 1 read per user (count() query).
+    // Acceptable since admin dashboard is rarely accessed.
     const workoutCounts: Record<string, number> = {};
     await Promise.all(
       snap.docs.map(async doc => {
