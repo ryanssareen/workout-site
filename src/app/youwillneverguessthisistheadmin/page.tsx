@@ -998,14 +998,23 @@ function ApiEndpointsSection() {
             <p className="text-xs text-muted-foreground">{totalEndpoints} endpoints &middot; {testableCount} testable &middot; {testedCount} tested &middot; {healthyCount} healthy</p>
           </div>
         </div>
-        <button
-          onClick={testAll}
-          disabled={testingAll || !!testing}
-          className="flex items-center gap-2 px-4 py-2 text-xs font-medium bg-indigo-600/15 hover:bg-indigo-600/25 border border-indigo-500/20 text-indigo-300 rounded-lg transition-all disabled:opacity-50"
-        >
-          {testingAll ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-          Test All
-        </button>
+        <div className="flex items-center gap-2">
+          <a
+            href="/youwillneverguessthisistheadmin/api"
+            className="flex items-center gap-2 px-4 py-2 text-xs font-medium bg-purple-600/15 hover:bg-purple-600/25 border border-purple-500/20 text-purple-300 rounded-lg transition-all"
+          >
+            <Zap size={14} />
+            Playground
+          </a>
+          <button
+            onClick={testAll}
+            disabled={testingAll || !!testing}
+            className="flex items-center gap-2 px-4 py-2 text-xs font-medium bg-indigo-600/15 hover:bg-indigo-600/25 border border-indigo-500/20 text-indigo-300 rounded-lg transition-all disabled:opacity-50"
+          >
+            {testingAll ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+            Test All
+          </button>
+        </div>
       </div>
 
       {/* Search + Method Filter */}
