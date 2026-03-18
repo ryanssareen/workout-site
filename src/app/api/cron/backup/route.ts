@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createDeltaBackup, compactFullBackup, BackupType } from '@/lib/backup';
+import { createBackup, createSeedBackup, compactFullBackup, BackupType } from '@/lib/backup';
 import { logAdminAction } from '@/lib/admin-auth';
 import { getAdminDb } from '@/lib/firebase/admin';
 import admin from 'firebase-admin';
@@ -24,34 +24,38 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    // Dispatch by tier:
-    // - monthly → compact (merge full + deltas from Storage, 0 Firestore data reads)
-    // - weekly/daily → delta (only changed docs since last backup)
-    const result = type === 'monthly'
-      ? await compactFullBackup('cron')
-      : await createDeltaBackup(type as 'daily' | 'weekly', 'cron');
+    let result: { id: string; tier?: string; userCount: number; workoutCount: number; storagePath?: string | null };
 
-    // Log to adminLogs
+    if (type === 'daily') {
+      // Daily: metadata-only checkpoint (counts, no data upload)
+      // Cost: ~N+1 Firestore reads (1 users query + 1 count per user)
+      result = { ...await createBackup('daily', 'cron'), tier: 'metadata' };
+    } else if (type === 'weekly') {
+      // Weekly: full snapshot to Vercel Blob
+      result = await createSeedBackup('cron');
+      result = { ...result, tier: 'full' };
+    } else {
+      // Monthly: compact from existing full + deltas in Blob (0 Firestore data reads)
+      result = await compactFullBackup('cron');
+    }
+
     await logAdminAction('cron', 'cron_backup', {
       type,
-      tier: result.tier,
+      tier: result.tier ?? 'unknown',
       backupId: result.id,
       userCount: result.userCount,
       workoutCount: result.workoutCount,
-      storagePath: result.storagePath,
+      storagePath: (result as any).storagePath ?? null,
       durationMs: Date.now() - startTime,
     });
 
-    // Update system/lastCron doc for health monitoring
     try {
       const db = getAdminDb();
       await db
         .collection('system')
         .doc('lastCron')
         .set(
-          {
-            [`backup_${type}`]: admin.firestore.FieldValue.serverTimestamp(),
-          },
+          { [`backup_${type}`]: admin.firestore.FieldValue.serverTimestamp() },
           { merge: true }
         );
     } catch {
@@ -67,7 +71,6 @@ export async function GET(request: NextRequest) {
   } catch (err: any) {
     console.error(`Backup cron (${type}) failed:`, err);
 
-    // Log failure
     try {
       await logAdminAction('cron', 'cron_backup_failed', {
         type,
@@ -78,6 +81,7 @@ export async function GET(request: NextRequest) {
       // non-fatal
     }
 
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    const details = err.details || err.code || '';
+    return NextResponse.json({ success: false, error: err.message, details }, { status: 500 });
   }
 }
