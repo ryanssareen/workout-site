@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { createWorkout, getCoachStudents } from '@/lib/firebase/firestore';
+import { useWorkoutStore } from '@/lib/stores/workoutStore';
 import { WorkoutForm } from '@/components/workouts/WorkoutForm';
 import { WorkoutPreviewDialog } from '@/components/workouts/WorkoutPreviewDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -125,6 +126,7 @@ export default function NewWorkoutPage() {
       }
 
       const newWorkoutId = await createWorkout(workoutData as any, user.username);
+      useWorkoutStore.getState().clearCache();
       setShowPreview(false);
 
       toast.success('Workout created successfully!');

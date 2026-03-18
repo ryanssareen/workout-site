@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { createWorkout } from '@/lib/firebase/firestore';
+import { useWorkoutStore } from '@/lib/stores/workoutStore';
 
 const EVENT_TYPES = [
   { value: 'run', label: 'Run', emoji: '🏃' },
@@ -88,6 +89,7 @@ export function CalendarAddDropdown({ date, className, onNoteAdded }: CalendarAd
         user.username,
       );
 
+      useWorkoutStore.getState().clearCache();
       toast.success('Note added');
       setNoteText('');
       setView('menu');
@@ -118,6 +120,7 @@ export function CalendarAddDropdown({ date, className, onNoteAdded }: CalendarAd
         user.username,
       );
 
+      useWorkoutStore.getState().clearCache();
       toast.success('Event added');
       setEventName('');
       setEventType('run');
