@@ -221,28 +221,130 @@ Completely redesigned the CoachTrack report system from basic markdown output to
 }
 ```
 
+## Reports Hub (3-Zone Layout) — Added March 2026
+
+The reports page was redesigned from a 6-tab dashboard to a focused 3-zone hub at `/reports`.
+
+### Zone 1 — AI Smart Layer
+- **`AIInsightCard`** — Gradient card showing daily AI-generated insight (from cron at 6am UTC). Links to relevant deep-dive report. Skeleton loader while fetching. Empty state for new users.
+- **`AskAnythingBar`** — Search input with rotating placeholder suggestions. Calls `/api/ai/reports`. Renders structured report inline using `ReportRenderer` with collapsible header.
+
+### Zone 2 — Your Reports
+- **`YourReportsZone`** — Three gradient link cards to `/wrap` (weekly), `/review` (monthly), `/wrapped` (yearly) with live workout count subtitles.
+
+### Zone 3 — Explore Your Data
+- **`ExploreCards`** — Context-aware deep-dive cards selected by training patterns. Max 3 cards shown, prioritized:
+  1. Sport Deep Dive (3+ sessions of one sport in 30 days)
+  2. Trend Report (2+ months of workout data)
+  3. Recovery Report (10+ workouts in 14 days)
+  4. PR Timeline (any PRs recorded)
+  5. Training Analysis (always — links to old dashboard at `/reports/training-analysis`)
+
+### Hub Component Architecture
+```
+/components/reports/
+├── ReportContainer.tsx      # Main wrapper with branding & export
+├── ReportRenderer.tsx       # Section mapper & grid layout
+├── hub/
+│   ├── AIInsightCard.tsx    # Daily AI insight display
+│   ├── AskAnythingBar.tsx   # Free-text AI query input
+│   ├── YourReportsZone.tsx  # Periodic report links (wrap/review/wrapped)
+│   ├── ExploreCards.tsx     # Context-aware deep-dive card selection
+│   └── DeepDiveCard.tsx     # Reusable card: icon + title + teaser + arrow
+└── sections/
+    ├── StatCard.tsx          # Metric cards with trends
+    ├── DataTable.tsx         # Data tables
+    ├── ChartSection.tsx      # Recharts integration (multi-series support)
+    ├── TextBlock.tsx         # Text content
+    ├── HighlightCallout.tsx  # Callout boxes
+    ├── PRBadge.tsx           # PR achievements
+    └── Divider.tsx           # Visual separator
+```
+
+## Template-Based Deep-Dive Reports — Added March 2026
+
+Dynamic report pages at `/reports/[reportType]` with skeleton loading, generated from templates via Groq AI.
+
+### Report Templates
+
+| Type | TTL | Description |
+|------|-----|-------------|
+| `sport-deep-dive` | 12h | Single sport analysis: pace/volume/distance trends, weekly breakdown, tag distribution, PRs. Compares current 30d vs previous 30d. |
+| `trend-report` | 6h | Month-over-month comparison across all metrics and sports. Percentage changes for workouts, distance, duration, active days. |
+| `pr-timeline` | 24h | PR history grouped by exercise. Monthly timeline, progression chains. |
+| `recovery-report` | 6h | 14-day daily activity, rest days, consecutive training streaks, ACWR, overtraining risk zones. |
+| `goal-tracker` | 8h | Event countdown + readiness assessment. 8-week training volume buildup, taper recommendations. |
+
+### Template Architecture
+Each template exports `{ type, cacheTTL, systemPrompt, buildContext(workouts, params) }`. The `buildContext()` function pre-computes focused data into a text string. Groq 70B generates structured JSON (falls back to 8B on 429). Results cached in Firestore `users/{username}/cachedReports/{type}_{paramHash}`.
+
+### Cache System
+- `src/lib/reports/cache.ts` — `getCachedReport()`, `setCachedReport()` with Firestore TTL
+- Cache key: `{type}_{paramHash}` (e.g., `sport-deep-dive_abc123`)
+- TTL varies by template (6-24h)
+- Cache-first: checks Firestore → miss calls `/api/ai/reports/generate` → caches result
+
+## Daily AI Insight Cron — Added March 2026
+
+- **Route:** `/api/cron/generate-insights` — runs at 6am UTC daily via Vercel cron
+- **Model:** Groq `llama-3.1-8b-instant` (cost-efficient for short insights)
+- **Output:** 1-sentence personalized training insight per user
+- **Storage:** `users/{username}/insights/daily` with 24h TTL
+- **Limit:** Up to 50 users per run
+- **Consumer:** `AIInsightCard` component in Reports Hub
+
+## Chart Fixes — March 2026
+
+- **Multi-series support** — Charts now handle multiple data keys (e.g., distance + duration on same chart)
+- **Auto-detection of data keys** — ChartSection automatically detects y-axis keys from data
+- **Explicit height** — `ResponsiveContainer` now requires explicit height to prevent zero-height rendering bugs
+
 ## Next Steps (Optional)
 
 1. **More Chart Types**: Add combo charts, scatter plots
 2. **PDF Generation**: Server-side PDF with better quality
-3. **Report History**: Save and view past reports
+3. ~~**Report History**: Save and view past reports~~ → ✅ Done via Firestore caching
 4. **Custom Themes**: Let users choose color schemes
-5. **Share Reports**: Generate shareable links
+5. ~~**Share Reports**: Generate shareable links~~ → ✅ Done via ShareButtons
 6. **Export to Excel**: Structured data export
 
 ## Testing
 
-To test the new system:
-
+### Original Report Renderer
 1. Navigate to `/reports`
-2. Try example queries:
+2. Use the "Ask Anything" bar to try queries:
    - "Performance report for last 30 days"
    - "Show my workout breakdown by type"
-   - "Compare athletes' completion rates"
 3. Check different section types render correctly
 4. Test export options (Copy, PNG, Print)
-5. Try insufficient data scenario (new user)
+
+### Reports Hub
+1. Check AI Insight Card loads daily insight (or empty state for new users)
+2. Click deep-dive cards → verify `/reports/[reportType]` loads with skeleton then renders
+3. Verify context-aware card selection (e.g., Sport Deep Dive only shows if 3+ sessions of one sport)
+4. Test cache: reload a report page → should load instantly from Firestore cache
+
+### Template Reports
+1. Navigate to `/reports/sport-deep-dive?sport=Running`
+2. Verify structured JSON report renders with charts, stats, tables
+3. Test 8B model fallback by triggering rate limit on 70B
+4. Check Firestore cache entry created with correct TTL
 
 ---
 
 **Built with**: Next.js 16, TypeScript, Tailwind CSS, Recharts, Groq AI
+
+## Files (Updated)
+
+1. `/src/types/reports.ts` - Type definitions
+2. `/src/components/reports/**` - All report components (renderer + sections + hub)
+3. `/src/components/reports/hub/**` - NEW: Reports Hub components (AIInsightCard, AskAnythingBar, etc.)
+4. `/src/app/api/ai/reports/route.ts` - Ask Anything API (structured JSON output)
+5. `/src/app/api/ai/reports/generate/route.ts` - NEW: Template-based report generation
+6. `/src/app/(dashboard)/reports/page.tsx` - Redesigned: 3-zone Reports Hub
+7. `/src/app/(dashboard)/reports/[reportType]/page.tsx` - NEW: Dynamic report pages
+8. `/src/app/(dashboard)/reports/training-analysis/page.tsx` - Relocated old 6-tab dashboard
+9. `/src/app/api/cron/generate-insights/route.ts` - NEW: Daily AI insight cron
+10. `/src/lib/reports/cache.ts` - NEW: Firestore TTL cache
+11. `/src/lib/reports/templates/**` - NEW: 5 report templates
+12. `package.json` - Added recharts

@@ -2,63 +2,80 @@
 
 A modern workout tracking platform connecting coaches with athletes. Built with Next.js 16, React 19, Firebase, and TypeScript.
 
-## ✨ Features
+## Features
 
 ### Core Functionality
 - **User Authentication**: Email/password + Google Sign-In with role-based access (Coach/Athlete)
 - **Workout Management**: Create, read, update, and delete workouts with flat list view and type filter tags
-- **Multi-Sport Support**: Running, Cycling, Swimming, Strength Training, Triathlon, and Other
-- **Calendar View**: 2-week desktop calendar with workout type differentiation and color coding
+- **Multi-Sport Support**: Running, Cycling, Swimming, Walk, Strength Training, Triathlon, and Other
+- **Calendar View**: Multi-view calendar (day/week/month/year) with workout type differentiation, color coding, heatmap year view, and inline note creation
 - **Date Scheduling**: Schedule workouts with specific dates and durations
 - **Completion Tracking**: Athletes mark workouts as complete with actual stats (distance, duration, heart rate)
-- **Strava Integration**: OAuth connection, auto-sync via webhooks, manual sync with duplicate detection
-- **Dark Mode**: Full light/dark theme support with toggle
+- **Strava Integration**: OAuth connection with 2-stage sync (quick fill + paginated backfill), rate limit hardening with header parsing, timezone fix (`parseLocalDate()`), on-demand photo/detail loading, manual merge dialog, and webhook reconciliation
+- **Theme System**: Light mode by default, global theme toggle (sun/moon icon), Light/Dark/System picker in Settings
+- **Admin Dashboard**: Full admin console with backup system (daily/weekly/monthly via Vercel Blob), user management, API playground (88+ endpoints), audit logging
 
 ### Profile & Onboarding
-- **3-Step Onboarding**: Sports selection → Training goals (with event name & date) → About you (age, experience, body metrics)
+- **5-Step Onboarding**: Intro (welcome splash) → Name (display name with profanity check) → Age (age range selection) → Import (CSV/XLSX workout history) → Strava Connect
 - **Profile Page**: Public-style view with stats grid, training breakdown pie chart, recent workouts, and personal records
+- **Edit Profile Dialog**: Modal accessible from the profile page for quick edits
 - **Public Athlete Profiles**: Shareable `/athlete/[username]` pages with AI-generated taglines
 - **Profile Photo Upload**: Firebase Storage-backed avatar uploads with compression
 - **Edit Profile in Settings**: Full profile form (name, bio, timezone, sports, goals, body metrics) lives in `/settings`
 
 ### AI-Powered Features
-- **AI Workout Suggestions**: Personalized workout recommendations based on training history and goals
+- **AI Workout Suggestions**: 3-tier pipeline (Logic Engine periodization → Groq LLaMA 3.3 70B enhancement → Validator with retry) for personalized workout recommendations
 - **AI Coach Chat**: Conversational AI coach with thread history
+- **Reports Hub**: 3-zone layout with AI Insight Card, Ask Anything bar, and template-based deep-dive reports (Sport Deep Dive, Trend Report, PR Timeline, Recovery Report, Goal Tracker)
+- **Daily AI Insights**: Cron-generated training insights cached in Firestore
 - **Dynamic Reports**: Structured JSON reports with charts, tables, stat cards, and PR badges
 - **Profile Taglines**: AI-generated athlete taglines
-- **Whiteboard Vision**: Upload photos of workout plans for automatic extraction
+
+### Training Reviews & Sharing
+- **Weekly Wrap** (`/wrap`): Monday–Sunday boundaries with per-sport stats, week-over-week comparison, highlight of the week, and rating system
+- **Monthly Review** (`/review`): Activity calendar grid, per-sport stats with month-over-month comparison, pie chart, daily bar chart, weekly trends. Mobile-first redesign with bold stats and stacked bar chart
+- **Yearly Wrapped** (`/wrapped`): 8-slide interactive carousel (guess game → reveal → stats → breakdown → records → heatmap → summary → final). Public sharing at `/athlete/[username]/wrapped`
+- **Social Sharing**: Share via Instagram Story, WhatsApp, X/Twitter, iMessage, and save image (via `html-to-image`)
+
+### Additional Features
+- **Push Notifications**: Web Push API with VAPID authentication, multi-device support, auto-dedup, cleanup of expired subscriptions
+- **PostHog Analytics**: Product analytics integration for usage tracking
+- **Firestore Cost Optimization**: Workout cache store (Zustand, 5-min TTL), batched Strava lookups, auth guards
+- **New Pages**: `/portfolio` (feature tour), `/roadmap` (visual phase timeline), `/comic` (14-slide origin story)
 
 ### User Roles
 - **Coaches**: Create, edit, assign workouts; view all athletes' data; generate reports; unique 6-letter coach code
 - **Athletes**: View/complete assigned workouts; track progress; connect Strava; share public profile
 
-## 🛠 Tech Stack
+## Tech Stack
 
 - **Framework**: Next.js 16 (App Router), React 19
 - **Language**: TypeScript 5.9
 - **Styling**: Tailwind CSS 4, shadcn/ui, Radix primitives
 - **Authentication**: Firebase Auth (email/password + Google Sign-In)
 - **Database**: Firebase Firestore
-- **Storage**: Firebase Storage (profile photos)
-- **AI**: Groq SDK + OpenAI SDK (workout suggestions, reports, taglines, vision)
+- **Storage**: Firebase Storage (profile photos) + Vercel Blob (backups)
+- **AI**: Groq SDK (LLaMA 3.3 70B + 8B instant fallback) + OpenAI SDK
 - **Email**: Nodemailer (Gmail SMTP) + Brevo
 - **Integrations**: Strava API (OAuth + webhooks)
 - **Charts**: Recharts + custom SVG pie charts
 - **State Management**: Zustand
 - **Form Handling**: React Hook Form + Zod
+- **Analytics**: PostHog
+- **Push**: Web Push API with VAPID
 - **Deployment**: Vercel
 
-## 📋 Prerequisites
+## Prerequisites
 
 Before you begin, ensure you have:
 
 - **Node.js** 18.0 or later
 - **npm** or **yarn** package manager
 - **Firebase account** (free tier works)
-- **OpenAI API key** (optional, only for whiteboard vision feature)
+- **Groq API key** (for AI features)
 - **Git** for version control
 
-## 🚀 Getting Started
+## Getting Started
 
 ### 1. Clone the Repository
 
@@ -87,7 +104,8 @@ npm install
 1. In Firebase Console, navigate to **Build → Authentication**
 2. Click "Get started"
 3. Enable "Email/Password" provider
-4. Click "Save"
+4. Enable "Google" provider
+5. Click "Save"
 
 #### Create Firestore Database
 
@@ -107,7 +125,7 @@ npm install
 
 ### 4. Environment Configuration
 
-Create a `.env.local` file in the project root and add your Firebase credentials:
+Create a `.env.local` file in the project root:
 
 ```bash
 # Firebase Configuration
@@ -118,14 +136,26 @@ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 
-# OpenAI Configuration (Optional - for whiteboard vision)
+# Firebase Admin SDK
+FIREBASE_SERVICE_ACCOUNT_KEY=your_service_account_json
+
+# AI Configuration
+GROQ_API_KEY=your_groq_api_key
 OPENAI_API_KEY=sk-your-openai-api-key
+
+# Admin Dashboard
+ADMIN_UIDS=comma_separated_firebase_uids
+ADMIN_SECRET=your_32_char_random_string
+
+# Push Notifications
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=your_vapid_public_key
+VAPID_PRIVATE_KEY=your_vapid_private_key
 
 # App Configuration
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-⚠️ **Important**: Never commit `.env.local` to version control. It's already in `.gitignore`.
+**Important**: Never commit `.env.local` to version control. It's already in `.gitignore`. For production, environment variables are stored in Vercel.
 
 ### 5. Run Development Server
 
@@ -135,57 +165,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## 🔐 Firebase Security Rules
-
-After testing, update your Firestore security rules for production:
-
-1. Go to Firebase Console → Firestore Database → Rules
-2. Replace with the following:
-
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-    
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-    
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-    
-    function isCoach() {
-      return getUserData().role == 'coach';
-    }
-    
-    // Users collection
-    match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isOwner(userId);
-      allow update: if isAuthenticated() && isOwner(userId);
-    }
-    
-    // Workouts collection
-    match /workouts/{workoutId} {
-      allow read: if isAuthenticated() && (
-        resource.data.createdBy == request.auth.uid ||
-        resource.data.assignedTo == request.auth.uid
-      );
-      allow create: if isAuthenticated() && isCoach();
-      allow update: if isAuthenticated() && resource.data.createdBy == request.auth.uid;
-      allow delete: if isAuthenticated() && resource.data.createdBy == request.auth.uid;
-    }
-  }
-}
-```
-
-3. Click "Publish"
-
-## 🚢 Deployment to Vercel
+## Deployment to Vercel
 
 ### Option 1: Deploy via Vercel Dashboard
 
@@ -199,49 +179,34 @@ service cloud.firestore {
 ### Option 2: Deploy via Vercel CLI
 
 ```bash
-# Install Vercel CLI
 npm i -g vercel
-
-# Login to Vercel
 vercel login
-
-# Deploy
 vercel
 ```
 
-### Environment Variables in Vercel
-
-Add all variables from `.env.local` in Vercel dashboard:
-- Settings → Environment Variables
-- Add each variable separately
-- Update `NEXT_PUBLIC_APP_URL` to your Vercel URL
-
-## 📱 Usage Guide
+## Usage Guide
 
 ### For Coaches
 
 1. **Register**: Create account with "Coach" role — get a unique 6-letter code
-2. **Create Workouts**:
-   - Go to Workouts → "Create Workout"
-   - Choose manual entry or upload whiteboard photo
-   - Fill in workout details (name, type, description, date)
-   - Assign to an athlete
-3. **Manage Workouts**: Flat list view with type filter tags (All/Run/Bike/Swim/Strength/Other)
-4. **Track Progress**: View dashboard, reports, and athlete profiles
-5. **AI Reports**: Generate detailed performance reports with charts and insights
+2. **Create Workouts**: Manual entry or upload whiteboard photo, fill in details, assign to athlete
+3. **Manage Workouts**: Flat list view with type filter tags (All/Run/Bike/Swim/Walk/Strength/Other)
+4. **Track Progress**: View dashboard, reports hub, and athlete profiles
+5. **AI Reports**: Generate detailed reports via the 3-zone Reports Hub
 
 ### For Athletes
 
 1. **Register**: Create account with "Athlete" role — enter coach's 6-letter code
-2. **Onboarding**: Complete 3-step profile setup (sports, goals with event details, personal info)
+2. **Onboarding**: Complete 5-step setup (Intro → Name → Age → Import CSV/XLSX → Strava Connect)
 3. **View Workouts**: See all assigned workouts filtered by type, click for details
 4. **Complete Workouts**: Mark workouts as done with actual stats
-5. **Connect Strava**: Auto-sync activities from Strava with duplicate detection
-6. **Profile**: View your stats, training breakdown pie chart, recent workouts, and PRs
-7. **Public Profile**: Share your `/athlete/[username]` page with AI-generated tagline
-8. **Edit Profile**: Update all settings in the Settings page
+5. **Connect Strava**: Auto-sync with 2-stage sync, rate limit hardening, and duplicate detection
+6. **Training Reviews**: Check Weekly Wrap (`/wrap`), Monthly Review (`/review`), Yearly Wrapped (`/wrapped`)
+7. **Profile**: View stats, training breakdown, recent workouts, and PRs
+8. **Public Profile**: Share `/athlete/[username]` page with AI-generated tagline
+9. **Edit Profile**: Update via Settings page or quick Edit Profile dialog
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 workout-site/
@@ -250,76 +215,63 @@ workout-site/
 │   │   ├── (auth)/            # Authentication pages (login, register, reset-password)
 │   │   ├── (dashboard)/       # Protected dashboard pages
 │   │   │   ├── dashboard/     # Main dashboard
-│   │   │   ├── workouts/      # Workouts list (flat view with type filters)
-│   │   │   ├── calendar/      # Calendar view (2-week desktop)
+│   │   │   ├── workouts/      # Workouts list + create/edit
+│   │   │   ├── calendar/      # Calendar view (day/week/month/year)
 │   │   │   ├── profile/       # Read-only profile (stats, charts, PRs)
-│   │   │   ├── settings/      # Profile editing, Strava, account settings
-│   │   │   ├── onboarding/    # 3-step onboarding (sports, goals, about)
-│   │   │   ├── reports/       # AI-generated reports
+│   │   │   ├── settings/      # Profile editing, Strava, theme, account
+│   │   │   ├── onboarding/    # 5-step onboarding
+│   │   │   ├── reports/       # Reports Hub + [reportType] deep-dives
 │   │   │   ├── ai-coach/      # AI coach chat
-│   │   │   ├── progress/      # Progress tracking
-│   │   │   └── records/       # Personal records
+│   │   │   ├── records/       # Personal records
+│   │   │   ├── wrap/          # Weekly training wrap
+│   │   │   ├── review/        # Monthly review
+│   │   │   └── wrapped/       # Yearly wrapped experience
+│   │   ├── youwillneverguessthisistheadmin/ # Hidden admin dashboard
 │   │   ├── athlete/[username]/ # Public athlete profiles (SSR)
-│   │   ├── api/               # API routes (ai, auth, cron, reports, strava, webhooks, workouts)
+│   │   ├── portfolio/         # Feature tour page
+│   │   ├── roadmap/           # Visual phase timeline
+│   │   ├── comic/             # Origin story carousel
+│   │   ├── api/               # API routes (ai, auth, admin, cron, push, reports, strava, webhooks, workouts)
 │   │   └── page.tsx           # Landing page
 │   ├── components/
-│   │   ├── auth/              # Login/register forms (Google + email)
-│   │   ├── calendar/          # Calendar views, TYPE_CONFIG, getTypeData
-│   │   ├── dashboard/         # Navbar, ProfileCompletionBar
-│   │   ├── profile/           # ProfileComponents (shared), PhotoUpload
-│   │   ├── reports/           # ReportContainer, ReportRenderer, sections
-│   │   ├── strava/            # DuplicateDialog
+│   │   ├── auth/              # Login/register forms
+│   │   ├── calendar/          # Calendar views, TYPE_CONFIG
+│   │   ├── dashboard/         # Navbar, ProfileCompletionBar, ThemeToggle
+│   │   ├── profile/           # ProfileComponents, PhotoUpload, EditProfileDialog
+│   │   ├── reports/           # ReportContainer, ReportRenderer, hub/, sections/
+│   │   ├── strava/            # DuplicateDialog, ManualMergeDialog
+│   │   ├── wrapped/           # WrappedSlides
 │   │   ├── workouts/          # WorkoutCard, WorkoutForm, AI suggestions, ShareWorkoutCard
 │   │   └── ui/                # shadcn/ui components
 │   ├── lib/
-│   │   ├── analytics.ts       # Workout analytics (summary, type distribution)
+│   │   ├── analytics.ts       # Workout analytics
+│   │   ├── admin-auth.ts      # Admin session verification, CSRF, audit logging
+│   │   ├── backup.ts          # Shared backup logic
 │   │   ├── firebase/          # Firebase config, auth, firestore, admin
 │   │   ├── email/             # Email templates and sending
-│   │   ├── schemas/           # Zod schemas (profile: SPORT_OPTIONS, TRAINING_FOR_OPTIONS)
-│   │   ├── stores/            # Zustand state management
-│   │   └── utils.ts           # Utility functions
-│   └── types/                  # TypeScript types (index, workout, reports, ai)
-├── public/                     # Static assets
+│   │   ├── schemas/           # Zod validation schemas
+│   │   ├── training/          # AI workout pipeline
+│   │   ├── reports/           # Report cache and templates
+│   │   ├── stores/            # Zustand stores (auth, workouts, strava, workout cache)
+│   │   └── api-registry.ts    # API endpoint catalog (88+ endpoints)
+│   └── types/                  # TypeScript types
+├── public/                     # Static assets, PWA manifest, service worker
+├── vercel.json                 # Cron job schedules
 ├── package.json
 └── README.md
 ```
 
-## 🔧 Available Scripts
+## Available Scripts
 
 ```bash
 npm run dev      # Start development server
-npm run build    # Build for production
+npm run build    # Build for production (catches type errors)
 npm run start    # Start production server
 npm run lint     # Run ESLint
+npx tsc --noEmit # Type check without building
 ```
 
-## 🎨 Customization
-
-### Adding New Workout Types
-
-1. Update `WorkoutType` in `src/types/index.ts`
-2. Update the Zod enum in `src/lib/schemas/workout.ts`
-3. Add type config (emoji, color) in `src/components/calendar/types.ts` → `TYPE_CONFIG`
-4. Add to `TYPE_EMOJI`, `TYPE_COLORS`, `SPORT_LABELS` in `src/components/profile/ProfileComponents.tsx`
-5. Update form select options in `WorkoutForm.tsx`
-
-### Adding New Sports to Profile
-
-1. Add to `SPORT_OPTIONS` in `src/lib/schemas/profile.ts`
-2. Add emoji mapping in `src/app/(dashboard)/onboarding/profile/page.tsx` → `SPORT_EMOJI`
-
-### Changing Theme Colors
-
-Edit `src/app/globals.css` to customize colors:
-```css
-@layer base {
-  :root {
-    --primary: 220 70% 50%;  /* Your brand color */
-  }
-}
-```
-
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Firebase Connection Issues
 - Verify all environment variables are set correctly
@@ -328,33 +280,30 @@ Edit `src/app/globals.css` to customize colors:
 
 ### Build Errors
 ```bash
-# Clear Next.js cache
 rm -rf .next
-
-# Reinstall dependencies
 rm -rf node_modules package-lock.json
 npm install
 ```
 
-### Authentication Not Working
-- Check Firebase Authentication is enabled
-- Verify email/password provider is active
-- Check browser console for error messages
+### Strava Sync Issues
+- Verify Strava OAuth credentials in environment variables
+- Check that `parseLocalDate()` is used for timezone correctness
+- Review rate limit status in browser console logs
 
-## 📚 Documentation Links
+## Documentation Links
 
 - [Next.js Documentation](https://nextjs.org/docs)
 - [Firebase Documentation](https://firebase.google.com/docs)
 - [shadcn/ui Components](https://ui.shadcn.com/)
 - [Tailwind CSS](https://tailwindcss.com/docs)
-- [React Hook Form](https://react-hook-form.com/)
-- [Zod Validation](https://zod.dev/)
+- [Groq API](https://console.groq.com/docs)
+- [PostHog Docs](https://posthog.com/docs)
 
-## 📄 License
+## License
 
 MIT License - feel free to use this project for your own purposes.
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -362,13 +311,6 @@ MIT License - feel free to use this project for your own purposes.
 4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 💬 Support
-
-For issues or questions:
-- Open an issue on GitHub
-- Check existing issues for solutions
-
 ---
 
-Built with ❤️ using Next.js and Firebase
-
+Built with Next.js and Firebase

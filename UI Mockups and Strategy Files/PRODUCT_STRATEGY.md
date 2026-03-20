@@ -11,18 +11,22 @@
 
 | Area | Assessment | Notes |
 |------|-----------|-------|
-| **Strava Sync** | Production-ready | OAuth + webhooks + dedup + photos + routes. Well-executed. |
+| **Strava Sync (Overhauled)** | Production-ready | 2-stage sync (quick fill + backfill), rate limit hardening with header parsing, timezone fix, on-demand photo loading, manual merge dialog, webhook improvements. Quota-safe POST mode sends tokens in body (zero Firestore reads). Progressive auto-sync (2d → 7d → 30d). Graceful 429 handling. `toErrorString()` prevents React error #31. |
 | **AI Suggestions** | Genuinely advanced | 3-tier pipeline (logic engine → Groq → validator), periodization-aware, fatigue-aware, deload-aware. `max_tokens: 8000` for full workout details. Better than Final Surge, TrainingPeaks. |
 | **Report Engine** | Production-ready | 7 section types (stat, chart, table, text, highlight, pr, divider), Recharts charts, AI-generated reports via Groq, PNG/PDF/email export. Reports Hub with 3-zone layout, daily AI insights cron, template-based deep-dive reports (Sport Deep Dive, Trend Report, PR Timeline, Recovery Report, Goal Tracker) with Firestore caching. |
+| **Reports Hub** | Production-ready | 3-zone layout (AI Insight + Ask Anything + periodic reports + deep-dive cards), 5 AI report templates with Firestore caching, daily insight cron. |
+| **Admin Dashboard** | Production-ready | Full admin console with backup system (Vercel Blob), user management, API playground (88+ endpoints), audit logging, HMAC auth + rate limiting. |
+| **Theme System** | Production-ready | Light mode default, global toggle (Sun/moon), Light/Dark/System in Settings, theme-aware CSS variables across all pages. |
+| **Firestore Optimization** | Production-ready | Zustand workout cache (5-min TTL), batched Strava lookups, auth store fix, auth guards on open routes. |
+| **PostHog Analytics** | Integrated | Product analytics with event tracking (signups, completions, shares, suggestions). |
 | **Onboarding** | Streamlined | 5 steps (Intro → Name → Age → Import workout history → Strava Connect). Profile completion bar on dashboard for deferred fields. |
 | **Landing Page** | Polished | Simplified dark-themed design: centered hero, sport pills, 3-step how-it-works, 6-card feature grid, FAQ, CTA. Welcoming tone, no aggressive branding. |
-| **Multi-Sport** | Complete | Swim, bike, run, strength, triathlon, other — all with sport-specific fields. |
+| **Multi-Sport** | Complete | Swim, bike, run, strength, walk, triathlon, other — all with sport-specific fields. |
 | **Email System** | Working | Brevo for transactional, cron for reminders/summaries. |
 | **PWA** | Production-ready | Static manifest, service worker (cache-first static, network-first nav, offline fallback), safe-area handling, installable on iOS/Android. |
 | **Workouts UX** | Clean mobile-first | Compact header, AI suggestions collapsed by default, tight spacing, Garmin-style stat chips, neutral/orange color scheme. Delete planned workouts with AlertDialog confirmation. |
 | **Streak Tracking** | Functional | Streak counter on dashboard stats row, profile page, and public athlete profile. Computed from consecutive completed workout days. |
 | **Calendar Actions** | Production-ready | CalendarAddDropdown per day cell: Add Workout (→ form), Add Event (→ form with race tag), Add Note (inline popup saves as workout). Add Workout button centered in header. |
-| **Strava Quota Safety** | Production-ready | Quota-safe POST mode sends tokens in body (zero Firestore reads). Progressive auto-sync (2d → 7d → 30d). Graceful 429 handling. `toErrorString()` prevents React error #31. |
 
 ### What's Missing or Weak
 
@@ -37,7 +41,7 @@
 | ~~**Push notifications**~~ | ✅ DONE — Web Push API with VAPID, multi-device support, auto-cleanup, scoped to logged-in user (cross-user leakage fixed #74). Used for Strava sync + weekly wrap. | ~~MEDIUM~~ |
 | **Month calendar view** | ✅ DONE — Calendar now has 4 views (day/week/month/year) with heatmap year view | ~~LOW-MEDIUM~~ |
 | **Streak gamification** | ✅ PARTIAL — Streak counter on profile/public profile, dashboard stats row. Still missing: streak notifications, at-risk nudges, visual enhancements | MEDIUM — retention lever |
-| **Firebase Spark quota** | Quota-safe POST mode mitigates but daily 50K read limit still hit by multi-user auto-sync. Consider Blaze plan upgrade. | HIGH — affects all users when quota exhausted |
+| **Firebase Spark quota** | ✅ MUCH IMPROVED — Zustand workout cache (5-min TTL + dedup), batched Strava lookups, auth store double-call fix, coach students query optimization, and auth guards significantly reduce daily reads. Quota-safe POST mode still active. Blaze upgrade less urgent now but still recommended for scale. | MEDIUM — mitigated by caching |
 
 ### Competitive Position
 
@@ -113,7 +117,7 @@ The viral report core is built. The next wave focuses on **retention** (keeping 
 
 | # | Feature | Category | Impact | Effort | Priority |
 |---|---------|----------|--------|--------|----------|
-| 1 | Product Analytics (PostHog) | Growth infra | HIGH — can't optimize what you can't measure | Low | **P0** |
+| ~~1~~ | ~~Product Analytics (PostHog)~~ | ~~Growth infra~~ | ✅ DONE | ~~Low~~ | ~~**P0**~~ |
 | ~~2~~ | ~~PWA Support (Add to Home Screen)~~ | ~~Growth infra~~ | ✅ DONE | ~~Low~~ | ~~**P0**~~ |
 | 3 | PR Achievement Cards (shareable) | Viral / retention | HIGH — celebration moments drive shares + dopamine | Low-Medium | **P0** |
 | 4 | Streak System Enhancement | Retention | HIGH — streak counter done on profiles, still need at-risk nudges + visual enhancements | Low | **P0** |
@@ -302,35 +306,16 @@ Progress dots, back/continue navigation, skip options. Data saved to Firestore u
 
 ---
 
-### Implementation 7: Add Product Analytics
+### Implementation 7: Add Product Analytics ✅ DONE
 
-**What:** Add PostHog (free tier, 1M events/month) to track user behavior.
+**Status:** Fully implemented with PostHog.
 
-**Events to track:**
-- `user_signed_up` — registration method (email/Google)
-- `strava_connected` — Strava OAuth completed
-- `onboarding_completed` — finished onboarding
-- `workout_synced` — Strava sync triggered
-- `workout_completed` — manually marked complete
-- `ai_suggestion_viewed` — viewed AI workout suggestion
-- `ai_suggestion_accepted` — created workout from AI suggestion
-- `report_viewed` — which report section
-- `report_shared` — which platform (WhatsApp/X/download/etc.)
-- `report_exported` — format (PNG/PDF/email)
-- `page_viewed` — standard page tracking
-
-**Technical approach:**
-- Install `posthog-js` package
-- Create `src/lib/posthog.ts` — PostHog client init with env var
-- Add `PostHogProvider` to app layout
-- Add `track()` calls at key interaction points
-- PostHog dashboard: set up funnels (signup → Strava → first share)
-
-**Key files to modify:**
-- `package.json` — add posthog-js
-- New: `src/lib/posthog.ts`
-- `src/app/layout.tsx` — add PostHogProvider
-- Various components — add track() calls at key points
+**What was built:**
+- `posthog-js` integrated with `NEXT_PUBLIC_POSTHOG_KEY` env var on Vercel
+- `PostHogProvider` added to app layout
+- Events tracked: `user_signed_up`, `workout_completed`, `report_shared`, `ai_suggestion_viewed`, `ai_suggestion_accepted`, `strava_connected`, `onboarding_completed`
+- Standard page view tracking via PostHog autocapture
+- PostHog dashboard configured for funnel analysis (signup → Strava → first share)
 
 ---
 
@@ -435,9 +420,57 @@ Progress dots, back/continue navigation, skip options. Data saved to Firestore u
 
 ---
 
+### Implementation 12: Strava Sync Overhaul ✅ DONE
+
+**Status:** Fully overhauled with 2-stage architecture, rate limit hardening, and multiple bug fixes.
+
+**What was built:**
+- **2-stage sync architecture** — Quick fill (recent activities first for fast UX) + backfill (older activities in background). Replaces single-pass approach that was slow and quota-heavy.
+- **Rate limit hardening** — Parses Strava API rate limit headers (`X-RateLimit-Limit`, `X-RateLimit-Usage`) to proactively pause before hitting limits. Exponential backoff on 429 responses. Tracks 15-min and daily quotas separately.
+- **Timezone fix (#86)** — Always uses `activity.start_date_local` instead of `start_date` (UTC). Fixes wrong date parsing for non-UTC timezone users (e.g., 5:30h offset for IST).
+- **On-demand photo loading** — Photos fetched lazily when viewing workout detail, not during sync. Reduces sync time and API calls.
+- **Planned workout merge fix (#84)** — Strava activities correctly merge with planned/assigned workouts by matching date + type + distance within 10%. Strength workouts match by type+date alone.
+- **Manual merge dialog** — DuplicateDialog component (`src/components/strava/DuplicateDialog.tsx`) shows side-by-side comparison when auto-merge is ambiguous, letting user choose which to keep.
+- **Webhook improvements** — Better webhook event handling for activity create/update/delete events.
+- **Quota-safe cleanup** — Removed unnecessary Firestore reads during sync. POST mode sends tokens in body (zero server-side reads).
+
+---
+
+### Implementation 13: Admin Dashboard ✅ DONE
+
+**Status:** Fully implemented as a hidden admin console with comprehensive management tools.
+
+**What was built:**
+- **Hidden admin route** at `/admin` — standalone layout, no dashboard chrome, not linked from any navigation
+- **Authentication** — Firebase Auth + UID allowlist (`ADMIN_UIDS` env var). Flow: Google sign-in → ID token → `POST /api/admin/verify` → Firebase `createSessionCookie` → `httpOnly` cookie (4h). Rate limit: 5 attempts/IP/15 min with 2s delay on failures.
+- **CSRF protection** — All mutating routes check `Origin` header
+- **Backup system** — Vercel Blob storage for backup snapshots. Daily/weekly/monthly cron jobs (`/api/cron/backup`). Full snapshot with integrity check. Manual trigger from admin UI. Auto prunes old backups.
+- **Restore** — Full restore (with automatic pre-restore snapshot) and per-user restore from any snapshot
+- **User management** — List all users, soft-delete (disables Firebase Auth), restore, CSV + JSON export
+- **API playground** — Interactive API explorer for 88+ registered endpoints. Test any API route directly from admin UI with auto-populated auth headers.
+- **API registry** — Centralized registry of all API endpoints with method, path, description, and auth requirements
+- **Audit logging** — All admin actions written to `adminLogs` Firestore collection with acting UID, timestamp, action type, and target details. Actions: `backup_triggered`, `restore_triggered`, `user_deleted`, `user_restored`, `cron_backup`, etc.
+- **System health** — Overview tab with user/workout counts, last backup timestamps, cron health monitoring via `system/lastCron` doc
+
+---
+
+### Implementation 14: Reports Hub Redesign ✅ DONE
+
+**Status:** Fully redesigned with 3-zone layout and AI-powered deep-dive reports.
+
+**What was built:**
+- **3-zone layout** — Zone 1: AI Insight Card (daily cron-generated insight) + Ask Anything bar (free-text AI questions). Zone 2: Periodic report links (weekly wrap, monthly review, yearly wrapped). Zone 3: Deep-dive report cards (contextual, template-based).
+- **5 AI report templates** — Sport Deep Dive (per-sport analysis), Trend Report (multi-week trends), PR Timeline (record progression), Recovery Report (rest patterns + training load), Goal Tracker (event preparation progress). Each template uses structured prompts sent to Groq.
+- **Firestore caching** — Generated reports cached in Firestore with TTL. Re-requests within TTL serve cached version (zero AI API calls). Cache key based on template + user + date range.
+- **Daily insight cron** — `/api/cron/daily-insight` runs at 6am UTC via Vercel cron. Uses Groq 8B instant model for cost efficiency. Generates 1-sentence personalized training insight per user. 24h TTL.
+- **Ask Anything** — Free-text input in Reports Hub. User types any training question, AI responds with personalized answer based on their workout data. Powered by Groq with user context injection.
+- **Report rendering** — `ReportRenderer` component handles 7 section types (stat, chart, table, text, highlight, pr, divider) with Recharts integration for charts.
+
+---
+
 ## Part 4: Recommended Execution Order
 
-### What's Done (Phases 1–4 Original Roadmap)
+### What's Done (Phases 1-5 Original Roadmap)
 
 | Feature | Status |
 |---------|--------|
@@ -472,38 +505,54 @@ Progress dots, back/continue navigation, skip options. Data saved to Firestore u
 | Server-Side User Creation (Admin SDK, fixes Google Sign-In registration bug) | ✅ DONE |
 | Groq Model Fallback (70B → 8B instant on rate limit) | ✅ DONE |
 | Admin Dashboard (`/admin`) — Firebase Auth + UID allowlist, session cookies, rate limiting, CSRF protection | ✅ DONE |
-| Backup System — daily/weekly/monthly cron snapshots to Firebase Storage, integrity check, manual trigger | ✅ DONE |
+| Backup System — daily/weekly/monthly cron snapshots to Vercel Blob, integrity check, manual trigger | ✅ DONE |
 | Backup Restore — full restore (with pre-restore auto-snapshot), per-user restore from any snapshot | ✅ DONE |
 | Admin Users Management — list all users, soft-delete (disable Auth), restore, CSV + JSON export | ✅ DONE |
 | Admin Action Log — all admin actions written to `adminLogs` with acting UID and timestamp | ✅ DONE |
+| Strava Sync Overhaul — 2-stage architecture (quick fill + backfill), rate limit hardening with header parsing, timezone fix (#86), on-demand photo loading, planned workout merge fix (#84), webhook improvements, manual merge dialog, quota-safe cleanup | ✅ DONE |
+| Reports Hub Redesign (#69) — 3-zone layout, AI Insight Card, Ask Anything bar, 5 template-based deep-dive reports with Firestore caching, daily insight cron | ✅ DONE |
+| Firestore Cost Optimization — Zustand workout cache (5-min TTL + dedup), auth store double-call fix, batched Strava lookups, coach students query optimization, auth guards, cache invalidation (#85) | ✅ DONE |
+| Theme System — Light mode default, global theme toggle (Sun/moon), Settings Appearance section, theme-aware CSS variables across all pages | ✅ DONE |
+| Edit Profile Dialog — Modal accessible from profile page | ✅ DONE |
+| Walk Workout Type (#81) — First-class walk type across 33 files | ✅ DONE |
+| New Pages — /portfolio (feature tour), /roadmap (visual timeline), /comic (14-slide origin story) | ✅ DONE |
+| Monthly Review Redesign — Mobile-first, bold stats, stacked bar chart, PNG to JPG share images | ✅ DONE |
+| Weekly Wrap Redesign — Social sharing redesign matching monthly review | ✅ DONE |
+| Share Fix (#61) — Monthly review sharing uses images instead of login-required links | ✅ DONE |
+| Dashboard Fix (#56, #60) — Unified view, fixed past workouts in "Coming up", fixed /records link (#58) | ✅ DONE |
+| Recurring Workouts — Only show in Planned tab within next 7 days | ✅ DONE |
+| Safari Favicon — 32x32 PNG with explicit link tags | ✅ DONE |
+| Strength Form (#52) — Simplified, removed mandatory exercise details | ✅ DONE |
+| PostHog Analytics — Product analytics integration with event tracking | ✅ DONE |
+| Vercel Blob — Replaced Firebase Storage for backups | ✅ DONE |
+| Timezone Fix Migration — `/api/workouts/fix-timezone` | ✅ DONE |
+| API Playground — Interactive API explorer (88+ endpoints) in admin dashboard | ✅ DONE |
 
 ### What's Next
 
-**Phase 5 — Launch Readiness (P0):**
-1. Product Analytics (PostHog) — can't optimize what you can't measure
-2. ~~PWA Support~~ ✅ DONE — manifest, service worker, offline fallback, installable, safe-area handling
-3. PR Achievement Cards — highest-value quick win (shareable, low effort)
-4. Streak System Enhancement — ✅ counter on profiles, still need at-risk email nudges + visual enhancements
+**Phase 6 — Retention & Viral Growth (P0):**
+1. PR Achievement Cards — highest-value quick win (shareable, low effort)
+2. Streak System Enhancement — counter on profiles done, still need at-risk email nudges + visual enhancements
 
-**Phase 6 — Retention & Differentiation (P1):**
-5. Milestone Badge System — collectible achievements, shareable cards
-6. Race Recap Card — high-emotion post-race sharing
-7. AI Race Predictions — predict finish times from training data (unique differentiator)
-8. Training Plans / Programs — structured multi-week periodized programs
+**Phase 7 — Differentiation (P1):**
+3. Milestone Badge System — collectible achievements, shareable cards
+4. Race Recap Card — high-emotion post-race sharing
+5. AI Race Predictions — predict finish times from training data (unique differentiator)
+6. Training Plans / Programs — structured multi-week periodized programs
 
-**Phase 7 — Scale & Social (P2):**
-9. Smart Notifications — AI-powered nudges based on behavior patterns
-10. Social Feed / Follow Athletes — light social layer for accountability
-11. Embeddable Stats Widget — for blogs and Linktree
-12. Training Block Summary — pre-event preparation report
-13. Import from Other Platforms — Garmin Connect, Apple Health, Wahoo
+**Phase 8 — Scale & Social (P2):**
+7. Smart Notifications — AI-powered nudges based on behavior patterns
+8. Social Feed / Follow Athletes — light social layer for accountability
+9. Embeddable Stats Widget — for blogs and Linktree
+10. Training Block Summary — pre-event preparation report
+11. Import from Other Platforms — Garmin Connect, Apple Health, Wahoo
 
-**Phase 8 — Platform (P3):**
-14. Group Challenges — time-boxed challenges with leaderboards
-15. Coach Marketplace — two-sided marketplace for coaching services
-16. Advanced Training Load Analytics — TSS/CTL/ATL, HR zones, fitness-fatigue
+**Phase 9 — Platform (P3):**
+12. Group Challenges — time-boxed challenges with leaderboards
+13. Coach Marketplace — two-sided marketplace for coaching services
+14. Advanced Training Load Analytics — TSS/CTL/ATL, HR zones, fitness-fatigue
 
-**Immediate next actions:** PWA, push notifications, workout import, and Strava merge are done. Remaining Phase 5: PostHog analytics + PR Achievement Cards + streak at-risk nudges (push infra ready, just need logic). All low-effort, high-impact.
+**Immediate next actions:** PostHog analytics, admin dashboard, reports hub redesign, Strava overhaul, theme system, and Firestore optimization are all done. Remaining Phase 6: PR Achievement Cards + streak at-risk nudges (push infra ready, just need logic). Both are low-effort, high-impact.
 
 ---
 
