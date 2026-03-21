@@ -1,12 +1,4 @@
 {
-  "redirects": [
-    {
-      "source": "/:path*",
-      "has": [{ "type": "host", "value": "www.thedailyathlete.in" }],
-      "destination": "https://thedailyathlete.in/:path*",
-      "permanent": true
-    }
-  ],
   "rewrites": [
     {
       "source": "/__/auth/:path*",
