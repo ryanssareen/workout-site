@@ -121,7 +121,7 @@ src/app/api/admin/
   users/route.ts               GET: list all users | GET ?export=csv: download CSV
   users/[uid]/route.ts         DELETE: soft-delete | PATCH: restore | GET ?export=json: download JSON
   logs/route.ts                GET: fetch admin logs (?type=actions|cron)
-  assign-athletes/route.ts     POST: manually assign athletes to coaches (legacy)
+  assign-athletes/route.ts     POST: manually assign athletes (legacy)
   migrate-merged-workouts/     POST: run merge migration
     route.ts
 

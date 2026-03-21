@@ -7,4 +7,4 @@ Investigate and fix the bug described by the user. Follow this process:
 5. **Verify** — Run `npx tsc --noEmit` to ensure no type errors introduced
 6. **Summarize** — Explain what was wrong and what was changed
 
-Remember: `'student'` role is legacy — use `'athlete'`. Coaches should NOT complete workouts.
+Remember: `'student'` role is legacy — use `'athlete'`.

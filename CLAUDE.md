@@ -1,7 +1,7 @@
-# CoachTrack - CLAUDE.md
+# The Daily Athlete - CLAUDE.md
 
 ## Project Overview
-CoachTrack (The Daily Athlete) is a SaaS workout tracking platform connecting coaches with athletes via unique 6-letter codes. Built with Next.js 16 (App Router), React 19, TypeScript 5.9, Firebase, and deployed on Vercel.
+The Daily Athlete is a SaaS workout tracking platform for athletes. Built with Next.js 16 (App Router), React 19, TypeScript 5.9, Firebase, and deployed on Vercel.
 
 ## Tech Stack
 - **Framework:** Next.js 16 with App Router, React 19, TypeScript 5.9
@@ -51,19 +51,14 @@ src/
 ```
 
 ### Data Model (Firestore Collections)
-- **users** — uid, email, displayName, username (unique), role (`coach`|`athlete`), coachId, coachCode (6-letter), Strava tokens, photoURL, bio, ageRange, experienceLevel, height/weight, sportPreferences, trainingFor, events (goal + eventName + eventDate), profileTagline, profilePublic, pushSubscriptions (Web Push), theme (`light`|`dark`|`system`)
+- **users** — uid, email, displayName, username (unique), Strava tokens, photoURL, bio, ageRange, experienceLevel, height/weight, sportPreferences, trainingFor, events (goal + eventName + eventDate), profileTagline, profilePublic, pushSubscriptions (Web Push), theme (`light`|`dark`|`system`)
 - **userMappings** — uid → username mapping (for auth lookups)
-- **workouts** — Multi-sport (swim/run/bike/walk/strength/other), assigned coach→athlete, completion tracking, Strava sync, comments subcollection. Type-specific sub-objects: `run`, `bike`, `swim`, `walk`, `strength`.
+- **workouts** — Multi-sport (swim/run/bike/walk/strength/other), completion tracking, Strava sync, comments subcollection. Type-specific sub-objects: `run`, `bike`, `swim`, `walk`, `strength`.
 - **personalRecords** — User PRs with history
 - **chatThreads** — AI coach conversation threads
 - **backups** — Admin backup metadata: `{ type: 'daily'|'weekly'|'monthly'|'manual'|'pre-restore', createdAt, userCount, workoutCount, storagePath, integrityPassed, triggeredBy }`. Backup files stored in **Vercel Blob** (daily metadata-only + weekly full snapshots).
 - **adminLogs** — Admin action audit trail: `{ action, adminUid, timestamp, targetUid?, backupId?, type?, details? }`. Actions: `backup_triggered`, `restore_triggered`, `user_deleted`, `user_restored`, `user_restore_triggered`, `strava_sync_forced`, `cron_backup`, `cron_backup_failed`.
 - **system** — System metadata doc `lastCron`: tracks `backup_daily/weekly/monthly` timestamps for health monitoring.
-
-### Role-Based Access
-- **Coaches** can create/assign workouts, view all their athletes' data, generate reports
-- **Athletes** can only view/complete their own workouts and see their own progress
-- Coach code system: coaches get a unique 6-letter code, athletes enter it during registration
 
 ## Development Commands
 ```bash
@@ -89,7 +84,6 @@ npx tsc --noEmit     # Type check without building
 - All dates stored as Firestore `Timestamp`, converted with `date-fns` for display
 - Use `sonner` toast for user notifications
 - Form handling with `react-hook-form` + `zod` validation
-- `'student'` role is legacy — always use `'athlete'` for new code
 - Environment variables are on Vercel — never commit secrets
 - Shared profile components (PieChart, StatCard, formatters) live in `src/components/profile/ProfileComponents.tsx` — used by both `/profile` and `/athlete/[username]`
 - Sport options defined in `src/lib/schemas/profile.ts` — SPORT_OPTIONS (Running, Cycling, Swimming, Strength Training, Triathlon), TRAINING_FOR_OPTIONS (14 event types)
@@ -107,7 +101,7 @@ npx tsc --noEmit     # Type check without building
 - `/workouts/new` — Create workout form with type-specific sub-forms, supports AI-generated templates (via sessionStorage) and saved templates. Preview dialog before creation. Reads `date` and `tag` URL params from calendar dropdown navigation.
 - `/athlete/[username]` — Public athlete profile (SSR), shares components with `/profile` via ProfileComponents.tsx
 - `/onboarding` — 5-step onboarding: intro (welcome splash) → name (display name with profanity check) → age (age range selection) → import (CSV/XLSX workout history upload via `/api/workouts/import`) → strava (OAuth connect with benefits list)
-- `/calendar` — Multi-view calendar (day/week/month/year). Week view: 7-day grid with color-coded workout pills, weekly summary bar. Month view: full month grid with activity dots. Year view: heatmap-style activity density. Supports coach athlete picker, ICS export, email report. CalendarAddDropdown on each day cell: "Add Event" (→ `/workouts/new?date=...&tag=race`), "Add Note" (inline popup saves as "other" type workout). Components in `src/components/calendar/`.
+- `/calendar` — Multi-view calendar (day/week/month/year). Week view: 7-day grid with color-coded workout pills, weekly summary bar. Month view: full month grid with activity dots. Year view: heatmap-style activity density. Supports ICS export, email report. CalendarAddDropdown on each day cell: "Add Event" (→ `/workouts/new?date=...&tag=race`), "Add Note" (inline popup saves as "other" type workout). Components in `src/components/calendar/`.
 - `/wrap` — Weekly Training Wrap ("Your Week's Capsule"). Immersive full-screen layout with week-by-week navigation. **Monday–Sunday week boundaries** (ISO 8601, `weekStartsOn: 1`). Per-sport stats with week-over-week comparison (% change), highlight of the week (longest/furthest workout with photo), rating system (incredible/solid/consistent/recovery/quiet). Share via ShareButtons (Instagram, WhatsApp, X, iMessage, save image).
 - `/review` — Monthly Review page. Month navigation with "not ready" gate for current month. Hero row with key stats (workouts, distance, time, active days). Activity calendar grid, per-sport stats with month-over-month comparison, pie chart breakdown, vs last month comparison (% change per metric), daily activity bar chart, weekly distance + duration area charts. Mobile-first redesign with bold stats, sport labels, stacked bar chart, branding. Share via ShareButtons.
 - `/wrapped` — Yearly Wrapped (2025). 8-slide interactive carousel: guess (interactive workout count guess game) → reveal → stats → breakdown → records → heatmap → summary → final. Public sharing route at `/athlete/[username]/wrapped` with SSR, OG images, privacy gate. Components in `src/components/wrapped/WrappedSlides.tsx`.
@@ -203,7 +197,7 @@ npx tsc --noEmit     # Type check without building
 ## Workout Deletion
 - **Delete planned workouts** — available on workouts list page for future uncompleted workouts
 - **UI:** Trash icon appears on hover for planned workout rows, opens AlertDialog confirmation
-- **Access control:** Only users who can manage workouts (coaches or unconnected athletes) see delete button
+- **Access control:** Delete button shown for future uncompleted workouts
 - **Function:** `deleteWorkout(ownerUsername, id)` in `src/lib/firebase/firestore.ts`
 - **Optimistic update:** Removed from local state immediately on success
 
@@ -228,7 +222,6 @@ npx tsc --noEmit     # Type check without building
 - **Env vars required:** `ADMIN_UIDS` (comma-separated Firebase UIDs), `ADMIN_SECRET` (32-char random, signs session cookie), `BLOB_READ_WRITE_TOKEN` (Vercel Blob access)
 
 ## Known Issues & Active Work
-- Coaches should NOT be able to complete workouts (student-only action) — needs guard
 - "Save as Template" feature navigates to non-existent page — broken
 - Custom domain (thedailyathlete.in) has DNS/NXDOMAIN issues — likely Squarespace registration problem
 - Groq rate limits (100K tokens/day on 70B model) — mitigated with 8B fallback but can still hit both limits
@@ -253,7 +246,7 @@ This project runs on Firebase with a **50k reads/day limit**. Every API route, m
 - **Use `collectionGroup()` for cross-user queries** instead of iterating per-user subcollections (e.g., `collectionGroup('workouts').where('updatedAt', '>', ts)` = 1 query vs N per-user queries).
 - **Use Firestore `in` operator** to batch lookups (up to 30 values per query) instead of 1 query per value.
 - **Add date bounds** to queries that could return large result sets (e.g., planned workouts, sync ranges).
-- **Cache aggressively** on the client (Zustand stores with TTL) and server (in-memory caches for coach students, etc.).
+- **Cache aggressively** on the client (Zustand stores with TTL) and server (in-memory caches).
 - **For migrations/backfills:** always support `?username=X` param for per-user execution. Never assume you can read all data in one request. Always provide `?dryRun=true` mode.
 - **Cron jobs:** daily crons should target only changed data (delta queries with `updatedAt > lastRun`), not full collection scans.
 
@@ -261,7 +254,6 @@ This project runs on Firebase with a **50k reads/day limit**. Every API route, m
 - **Workout cache store (Zustand)** — 5-min TTL + request deduplication. All 10+ dashboard pages use cached data instead of independent fetches.
 - **Auth store fix** — Eliminated double `getUsernameFromUid` call per auth event.
 - **Batched Strava lookups** — N individual queries → `ceil(N/30)` batched `in` queries.
-- **Coach students query** — Merged from 2 queries to 1 using `in` operator + 10-min cache.
 - **Auth guards added** — `/api/strava/sync-all` was completely open, cron routes now return 401 properly.
 - **Cache invalidation (#85)** — `workoutStore` cache cleared after `createWorkout()` so new workouts appear immediately.
 

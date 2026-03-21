@@ -1,8 +1,8 @@
-# The Daily Athlete (CoachTrack) — Complete Design Document
+# The Daily Athlete — Complete Design Document
 
 ## Project Overview
 
-**The Daily Athlete** is a SaaS workout tracking platform for self-coached endurance athletes. Athletes plan, track, and analyze training across multiple sports. A backend-managed coach-athlete system supports rsareen@gmail.com as the sole coach with hardcoded athlete connections. The platform integrates with Strava for automatic workout sync and uses AI for intelligent tagging and suggestions.
+**The Daily Athlete** is a SaaS workout tracking platform for self-coached endurance athletes. Athletes plan, track, and analyze training across multiple sports. The platform integrates with Strava for automatic workout sync and uses AI for intelligent tagging and suggestions.
 
 ### Tech Stack
 
@@ -147,10 +147,8 @@ src/
   email: string;
   displayName: string;
   username?: string;                      // Unique URL slug for public profile
-  role: 'coach' | 'athlete' | 'student'; // 'student' is legacy → use 'athlete'
+  role: 'athlete';
   photoURL?: string;                      // Profile photo (Google or Firebase Storage upload)
-  coachId?: string;                       // UID of assigned coach
-  coachCode?: string;                     // 6-letter coach code (coaches only)
   createdAt: Timestamp;
   updatedAt: Timestamp;
 
@@ -180,7 +178,6 @@ src/
   notificationPreferences?: {
     emailSummary: boolean;
     workoutReminders: boolean;
-    coachMessages: boolean;
   };
 
   // Push Notifications (Web Push API)
@@ -211,9 +208,9 @@ src/
   date: Timestamp;
   duration?: number;                      // minutes
   tags?: WorkoutTag[];                    // max 5 from predefined set
-  createdBy: string;                      // coach UID
+  createdBy: string;                      // creator UID
   assignedTo: string;                     // athlete UID
-  assignedToName?: string;                // athlete display name (for coach view)
+  assignedToName?: string;                // athlete display name
   completed: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -333,13 +330,12 @@ src/
   id: string;
   workoutId: string;
   userId: string;
-  userRole: 'coach' | 'athlete' | 'student';
+  userRole: 'athlete';
   userName: string;
   text: string;
   rating?: 'too_easy' | 'just_right' | 'too_hard';
   createdAt: Timestamp;
   parentCommentId?: string;               // threading support
-  isCoachReply?: boolean;
 }
 ```
 
@@ -501,20 +497,19 @@ Progress dots, back/continue navigation, skip options. Data saved to Firestore u
 
 **Workout Rows:** Compact single-row cards with:
 - Type emoji + workout name + type badge + optional "Late" badge
-- Date + primary stat (distance) + duration + assigned athlete name (coach view)
+- Date + primary stat (distance) + duration
 - Garmin-style stat chips on right (HR bpm, elevation m, calories, pace /km, power W, sets/exercises for strength)
 - Completion status icon: check green (completed), check amber (late), warning red (missed), circle gray (pending)
 - Missed workouts shown with opacity + strikethrough name
-- **Delete button** — Trash icon appears on hover for planned (future, uncompleted) workouts. Opens AlertDialog confirmation. Only shown when user can manage workouts (coaches or unconnected athletes).
+- **Delete button** — Trash icon appears on hover for planned (future, uncompleted) workouts. Opens AlertDialog confirmation. Only shown for future uncompleted workouts.
 - Each row links to `/workouts/[id]`
 
 **Create Workout** (`/workouts/new`):
 1. WorkoutForm with type-specific sub-forms (SwimForm, RunForm, BikeForm, StrengthForm, OtherForm — walk uses RunForm)
 2. WorkoutPreviewDialog shows preview before creation
 3. On confirm: creates workout in Firestore, clears workoutStore cache (#85)
-4. If coach assigning to athlete: optional email notification via Brevo with preview link
-5. Supports recurring workouts (daily/weekly/biweekly/monthly with end date)
-6. Supports AI-generated workout templates and saved templates
+4. Supports recurring workouts (daily/weekly/biweekly/monthly with end date)
+5. Supports AI-generated workout templates and saved templates
 
 **Workout Detail** (`/workouts/[id]`):
 - Full workout info with date, duration, type, tags
@@ -524,7 +519,7 @@ Progress dots, back/continue navigation, skip options. Data saved to Firestore u
 - Share card (WhatsApp, Twitter, iMessage, download PNG, copy link, native share)
 - Description
 - Completion notes
-- Complete/uncomplete button (athletes only, coaches see disabled tooltip)
+- Complete/uncomplete button
 - AI Recommendations section
 - Comment section with threading + ratings
 - Save as Template dialog
@@ -533,7 +528,7 @@ Progress dots, back/continue navigation, skip options. Data saved to Firestore u
 
 **Multi-view calendar system** with 4 view modes: day, week, month, year.
 
-- **CalendarHeader** — View mode selector (day/week/month/year buttons), Today/prev/next navigation, coach athlete picker dropdown, centered "Add Workout" button (next to date label), Export Calendar (ICS), Send Report button
+- **CalendarHeader** — View mode selector (day/week/month/year buttons), Today/prev/next navigation, centered "Add Workout" button (next to date label), Export Calendar (ICS), Send Report button
 - **CalendarAddDropdown** — Per-day cell dropdown with "Add Workout" (→ `/workouts/new?date=...`), "Add Event" (→ `/workouts/new?date=...&tag=race`), "Add Note" (inline popup with textarea — saves as "other" type workout, refreshes calendar via `onNoteAdded` callback)
 - **Strava auto-sync indicator** — Real-time phase label during sync
 
@@ -706,7 +701,6 @@ Shared components (`PieChart`, `StatCard`, format helpers) live in `src/componen
 **`/preview/[id]`** — Shareable workout preview (new):
 - No auth required, server-rendered
 - Hero photo from Strava (if available) with gradient overlay
-- Coach name display
 - Full sport-specific details (pace, power, exercises, etc.)
 - AI route comment
 - OpenGraph/Twitter card metadata with emoji titles
@@ -917,23 +911,6 @@ Shared components (`PieChart`, `StatCard`, format helpers) live in `src/componen
 
 ---
 
-## Coach-Athlete System
-
-Coach-athlete connections work via **unique 6-letter coach codes**.
-
-**How it works:**
-- Coaches receive a unique 6-letter code upon registration
-- Athletes enter their coach's code during registration to connect
-- Coach code system: coaches get a unique 6-letter `coachCode`, athletes enter it to set `coachId`
-- Legacy hardcoded connections also exist for `rsareen@gmail.com` as coach
-
-**Role-Based Access:**
-- **Coaches:** Create/assign workouts, view all athletes' data, generate reports, calendar athlete picker
-- **Athletes:** View/complete own workouts, see own progress, create self-workouts (if no coach)
-- **Unconnected athletes** (no coachId): Can create their own workouts
-
----
-
 ## Strava Integration
 
 ### OAuth Flow
@@ -988,7 +965,7 @@ New `buildTypeSpecificFields()` helper in the sync route correctly populates typ
    - Extract stats: distance, duration, calories, HR, speed, elevation via `buildTypeSpecificFields()`
    - Extract route: polyline, start/end coordinates
    - Parse dates correctly using `parseLocalDate()` (not raw `start_date_local` as UTC)
-   - Auto-merge with matching coach-assigned workout (same day, same type, not completed)
+   - Auto-merge with matching planned workout (same day, same type, not completed)
    - Auto-merge with matching imported workout (`source: 'import'`, same day, same type, distance within 10%)
    - Or create new workout document
    - Proximity duplicate detection (within 30 min, similar duration/distance)
@@ -1050,7 +1027,7 @@ UI component to manually link missed planned workouts to Strava activities. Used
 ## Email System
 
 ### Transactional (Brevo SMTP)
-- **Workout assignment:** Sent when coach assigns workout to athlete
+- **Workout assignment:** Sent when workout is assigned
   - Dark-themed HTML email with workout card
   - CTA: "View Workout" → `/preview/{workoutId}`
 - **Comment notifications:** Triggered when someone comments on a workout
@@ -1063,7 +1040,6 @@ UI component to manually link missed planned workouts to Strava activities. Used
   - Data: userName, totalAssigned/Completed, completionRate, byType breakdown, stravaStats (distance/calories/time)
   - Subject emoji varies by completion rate (80%+, 50%+, <50%)
   - Dark-themed email: header branding, completion rate %, workout breakdown badges, Strava stats section, CTA → `/calendar`
-  - CC'd to coach if athlete has assigned coach
   - Max 50 users per run, tracks `lastSummaryDate`
   - Template: `src/lib/email/summaryTemplate.ts`
 - **Weekly Wrap email** (`/api/cron/send-weekly-wrap`): Monday 8am UTC
@@ -1213,7 +1189,6 @@ interface StravaSyncState {
 - All dates stored as Firestore `Timestamp`, converted with `date-fns` for display
 - Toast notifications via `sonner`
 - Form handling: `react-hook-form` + `zod`
-- Role `'student'` is legacy → always use `'athlete'` for new code
 - Environment variables on Vercel only (never committed)
 - Light mode by default, theme-aware CSS variables throughout
 
@@ -1319,7 +1294,6 @@ The app is installable as a Progressive Web App on iOS and Android.
 3. **Legacy 'student' role** — Still appears in some type definitions and old data
 4. **Firebase Spark plan quota** — Daily read quota (50K reads/day) can be exhausted by Strava auto-sync across multiple users. Quota-safe POST mode mitigates but doesn't eliminate the issue. Consider upgrading to Blaze plan.
 5. **Groq rate limits** — 100K tokens/day on `llama-3.3-70b-versatile`. Mitigated with `llama-3.1-8b-instant` fallback but both models can be rate-limited under heavy import usage.
-6. **Coaches completing workouts** — No guard prevents coaches from marking athlete workouts as complete (should be athlete-only action).
 
 ## Recent Fixes (March 2026)
 

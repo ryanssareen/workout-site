@@ -1,11 +1,11 @@
-# The Daily Athlete - Coach & Athlete Platform
+# The Daily Athlete - Workout Tracking Platform
 
-A modern workout tracking platform connecting coaches with athletes. Built with Next.js 16, React 19, Firebase, and TypeScript.
+A modern workout tracking platform for athletes. Built with Next.js 16, React 19, Firebase, and TypeScript.
 
 ## Features
 
 ### Core Functionality
-- **User Authentication**: Email/password + Google Sign-In with role-based access (Coach/Athlete)
+- **User Authentication**: Email/password + Google Sign-In
 - **Workout Management**: Create, read, update, and delete workouts with flat list view and type filter tags
 - **Multi-Sport Support**: Running, Cycling, Swimming, Walk, Strength Training, Triathlon, and Other
 - **Calendar View**: Multi-view calendar (day/week/month/year) with workout type differentiation, color coding, heatmap year view, and inline note creation
@@ -42,10 +42,6 @@ A modern workout tracking platform connecting coaches with athletes. Built with 
 - **PostHog Analytics**: Product analytics integration for usage tracking
 - **Firestore Cost Optimization**: Workout cache store (Zustand, 5-min TTL), batched Strava lookups, auth guards
 - **New Pages**: `/portfolio` (feature tour), `/roadmap` (visual phase timeline), `/comic` (14-slide origin story)
-
-### User Roles
-- **Coaches**: Create, edit, assign workouts; view all athletes' data; generate reports; unique 6-letter coach code
-- **Athletes**: View/complete assigned workouts; track progress; connect Strava; share public profile
 
 ## Tech Stack
 
@@ -186,17 +182,9 @@ vercel
 
 ## Usage Guide
 
-### For Coaches
+### Usage
 
-1. **Register**: Create account with "Coach" role — get a unique 6-letter code
-2. **Create Workouts**: Manual entry or upload whiteboard photo, fill in details, assign to athlete
-3. **Manage Workouts**: Flat list view with type filter tags (All/Run/Bike/Swim/Walk/Strength/Other)
-4. **Track Progress**: View dashboard, reports hub, and athlete profiles
-5. **AI Reports**: Generate detailed reports via the 3-zone Reports Hub
-
-### For Athletes
-
-1. **Register**: Create account with "Athlete" role — enter coach's 6-letter code
+1. **Register**: Create an account
 2. **Onboarding**: Complete 5-step setup (Intro → Name → Age → Import CSV/XLSX → Strava Connect)
 3. **View Workouts**: See all assigned workouts filtered by type, click for details
 4. **Complete Workouts**: Mark workouts as done with actual stats

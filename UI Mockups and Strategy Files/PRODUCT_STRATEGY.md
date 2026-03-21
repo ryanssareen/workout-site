@@ -1,6 +1,6 @@
 # The Daily Athlete — Product Strategy
 
-**Focus:** Athletes-first. Reports as viral core differentiator. Coaches later.
+**Focus:** Athletes-first. Reports as viral core differentiator.
 **Team:** 2 people, ~$100/month budget, pre-launch.
 
 ---
@@ -45,7 +45,7 @@
 
 ### Competitive Position
 
-**The whitespace:** No competitor combines AI coaching + coach-athlete workflow. But since we're going athletes-first, our near-term positioning is:
+**The whitespace:** No competitor combines AI-powered training insights with beautiful shareable reports. Our positioning:
 
 **"The AI training companion that makes your data beautiful and shareable"**
 
@@ -131,8 +131,7 @@ The viral report core is built. The next wave focuses on **retention** (keeping 
 | 12 | Training Block Summary | Viral | MEDIUM — pre-event preparation report | High | **P2** |
 | 13 | Import from Other Platforms | Growth | ✅ PARTIAL — CSV/XLSX import with AI extraction + programmatic date detection in onboarding. Still need: direct Garmin Connect, Apple Health, Wahoo API imports | High | **P2** |
 | 14 | Group Challenges | Growth / retention | HIGH — weekly/monthly challenges between friends | High | **P3** |
-| 15 | Coach Marketplace | Monetization | HIGH — coaches advertise, athletes browse and connect | Very High | **P3** |
-| 16 | Advanced Training Load Analytics | Differentiation | MEDIUM — TSS/CTL/ATL fitness-fatigue chart, HR zones | High | **P3** |
+| 15 | Advanced Training Load Analytics | Differentiation | MEDIUM — TSS/CTL/ATL fitness-fatigue chart, HR zones | High | **P3** |
 
 ### New Feature Concepts (Detailed)
 
@@ -147,9 +146,6 @@ Light social layer: follow other athletes, see their completed workouts in a fee
 
 **Group Challenges (#14):**
 Time-boxed challenges between friends or public: "Most distance in January", "7-day streak challenge", "Run 100km this month." Leaderboard, progress bars, completion badges. Shareable challenge cards. This is the feature that makes people invite friends — "Join my January challenge!"
-
-**Coach Marketplace (#15):**
-Two-sided marketplace. Coaches create profiles with specialties, pricing, athlete reviews. Athletes browse and connect via the existing coach code system. Revenue model: platform takes 10-15% of coaching fees. This is the long-term monetization play beyond subscriptions.
 
 ---
 
@@ -549,8 +545,7 @@ Progress dots, back/continue navigation, skip options. Data saved to Firestore u
 
 **Phase 9 — Platform (P3):**
 12. Group Challenges — time-boxed challenges with leaderboards
-13. Coach Marketplace — two-sided marketplace for coaching services
-14. Advanced Training Load Analytics — TSS/CTL/ATL, HR zones, fitness-fatigue
+13. Advanced Training Load Analytics — TSS/CTL/ATL, HR zones, fitness-fatigue
 
 **Immediate next actions:** PostHog analytics, admin dashboard, reports hub redesign, Strava overhaul, theme system, and Firestore optimization are all done. Remaining Phase 6: PR Achievement Cards + streak at-risk nudges (push infra ready, just need logic). Both are low-effort, high-impact.
 
@@ -576,17 +571,8 @@ Progress dots, back/continue navigation, skip options. Data saved to Firestore u
 - Data export (CSV/JSON)
 - Priority support
 
-**Coach tier ($20–30/month, implement after coach marketplace):**
-- Everything in Pro
-- Manage unlimited athletes
-- Assign workouts and training plans
-- View all athlete dashboards
-- Marketplace listing (athletes can find and connect)
-- Team/group management
-
 **Revenue streams:**
 1. Pro subscriptions (primary)
-2. Coach marketplace commission (10-15% of coaching fees)
-3. Team/club plans (flat rate for groups)
+2. Team/club plans (flat rate for groups)
 
 **Payment:** LemonSqueezy (simpler than Stripe for indie SaaS, handles global tax).
