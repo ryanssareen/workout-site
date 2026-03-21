@@ -426,7 +426,7 @@ function SlideEarlyAccess({ t }: { t: Theme }) {
         <p className={cn('text-sm font-medium', t.textMuted)}>Just training.</p>
       </div>
       <NarrationBox t={t} className="max-w-xs text-center mt-2">
-        We&apos;re building this in the open. Check our <Link href="/roadmap" className="underline font-black not-italic">roadmap</Link>.
+        We&apos;re building this in the open.
       </NarrationBox>
     </div>
   );
@@ -446,7 +446,7 @@ function SlideCTA({ t }: { t: Theme }) {
           <Link href="/register">Get Started <ArrowRight className="ml-2 h-4 w-4" /></Link>
         </Button>
         <Button asChild size="lg" variant="outline" className={cn('font-bold', t.panelBorder)}>
-          <Link href="/portfolio">See the App</Link>
+          <Link href="/register">See the App</Link>
         </Button>
       </div>
       <p className={cn('text-xs mt-2', t.textSubtle)}>Built with ❤️ for daily athletes</p>
@@ -519,8 +519,6 @@ export default function ComicPage() {
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">
             <Link href="/"          className={cn('text-xs sm:text-sm transition-colors hidden sm:inline', t.navLink)}>Home</Link>
-            <Link href="/portfolio" className={cn('text-xs sm:text-sm transition-colors hidden sm:inline', t.navLink)}>Portfolio</Link>
-            <Link href="/roadmap"   className={cn('text-xs sm:text-sm transition-colors hidden sm:inline', t.navLink)}>Roadmap</Link>
             <ThemeToggle />
             <Button size="sm" asChild className="bg-red-600 hover:bg-red-700 text-white border-0 text-xs h-8">
               <Link href="/register">Get Started</Link>

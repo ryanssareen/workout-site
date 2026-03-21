@@ -41,8 +41,6 @@ export default function FeaturesPage() {
           </Link>
           <div className="flex items-center gap-3">
             <Link href="/" className="text-sm text-muted-foreground hover:text-foreground/70 transition-colors">Home</Link>
-            <Link href="/portfolio" className="text-sm text-muted-foreground hover:text-foreground/70 transition-colors">Portfolio</Link>
-            <Link href="/roadmap"   className="text-sm text-muted-foreground hover:text-foreground/70 transition-colors">Roadmap</Link>
             <Link href="/contact"   className="text-sm text-muted-foreground hover:text-foreground/70 transition-colors">Contact</Link>
             <ThemeToggle />
             <Button size="sm" asChild className="bg-red-600 hover:bg-red-700 text-white border-0 ml-2">

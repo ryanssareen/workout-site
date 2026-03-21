@@ -22,9 +22,6 @@ export default function Home() {
             <span className="font-bold text-base sm:text-lg">The Daily Athlete</span>
           </Link>
           <div className="flex gap-1.5 sm:gap-2 items-center">
-            <Link href="/portfolio" className="text-sm text-muted-foreground hover:text-foreground/70 transition-colors hidden sm:inline mr-1">Portfolio</Link>
-            <Link href="/roadmap"   className="text-sm text-muted-foreground hover:text-foreground/70 transition-colors hidden sm:inline mr-1">Roadmap</Link>
-            <Link href="/comic"    className="text-sm text-muted-foreground hover:text-foreground/70 transition-colors hidden sm:inline mr-1">Our Story</Link>
             <ThemeToggle />
             <Button variant="ghost" size="sm" asChild className="text-foreground/70 hover:text-foreground hover:bg-muted text-xs sm:text-sm px-2 sm:px-3">
               <Link href="/login">Sign In</Link>
