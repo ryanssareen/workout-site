@@ -1,4 +1,10 @@
 {
+  "rewrites": [
+    {
+      "source": "/__/auth/:path*",
+      "destination": "https://workout-tracker-8048f.firebaseapp.com/__/auth/:path*"
+    }
+  ],
   "crons": [
     {
       "path": "/api/cron/send-weekly-wrap",
