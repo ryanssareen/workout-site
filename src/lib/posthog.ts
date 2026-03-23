@@ -9,6 +9,8 @@ export function initPostHog() {
     person_profiles: 'identified_only',
     capture_pageview: false, // We capture manually via PostHogProvider
     capture_pageleave: true,
+    advanced_disable_feature_flags: true, // No feature flags used — prevents 401 on /flags/
+    advanced_disable_feature_flags_on_first_load: true,
   });
 }
 
