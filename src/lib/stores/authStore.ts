@@ -55,6 +55,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   pendingGoogleUser: null,
   setUser: (user) => {
     cacheUser(user);
+    // Mark as eagerly loaded so onAuthStateChanged skips redundant Firestore reads
+    if (user?.uid) lastLoadedUid = user.uid;
     set({ user });
   },
   setLoading: (loading) => set({ loading }),

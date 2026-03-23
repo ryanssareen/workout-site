@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { signIn, signInWithGoogle } from '@/lib/firebase/auth';
+import { signIn, signInWithGoogle, getUserProfile } from '@/lib/firebase/auth';
+import { useAuthStore } from '@/lib/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,15 +17,22 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const router = useRouter();
+  const setUser = useAuthStore((s) => s.setUser);
+  const setAuthLoading = useAuthStore((s) => s.setLoading);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await signIn(email, password, true);
+      const firebaseUser = await signIn(email, password, true);
       toast.success('Welcome back!');
-      // Navigate immediately — don't wait for authStore to resolve (saves 10-15s)
-      // Dashboard handles its own auth state and will render once store is ready
+      // Eagerly fetch profile and set in store BEFORE navigating
+      // This avoids the 10-15s wait for onAuthStateChanged → Firestore chain
+      const profile = await getUserProfile(firebaseUser.uid);
+      if (profile) {
+        setUser(profile);
+        setAuthLoading(false);
+      }
       router.replace('/dashboard');
     } catch (error: any) {
       toast.error(error.message);
@@ -40,6 +48,9 @@ export function LoginForm() {
       if (result.type === 'needs_username') {
         router.replace('/choose-username');
       } else {
+        // Existing user — profile is already in the result
+        setUser(result.user);
+        setAuthLoading(false);
         router.replace('/dashboard');
       }
     } catch (error: any) {
