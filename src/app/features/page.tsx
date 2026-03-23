@@ -213,6 +213,8 @@ export default function FeaturesPage() {
             <span className="font-bold">The Daily Athlete</span>
           </div>
           <div className="flex items-center gap-4">
+            <Link href="/privacy" className="text-sm text-muted-foreground/70 hover:text-foreground/60 transition-colors">Privacy</Link>
+            <Link href="/terms" className="text-sm text-muted-foreground/70 hover:text-foreground/60 transition-colors">Terms</Link>
             <Link href="/contact" className="text-sm text-muted-foreground/70 hover:text-foreground/60 transition-colors">Contact</Link>
             <p className="text-sm text-muted-foreground/70">&copy; {new Date().getFullYear()} The Daily Athlete</p>
           </div>

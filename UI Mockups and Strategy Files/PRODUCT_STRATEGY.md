@@ -42,6 +42,8 @@
 | **Month calendar view** | ✅ DONE — Calendar now has 4 views (day/week/month/year) with heatmap year view | ~~LOW-MEDIUM~~ |
 | **Streak gamification** | ✅ PARTIAL — Streak counter on profile/public profile, dashboard stats row. Still missing: streak notifications, at-risk nudges, visual enhancements | MEDIUM — retention lever |
 | **Firebase Spark quota** | ✅ MUCH IMPROVED — Zustand workout cache (5-min TTL + dedup), batched Strava lookups, auth store double-call fix, coach students query optimization, and auth guards significantly reduce daily reads. Quota-safe POST mode still active. Blaze upgrade less urgent now but still recommended for scale. | MEDIUM — mitigated by caching |
+| ~~**Legal pages**~~ | ✅ DONE — `/privacy` (Privacy Policy) and `/terms` (Terms of Service) pages live. Covers Strava, Garmin, AI data handling, user rights, COPPA. Footer links added across all public pages. Required for Garmin API application. | ~~HIGH~~ |
+| **Garmin Connect sync** | 🔄 IN PROGRESS — API application submitted with privacy policy + ToS. Pending Garmin approval. Once approved: OAuth flow, activity sync, webhook support. | HIGH |
 
 ### Competitive Position
 
@@ -129,7 +131,7 @@ The viral report core is built. The next wave focuses on **retention** (keeping 
 | 10 | Social Feed / Follow Athletes | Growth | HIGH — activity feed, kudos/reactions, follow system | High | **P2** |
 | 11 | Embeddable Stats Widget | Growth | MEDIUM — for blogs, Linktree, personal sites | Medium | **P2** |
 | 12 | Training Block Summary | Viral | MEDIUM — pre-event preparation report | High | **P2** |
-| 13 | Import from Other Platforms | Growth | ✅ PARTIAL — CSV/XLSX import with AI extraction + programmatic date detection in onboarding. Still need: direct Garmin Connect, Apple Health, Wahoo API imports | High | **P2** |
+| 13 | Import from Other Platforms | Growth | ✅ PARTIAL — CSV/XLSX import with AI extraction + programmatic date detection in onboarding. Garmin API application submitted (privacy policy + ToS pages live). Still need: direct Garmin Connect sync, Apple Health, Wahoo API imports | High | **P2** |
 | 14 | Group Challenges | Growth / retention | HIGH — weekly/monthly challenges between friends | High | **P3** |
 | 15 | Advanced Training Load Analytics | Differentiation | MEDIUM — TSS/CTL/ATL fitness-fatigue chart, HR zones | High | **P3** |
 

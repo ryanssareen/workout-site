@@ -11,7 +11,7 @@ The Daily Athlete is a SaaS workout tracking platform for athletes. Built with N
 - **State:** Zustand stores (`src/lib/stores/`)
 - **AI:** Groq SDK (LLaMA 3.3 70B + 8B instant fallback) + OpenAI SDK for workout suggestions and reports
 - **Email:** Nodemailer (Gmail SMTP) + Brevo
-- **Integrations:** Strava API (OAuth + webhooks), PostHog (product analytics)
+- **Integrations:** Strava API (OAuth + webhooks), Garmin Connect API (OAuth, pending approval), PostHog (product analytics)
 - **Charts:** Recharts
 - **Storage:** Vercel Blob (backups), Firebase Storage (user content)
 - **Deploy:** Vercel (env vars stored there, no local .env)
@@ -108,6 +108,8 @@ npx tsc --noEmit     # Type check without building
 - `/reports` — **3-zone Reports Hub**. Zone 1: AI Insight Card (daily Groq-generated, cached in Firestore) + Ask Anything bar. Zone 2: Links to Weekly Wrap, Monthly Review, Year in Review. Zone 3: Context-aware deep-dive cards (Sport Deep Dive, Trend Report, Goal Tracker, Recovery Report, PR Timeline, Training Analysis). Template-based report generation with 5 templates, Groq AI, Firestore caching (6-24h TTL), 8B model fallback.
 - `/reports/[reportType]` — Dynamic report pages with skeleton loading. Generated from templates via Groq AI.
 - `/dashboard` — Unified workout view. Stats row (streak, this week, all-time, total), weekly activity bar chart, type breakdown, upcoming workouts (correctly excludes past), recently completed, event countdowns, weekly wrap CTA, monthly review CTA, quick links grid.
+- `/privacy` — Privacy Policy page. Covers account data, workout data, third-party integrations (Strava, Garmin), AI features, PostHog analytics, data storage, user rights, and retention. Required for Garmin API access.
+- `/terms` — Terms of Service page. Covers acceptable use, third-party integrations (Strava, Garmin), AI disclaimer, account termination, liability limitations. Required for Garmin API access.
 - `/portfolio` — Feature tour page with real screenshots, light/dark toggle.
 - `/roadmap` — Visual phase timeline with progress tracking.
 - `/comic` — 14-slide origin story carousel.
@@ -227,6 +229,9 @@ npx tsc --noEmit     # Type check without building
 - Groq rate limits (100K tokens/day on 70B model) — mitigated with 8B fallback but can still hit both limits
 
 ## Recent Changes
+- Privacy Policy (`/privacy`) and Terms of Service (`/terms`) pages added — required for Garmin API application
+- Garmin Connect integration planned (API application pending)
+- Footer links to Privacy/Terms added across all public pages (landing, features, contact)
 - Walk workout type added across 33 files (#81)
 - PostHog analytics integrated (PostHogProvider wrapping app)
 - Vercel Blob replaces Firebase Storage for backups (no Blaze plan needed)

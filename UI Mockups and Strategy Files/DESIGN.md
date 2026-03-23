@@ -783,6 +783,8 @@ Shared components (`PieChart`, `StatCard`, format helpers) live in `src/componen
 
 - **`/features`** — Marketing page: 3 pillars, 12-feature grid, workout tags showcase, How It Works
 - **`/contact`** — Contact hub: 2 email cards + GitHub link
+- **`/privacy`** — Privacy Policy: data collection, Strava/Garmin integration terms, AI data handling, third-party services, user rights, retention policy. Required for Garmin API access.
+- **`/terms`** — Terms of Service: acceptable use, third-party integrations (Strava, Garmin), AI disclaimer, account termination, liability. Required for Garmin API access.
 
 ---
 
