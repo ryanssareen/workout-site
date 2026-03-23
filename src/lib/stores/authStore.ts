@@ -19,6 +19,32 @@ interface AuthState {
   initialize: () => void;
 }
 
+const CACHE_KEY = 'tda_auth_cache';
+
+/** Save user profile to localStorage for instant hydration on next visit */
+function cacheUser(user: User | null) {
+  if (typeof window === 'undefined') return;
+  try {
+    if (user) {
+      localStorage.setItem(CACHE_KEY, JSON.stringify(user));
+    } else {
+      localStorage.removeItem(CACHE_KEY);
+    }
+  } catch { /* quota exceeded or private browsing */ }
+}
+
+/** Read cached user profile from localStorage */
+function getCachedUser(): User | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as User;
+  } catch {
+    return null;
+  }
+}
+
 // Track the last loaded UID to avoid redundant Firestore reads on repeat auth events
 let lastLoadedUid: string | null = null;
 
@@ -27,17 +53,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loading: true,
   needsUsername: false,
   pendingGoogleUser: null,
-  setUser: (user) => set({ user }),
+  setUser: (user) => {
+    cacheUser(user);
+    set({ user });
+  },
   setLoading: (loading) => set({ loading }),
   setNeedsUsername: (needs, pending = null) => set({ needsUsername: needs, pendingGoogleUser: pending }),
   initialize: async () => {
+    // Hydrate from localStorage cache instantly — show UI without waiting for Firestore
+    const cached = getCachedUser();
+    if (cached) {
+      set({ user: cached, loading: false });
+      lastLoadedUid = '__cached__';
+    }
+
     // Dynamic import to prevent Firebase loading during SSR/build
     const { onAuthChange, getUserProfileByUsername } = await import('@/lib/firebase/auth');
     const { getUsernameFromUid } = await import('@/lib/firebase/userMapping');
 
     onAuthChange(async (firebaseUser) => {
       if (firebaseUser) {
-        // Skip re-fetch if we already have the profile for this UID
+        // Skip re-fetch if we already have the fresh profile for this UID
         const currentUser = get().user;
         if (currentUser && lastLoadedUid === firebaseUser.uid) {
           set({ loading: false });
@@ -49,6 +85,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         if (!username) {
           // Firebase auth exists but no user doc yet (Google sign-in, needs username)
           lastLoadedUid = null;
+          cacheUser(null);
           set({
             user: null,
             loading: false,
@@ -63,12 +100,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           return;
         }
 
-        // Fetch profile by username directly — avoids redundant getUsernameFromUid call (1 read instead of 2)
+        // Fetch profile by username directly (1 read)
         const userProfile = await getUserProfileByUsername(username);
         lastLoadedUid = firebaseUser.uid;
+        cacheUser(userProfile);
         set({ user: userProfile, loading: false, needsUsername: false, pendingGoogleUser: null });
       } else {
         lastLoadedUid = null;
+        cacheUser(null);
         set({ user: null, loading: false, needsUsername: false, pendingGoogleUser: null });
       }
     });
