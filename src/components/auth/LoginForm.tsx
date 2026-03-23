@@ -13,7 +13,6 @@ import { Dumbbell, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const router = useRouter();
@@ -22,7 +21,7 @@ export function LoginForm() {
     e.preventDefault();
     setLoading(true);
     try {
-      await signIn(email, password, rememberMe);
+      await signIn(email, password, true);
       toast.success('Welcome back!');
       // Navigate immediately — don't wait for authStore to resolve (saves 10-15s)
       // Dashboard handles its own auth state and will render once store is ready
@@ -100,17 +99,6 @@ export function LoginForm() {
                 className="pl-10 h-11 bg-muted/50 border-border text-foreground placeholder:text-muted-foreground/50 focus:border-red-500 focus:ring-red-500/20 transition-colors"
               />
             </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <input
-              id="rememberMe"
-              type="checkbox"
-              checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
-              className="h-4 w-4 rounded accent-red-600 border-border bg-muted/50"
-            />
-            <Label htmlFor="rememberMe" className="text-sm cursor-pointer select-none text-muted-foreground">Remember me</Label>
           </div>
 
           <Button type="submit" className="w-full h-11 font-bold bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/25 border-0 transition-all" disabled={loading || googleLoading}>
