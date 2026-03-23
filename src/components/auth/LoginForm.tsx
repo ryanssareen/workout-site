@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn, signInWithGoogle } from '@/lib/firebase/auth';
-import { useAuthStore } from '@/lib/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,24 +16,7 @@ export function LoginForm() {
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [waitingForAuth, setWaitingForAuth] = useState(false);
   const router = useRouter();
-  const user = useAuthStore((state) => state.user);
-  const needsUsername = useAuthStore((state) => state.needsUsername);
-
-  useEffect(() => {
-    if (waitingForAuth && needsUsername) {
-      router.replace('/choose-username');
-      return;
-    }
-    if (waitingForAuth && user) {
-      if (user.onboardingCompleted === false) {
-        router.replace('/onboarding');
-      } else {
-        router.replace('/dashboard');
-      }
-    }
-  }, [waitingForAuth, user, needsUsername, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +24,9 @@ export function LoginForm() {
     try {
       await signIn(email, password, rememberMe);
       toast.success('Welcome back!');
-      setWaitingForAuth(true);
+      // Navigate immediately — don't wait for authStore to resolve (saves 10-15s)
+      // Dashboard handles its own auth state and will render once store is ready
+      router.replace('/dashboard');
     } catch (error: any) {
       toast.error(error.message);
       setLoading(false);
@@ -52,9 +36,13 @@ export function LoginForm() {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      await signInWithGoogle();
+      const result = await signInWithGoogle();
       toast.success('Welcome!');
-      setWaitingForAuth(true);
+      if (result.type === 'needs_username') {
+        router.replace('/choose-username');
+      } else {
+        router.replace('/dashboard');
+      }
     } catch (error: any) {
       if (error.message !== 'Sign-in cancelled') {
         toast.error(error.message);
@@ -125,9 +113,8 @@ export function LoginForm() {
             <Label htmlFor="rememberMe" className="text-sm cursor-pointer select-none text-muted-foreground">Remember me</Label>
           </div>
 
-          <Button type="submit" className="w-full h-11 font-bold bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/25 border-0 transition-all" disabled={loading || waitingForAuth || googleLoading}>
-            {waitingForAuth ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Redirecting...</>
-              : loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Signing in...</>
+          <Button type="submit" className="w-full h-11 font-bold bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/25 border-0 transition-all" disabled={loading || googleLoading}>
+            {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Signing in...</>
               : <>Sign In<ArrowRight className="w-4 h-4 ml-2" /></>}
           </Button>
 
@@ -145,7 +132,7 @@ export function LoginForm() {
             variant="outline"
             className="w-full h-11 font-medium bg-white hover:bg-gray-50 text-gray-700 border-border dark:bg-white dark:hover:bg-gray-50 dark:text-gray-700"
             onClick={handleGoogleSignIn}
-            disabled={loading || waitingForAuth || googleLoading}
+            disabled={loading || googleLoading}
           >
             {googleLoading ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
