@@ -100,12 +100,6 @@ export default function PrivacyPolicyPage() {
                     elevation, laps, splits, photos), and activity metadata. We access this data via the Strava API using
                     OAuth 2.0 authorization that you explicitly grant.
                   </li>
-                  <li>
-                    <strong>Garmin Connect:</strong> Activity summaries, detailed activity data (distance, duration, heart rate,
-                    elevation, steps, calories, stress, Body Battery, sleep data, and training metrics). We access this data
-                    via the Garmin Health API and/or Garmin Connect API using OAuth authorization that you explicitly grant.
-                    Garmin data is used solely to display your workouts and training insights within the Service.
-                  </li>
                 </ul>
                 <p className="text-muted-foreground leading-relaxed mt-3">
                   You can disconnect any third-party service at any time from your Settings page, which revokes our access
@@ -133,7 +127,7 @@ export default function PrivacyPolicyPage() {
                   <li>Provide, maintain, and improve the Service</li>
                   <li>Display your workout history, stats, progress, and training insights</li>
                   <li>Generate AI-powered workout suggestions, reports, and coaching insights</li>
-                  <li>Sync and merge workout data from connected third-party services (Strava, Garmin)</li>
+                  <li>Sync and merge workout data from connected third-party services (Strava)</li>
                   <li>Send you email summaries, weekly wraps, and push notifications (with your consent)</li>
                   <li>Detect and prevent abuse, fraud, or unauthorized access</li>
                   <li>Generate anonymized aggregate statistics about platform usage</li>
@@ -169,7 +163,6 @@ export default function PrivacyPolicyPage() {
                   <li><strong>Firebase (Google):</strong> Authentication, database, and storage — <a href="https://firebase.google.com/support/privacy" className="text-red-400 hover:text-red-300 underline" target="_blank" rel="noopener noreferrer">Privacy Policy</a></li>
                   <li><strong>Vercel:</strong> Hosting and deployment — <a href="https://vercel.com/legal/privacy-policy" className="text-red-400 hover:text-red-300 underline" target="_blank" rel="noopener noreferrer">Privacy Policy</a></li>
                   <li><strong>Strava:</strong> Workout sync — <a href="https://www.strava.com/legal/privacy" className="text-red-400 hover:text-red-300 underline" target="_blank" rel="noopener noreferrer">Privacy Policy</a></li>
-                  <li><strong>Garmin:</strong> Workout sync — <a href="https://www.garmin.com/en-US/privacy/connect/" className="text-red-400 hover:text-red-300 underline" target="_blank" rel="noopener noreferrer">Privacy Policy</a></li>
                   <li><strong>Groq:</strong> AI-powered insights and suggestions — <a href="https://groq.com/privacy-policy/" className="text-red-400 hover:text-red-300 underline" target="_blank" rel="noopener noreferrer">Privacy Policy</a></li>
                   <li><strong>PostHog:</strong> Product analytics — <a href="https://posthog.com/privacy" className="text-red-400 hover:text-red-300 underline" target="_blank" rel="noopener noreferrer">Privacy Policy</a></li>
                   <li><strong>Brevo:</strong> Email delivery — <a href="https://www.brevo.com/legal/privacypolicy/" className="text-red-400 hover:text-red-300 underline" target="_blank" rel="noopener noreferrer">Privacy Policy</a></li>
@@ -182,23 +175,7 @@ export default function PrivacyPolicyPage() {
               </section>
 
               <section>
-                <h2 className="text-2xl font-bold text-foreground mb-3">6. Garmin Data Usage</h2>
-                <p className="text-muted-foreground leading-relaxed">
-                  When you connect your Garmin account, the following specific terms apply:
-                </p>
-                <ul className="list-disc pl-6 text-muted-foreground space-y-2 mt-2">
-                  <li>We access Garmin data only after you explicitly authorize via Garmin&apos;s OAuth flow</li>
-                  <li>Garmin data is used exclusively to display your workouts, compute training analytics, and provide personalized insights within The Daily Athlete</li>
-                  <li>We do not sell, rent, or share your Garmin data with any third parties</li>
-                  <li>We do not use Garmin data for advertising or marketing purposes</li>
-                  <li>Garmin data is stored securely in our database and is accessible only to you (and administrators for support purposes)</li>
-                  <li>You may disconnect Garmin and request deletion of all Garmin-sourced data at any time</li>
-                  <li>We comply with all Garmin API Terms of Use and data handling requirements</li>
-                </ul>
-              </section>
-
-              <section>
-                <h2 className="text-2xl font-bold text-foreground mb-3">7. Data Sharing</h2>
+                <h2 className="text-2xl font-bold text-foreground mb-3">6. Data Sharing</h2>
                 <p className="text-muted-foreground leading-relaxed">
                   We do <strong>not</strong> sell, rent, or trade your personal data. We may share data only in these limited cases:
                 </p>
@@ -210,7 +187,7 @@ export default function PrivacyPolicyPage() {
               </section>
 
               <section>
-                <h2 className="text-2xl font-bold text-foreground mb-3">8. Your Rights</h2>
+                <h2 className="text-2xl font-bold text-foreground mb-3">7. Your Rights</h2>
                 <p className="text-muted-foreground leading-relaxed">You have the right to:</p>
                 <ul className="list-disc pl-6 text-muted-foreground space-y-2 mt-2">
                   <li><strong>Access:</strong> View all data we hold about you through your profile and settings pages</li>
@@ -226,7 +203,7 @@ export default function PrivacyPolicyPage() {
               </section>
 
               <section>
-                <h2 className="text-2xl font-bold text-foreground mb-3">9. Data Retention</h2>
+                <h2 className="text-2xl font-bold text-foreground mb-3">8. Data Retention</h2>
                 <p className="text-muted-foreground leading-relaxed">
                   We retain your data for as long as your account is active. If you delete your account, we will delete
                   your personal data within 30 days, except where we are required to retain it for legal or legitimate
@@ -236,7 +213,7 @@ export default function PrivacyPolicyPage() {
               </section>
 
               <section>
-                <h2 className="text-2xl font-bold text-foreground mb-3">10. Children&apos;s Privacy</h2>
+                <h2 className="text-2xl font-bold text-foreground mb-3">9. Children&apos;s Privacy</h2>
                 <p className="text-muted-foreground leading-relaxed">
                   The Service is not intended for children under 13 years of age. We do not knowingly collect personal
                   information from children under 13. If you believe we have collected data from a child under 13,
@@ -245,7 +222,7 @@ export default function PrivacyPolicyPage() {
               </section>
 
               <section>
-                <h2 className="text-2xl font-bold text-foreground mb-3">11. Changes to This Policy</h2>
+                <h2 className="text-2xl font-bold text-foreground mb-3">10. Changes to This Policy</h2>
                 <p className="text-muted-foreground leading-relaxed">
                   We may update this Privacy Policy from time to time. We will notify you of any material changes by
                   posting the new policy on this page and updating the &quot;Last updated&quot; date. Continued use of
@@ -254,7 +231,7 @@ export default function PrivacyPolicyPage() {
               </section>
 
               <section>
-                <h2 className="text-2xl font-bold text-foreground mb-3">12. Contact Us</h2>
+                <h2 className="text-2xl font-bold text-foreground mb-3">11. Contact Us</h2>
                 <p className="text-muted-foreground leading-relaxed">
                   If you have questions about this Privacy Policy or our data practices, contact us at:
                 </p>

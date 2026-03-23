@@ -75,7 +75,7 @@ export default function TermsOfServicePage() {
                 </p>
                 <ul className="list-disc pl-6 text-muted-foreground space-y-2 mt-2">
                   <li>Log and track workouts across multiple sports (running, cycling, swimming, walking, strength training)</li>
-                  <li>Sync workout data from third-party services including Strava and Garmin Connect</li>
+                  <li>Sync workout data from third-party services including Strava</li>
                   <li>View training analytics, progress reports, and AI-generated insights</li>
                   <li>Set goals, track personal records, and monitor training trends</li>
                   <li>Share training summaries (weekly wraps, monthly reviews, yearly wrapped)</li>
@@ -112,23 +112,7 @@ export default function TermsOfServicePage() {
                   You may disconnect Strava at any time from your Settings page.
                 </p>
 
-                <h3 className="text-lg font-semibold text-foreground mt-6 mb-2">4.2 Garmin Connect</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  When you connect your Garmin account, you authorize us to access your Garmin activity and health data
-                  via the Garmin API. Your use of Garmin Connect is governed by <a href="https://www.garmin.com/en-US/legal/connect-terms-of-use/" className="text-red-400 hover:text-red-300 underline" target="_blank" rel="noopener noreferrer">Garmin&apos;s Terms of Use</a>.
-                  You may disconnect Garmin at any time from your Settings page.
-                </p>
-                <p className="text-muted-foreground leading-relaxed mt-2">
-                  By connecting Garmin, you acknowledge that:
-                </p>
-                <ul className="list-disc pl-6 text-muted-foreground space-y-2 mt-2">
-                  <li>We access your Garmin data solely to provide workout tracking and analytics features within The Daily Athlete</li>
-                  <li>We do not sell, share, or redistribute your Garmin data to any third party</li>
-                  <li>You can revoke access at any time, and we will stop collecting new data from Garmin</li>
-                  <li>We comply with all applicable Garmin API terms and data handling requirements</li>
-                </ul>
-
-                <h3 className="text-lg font-semibold text-foreground mt-6 mb-2">4.3 General</h3>
+                <h3 className="text-lg font-semibold text-foreground mt-6 mb-2">4.2 General</h3>
                 <p className="text-muted-foreground leading-relaxed">
                   We are not responsible for the availability, accuracy, or functionality of third-party services.
                   Third-party services may change their APIs, rate limits, or terms at any time, which may affect
