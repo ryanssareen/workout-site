@@ -27,7 +27,9 @@ export default function LoginPage() {
     }
   }, [user, loading, needsUsername, router]);
 
-  if (loading || user) {
+  // Only block rendering if user is confirmed logged in (redirect in progress)
+  // Don't block on `loading` — show the form immediately while auth state resolves
+  if (!loading && user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-red-500" />
