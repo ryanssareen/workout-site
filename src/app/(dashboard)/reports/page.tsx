@@ -32,7 +32,6 @@ export default function ReportsHubPage() {
   const user = useAuthStore((state) => state.user);
   const loading = useAuthStore((state) => state.loading);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
-  const [loadingWorkouts, setLoadingWorkouts] = useState(true);
   const [insight, setInsight] = useState<AIInsight | null>(null);
   const [loadingInsight, setLoadingInsight] = useState(true);
 
@@ -44,18 +43,15 @@ export default function ReportsHubPage() {
 
   const { getWorkouts } = useWorkoutStore();
 
-  // Fetch workouts
+  // Fetch workouts in background — Zone 3 cards show immediately with generic teasers
   const fetchWorkouts = useCallback(async () => {
     if (!user) return;
-    setLoadingWorkouts(true);
     try {
       const role = user.role === 'student' ? 'athlete' : user.role;
       const data = await getWorkouts(user.username, role as 'coach' | 'athlete');
       setWorkouts(data);
     } catch (err) {
       console.error('Failed to fetch workouts:', err);
-    } finally {
-      setLoadingWorkouts(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.username, user?.role, getWorkouts]);
@@ -164,36 +160,12 @@ export default function ReportsHubPage() {
       </section>
 
       {/* ═══ ZONE 3: EXPLORE YOUR DATA ═══ */}
-      {!loadingWorkouts && (
-        <section className="space-y-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-0.5">
-            Explore Your Data
-          </h2>
-          <ExploreCards workouts={workouts} user={user} />
-        </section>
-      )}
-
-      {/* Loading state for Zone 3 */}
-      {loadingWorkouts && (
-        <section className="space-y-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-0.5">
-            Explore Your Data
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="rounded-xl border bg-card p-4 animate-pulse">
-                <div className="flex items-start gap-3">
-                  <div className="h-8 w-8 rounded-lg bg-muted" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 w-32 bg-muted rounded" />
-                    <div className="h-3 w-full bg-muted rounded" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      <section className="space-y-2">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-0.5">
+          Explore Your Data
+        </h2>
+        <ExploreCards workouts={workouts} user={user} />
+      </section>
     </div>
   );
 }

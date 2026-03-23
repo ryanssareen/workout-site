@@ -11,6 +11,7 @@ export function initPostHog() {
     capture_pageleave: true,
     advanced_disable_feature_flags: true, // No feature flags used — prevents 401 on /flags/
     advanced_disable_feature_flags_on_first_load: true,
+    advanced_disable_decide: true, // Fully disable /decide endpoint (flags, surveys, etc.)
   });
 }
 
