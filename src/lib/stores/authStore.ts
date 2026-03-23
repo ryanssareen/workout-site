@@ -58,37 +58,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setLoading: (loading) => set({ loading }),
   setNeedsUsername: (needs, pending = null) => set({ needsUsername: needs, pendingGoogleUser: pending }),
   initialize: async () => {
-    const t0 = performance.now();
-    console.log('[auth] initialize() start');
-
+    // Hydrate from localStorage cache instantly — show UI without waiting for Firestore
     const cached = getCachedUser();
     if (cached) {
-      console.log(`[auth] cache hit in ${(performance.now() - t0).toFixed(0)}ms, setting user immediately`);
       set({ user: cached, loading: false });
       lastLoadedUid = '__cached__';
     }
 
-    const t1 = performance.now();
+    // Dynamic import to prevent Firebase loading during SSR/build
     const { onAuthChange, getUserProfileByUsername } = await import('@/lib/firebase/auth');
     const { getUsernameFromUid } = await import('@/lib/firebase/userMapping');
-    console.log(`[auth] dynamic imports done in ${(performance.now() - t1).toFixed(0)}ms`);
 
     onAuthChange(async (firebaseUser) => {
-      const t2 = performance.now();
-      console.log(`[auth] onAuthStateChanged fired at +${(t2 - t0).toFixed(0)}ms, user=${!!firebaseUser}`);
-
       if (firebaseUser) {
+        // Skip re-fetch if we already have the fresh profile for this UID
         const currentUser = get().user;
         if (currentUser && lastLoadedUid === firebaseUser.uid) {
-          console.log(`[auth] skipping re-fetch, lastLoadedUid matches at +${(performance.now() - t0).toFixed(0)}ms`);
           set({ loading: false });
           return;
         }
 
-        const t3 = performance.now();
         const username = await getUsernameFromUid(firebaseUser.uid);
-        console.log(`[auth] getUsernameFromUid took ${(performance.now() - t3).toFixed(0)}ms, username=${username}`);
-
         if (!username) {
           lastLoadedUid = null;
           cacheUser(null);
@@ -104,19 +94,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           return;
         }
 
-        const t4 = performance.now();
         const userProfile = await getUserProfileByUsername(username);
-        console.log(`[auth] getUserProfileByUsername took ${(performance.now() - t4).toFixed(0)}ms`);
-
         lastLoadedUid = firebaseUser.uid;
         cacheUser(userProfile);
         set({ user: userProfile, loading: false, needsUsername: false, pendingGoogleUser: null });
-        console.log(`[auth] DONE, total: ${(performance.now() - t0).toFixed(0)}ms`);
       } else {
         lastLoadedUid = null;
         cacheUser(null);
         set({ user: null, loading: false, needsUsername: false, pendingGoogleUser: null });
-        console.log(`[auth] no user, loading=false at +${(performance.now() - t0).toFixed(0)}ms`);
       }
     });
   },

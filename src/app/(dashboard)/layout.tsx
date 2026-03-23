@@ -16,9 +16,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const loading = useAuthStore((state) => state.loading);
   const needsUsername = useAuthStore((state) => state.needsUsername);
 
-  if (typeof window !== 'undefined') {
-    console.log(`[layout] render: loading=${loading}, user=${!!user}, path=${pathname}`);
-  }
 
   useEffect(() => {
     if (loading) return;
