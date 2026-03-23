@@ -23,17 +23,23 @@ export function LoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    const t0 = performance.now();
+    console.log('[login] submit start');
     try {
-      const firebaseUser = await signIn(email, password, true);
+      const firebaseUser = await signIn(email, password);
+      console.log(`[login] signIn done in ${(performance.now() - t0).toFixed(0)}ms`);
       toast.success('Welcome back!');
       // Navigate immediately, then fetch profile in parallel
-      // Dashboard layout shows brief loading while profile resolves
       router.replace('/dashboard');
+      console.log(`[login] router.replace called at ${(performance.now() - t0).toFixed(0)}ms`);
       // Eagerly fetch profile so authStore resolves faster than onAuthStateChanged
+      const t1 = performance.now();
       getUserProfile(firebaseUser.uid).then(profile => {
+        console.log(`[login] getUserProfile done in ${(performance.now() - t1).toFixed(0)}ms`);
         if (profile) {
           setUser(profile);
           setAuthLoading(false);
+          console.log(`[login] user set, total: ${(performance.now() - t0).toFixed(0)}ms`);
         }
       });
     } catch (error: any) {
