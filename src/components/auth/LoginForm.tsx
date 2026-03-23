@@ -26,14 +26,16 @@ export function LoginForm() {
     try {
       const firebaseUser = await signIn(email, password, true);
       toast.success('Welcome back!');
-      // Eagerly fetch profile and set in store BEFORE navigating
-      // This avoids the 10-15s wait for onAuthStateChanged → Firestore chain
-      const profile = await getUserProfile(firebaseUser.uid);
-      if (profile) {
-        setUser(profile);
-        setAuthLoading(false);
-      }
+      // Navigate immediately, then fetch profile in parallel
+      // Dashboard layout shows brief loading while profile resolves
       router.replace('/dashboard');
+      // Eagerly fetch profile so authStore resolves faster than onAuthStateChanged
+      getUserProfile(firebaseUser.uid).then(profile => {
+        if (profile) {
+          setUser(profile);
+          setAuthLoading(false);
+        }
+      });
     } catch (error: any) {
       toast.error(error.message);
       setLoading(false);

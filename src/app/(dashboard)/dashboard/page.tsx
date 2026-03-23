@@ -126,8 +126,7 @@ export default function DashboardPage() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [ready, setReady] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
   const [wrapBannerDismissed, setWrapBannerDismissed] = useState(false);
 
   const greeting = useMemo(() => {
@@ -161,8 +160,7 @@ export default function DashboardPage() {
       setWorkouts(workoutData);
       setPersonalRecords(prData);
       setMilestones(msData);
-      setLoading(false);
-      setTimeout(() => setReady(true), 100);
+      setDataLoaded(true);
     }
     loadData();
   }, [user, getWorkouts]);
@@ -220,7 +218,7 @@ export default function DashboardPage() {
       .slice(0, 3);
   }, [user?.events, now]);
 
-  if (loading || !ready) {
+  if (!user) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="flex flex-col items-center gap-4">
