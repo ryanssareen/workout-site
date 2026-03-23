@@ -5,7 +5,9 @@ interface DataTableProps {
 }
 
 export function DataTable({ section }: DataTableProps) {
-  const { headers, rows, caption } = section;
+  const { caption } = section;
+  const headers = Array.isArray(section.headers) ? section.headers : [];
+  const rows = Array.isArray(section.rows) ? section.rows : [];
 
   return (
     <div className="space-y-2">
@@ -29,12 +31,14 @@ export function DataTable({ section }: DataTableProps) {
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-700">
-            {rows.map((row, rowIdx) => (
+            {rows.map((row, rowIdx) => {
+              const cells = Array.isArray(row) ? row : [];
+              return (
               <tr
                 key={rowIdx}
                 className={rowIdx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-800/50'}
               >
-                {row.map((cell, cellIdx) => (
+                {cells.map((cell, cellIdx) => (
                   <td
                     key={cellIdx}
                     className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-slate-100"
@@ -43,7 +47,8 @@ export function DataTable({ section }: DataTableProps) {
                   </td>
                 ))}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

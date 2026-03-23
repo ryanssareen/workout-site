@@ -8,6 +8,7 @@ import { ShareButtons } from '@/components/workouts/ShareWorkoutCard';
 import { Loader2, X, Share2, ChevronRight, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from '@/components/dashboard/ThemeToggle';
 import {
   YEAR, SLIDES, computeYearStats,
   StatsSlide, BreakdownSlide, RecordsSlide, HeatmapSlide, SummarySlide, FinalSlide,
@@ -111,7 +112,7 @@ export default function YearlyWrappedPage() {
 
   if (loading) {
     return (
-      <div className="dark min-h-screen flex items-center justify-center bg-black">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-red-500" />
           <p className="text-red-400/60 animate-pulse text-sm">Loading your year...</p>
@@ -135,7 +136,7 @@ export default function YearlyWrappedPage() {
           }}
           className={cn(
             'h-1.5 rounded-full transition-all duration-300',
-            i === currentSlide ? 'w-6 bg-red-500' : 'w-1.5 bg-white/20',
+            i === currentSlide ? 'w-6 bg-red-500' : 'w-1.5 bg-foreground/20',
             i > 0 && !guessSubmitted && 'opacity-30 cursor-not-allowed',
           )}
         />
@@ -144,19 +145,19 @@ export default function YearlyWrappedPage() {
   );
 
   return (
-    <div className="dark min-h-screen bg-black text-white relative">
+    <div className="min-h-screen bg-background text-foreground relative">
       {/* Top bar */}
-      <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] bg-black/80 backdrop-blur-xl">
-        <Link href="/dashboard" className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors">
-          <X className="h-5 w-5 text-white/60" />
+      <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] bg-background/80 backdrop-blur-xl">
+        <Link href="/dashboard" className="p-2 -ml-2 rounded-full hover:bg-muted transition-colors">
+          <X className="h-5 w-5 text-muted-foreground" />
         </Link>
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-md bg-red-600 flex items-center justify-center">
             <span className="text-white font-bold text-[8px]">CT</span>
           </div>
-          <span className="text-white/40 text-xs font-medium tracking-widest uppercase">{YEAR} Wrapped</span>
+          <span className="text-muted-foreground text-xs font-medium tracking-widest uppercase">{YEAR} Wrapped</span>
         </div>
-        <div className="w-9" />
+        <ThemeToggle />
       </div>
 
       {/* Slide content */}
@@ -174,7 +175,7 @@ export default function YearlyWrappedPage() {
             <h1 className="text-3xl sm:text-4xl font-bold mb-3 leading-tight">
               You did <span className="text-red-500">a lot</span> of workouts in {YEAR}
             </h1>
-            <p className="text-white/50 text-lg mb-10">Guess how many</p>
+            <p className="text-muted-foreground text-lg mb-10">Guess how many</p>
 
             {!guessSubmitted ? (
               <div className="w-full max-w-xs space-y-4">
@@ -186,7 +187,7 @@ export default function YearlyWrappedPage() {
                   onChange={e => setGuess(e.target.value.replace(/\D/g, ''))}
                   onKeyDown={e => e.key === 'Enter' && handleGuess()}
                   placeholder="Your guess..."
-                  className="w-full text-center text-4xl font-bold bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white placeholder:text-white/20 focus:outline-none focus:border-red-500/50 focus:ring-2 focus:ring-red-500/20 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="w-full text-center text-4xl font-bold bg-foreground/5 border border-foreground/10 rounded-2xl py-4 px-6 text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-red-500/50 focus:ring-2 focus:ring-red-500/20 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   autoFocus
                 />
                 <button
@@ -200,7 +201,7 @@ export default function YearlyWrappedPage() {
             ) : (
               <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="text-5xl font-bold text-red-500">{guessNum}</div>
-                <p className="text-white/40 text-sm">Let&apos;s see...</p>
+                <p className="text-muted-foreground text-sm">Let&apos;s see...</p>
                 <Loader2 className="h-6 w-6 animate-spin text-red-500 mx-auto" />
               </div>
             )}
@@ -215,11 +216,11 @@ export default function YearlyWrappedPage() {
               <div className="text-[120px] sm:text-[160px] font-black leading-none text-red-500 tracking-tighter">
                 {actual}
               </div>
-              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-white/30 text-sm font-medium tracking-widest uppercase">
+              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-muted-foreground/50 text-sm font-medium tracking-widest uppercase">
                 workouts
               </div>
             </div>
-            <p className="text-xl sm:text-2xl font-medium text-white/80 leading-relaxed max-w-sm">
+            <p className="text-xl sm:text-2xl font-medium text-foreground/80 leading-relaxed max-w-sm">
               {guessResponse}
             </p>
             <button onClick={goNext} className="mt-10 flex items-center gap-2 text-red-400 text-sm font-medium hover:text-red-300 transition-colors">
@@ -238,7 +239,7 @@ export default function YearlyWrappedPage() {
       </div>
 
       {/* Bottom bar */}
-      <div className="sticky bottom-0 z-30 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 bg-gradient-to-t from-black via-black/80 to-transparent">
+      <div className="sticky bottom-0 z-30 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 bg-gradient-to-t from-background via-background/80 to-transparent">
         {progressBar}
 
         {slide === 'final' ? (
@@ -268,14 +269,14 @@ export default function YearlyWrappedPage() {
             <button
               onClick={goPrev}
               disabled={isFirst}
-              className="px-4 py-2 text-white/40 text-sm hover:text-white/60 disabled:opacity-20 transition-colors"
+              className="px-4 py-2 text-muted-foreground text-sm hover:text-foreground disabled:opacity-20 transition-colors"
             >
               Back
             </button>
             <button
               onClick={goNext}
               disabled={isLast}
-              className="flex items-center gap-1.5 px-6 py-3 rounded-xl bg-white/10 text-white text-sm font-medium hover:bg-white/15 disabled:opacity-20 transition-all active:scale-95"
+              className="flex items-center gap-1.5 px-6 py-3 rounded-xl bg-foreground/10 text-foreground text-sm font-medium hover:bg-foreground/15 disabled:opacity-20 transition-all active:scale-95"
             >
               Next <ChevronRight className="h-4 w-4" />
             </button>

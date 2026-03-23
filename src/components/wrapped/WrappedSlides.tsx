@@ -235,13 +235,13 @@ export function StatsSlide({ stats, animateIn }: { stats: YearStats; animateIn: 
 
   return (
     <div className="max-w-2xl mx-auto w-full">
-      <p className="text-white/40 text-xs font-medium tracking-widest uppercase mb-6">Your {YEAR} in numbers</p>
+      <p className="text-foreground/40 text-xs font-medium tracking-widest uppercase mb-6">Your {YEAR} in numbers</p>
       <div className="grid grid-cols-2 gap-3 sm:gap-4">
         {items.map((stat, i) => (
           <div
             key={stat.label}
             className={cn(
-              'rounded-2xl border border-white/5 p-4 sm:p-5 bg-gradient-to-br transition-all duration-500',
+              'rounded-2xl border border-foreground/5 p-4 sm:p-5 bg-gradient-to-br transition-all duration-500',
               gradients[i],
               animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4',
             )}
@@ -250,17 +250,17 @@ export function StatsSlide({ stats, animateIn }: { stats: YearStats; animateIn: 
             <span className="text-2xl">{stat.icon}</span>
             <div className="mt-2">
               <div className="flex items-baseline gap-1">
-                <span className="text-3xl sm:text-4xl font-black text-white">{stat.value}</span>
-                <span className="text-sm text-white/40">{stat.unit}</span>
+                <span className="text-3xl sm:text-4xl font-black text-foreground">{stat.value}</span>
+                <span className="text-sm text-foreground/40">{stat.unit}</span>
               </div>
-              <p className="text-white/30 text-xs mt-0.5">{stat.label}</p>
+              <p className="text-foreground/30 text-xs mt-0.5">{stat.label}</p>
             </div>
           </div>
         ))}
       </div>
       {stats.totalElevationM > 0 && (
         <div className="mt-4 text-center">
-          <p className="text-white/30 text-xs">
+          <p className="text-foreground/30 text-xs">
             That&apos;s <span className="text-red-400 font-bold">{(stats.totalElevationM / 8849).toFixed(1)}x</span> up Everest 🏔️
           </p>
         </div>
@@ -280,7 +280,7 @@ export function BreakdownSlide({ stats, animateIn }: { stats: YearStats; animate
 
   return (
     <div className="max-w-lg mx-auto w-full">
-      <p className="text-white/40 text-xs font-medium tracking-widest uppercase mb-6">Workout Breakdown</p>
+      <p className="text-foreground/40 text-xs font-medium tracking-widest uppercase mb-6">Workout Breakdown</p>
       <div className="flex flex-col sm:flex-row items-center gap-6 mb-8">
         <div className="w-48 h-48 sm:w-56 sm:h-56 shrink-0">
           <ResponsiveContainer width="100%" height="100%">
@@ -316,11 +316,11 @@ export function BreakdownSlide({ stats, animateIn }: { stats: YearStats; animate
               <div className="flex-1 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-lg">{TYPE_EMOJI[s.type]}</span>
-                  <span className="text-white font-semibold text-sm">{TYPE_LABEL[s.type] || s.type}</span>
+                  <span className="text-foreground font-semibold text-sm">{TYPE_LABEL[s.type] || s.type}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-white font-bold">{s.count}</span>
-                  <span className="text-white/30 text-xs ml-1">({s.pct}%)</span>
+                  <span className="text-foreground font-bold">{s.count}</span>
+                  <span className="text-foreground/30 text-xs ml-1">({s.pct}%)</span>
                 </div>
               </div>
             </div>
@@ -329,13 +329,13 @@ export function BreakdownSlide({ stats, animateIn }: { stats: YearStats; animate
       </div>
       <div className="grid grid-cols-2 gap-2">
         {stats.sportBreakdown.filter(s => s.distanceKm > 0 || s.durationMin > 0).map(s => (
-          <div key={s.type} className="rounded-xl bg-white/5 border border-white/5 p-3 text-center">
+          <div key={s.type} className="rounded-xl bg-foreground/5 border border-foreground/5 p-3 text-center">
             <span className="text-xl">{TYPE_EMOJI[s.type]}</span>
             <div className="mt-1">
               {s.distanceKm > 0 && (
-                <p className="text-white font-bold text-lg">{s.distanceKm}<span className="text-white/40 text-xs ml-0.5">km</span></p>
+                <p className="text-foreground font-bold text-lg">{s.distanceKm}<span className="text-foreground/40 text-xs ml-0.5">km</span></p>
               )}
-              <p className="text-white/40 text-xs">{fmtDuration(s.durationMin)}</p>
+              <p className="text-foreground/40 text-xs">{fmtDuration(s.durationMin)}</p>
             </div>
           </div>
         ))}
@@ -351,7 +351,7 @@ export function BreakdownSlide({ stats, animateIn }: { stats: YearStats; animate
 export function RecordsSlide({ stats, animateIn }: { stats: YearStats; animateIn: boolean }) {
   return (
     <div className="max-w-lg mx-auto w-full">
-      <p className="text-white/40 text-xs font-medium tracking-widest uppercase mb-6">Your Records</p>
+      <p className="text-foreground/40 text-xs font-medium tracking-widest uppercase mb-6">Your Records</p>
       <div className="space-y-3">
         {Object.entries(stats.longestByType)
           .filter(([, v]) => v.durationMin > 30)
@@ -361,7 +361,7 @@ export function RecordsSlide({ stats, animateIn }: { stats: YearStats; animateIn
             <div
               key={`longest-${type}`}
               className={cn(
-                'rounded-2xl bg-gradient-to-r from-white/5 to-transparent border border-white/5 p-4 transition-all duration-500',
+                'rounded-2xl bg-gradient-to-r from-foreground/5 to-transparent border border-foreground/5 p-4 transition-all duration-500',
                 animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4',
               )}
               style={{ transitionDelay: `${i * 150}ms` }}
@@ -370,18 +370,18 @@ export function RecordsSlide({ stats, animateIn }: { stats: YearStats; animateIn
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">{TYPE_EMOJI[type]}</span>
                   <div>
-                    <p className="text-white/40 text-xs">Longest {TYPE_LABEL[type] || type}</p>
-                    <p className="text-white font-bold text-lg">{fmtDuration(record.durationMin)}</p>
+                    <p className="text-foreground/40 text-xs">Longest {TYPE_LABEL[type] || type}</p>
+                    <p className="text-foreground font-bold text-lg">{fmtDuration(record.durationMin)}</p>
                   </div>
                 </div>
                 <div className="text-right">
                   {record.distanceKm > 0 && (
                     <p className="text-red-400 font-bold">{record.distanceKm.toFixed(1)}<span className="text-xs text-red-400/60 ml-0.5">km</span></p>
                   )}
-                  <p className="text-white/20 text-xs">{format(record.date, 'MMM d')}</p>
+                  <p className="text-foreground/20 text-xs">{format(record.date, 'MMM d')}</p>
                 </div>
               </div>
-              <p className="text-white/30 text-xs mt-2 truncate">{record.name}</p>
+              <p className="text-foreground/30 text-xs mt-2 truncate">{record.name}</p>
             </div>
           ))}
 
@@ -405,13 +405,13 @@ export function RecordsSlide({ stats, animateIn }: { stats: YearStats; animateIn
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">{TYPE_EMOJI[type]}</span>
                     <div>
-                      <p className="text-white/40 text-xs">Furthest {TYPE_LABEL[type] || type}</p>
+                      <p className="text-foreground/40 text-xs">Furthest {TYPE_LABEL[type] || type}</p>
                       <p className="text-red-400 font-bold text-lg">{record.distanceKm.toFixed(1)}<span className="text-xs text-red-400/60 ml-0.5">km</span></p>
                     </div>
                   </div>
-                  <p className="text-white/20 text-xs">{format(record.date, 'MMM d')}</p>
+                  <p className="text-foreground/20 text-xs">{format(record.date, 'MMM d')}</p>
                 </div>
-                <p className="text-white/30 text-xs mt-2 truncate">{record.name}</p>
+                <p className="text-foreground/30 text-xs mt-2 truncate">{record.name}</p>
               </div>
             );
           })}
@@ -419,10 +419,10 @@ export function RecordsSlide({ stats, animateIn }: { stats: YearStats; animateIn
         {stats.events.length > 0 && (
           <div className="mt-4 rounded-2xl bg-gradient-to-r from-amber-500/10 to-transparent border border-amber-500/10 p-4">
             <p className="text-amber-400/60 text-xs font-medium tracking-widest uppercase mb-2">🏅 Events / Races</p>
-            <p className="text-white font-bold text-2xl">{stats.events.length}</p>
+            <p className="text-foreground font-bold text-2xl">{stats.events.length}</p>
             <div className="mt-2 space-y-1">
               {stats.events.slice(0, 5).map((e, i) => (
-                <p key={i} className="text-white/50 text-xs">
+                <p key={i} className="text-foreground/50 text-xs">
                   {TYPE_EMOJI[e.type]} {e.name} · {format(e.date, 'MMM d')}
                 </p>
               ))}
@@ -448,8 +448,8 @@ export function RecordsSlide({ stats, animateIn }: { stats: YearStats; animateIn
 export function HeatmapSlide({ stats, animateIn }: { stats: YearStats; animateIn: boolean }) {
   return (
     <div className="max-w-3xl mx-auto w-full">
-      <p className="text-white/40 text-xs font-medium tracking-widest uppercase mb-2">Activity Heatmap</p>
-      <p className="text-white/20 text-xs mb-4">{stats.activeDays} active days out of 365</p>
+      <p className="text-foreground/40 text-xs font-medium tracking-widest uppercase mb-2">Activity Heatmap</p>
+      <p className="text-foreground/20 text-xs mb-4">{stats.activeDays} active days out of 365</p>
 
       {/* Monthly bar chart */}
       <div className="mb-6">
@@ -459,11 +459,11 @@ export function HeatmapSlide({ stats, animateIn }: { stats: YearStats; animateIn
             const height = (m.count / maxCount) * 100;
             return (
               <div key={m.month} className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-white/50 text-[10px] font-bold">{m.count}</span>
+                <span className="text-foreground/50 text-[10px] font-bold">{m.count}</span>
                 <div
                   className={cn(
                     'w-full rounded-t-sm transition-all duration-700',
-                    m.count > 0 ? 'bg-red-500' : 'bg-white/5',
+                    m.count > 0 ? 'bg-red-500' : 'bg-foreground/5',
                   )}
                   style={{
                     height: `${Math.max(height, 2)}%`,
@@ -471,7 +471,7 @@ export function HeatmapSlide({ stats, animateIn }: { stats: YearStats; animateIn
                     transitionDelay: `${i * 60}ms`,
                   }}
                 />
-                <span className="text-white/30 text-[9px]">{m.month}</span>
+                <span className="text-foreground/30 text-[9px]">{m.month}</span>
               </div>
             );
           })}
@@ -508,7 +508,7 @@ export function HeatmapSlide({ stats, animateIn }: { stats: YearStats; animateIn
                     className={cn(
                       'w-[11px] h-[11px] rounded-[2px] transition-all duration-300',
                       day.count < 0 ? 'bg-transparent' :
-                      day.count === 0 ? 'bg-white/5' :
+                      day.count === 0 ? 'bg-foreground/5' :
                       day.count === 1 ? 'bg-red-500/40' :
                       day.count === 2 ? 'bg-red-500/60' :
                       'bg-red-500',
@@ -522,12 +522,12 @@ export function HeatmapSlide({ stats, animateIn }: { stats: YearStats; animateIn
           })()}
         </div>
         <div className="flex items-center justify-end gap-1 mt-2">
-          <span className="text-white/20 text-[9px] mr-1">Less</span>
-          <div className="w-[11px] h-[11px] rounded-[2px] bg-white/5" />
+          <span className="text-foreground/20 text-[9px] mr-1">Less</span>
+          <div className="w-[11px] h-[11px] rounded-[2px] bg-foreground/5" />
           <div className="w-[11px] h-[11px] rounded-[2px] bg-red-500/40" />
           <div className="w-[11px] h-[11px] rounded-[2px] bg-red-500/60" />
           <div className="w-[11px] h-[11px] rounded-[2px] bg-red-500" />
-          <span className="text-white/20 text-[9px] ml-1">More</span>
+          <span className="text-foreground/20 text-[9px] ml-1">More</span>
         </div>
       </div>
     </div>
@@ -541,10 +541,10 @@ export function HeatmapSlide({ stats, animateIn }: { stats: YearStats; animateIn
 function SummaryStatBox({ label, value, unit, className }: { label: string; value: string; unit?: string; className?: string }) {
   return (
     <div className={cn('text-center', className)}>
-      <p className="text-white/40 text-[10px] sm:text-xs uppercase tracking-wider font-medium mb-0.5">{label}</p>
+      <p className="text-foreground/40 text-[10px] sm:text-xs uppercase tracking-wider font-medium mb-0.5">{label}</p>
       <div className="flex items-baseline justify-center gap-0.5">
-        <span className="text-white font-black text-xl sm:text-2xl leading-none">{value}</span>
-        {unit && <span className="text-white/40 text-[10px] sm:text-xs">{unit}</span>}
+        <span className="text-foreground font-black text-xl sm:text-2xl leading-none">{value}</span>
+        {unit && <span className="text-foreground/40 text-[10px] sm:text-xs">{unit}</span>}
       </div>
     </div>
   );
@@ -557,16 +557,16 @@ function SportRecordRow({ emoji, label, records }: {
 }) {
   if (records.length === 0) return null;
   return (
-    <div className="flex items-start gap-2 py-2 border-b border-white/5 last:border-0">
+    <div className="flex items-start gap-2 py-2 border-b border-foreground/5 last:border-0">
       <span className="text-lg mt-0.5">{emoji}</span>
       <div className="flex-1 min-w-0">
-        <p className="text-white/50 text-[10px] uppercase tracking-wider font-medium mb-1">{label}</p>
+        <p className="text-foreground/50 text-[10px] uppercase tracking-wider font-medium mb-1">{label}</p>
         <div className="flex flex-wrap gap-x-4 gap-y-1">
           {records.map((r, i) => (
             <div key={i} className="flex items-baseline gap-1">
-              <span className="text-white/30 text-[10px]">{r.label}</span>
-              <span className="text-white font-bold text-sm">{r.value}</span>
-              <span className="text-white/30 text-[10px]">{r.unit}</span>
+              <span className="text-foreground/30 text-[10px]">{r.label}</span>
+              <span className="text-foreground font-bold text-sm">{r.value}</span>
+              <span className="text-foreground/30 text-[10px]">{r.unit}</span>
             </div>
           ))}
         </div>
@@ -606,18 +606,18 @@ export function SummarySlide({ stats, firstName, animateIn }: { stats: YearStats
       {/* Title banner */}
       <div className="rounded-t-2xl bg-gradient-to-r from-red-600 to-red-800 px-4 sm:px-6 py-3 flex items-center justify-between">
         <div>
-          <p className="text-white/70 text-[10px] sm:text-xs font-medium tracking-widest uppercase">Year In Review</p>
-          <p className="text-white font-black text-lg sm:text-xl">{firstName}&apos;s {YEAR}</p>
+          <p className="text-foreground/70 text-[10px] sm:text-xs font-medium tracking-widest uppercase">Year In Review</p>
+          <p className="text-foreground font-black text-lg sm:text-xl">{firstName}&apos;s {YEAR}</p>
         </div>
         <div className="text-right">
-          <p className="text-4xl sm:text-5xl font-black text-white/20 leading-none">{YEAR}</p>
+          <p className="text-4xl sm:text-5xl font-black text-foreground/20 leading-none">{YEAR}</p>
         </div>
       </div>
 
       {/* Main body */}
-      <div className="rounded-b-2xl border border-white/10 border-t-0 bg-gradient-to-b from-white/[0.04] to-transparent">
+      <div className="rounded-b-2xl border border-foreground/10 border-t-0 bg-gradient-to-b from-foreground/[0.04] to-transparent">
         {/* Top stats row */}
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-0 divide-x divide-white/5 p-3 sm:p-4 border-b border-white/5">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-0 divide-x divide-foreground/5 p-3 sm:p-4 border-b border-foreground/5">
           <SummaryStatBox label="Distance" value={`${stats.totalDistanceKm}`} unit="km" />
           <SummaryStatBox label="Active Days" value={`${stats.activeDays}`} />
           <SummaryStatBox label="Max Streak" value={`${stats.maxStreak}`} unit="days" />
@@ -626,25 +626,25 @@ export function SummarySlide({ stats, firstName, animateIn }: { stats: YearStats
         </div>
 
         {/* Mobile-only extra stats row */}
-        <div className="grid grid-cols-2 gap-0 divide-x divide-white/5 p-3 border-b border-white/5 sm:hidden">
+        <div className="grid grid-cols-2 gap-0 divide-x divide-foreground/5 p-3 border-b border-foreground/5 sm:hidden">
           <SummaryStatBox label="Hours" value={fmtHours(stats.totalDurationMin)} />
           <SummaryStatBox label="Elevation" value={`${stats.totalElevationM.toLocaleString()}`} unit="m" />
         </div>
 
         {everestMultiple && (
-          <div className="px-4 py-2 border-b border-white/5 text-center">
-            <p className="text-white/30 text-[10px] sm:text-xs">
+          <div className="px-4 py-2 border-b border-foreground/5 text-center">
+            <p className="text-foreground/30 text-[10px] sm:text-xs">
               ⛰️ <span className="text-red-400 font-bold">{everestMultiple}x</span> up Everest
             </p>
           </div>
         )}
 
         {/* Two-column: Sport records + Monthly chart */}
-        <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-white/5">
+        <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-foreground/5">
           {/* Sport records */}
           {hasAnyRecords && (
             <div className="flex-1 p-3 sm:p-4">
-              <p className="text-white/40 text-[10px] sm:text-xs uppercase tracking-wider font-medium mb-2">Sport Records</p>
+              <p className="text-foreground/40 text-[10px] sm:text-xs uppercase tracking-wider font-medium mb-2">Sport Records</p>
               {bikeRecords.length > 0 && <SportRecordRow emoji="🚴" label="Cycling" records={bikeRecords} />}
               {runRecords.length > 0 && <SportRecordRow emoji="🏃" label="Running" records={runRecords} />}
               {swimRecords.length > 0 && <SportRecordRow emoji="🏊" label="Swimming" records={swimRecords} />}
@@ -654,18 +654,18 @@ export function SummarySlide({ stats, firstName, animateIn }: { stats: YearStats
 
           {/* Monthly bar chart */}
           <div className={cn('p-3 sm:p-4', hasAnyRecords ? 'lg:w-64 xl:w-72' : 'w-full')}>
-            <p className="text-white/40 text-[10px] sm:text-xs uppercase tracking-wider font-medium mb-2">Monthly Activity</p>
+            <p className="text-foreground/40 text-[10px] sm:text-xs uppercase tracking-wider font-medium mb-2">Monthly Activity</p>
             <div className="flex items-end gap-[3px] h-16 sm:h-20">
               {stats.monthlyActivity.map((m, i) => {
                 const maxCount = Math.max(...stats.monthlyActivity.map(x => x.count), 1);
                 const height = (m.count / maxCount) * 100;
                 return (
                   <div key={m.month} className="flex-1 flex flex-col items-center gap-0.5">
-                    <span className="text-white/40 text-[8px] font-bold">{m.count || ''}</span>
+                    <span className="text-foreground/40 text-[8px] font-bold">{m.count || ''}</span>
                     <div
                       className={cn(
                         'w-full rounded-t-sm transition-all duration-500',
-                        m.count > 0 ? 'bg-red-500' : 'bg-white/5',
+                        m.count > 0 ? 'bg-red-500' : 'bg-foreground/5',
                       )}
                       style={{
                         height: `${Math.max(height, 3)}%`,
@@ -673,7 +673,7 @@ export function SummarySlide({ stats, firstName, animateIn }: { stats: YearStats
                         transitionDelay: `${i * 40}ms`,
                       }}
                     />
-                    <span className="text-white/20 text-[7px] sm:text-[8px]">{m.month.charAt(0)}</span>
+                    <span className="text-foreground/20 text-[7px] sm:text-[8px]">{m.month.charAt(0)}</span>
                   </div>
                 );
               })}
@@ -682,12 +682,12 @@ export function SummarySlide({ stats, firstName, animateIn }: { stats: YearStats
         </div>
 
         {/* Bottom: workout count + breakdown chips */}
-        <div className="border-t border-white/5 px-3 sm:px-4 py-3 flex flex-wrap items-center gap-2">
-          <span className="text-white font-black text-lg">{stats.totalWorkouts}</span>
-          <span className="text-white/30 text-xs">workouts</span>
-          <span className="text-white/10 mx-1">|</span>
+        <div className="border-t border-foreground/5 px-3 sm:px-4 py-3 flex flex-wrap items-center gap-2">
+          <span className="text-foreground font-black text-lg">{stats.totalWorkouts}</span>
+          <span className="text-foreground/30 text-xs">workouts</span>
+          <span className="text-foreground/10 mx-1">|</span>
           {stats.sportBreakdown.slice(0, 4).map(s => (
-            <span key={s.type} className="inline-flex items-center gap-1 text-white/40 text-[10px] sm:text-xs">
+            <span key={s.type} className="inline-flex items-center gap-1 text-foreground/40 text-[10px] sm:text-xs">
               {TYPE_EMOJI[s.type]} {s.count}
             </span>
           ))}
@@ -708,19 +708,19 @@ export function FinalSlide({ stats, firstName }: { stats: YearStats; firstName: 
       <h1 className="text-3xl sm:text-4xl font-bold mb-3">
         That&apos;s a wrap, <span className="text-red-500">{firstName}</span>!
       </h1>
-      <p className="text-white/50 text-lg mb-3">
+      <p className="text-foreground/50 text-lg mb-3">
         {YEAR} was {stats.totalWorkouts > 200 ? 'legendary' :
           stats.totalWorkouts > 100 ? 'incredible' :
           stats.totalWorkouts > 50 ? 'impressive' : 'a great start'}.
       </p>
-      <div className="flex items-center gap-4 text-white/30 text-sm mb-10">
+      <div className="flex items-center gap-4 text-foreground/30 text-sm mb-10">
         <span>{stats.totalWorkouts} workouts</span>
         <span>·</span>
         <span>{stats.totalDistanceKm}km</span>
         <span>·</span>
         <span>{Math.round(stats.totalDurationMin / 60)}hrs</span>
       </div>
-      <p className="text-white/30 text-xs mb-6">Share your {YEAR} wrapped with friends</p>
+      <p className="text-foreground/30 text-xs mb-6">Share your {YEAR} wrapped with friends</p>
     </div>
   );
 }
