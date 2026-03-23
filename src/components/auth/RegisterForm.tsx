@@ -25,6 +25,7 @@ export function RegisterForm() {
   const [nameError, setNameError] = useState('');
   const [usernameError, setUsernameError] = useState('');
   const [usernameWarning, setUsernameWarning] = useState('');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [usernameChecking, setUsernameChecking] = useState(false);
   const router = useRouter();
   const setUser = useAuthStore((s) => s.setUser);
@@ -241,7 +242,24 @@ export function RegisterForm() {
             </div>
           </div>
 
-          <Button type="submit" className="w-full h-11 font-bold bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/25 border-0 transition-all" disabled={loading || googleLoading}>
+          {/* Terms & Privacy consent */}
+          <div className="flex items-start gap-2.5">
+            <input
+              type="checkbox"
+              id="agreeTerms"
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-border text-red-600 focus:ring-red-500/30 accent-red-600 cursor-pointer shrink-0"
+            />
+            <label htmlFor="agreeTerms" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
+              I agree to the{' '}
+              <Link href="/terms" target="_blank" className="text-red-400 hover:text-red-300 underline underline-offset-2">Terms of Service</Link>
+              {' '}and{' '}
+              <Link href="/privacy" target="_blank" className="text-red-400 hover:text-red-300 underline underline-offset-2">Privacy Policy</Link>
+            </label>
+          </div>
+
+          <Button type="submit" className="w-full h-11 font-bold bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/25 border-0 transition-all" disabled={loading || googleLoading || !agreedToTerms}>
             {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating account...</> : <>Create Account<ArrowRight className="w-4 h-4 ml-2" /></>}
           </Button>
 
@@ -250,7 +268,7 @@ export function RegisterForm() {
             <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">or</span></div>
           </div>
 
-          <Button type="button" variant="outline" className="w-full h-11 bg-white hover:bg-gray-50 text-gray-700 border-border font-medium" onClick={handleGoogleSignUp} disabled={loading || googleLoading}>
+          <Button type="button" variant="outline" className="w-full h-11 bg-white hover:bg-gray-50 text-gray-700 border-border font-medium" onClick={handleGoogleSignUp} disabled={loading || googleLoading || !agreedToTerms}>
             {googleLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : (
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -261,6 +279,9 @@ export function RegisterForm() {
             )}
             Continue with Google
           </Button>
+          <p className="text-[10px] text-muted-foreground/60 text-center -mt-1">
+            By signing up with Google, you also agree to our Terms &amp; Privacy Policy
+          </p>
         </form>
 
         <div className="mt-6 text-center">
