@@ -11,8 +11,6 @@ interface ExploreCardsProps {
   user: User;
 }
 
-const MAX_CARDS = 3;
-
 /** Get the date N days ago from now */
 function daysAgo(n: number): Date {
   const d = new Date();
@@ -55,49 +53,47 @@ export function ExploreCards({ workouts, user }: ExploreCardsProps) {
 
     const result: DeepDiveCardType[] = [];
 
-    // --- Rule 1: Sport Deep Dive (most-trained sport with 3+ in last 30 days) ---
+    // --- 1: Sport Deep Dive ---
     const sportCounts: Record<string, number> = {};
     for (const w of recentWorkouts) {
       sportCounts[w.type] = (sportCounts[w.type] || 0) + 1;
     }
     const topSport = Object.entries(sportCounts)
-      .sort(([, a], [, b]) => b - a)
-      .find(([, count]) => count >= 3);
+      .sort(([, a], [, b]) => b - a)[0];
 
-    if (topSport) {
-      const [sport, count] = topSport;
-      result.push({
-        type: 'sport-deep-dive',
-        title: `Your ${SPORT_LABELS[sport] || sport} This Month`,
-        teaser: `${count} session${count !== 1 ? 's' : ''} in the last 30 days — see pace trends, highlights, and insights`,
-        icon: SPORT_EMOJI[sport] || '🏋️',
-        color: sport,
-        href: `/reports/sport-deep-dive?sport=${sport}`,
-        minWorkouts: 3,
-      });
-    }
+    const sportName = topSport ? (SPORT_LABELS[topSport[0]] || topSport[0]) : 'Running';
+    const sportKey = topSport ? topSport[0] : 'run';
+    const sportCount = topSport ? topSport[1] : 0;
+    result.push({
+      type: 'sport-deep-dive',
+      title: `Your ${sportName} This Month`,
+      teaser: sportCount > 0
+        ? `${sportCount} session${sportCount !== 1 ? 's' : ''} in the last 30 days — see pace trends, highlights, and insights`
+        : 'Dive deep into your most-trained sport with pace trends and highlights',
+      icon: SPORT_EMOJI[sportKey] || '🏋️',
+      color: sportKey,
+      href: `/reports/sport-deep-dive?sport=${sportKey}`,
+      minWorkouts: 0,
+    });
 
-    // --- Rule 2: Trend Report (2+ months of data) ---
-    const lastMonthStart = firstOfLastMonth();
-    const hasLastMonthData = completedWorkouts.some(
-      (w) => toDate(w.date) >= lastMonthStart && toDate(w.date) < new Date(now.getFullYear(), now.getMonth(), 1)
-    );
-    if (hasLastMonthData && completedWorkouts.length >= 10) {
-      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const monthName = lastMonth.toLocaleDateString('en-US', { month: 'long' });
-      const thisMonth = now.toLocaleDateString('en-US', { month: 'long' });
-      result.push({
-        type: 'trend-report',
-        title: `${thisMonth} vs ${monthName}`,
-        teaser: 'Compare your training volume, consistency, and sport mix month over month',
-        icon: '📈',
-        color: 'orange',
-        href: '/reports/trend-report',
-        minWorkouts: 10,
-      });
-    }
+    // --- 2: Trend Report ---
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const monthName = lastMonth.toLocaleDateString('en-US', { month: 'long' });
+    const thisMonth = now.toLocaleDateString('en-US', { month: 'long' });
+    result.push({
+      type: 'trend-report',
+      title: `${thisMonth} vs ${monthName}`,
+      teaser: 'Compare your training volume, consistency, and sport mix month over month',
+      icon: '📈',
+      color: 'orange',
+      href: '/reports/trend-report',
+      minWorkouts: 0,
+    });
 
-    // --- Rule 3: Goal Tracker (event within 8 weeks) ---
+    // --- 3: Goal Tracker ---
+    let goalTitle = 'Goal Tracker';
+    let goalTeaser = 'Track your readiness and training volume buildup toward your next event';
+    let goalHref = '/reports/goal-tracker';
     if (user.events && user.events.length > 0) {
       const eightWeeksFromNow = new Date(now.getTime() + 8 * 7 * 24 * 60 * 60 * 1000);
       const upcomingEvent = user.events.find((e) => {
@@ -105,77 +101,81 @@ export function ExploreCards({ workouts, user }: ExploreCardsProps) {
         const eventDate = new Date(e.eventDate);
         return eventDate > now && eventDate <= eightWeeksFromNow;
       });
-
-      if (upcomingEvent && completedWorkouts.length >= 5) {
+      if (upcomingEvent) {
         const eventDate = new Date(upcomingEvent.eventDate!);
         const weeksUntil = Math.ceil((eventDate.getTime() - now.getTime()) / (7 * 24 * 60 * 60 * 1000));
-        result.push({
-          type: 'goal-tracker',
-          title: `${weeksUntil} Weeks to ${upcomingEvent.eventName || 'Your Event'}`,
-          teaser: 'Track your readiness and see what to focus on in the weeks ahead',
-          icon: '🎯',
-          color: 'orange',
-          href: `/reports/goal-tracker?event=${encodeURIComponent(upcomingEvent.eventName || '')}`,
-          minWorkouts: 5,
-        });
+        goalTitle = `${weeksUntil} Weeks to ${upcomingEvent.eventName || 'Your Event'}`;
+        goalTeaser = 'Track your readiness and see what to focus on in the weeks ahead';
+        goalHref = `/reports/goal-tracker?event=${encodeURIComponent(upcomingEvent.eventName || '')}`;
       }
     }
+    result.push({
+      type: 'goal-tracker',
+      title: goalTitle,
+      teaser: goalTeaser,
+      icon: '🎯',
+      color: 'orange',
+      href: goalHref,
+      minWorkouts: 0,
+    });
 
-    // --- Rule 4: Recovery Report (busy athlete) ---
+    // --- 4: Recovery Report ---
     const lastTwoWeeksWorkouts = completedWorkouts.filter(
       (w) => toDate(w.date) >= fourteenDaysAgo
     );
-    if (lastTwoWeeksWorkouts.length >= 10) {
-      result.push({
-        type: 'recovery-report',
-        title: 'Recovery Check',
-        teaser: `${lastTwoWeeksWorkouts.length} workouts in 14 days — let's check your training load balance`,
-        icon: '🔋',
-        color: 'orange',
-        href: '/reports/recovery-report',
-        minWorkouts: 10,
-      });
-    }
+    result.push({
+      type: 'recovery-report',
+      title: 'Recovery Check',
+      teaser: lastTwoWeeksWorkouts.length >= 5
+        ? `${lastTwoWeeksWorkouts.length} workouts in 14 days — let's check your training load balance`
+        : 'Analyze your rest patterns, training load, and recovery balance',
+      icon: '🔋',
+      color: 'orange',
+      href: '/reports/recovery-report',
+      minWorkouts: 0,
+    });
 
-    // --- Rule 5: PR Timeline (any PRs in last 7 days) ---
+    // --- 5: PR Timeline ---
     const recentPrs = completedWorkouts.filter(
       (w) => toDate(w.date) >= sevenDaysAgo && hasPrs(w)
     );
     const totalPrs = completedWorkouts.filter(hasPrs).length;
-    if (totalPrs > 0) {
-      result.push({
-        type: 'pr-timeline',
-        title: recentPrs.length > 0
-          ? `${recentPrs.length} New PR${recentPrs.length !== 1 ? 's' : ''} This Week`
-          : 'Personal Records',
-        teaser: recentPrs.length > 0
-          ? 'You set new records recently — see your full PR timeline and progression'
-          : `${totalPrs} personal record${totalPrs !== 1 ? 's' : ''} tracked — explore your progression`,
-        icon: '🏆',
-        color: 'amber',
-        href: '/reports/pr-timeline',
-        minWorkouts: 0,
-      });
-    }
+    result.push({
+      type: 'pr-timeline',
+      title: recentPrs.length > 0
+        ? `${recentPrs.length} New PR${recentPrs.length !== 1 ? 's' : ''} This Week`
+        : 'Personal Records',
+      teaser: recentPrs.length > 0
+        ? 'You set new records recently — see your full PR timeline and progression'
+        : totalPrs > 0
+          ? `${totalPrs} personal record${totalPrs !== 1 ? 's' : ''} tracked — explore your progression`
+          : 'Track and visualize your personal records over time',
+      icon: '🏆',
+      color: 'amber',
+      href: '/reports/pr-timeline',
+      minWorkouts: 0,
+    });
 
-    // --- Rule 6: Training Analysis (always available as fallback) ---
+    // --- 6: Training Analysis ---
     result.push({
       type: 'training-analysis',
       title: 'Training Analysis',
-      teaser: `${completedWorkouts.length} workout${completedWorkouts.length !== 1 ? 's' : ''} tracked — charts, breakdowns, and detailed analytics`,
+      teaser: completedWorkouts.length > 0
+        ? `${completedWorkouts.length} workout${completedWorkouts.length !== 1 ? 's' : ''} tracked — charts, breakdowns, and detailed analytics`
+        : 'Detailed charts, breakdowns, and analytics for your training',
       icon: '📊',
       color: 'gray',
       href: '/reports/training-analysis',
       minWorkouts: 0,
     });
 
-    return result.slice(0, MAX_CARDS);
+    return result;
   }, [workouts, user]);
 
   if (cards.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
       {cards.map((card) => (
         <DeepDiveCard key={card.type + card.href} card={card} />
       ))}
