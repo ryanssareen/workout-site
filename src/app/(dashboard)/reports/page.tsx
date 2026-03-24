@@ -192,6 +192,7 @@ export default function ReportsHubPage() {
         <YourReportsZone
           weeklyWorkoutCount={weeklyCount}
           monthlyWorkoutCount={monthlyCount}
+          isCoach={isCoach}
         />
       </section>
 

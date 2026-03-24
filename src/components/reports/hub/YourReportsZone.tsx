@@ -6,6 +6,7 @@ import { Calendar, BarChart3, Star } from 'lucide-react';
 interface YourReportsZoneProps {
   weeklyWorkoutCount: number;
   monthlyWorkoutCount: number;
+  isCoach?: boolean;
 }
 
 const REPORT_LINKS = [
@@ -43,7 +44,9 @@ const REPORT_LINKS = [
   },
 ];
 
-export function YourReportsZone({ weeklyWorkoutCount, monthlyWorkoutCount }: YourReportsZoneProps) {
+export function YourReportsZone({ weeklyWorkoutCount, monthlyWorkoutCount, isCoach }: YourReportsZoneProps) {
+  if (isCoach) return null;
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       {REPORT_LINKS.map((item) => {
