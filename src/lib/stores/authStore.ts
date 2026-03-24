@@ -63,6 +63,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (cached) {
       set({ user: cached, loading: false });
       lastLoadedUid = '__cached__';
+
+      // Prefetch workouts immediately from cached user — warm the store
+      import('@/lib/stores/workoutStore').then(({ useWorkoutStore }) => {
+        const role = cached.role === 'student' ? 'athlete' : cached.role;
+        useWorkoutStore.getState().getWorkouts(cached.username, role as 'coach' | 'athlete');
+      }).catch(() => {});
     }
 
     // Dynamic import to prevent Firebase loading during SSR/build
@@ -98,6 +104,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         lastLoadedUid = firebaseUser.uid;
         cacheUser(userProfile);
         set({ user: userProfile, loading: false, needsUsername: false, pendingGoogleUser: null });
+
+        // Prefetch workouts in background so pages load instantly
+        if (userProfile) {
+          import('@/lib/stores/workoutStore').then(({ useWorkoutStore }) => {
+            const role = userProfile.role === 'student' ? 'athlete' : userProfile.role;
+            useWorkoutStore.getState().getWorkouts(userProfile.username, role as 'coach' | 'athlete');
+          }).catch(() => {}); // non-critical, pages will fetch on mount if this fails
+        }
       } else {
         lastLoadedUid = null;
         cacheUser(null);
