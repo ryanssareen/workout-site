@@ -160,6 +160,8 @@ export async function getUserWorkouts(username: string, role: 'coach' | 'athlete
           const snap = await getDocs(q);
           return snap.docs.map(d => {
             const w = { id: d.id, ...d.data() } as Workout;
+            // Always set ownerUsername from subcollection path (may not be stored on older docs)
+            w.ownerUsername = studentUsername;
             // Enrich with athlete name for coach views
             if (!(w as any).assignedToName) {
               (w as any).assignedToName = student.displayName || undefined;
