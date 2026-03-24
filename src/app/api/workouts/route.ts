@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 import { adminDb } from '@/lib/firebase/admin';
+import { verifyApiRequest, isVerifiedUser } from '@/lib/api-auth';
 
 type UserRole = 'coach' | 'athlete' | 'student';
 type WorkoutType = 'swim' | 'run' | 'walk' | 'bike' | 'strength' | 'other';
@@ -105,12 +106,18 @@ function normalizeTagList(tags: unknown): string[] {
  */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    const role = parseRole(searchParams.get('role'));
+    // Verify the caller's identity
+    const caller = await verifyApiRequest(request);
+    if (!isVerifiedUser(caller)) return caller;
 
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID required' }, { status: 400 });
+    const { searchParams } = new URL(request.url);
+    // Use caller's username and role from verified token, not from query params
+    const userId = searchParams.get('userId') || caller.username;
+    const role = parseRole(searchParams.get('role')) || caller.role;
+
+    // Non-coaches can only fetch their own workouts
+    if (caller.role !== 'coach' && userId !== caller.username) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const workoutsById = new Map<string, Record<string, unknown>>();
@@ -194,16 +201,21 @@ export async function GET(request: NextRequest) {
  * POST /api/workouts
  * Create new workout
  */
-export async function POST(_: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const body = (await _.json()) as CreateWorkoutBody;
+    // Verify the caller's identity
+    const caller = await verifyApiRequest(request);
+    if (!isVerifiedUser(caller)) return caller;
+
+    const body = (await request.json()) as CreateWorkoutBody;
 
     const name = typeof body.name === 'string' ? body.name.trim() : '';
-    const createdBy = typeof body.createdBy === 'string' ? body.createdBy.trim() : '';
+    // Use the verified caller's username as createdBy (don't trust client)
+    const createdBy = caller.username;
 
-    if (!name || !isWorkoutType(body.type) || !createdBy) {
+    if (!name || !isWorkoutType(body.type)) {
       return NextResponse.json(
-        { error: 'name, type, and createdBy are required' },
+        { error: 'name and type are required' },
         { status: 400 }
       );
     }
@@ -212,6 +224,24 @@ export async function POST(_: NextRequest) {
       typeof body.assignedTo === 'string' && body.assignedTo.trim()
         ? body.assignedTo.trim()
         : createdBy;
+
+    // If assigning to another user, verify coach-athlete relationship
+    if (assignedTo !== createdBy) {
+      if (caller.role !== 'coach') {
+        return NextResponse.json(
+          { error: 'Only coaches can assign workouts to other users' },
+          { status: 403 }
+        );
+      }
+      // Verify the athlete is linked to this coach
+      const athleteDoc = await adminDb.collection('users').doc(assignedTo).get();
+      if (!athleteDoc.exists || athleteDoc.data()?.coachUsername !== createdBy) {
+        return NextResponse.json(
+          { error: 'Athlete is not linked to this coach' },
+          { status: 403 }
+        );
+      }
+    }
 
     const workoutData: Record<string, unknown> = {
       name,
