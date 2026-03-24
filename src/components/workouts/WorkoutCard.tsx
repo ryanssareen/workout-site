@@ -59,7 +59,8 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
     // Don't navigate if clicking a button or interactive element
     const target = e.target as HTMLElement;
     if (target.closest('button') || target.closest('[role="button"]')) return;
-    router.push(`/workouts/${workout.id}`);
+    const ownerParam = workout.ownerUsername && isCoach ? `?owner=${workout.ownerUsername}` : '';
+    router.push(`/workouts/${workout.id}${ownerParam}`);
   };
 
   const handleCompletionClick = (e: React.MouseEvent) => {

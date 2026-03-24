@@ -143,13 +143,10 @@ export async function getUserWorkouts(username: string, role: 'coach' | 'athlete
       // Coaches see workouts across all their linked athletes.
       // Uses parallel per-athlete queries with date bounds for efficiency.
       const students = await getCoachStudents(username);
-      console.log('[Coach] Found students:', students.length, students.map(s => s.uid));
 
       if (students.length === 0) return [];
 
-      const cutoff = Timestamp.fromDate(subDays(new Date(), COACH_QUERY_WINDOW_DAYS));
-
-      // Parallel bounded queries — one per athlete, with date range + limit
+      // Parallel queries — one per athlete, with limit
       const results = await Promise.all(
         students.map(async (student) => {
           const studentUsername = student.uid;
@@ -161,7 +158,6 @@ export async function getUserWorkouts(username: string, role: 'coach' | 'athlete
             firestoreLimit(50)
           );
           const snap = await getDocs(q);
-          console.log(`[Coach] ${studentUsername}: ${snap.docs.length} workouts`);
           return snap.docs.map(d => {
             const w = { id: d.id, ...d.data() } as Workout;
             // Enrich with athlete name for coach views
@@ -416,13 +412,13 @@ export interface CoachStats {
   studentsWithStats: StudentWithStats[];
 }
 
-export async function getCoachDashboardStats(coachUsername: string): Promise<CoachStats> {
+export async function getCoachDashboardStats(coachUsername: string, prefetchedWorkouts?: Workout[]): Promise<CoachStats> {
   try {
     // Get students
     const students = await getCoachStudents(coachUsername);
 
-    // Get all workouts visible to this coach
-    const workouts = await getUserWorkouts(coachUsername, 'coach');
+    // Use prefetched workouts if available, otherwise fetch
+    const workouts = prefetchedWorkouts ?? await getUserWorkouts(coachUsername, 'coach');
 
     // Calculate workout stats
     const completedWorkouts = workouts.filter(w => w.completed).length;

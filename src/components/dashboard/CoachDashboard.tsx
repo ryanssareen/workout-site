@@ -30,10 +30,9 @@ export function CoachDashboard({ username, timezone }: CoachDashboardProps) {
   useEffect(() => {
     async function load() {
       try {
-        const [statsData, workoutsData] = await Promise.all([
-          getCoachDashboardStats(username),
-          getUserWorkouts(username, 'coach'),
-        ]);
+        // Fetch workouts once, pass to stats (avoids double fetch)
+        const workoutsData = await getUserWorkouts(username, 'coach');
+        const statsData = await getCoachDashboardStats(username, workoutsData);
         setStats(statsData);
         setWorkouts(workoutsData);
       } catch (error) {
@@ -178,7 +177,7 @@ export function CoachDashboard({ username, timezone }: CoachDashboardProps) {
                 return (
                   <Link
                     key={w.id}
-                    href={`/workouts/${w.id}`}
+                    href={`/workouts/${w.id}?owner=${w.ownerUsername || w.assignedTo}`}
                     className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors"
                   >
                     <div className="flex items-center gap-3 min-w-0">
@@ -215,7 +214,7 @@ export function CoachDashboard({ username, timezone }: CoachDashboardProps) {
                 return (
                   <Link
                     key={w.id}
-                    href={`/workouts/${w.id}`}
+                    href={`/workouts/${w.id}?owner=${w.ownerUsername || w.assignedTo}`}
                     className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors"
                   >
                     <div className="flex items-center gap-3 min-w-0">
