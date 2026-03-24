@@ -3,6 +3,8 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { useCoachFilter } from '@/hooks/useCoachFilter';
+import { AthleteSelector } from '@/components/dashboard/AthleteSelector';
 import { Loader2, ArrowLeft, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -24,6 +26,10 @@ export default function DeepDiveReportPage() {
   const searchParams = useSearchParams();
   const user = useAuthStore((state) => state.user);
   const loading = useAuthStore((state) => state.loading);
+  const isCoach = user?.role === 'coach';
+  const { selectedAthlete, selectAthlete, athletes: coachAthletes } = useCoachFilter(
+    isCoach ? user?.username : undefined
+  );
 
   const [report, setReport] = useState<StructuredReport | null>(null);
   const [loadingReport, setLoadingReport] = useState(true);
@@ -59,6 +65,7 @@ export default function DeepDiveReportPage() {
           params,
           userId: user.uid,
           refresh,
+          ...(isCoach && selectedAthlete ? { athleteUsername: selectedAthlete } : {}),
         }),
       });
 
@@ -85,9 +92,10 @@ export default function DeepDiveReportPage() {
   };
 
   useEffect(() => {
+    if (isCoach && !selectedAthlete) return; // wait for athlete selection
     generateReport(searchParams.get('refresh') === 'true');
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid, reportType]);
+  }, [user?.uid, reportType, selectedAthlete]);
 
   if (loading) {
     return (
@@ -102,7 +110,7 @@ export default function DeepDiveReportPage() {
 
   return (
     <div className="w-full max-w-4xl mx-auto">
-      {/* Back link + refresh */}
+      {/* Back link + athlete selector + refresh */}
       <div className="flex items-center justify-between mb-4">
         <Link
           href="/reports"
@@ -111,6 +119,14 @@ export default function DeepDiveReportPage() {
           <ArrowLeft className="h-4 w-4" />
           Back to Reports
         </Link>
+        <div className="flex items-center gap-2">
+          {isCoach && (
+            <AthleteSelector
+              selectedAthlete={selectedAthlete}
+              onSelect={selectAthlete}
+              athletes={coachAthletes}
+            />
+          )}
         {report && !loadingReport && (
           <Button
             variant="ghost"
@@ -122,6 +138,7 @@ export default function DeepDiveReportPage() {
             {isCached ? 'Regenerate' : 'Refresh'}
           </Button>
         )}
+        </div>
       </div>
 
       {/* Loading state */}

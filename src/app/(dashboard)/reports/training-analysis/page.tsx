@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { useCoachFilter } from '@/hooks/useCoachFilter';
+import { AthleteSelector } from '@/components/dashboard/AthleteSelector';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   BarChart3, Loader2, LayoutDashboard, Copy, TrendingUp, Zap,
@@ -44,13 +46,21 @@ export default function TrainingAnalysisPage() {
   const contentRef = useRef<HTMLDivElement>(null);
 
   const { getWorkouts } = useWorkoutStore();
+  const isCoach = user?.role === 'coach';
+  const { selectedAthlete, selectAthlete, athletes: coachAthletes } = useCoachFilter(
+    isCoach ? user?.username : undefined
+  );
 
   const fetchWorkouts = useCallback(async () => {
     if (!user) return;
     setLoadingWorkouts(true);
     try {
       const role = user.role === 'student' ? 'athlete' : user.role;
-      const data = await getWorkouts(user.username, role as 'coach' | 'athlete');
+      const allData = await getWorkouts(user.username, role as 'coach' | 'athlete');
+      // For coaches, filter by selected athlete
+      const data = isCoach && selectedAthlete
+        ? allData.filter(w => w.ownerUsername === selectedAthlete || w.assignedTo === selectedAthlete)
+        : allData;
       setWorkouts(data);
     } catch (err) {
       console.error('Failed to fetch workouts:', err);
@@ -59,7 +69,7 @@ export default function TrainingAnalysisPage() {
       setTimeout(() => setReady(true), 120);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.username, user?.role]);
+  }, [user?.username, user?.role, selectedAthlete]);
 
   useEffect(() => { fetchWorkouts(); }, [fetchWorkouts]);
 
@@ -127,10 +137,19 @@ export default function TrainingAnalysisPage() {
             Detailed charts and breakdowns of your training data
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setShowShare(!showShare)} className="gap-2 shrink-0 self-start">
-          <Share2 className="h-4 w-4" />
-          Share
-        </Button>
+        <div className="flex items-center gap-2 self-start">
+          {isCoach && (
+            <AthleteSelector
+              selectedAthlete={selectedAthlete}
+              onSelect={selectAthlete}
+              athletes={coachAthletes}
+            />
+          )}
+          <Button variant="outline" size="sm" onClick={() => setShowShare(!showShare)} className="gap-2 shrink-0">
+            <Share2 className="h-4 w-4" />
+            Share
+          </Button>
+        </div>
       </div>
 
       {/* Share modal overlay */}

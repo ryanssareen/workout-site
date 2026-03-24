@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'AI service not configured' }, { status: 500 });
     }
 
-    const { reportType, params = {}, userId, refresh = false } = await req.json();
+    const { reportType, params = {}, userId, refresh = false, athleteUsername } = await req.json();
 
     if (!reportType || !userId) {
       return NextResponse.json({ error: 'reportType and userId are required' }, { status: 400 });
@@ -39,8 +39,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `No template for: ${reportType}` }, { status: 400 });
     }
 
-    // Resolve username
-    const username = await adminResolveUsername(userId);
+    // Resolve username — coaches can pass athleteUsername to view athlete reports
+    const username = athleteUsername || await adminResolveUsername(userId);
 
     // Check cache first (skip if refresh requested)
     if (!refresh) {
