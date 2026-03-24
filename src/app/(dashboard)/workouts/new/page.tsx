@@ -194,7 +194,7 @@ export default function NewWorkoutPage() {
     );
   }
 
-  if (!user || (!isCoach && !isUnconnectedAthlete)) {
+  if (!user) {
     return null;
   }
 
