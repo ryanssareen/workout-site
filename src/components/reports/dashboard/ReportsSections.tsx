@@ -580,7 +580,7 @@ export function TypeDistribution({ workouts }: SectionProps) {
               <PieChart>
                 <Pie
                   data={typeDistro} cx="50%" cy="50%"
-                  innerRadius="40%" outerRadius="70%"
+                  innerRadius={0} outerRadius="70%"
                   dataKey="count" nameKey="type"
                   stroke="none" paddingAngle={2}
                 >

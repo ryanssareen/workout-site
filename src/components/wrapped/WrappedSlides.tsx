@@ -288,8 +288,8 @@ export function BreakdownSlide({ stats, animateIn }: { stats: YearStats; animate
               <Pie
                 data={pieData}
                 cx="50%" cy="50%"
-                innerRadius="40%" outerRadius="80%"
-                paddingAngle={3}
+                innerRadius={0} outerRadius="80%"
+                paddingAngle={2}
                 dataKey="value"
                 stroke="none"
                 animationBegin={0}

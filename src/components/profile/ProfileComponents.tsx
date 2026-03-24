@@ -52,13 +52,12 @@ export function StatCard({ value, label, icon }: {
   );
 }
 
-// ── PieChart ──
+// ── PieChart (full circle) ──
 export function PieChart({ data, size }: {
   data: { type: string; percentage: number; color: string; count: number }[];
   size: number;
 }) {
   const radius = size / 2;
-  const innerRadius = radius * 0.55;
   const center = radius;
 
   let cumulativePercent = 0;
@@ -72,37 +71,23 @@ export function PieChart({ data, size }: {
     const x2 = center + radius * Math.sin(endAngle);
     const y2 = center - radius * Math.cos(endAngle);
 
-    const ix1 = center + innerRadius * Math.sin(startAngle);
-    const iy1 = center - innerRadius * Math.cos(startAngle);
-    const ix2 = center + innerRadius * Math.sin(endAngle);
-    const iy2 = center - innerRadius * Math.cos(endAngle);
-
     const largeArc = d.percentage > 50 ? 1 : 0;
 
     const path = [
-      `M ${x1} ${y1}`,
+      `M ${center} ${center}`,
+      `L ${x1} ${y1}`,
       `A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}`,
-      `L ${ix2} ${iy2}`,
-      `A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${ix1} ${iy1}`,
       'Z',
     ].join(' ');
 
     return { ...d, path };
   });
 
-  const total = data.reduce((sum, d) => sum + d.count, 0);
-
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
       {slices.map((s, i) => (
         <path key={i} d={s.path} fill={s.color} opacity={0.85} />
       ))}
-      <text x={center} y={center - 6} textAnchor="middle" className="fill-foreground text-xl font-bold" fontSize="22">
-        {total}
-      </text>
-      <text x={center} y={center + 12} textAnchor="middle" className="fill-muted-foreground" fontSize="10">
-        workouts
-      </text>
     </svg>
   );
 }

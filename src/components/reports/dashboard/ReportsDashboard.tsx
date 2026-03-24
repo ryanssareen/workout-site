@@ -549,7 +549,7 @@ export function ReportsDashboard({ workouts, athleteName }: ReportsDashboardProp
                 <Pie
                   data={typeDistro}
                   cx="50%" cy="50%"
-                  innerRadius={60} outerRadius={100}
+                  innerRadius={0} outerRadius={100}
                   dataKey="count" nameKey="type"
                   stroke="none"
                   paddingAngle={2}
