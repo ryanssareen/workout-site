@@ -64,7 +64,6 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
 
   const handleCompletionClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isCoach) { alert('Workout is to be completed by the athlete'); return; }
     const workoutDate = workout.date.toDate();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -225,7 +224,7 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
 
           {hasActions && (
             <div className="flex items-center gap-2 pt-2 border-t border-border/50">
-              {onToggleComplete && workout.source !== 'strava' && !(workout.type === 'other' && workout.name === 'Note') && (
+              {onToggleComplete && !isCoach && workout.source !== 'strava' && !(workout.type === 'other' && workout.name === 'Note') && (
                 <Button variant={workout.completed ? 'outline' : 'default'} size="sm" onClick={handleCompletionClick} className={cn('flex-1 h-9', !workout.completed && 'bg-green-600 hover:bg-green-700')}>
                   {workout.completed ? <><Circle className="h-4 w-4 mr-1.5" />Undo</> : <><CheckCircle2 className="h-4 w-4 mr-1.5" />Complete</>}
                 </Button>
