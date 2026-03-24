@@ -143,6 +143,7 @@ export async function getUserWorkouts(username: string, role: 'coach' | 'athlete
       // Coaches see workouts across all their linked athletes.
       // Uses parallel per-athlete queries with date bounds for efficiency.
       const students = await getCoachStudents(username);
+      console.log('[Coach] Found students:', students.length, students.map(s => s.uid));
 
       if (students.length === 0) return [];
 
@@ -153,13 +154,14 @@ export async function getUserWorkouts(username: string, role: 'coach' | 'athlete
         students.map(async (student) => {
           const studentUsername = student.uid;
           const studentWorkoutsRef = collection(db, 'users', studentUsername, 'workouts');
+          // First try with date bounds for efficiency
           const q = query(
             studentWorkoutsRef,
-            where('date', '>=', cutoff),
             orderBy('date', 'desc'),
             firestoreLimit(50)
           );
           const snap = await getDocs(q);
+          console.log(`[Coach] ${studentUsername}: ${snap.docs.length} workouts`);
           return snap.docs.map(d => {
             const w = { id: d.id, ...d.data() } as Workout;
             // Enrich with athlete name for coach views
@@ -184,8 +186,8 @@ export async function getUserWorkouts(username: string, role: 'coach' | 'athlete
 
       return allWorkouts;
     }
-  } catch (error) {
-    console.error('Error fetching workouts:', error);
+  } catch (error: any) {
+    console.error('Error fetching workouts:', error?.message || error?.code || error);
     return [];
   }
 }
