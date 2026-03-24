@@ -25,7 +25,7 @@ import Link from 'next/link';
 type Section = 'dashboard' | 'training' | 'insights' | 'calendar' | 'distribution' | 'duplicates';
 
 const NAV_ITEMS: { id: Section; label: string; icon: React.ReactNode }[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
+  { id: 'dashboard', label: 'Overview', icon: <LayoutDashboard className="h-4 w-4" /> },
   { id: 'training', label: 'Training Analysis', icon: <TrendingUp className="h-4 w-4" /> },
   { id: 'insights', label: 'Exercise Insights', icon: <Zap className="h-4 w-4" /> },
   { id: 'calendar', label: 'Calendar Views', icon: <Calendar className="h-4 w-4" /> },
