@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Plus, Dumbbell, Flag, StickyNote, Loader2, Check } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { createWorkout } from '@/lib/firebase/firestore';
 import { useWorkoutStore } from '@/lib/stores/workoutStore';
+import { createPortal } from 'react-dom';
 
 const EVENT_TYPES = [
   { value: 'run', label: 'Run', emoji: '🏃' },
@@ -39,21 +40,6 @@ export function CalendarAddDropdown({ date, className, onNoteAdded }: CalendarAd
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
 
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-        setView('menu');
-        setNoteText('');
-        setEventName('');
-        setEventType('run');
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [open]);
 
   // Auto-focus textarea when note input opens
   useEffect(() => {
@@ -135,9 +121,61 @@ export function CalendarAddDropdown({ date, className, onNoteAdded }: CalendarAd
     }
   };
 
+  // Compute position for the portal-rendered dropdown
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+  const updatePosition = useCallback(() => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    const dropdownW = view !== 'menu' ? 256 : 160; // w-64 = 256px, w-40 = 160px
+    const dropdownH = view === 'note' ? 180 : view === 'event' ? 220 : 120;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // Prefer below the button, flip above if clipped
+    let top = rect.bottom + 4;
+    if (top + dropdownH > vh - 16) {
+      top = rect.top - dropdownH - 4;
+    }
+
+    // Prefer aligned to right edge of button, shift left if clipped
+    let left = rect.right - dropdownW;
+    if (left < 8) left = 8;
+    if (left + dropdownW > vw - 8) left = vw - dropdownW - 8;
+
+    setPos({ top, left });
+  }, [view]);
+
+  useEffect(() => {
+    if (open) updatePosition();
+  }, [open, view, updatePosition]);
+
+  // Combine both refs for outside-click detection
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      const target = e.target as Node;
+      if (
+        buttonRef.current && !buttonRef.current.contains(target) &&
+        dropdownRef.current && !dropdownRef.current.contains(target)
+      ) {
+        setOpen(false);
+        setView('menu');
+        setNoteText('');
+        setEventName('');
+        setEventType('run');
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
+
   return (
     <div ref={ref} className={cn('relative', className)}>
       <button
+        ref={buttonRef}
         onClick={(e) => {
           e.stopPropagation();
           setOpen(!open);
@@ -157,12 +195,14 @@ export function CalendarAddDropdown({ date, className, onNoteAdded }: CalendarAd
         <Plus className="h-3.5 w-3.5" />
       </button>
 
-      {open && (
+      {open && pos && createPortal(
         <div
+          ref={dropdownRef}
           className={cn(
-            'absolute right-0 top-6 z-50 rounded-lg border bg-popover shadow-lg animate-in fade-in slide-in-from-top-1 duration-150',
+            'fixed z-[100] rounded-lg border bg-popover shadow-lg animate-in fade-in slide-in-from-top-1 duration-150',
             view !== 'menu' ? 'w-64 p-3' : 'w-40 py-1',
           )}
+          style={{ top: pos.top, left: pos.left }}
           onClick={(e) => e.stopPropagation()}
         >
           {view === 'note' ? (
@@ -292,7 +332,8 @@ export function CalendarAddDropdown({ date, className, onNoteAdded }: CalendarAd
               </button>
             </>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
