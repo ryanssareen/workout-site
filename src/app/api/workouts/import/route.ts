@@ -401,35 +401,47 @@ ${extractionRules}`;
       },
     ];
 
-    // Try primary model, fall back to smaller model on rate limit
-    const MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+    // Try primary model, fall back to smaller models on rate limit.
+    // Includes retry with delay to handle transient 429s.
+    const MODELS = [
+      'llama-3.3-70b-versatile',
+      'llama-3.1-8b-instant',
+      'gemma2-9b-it',
+    ];
 
     let response = '{}';
     let modelUsed = '';
 
     for (const model of MODELS) {
-      try {
-        console.log(`🤖 Trying model: ${model}`);
-        const completion = await groq.chat.completions.create({
-          model,
-          messages,
-          temperature: 0,
-          max_tokens: 8000,
-          response_format: { type: 'json_object' },
-        });
-        response = completion.choices[0]?.message?.content || '{}';
-        modelUsed = model;
-        break;
-      } catch (modelError: any) {
-        const status = modelError?.status || modelError?.statusCode;
-        if (status === 429) {
-          console.warn(
-            `⚠️ Rate limited on ${model}, trying next model...`
-          );
-          continue;
+      // Try each model up to 2 times with a delay on 429
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          console.log(`🤖 Trying model: ${model} (attempt ${attempt + 1})`);
+          const completion = await groq.chat.completions.create({
+            model,
+            messages,
+            temperature: 0,
+            max_tokens: 8000,
+            response_format: { type: 'json_object' },
+          });
+          response = completion.choices[0]?.message?.content || '{}';
+          modelUsed = model;
+          break;
+        } catch (modelError: any) {
+          const status = modelError?.status || modelError?.statusCode;
+          if (status === 429) {
+            if (attempt === 0) {
+              console.warn(`⚠️ Rate limited on ${model}, retrying after 3s...`);
+              await new Promise(r => setTimeout(r, 3000));
+              continue;
+            }
+            console.warn(`⚠️ Rate limited on ${model} again, trying next model...`);
+            break; // move to next model
+          }
+          throw modelError;
         }
-        throw modelError;
       }
+      if (modelUsed) break;
     }
 
     if (!modelUsed) {
