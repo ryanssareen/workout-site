@@ -3,7 +3,9 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useSearchParams } from 'next/navigation';
-import { completeWorkout, deleteWorkout, getCoachStudents } from '@/lib/firebase/firestore';
+import { completeWorkout, deleteWorkout } from '@/lib/firebase/firestore';
+import { useCoachFilter } from '@/hooks/useCoachFilter';
+import { AthleteSelector } from '@/components/dashboard/AthleteSelector';
 import { useWorkoutStore } from '@/lib/stores/workoutStore';
 import { Workout } from '@/types';
 import { CalendarViewMode } from '@/components/calendar/types';
@@ -54,9 +56,10 @@ export default function CalendarPage() {
   const [selectedWorkoutId, setSelectedWorkoutId] = useState<string | null>(null);
 
   // Coach features
-  const [athletes, setAthletes] = useState<{ uid: string; displayName: string }[]>([]);
-  const [selectedAthlete, setSelectedAthlete] = useState<string>('all');
   const isCoach = user?.role === 'coach';
+  const { selectedAthlete, selectAthlete, athletes } = useCoachFilter(
+    isCoach ? user?.username : undefined
+  );
 
   // Report
   const [sendingReport, setSendingReport] = useState(false);
@@ -96,16 +99,6 @@ export default function CalendarPage() {
       setWorkouts(data);
       setLoading(false);
     });
-    if (isCoach) {
-      getCoachStudents(user.username).then((data) => {
-        setAthletes(
-          data.map((a: any) => ({
-            uid: a.uid,
-            displayName: a.displayName || a.email || 'Unknown',
-          })),
-        );
-      });
-    }
   }, [user, isCoach]);
 
   // ── Pre-computed workout lookup ──────────────────────────────────────
@@ -114,7 +107,7 @@ export default function CalendarPage() {
     const map = new Map<string, Workout[]>();
     workouts.forEach((w) => {
       // Apply athlete filter (coaches only)
-      if (isCoach && selectedAthlete !== 'all' && w.assignedTo !== selectedAthlete) return;
+      if (isCoach && selectedAthlete && w.assignedTo !== selectedAthlete && w.ownerUsername !== selectedAthlete) return;
 
       // Use user timezone so workouts land on the correct calendar day
       const key = formatInTimezone(w.date.toDate(), 'yyyy-MM-dd', userTimezone);
@@ -282,7 +275,7 @@ export default function CalendarPage() {
     isCoach,
     athletes,
     selectedAthlete,
-    onSelectAthlete: setSelectedAthlete,
+    onSelectAthlete: selectAthlete,
     onExport: generateICS,
     onSendReport: handleSendReport,
     sendingReport,

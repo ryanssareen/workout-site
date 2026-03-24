@@ -242,7 +242,7 @@ function WorkoutsContent() {
   );
 
   // Coach athlete filter
-  const athleteFiltered = isCoach && selectedAthlete !== 'all'
+  const athleteFiltered = isCoach && selectedAthlete
     ? nonNotes.filter(w => w.ownerUsername === selectedAthlete || w.assignedTo === selectedAthlete)
     : nonNotes;
 

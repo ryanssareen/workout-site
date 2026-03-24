@@ -16,10 +16,9 @@ export function AthleteSelector({ selectedAthlete, onSelect, athletes }: Athlete
     <Select value={selectedAthlete} onValueChange={onSelect}>
       <SelectTrigger className="w-[200px]">
         <Users className="h-4 w-4 mr-2" />
-        <SelectValue placeholder="All Athletes" />
+        <SelectValue placeholder="Select athlete" />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="all">All Athletes</SelectItem>
         {athletes.map((athlete) => (
           <SelectItem key={athlete.uid} value={athlete.uid}>
             {athlete.displayName}

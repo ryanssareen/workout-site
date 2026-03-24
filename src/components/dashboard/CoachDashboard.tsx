@@ -13,6 +13,8 @@ import { formatInTimezone } from '@/lib/dateUtils';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { TYPE_CONFIG } from '@/components/calendar/types';
+import { useCoachFilter } from '@/hooks/useCoachFilter';
+import { AthleteSelector } from './AthleteSelector';
 
 interface CoachDashboardProps {
   username: string;
@@ -23,6 +25,7 @@ export function CoachDashboard({ username, timezone }: CoachDashboardProps) {
   const [stats, setStats] = useState<CoachStats | null>(null);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
+  const { selectedAthlete, selectAthlete, athletes: coachAthletes } = useCoachFilter(username);
 
   useEffect(() => {
     async function load() {
@@ -55,12 +58,17 @@ export function CoachDashboard({ username, timezone }: CoachDashboardProps) {
 
   const today = startOfDay(new Date());
 
-  const upcoming = workouts
+  // Filter workouts by selected athlete
+  const filteredWorkouts = selectedAthlete
+    ? workouts.filter(w => w.ownerUsername === selectedAthlete || w.assignedTo === selectedAthlete)
+    : workouts;
+
+  const upcoming = filteredWorkouts
     .filter(w => !w.completed && isFuture(w.date?.toDate?.() ?? new Date()))
     .sort((a, b) => (a.date?.toDate?.()?.getTime() ?? 0) - (b.date?.toDate?.()?.getTime() ?? 0))
     .slice(0, 8);
 
-  const recentlyCompleted = workouts
+  const recentlyCompleted = filteredWorkouts
     .filter(w => w.completed)
     .sort((a, b) => {
       const aTime = a.completedAt?.toDate?.()?.getTime() ?? a.updatedAt?.toDate?.()?.getTime() ?? 0;
@@ -73,6 +81,16 @@ export function CoachDashboard({ username, timezone }: CoachDashboardProps) {
 
   return (
     <div className="space-y-6">
+      {/* Athlete Selector */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold">Coach Dashboard</h1>
+        <AthleteSelector
+          selectedAthlete={selectedAthlete}
+          onSelect={selectAthlete}
+          athletes={coachAthletes}
+        />
+      </div>
+
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>

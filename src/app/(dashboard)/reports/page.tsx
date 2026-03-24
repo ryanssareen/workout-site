@@ -47,7 +47,7 @@ export default function ReportsHubPage() {
 
   // For coaches, show the selected athlete's name (or "All Athletes")
   const selectedAthleteData = useMemo(() => {
-    if (!isCoach || selectedAthlete === 'all') return null;
+    if (!isCoach || !selectedAthlete) return null;
     return coachAthletes.find(a => a.uid === selectedAthlete);
   }, [isCoach, selectedAthlete, coachAthletes]);
 
@@ -73,7 +73,7 @@ export default function ReportsHubPage() {
 
   // Fetch cached daily insight from Firestore
   // For coaches viewing a specific athlete, fetch the athlete's insight
-  const insightUsername = isCoach && selectedAthlete !== 'all' ? selectedAthlete : user?.username;
+  const insightUsername = isCoach && selectedAthlete ? selectedAthlete : user?.username;
   const fetchInsight = useCallback(async () => {
     if (!insightUsername) {
       setLoadingInsight(false);
@@ -114,7 +114,7 @@ export default function ReportsHubPage() {
 
   // Filter workouts by selected athlete for coaches
   const filteredWorkouts = useMemo(() => {
-    if (!isCoach || selectedAthlete === 'all') return workouts;
+    if (!isCoach || !selectedAthlete) return workouts;
     return workouts.filter(w => w.ownerUsername === selectedAthlete || w.assignedTo === selectedAthlete);
   }, [workouts, isCoach, selectedAthlete]);
 
@@ -153,7 +153,7 @@ export default function ReportsHubPage() {
             {isCoach ? 'Athlete Reports' : 'Your Reports'}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {greeting}, {displayName}. {isCoach && selectedAthlete === 'all' ? 'Viewing all athletes.' : 'Here\u0027s what the data is telling you.'}
+            {greeting}, {displayName}. {isCoach && !selectedAthlete ? 'Viewing all athletes.' : 'Here\u0027s what the data is telling you.'}
           </p>
         </div>
         {isCoach && (
@@ -166,7 +166,7 @@ export default function ReportsHubPage() {
       </div>
 
       {/* ═══ ZONE 1: THE SMART LAYER ═══ */}
-      {(!isCoach || selectedAthlete !== 'all') && (
+      {(!isCoach || selectedAthlete) && (
         <section className="space-y-3">
           <AIInsightCard
             insight={insight}

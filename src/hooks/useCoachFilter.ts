@@ -7,10 +7,10 @@ const STORAGE_KEY = 'coach_selected_athlete';
 
 /**
  * Custom hook for coach athlete filter with sessionStorage persistence.
- * Validates stored athlete against current student list on mount.
+ * Auto-selects first athlete if none stored. No "All Athletes" option.
  */
 export function useCoachFilter(coachUsername?: string) {
-  const [selectedAthlete, setSelectedAthleteState] = useState<string>('all');
+  const [selectedAthlete, setSelectedAthleteState] = useState<string>('');
   const [athletes, setAthletes] = useState<Array<{ uid: string; displayName: string }>>([]);
   const [athletesLoaded, setAthletesLoaded] = useState(false);
 
@@ -27,32 +27,32 @@ export function useCoachFilter(coachUsername?: string) {
   useEffect(() => {
     if (!coachUsername) return;
     getCoachStudents(coachUsername).then((students) => {
-      setAthletes(students.map((s: any) => ({
+      const list = students.map((s: any) => ({
         uid: s.uid || s.id,
         displayName: s.displayName || s.uid || s.id,
-      })));
+      }));
+      setAthletes(list);
       setAthletesLoaded(true);
     });
   }, [coachUsername]);
 
-  // Validate stored athlete against current list
+  // Auto-select first athlete if none selected or stored value is invalid
   useEffect(() => {
-    if (!athletesLoaded || selectedAthlete === 'all') return;
-    const isValid = athletes.some(a => a.uid === selectedAthlete);
+    if (!athletesLoaded || athletes.length === 0) return;
+    const isValid = selectedAthlete && athletes.some(a => a.uid === selectedAthlete);
     if (!isValid) {
-      setSelectedAthleteState('all');
-      sessionStorage.removeItem(STORAGE_KEY);
+      const first = athletes[0].uid;
+      setSelectedAthleteState(first);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(STORAGE_KEY, first);
+      }
     }
   }, [athletesLoaded, athletes, selectedAthlete]);
 
   const selectAthlete = useCallback((username: string) => {
     setSelectedAthleteState(username);
     if (typeof window !== 'undefined') {
-      if (username === 'all') {
-        sessionStorage.removeItem(STORAGE_KEY);
-      } else {
-        sessionStorage.setItem(STORAGE_KEY, username);
-      }
+      sessionStorage.setItem(STORAGE_KEY, username);
     }
   }, []);
 
