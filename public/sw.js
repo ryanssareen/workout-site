@@ -1,7 +1,9 @@
 // The Daily Athlete — Service Worker
 // Safe caching: static assets cache-first, navigation network-first, API never cached
 
-const CACHE_VERSION = 'v1';
+// Cache version — update on each deploy to clear stale caches
+// Using a timestamp so every Vercel build gets a fresh cache
+const CACHE_VERSION = 'v2-20260324';
 const STATIC_CACHE = `static-${CACHE_VERSION}`;
 const OFFLINE_CACHE = `offline-${CACHE_VERSION}`;
 

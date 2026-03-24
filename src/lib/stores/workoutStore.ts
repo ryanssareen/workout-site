@@ -2,10 +2,40 @@ import { create } from 'zustand';
 import { Workout } from '@/types';
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const STORAGE_KEY = 'tda_workout_cache';
+const STORAGE_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes — localStorage stale threshold
 
 interface CacheEntry {
   workouts: Workout[];
   fetchedAt: number;
+}
+
+/** Save cache to localStorage for instant load after deployment/refresh */
+function persistToStorage(username: string, entry: CacheEntry) {
+  if (typeof window === 'undefined') return;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const stored: Record<string, CacheEntry> = raw ? JSON.parse(raw) : {};
+    stored[username] = entry;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+  } catch { /* quota exceeded or private browsing */ }
+}
+
+/** Load cache from localStorage — returns entry if not too old */
+function loadFromStorage(username: string): CacheEntry | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const stored: Record<string, CacheEntry> = JSON.parse(raw);
+    const entry = stored[username];
+    if (!entry) return null;
+    // Accept if less than 30 minutes old
+    if (Date.now() - entry.fetchedAt > STORAGE_MAX_AGE_MS) return null;
+    return entry;
+  } catch {
+    return null;
+  }
 }
 
 interface WorkoutStoreState {
@@ -16,6 +46,7 @@ interface WorkoutStoreState {
 
   /**
    * Get workouts for a user. Returns cached data if fresh, otherwise fetches.
+   * Falls back to localStorage if in-memory cache is empty (e.g. after deploy).
    * Deduplicates concurrent calls for the same user.
    */
   getWorkouts: (username: string, role: 'coach' | 'athlete' | 'student') => Promise<Workout[]>;
@@ -40,7 +71,7 @@ export const useWorkoutStore = create<WorkoutStoreState>((set, get) => ({
   getWorkouts: async (username, role) => {
     const state = get();
 
-    // Check cache freshness
+    // Check in-memory cache freshness
     const cached = state.cache.get(username);
     if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
       return cached.workouts;
@@ -52,20 +83,36 @@ export const useWorkoutStore = create<WorkoutStoreState>((set, get) => ({
       return pending;
     }
 
-    // Fetch fresh data
+    // Check localStorage for instant data while Firestore loads
+    const stored = loadFromStorage(username);
+    if (stored && !cached) {
+      // Hydrate in-memory cache from localStorage immediately
+      set((s) => {
+        const newCache = new Map(s.cache);
+        newCache.set(username, stored);
+        return { cache: newCache };
+      });
+    }
+
+    // Fetch fresh data from Firestore
     const fetchPromise = (async () => {
       try {
         const { getUserWorkouts } = await import('@/lib/firebase/firestore');
         const workouts = await getUserWorkouts(username, role);
 
-        // Update cache
+        const entry: CacheEntry = { workouts, fetchedAt: Date.now() };
+
+        // Update in-memory cache
         set((s) => {
           const newCache = new Map(s.cache);
-          newCache.set(username, { workouts, fetchedAt: Date.now() });
+          newCache.set(username, entry);
           const newPending = new Map(s.pendingFetch);
           newPending.delete(username);
           return { cache: newCache, pendingFetch: newPending };
         });
+
+        // Persist to localStorage for next deploy/refresh
+        persistToStorage(username, entry);
 
         return workouts;
       } catch (error) {
@@ -85,6 +132,13 @@ export const useWorkoutStore = create<WorkoutStoreState>((set, get) => ({
       newPending.set(username, fetchPromise);
       return { pendingFetch: newPending };
     });
+
+    // If we have localStorage data, return it immediately while fetch continues
+    if (stored) {
+      // Fire-and-forget: the fetch will update the cache when done
+      fetchPromise.catch(() => {});
+      return stored.workouts;
+    }
 
     return fetchPromise;
   },
@@ -110,5 +164,20 @@ export const useWorkoutStore = create<WorkoutStoreState>((set, get) => ({
       }
       return { cache: new Map() };
     });
+    // Also clear localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        if (username) {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const stored = JSON.parse(raw);
+            delete stored[username];
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+          }
+        } else {
+          localStorage.removeItem(STORAGE_KEY);
+        }
+      } catch { /* ignore */ }
+    }
   },
 }));
