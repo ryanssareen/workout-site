@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 import { adminDb } from '@/lib/firebase/admin';
 import { adminResolveUsername } from '@/lib/firebase/adminUserMapping';
+import { verifyApiRequest, isVerifiedUser } from '@/lib/api-auth';
 import { getTemplate } from '@/lib/reports/templates';
 import { getCachedReport, setCachedReport } from '@/lib/reports/cache';
 import type { WorkoutDoc } from '@/lib/reports/templates';
@@ -24,10 +25,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'AI service not configured' }, { status: 500 });
     }
 
-    const { reportType, params = {}, userId, refresh = false, athleteUsername } = await req.json();
+    // Verify caller identity
+    const caller = await verifyApiRequest(req);
+    if (!isVerifiedUser(caller)) return caller;
 
-    if (!reportType || !userId) {
-      return NextResponse.json({ error: 'reportType and userId are required' }, { status: 400 });
+    const { reportType, params = {}, refresh = false, athleteUsername } = await req.json();
+
+    if (!reportType) {
+      return NextResponse.json({ error: 'reportType is required' }, { status: 400 });
     }
 
     if (!VALID_TYPES.includes(reportType)) {
@@ -40,7 +45,18 @@ export async function POST(req: NextRequest) {
     }
 
     // Resolve username — coaches can pass athleteUsername to view athlete reports
-    const username = athleteUsername || await adminResolveUsername(userId);
+    let username = caller.username;
+    if (athleteUsername && athleteUsername !== caller.username) {
+      // Verify caller is the athlete's coach
+      if (caller.role !== 'coach') {
+        return NextResponse.json({ error: 'Only coaches can view athlete reports' }, { status: 403 });
+      }
+      const athleteDoc = await adminDb.collection('users').doc(athleteUsername).get();
+      if (!athleteDoc.exists || athleteDoc.data()?.coachUsername !== caller.username) {
+        return NextResponse.json({ error: 'Athlete is not linked to this coach' }, { status: 403 });
+      }
+      username = athleteUsername;
+    }
 
     // Check cache first (skip if refresh requested)
     if (!refresh) {

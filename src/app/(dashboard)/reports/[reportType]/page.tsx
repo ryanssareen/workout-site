@@ -8,6 +8,7 @@ import { AthleteSelector } from '@/components/dashboard/AthleteSelector';
 import { Loader2, ArrowLeft, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { getAuthInstance } from '@/lib/firebase/config';
 import { ReportContainer } from '@/components/reports/ReportContainer';
 import type { StructuredReport } from '@/types/reports';
 import type { DeepDiveReportType } from '@/types/reports-hub';
@@ -57,13 +58,16 @@ export default function DeepDiveReportPage() {
     setReport(null);
 
     try {
+      const idToken = await getAuthInstance().currentUser?.getIdToken();
       const res = await fetch('/api/ai/reports/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+        },
         body: JSON.stringify({
           reportType: reportType as DeepDiveReportType,
           params,
-          userId: user.uid,
           refresh,
           ...(isCoach && selectedAthlete ? { athleteUsername: selectedAthlete } : {}),
         }),

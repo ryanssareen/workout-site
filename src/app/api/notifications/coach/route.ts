@@ -43,6 +43,11 @@ async function handleCompleted(
     return NextResponse.json({ error: 'workoutId and ownerUsername required' }, { status: 400 });
   }
 
+  // Verify caller is the workout owner (athlete completing their own workout)
+  if (callerUsername !== ownerUsername) {
+    return NextResponse.json({ error: 'Forbidden — can only notify for your own workouts' }, { status: 403 });
+  }
+
   // Read workout to check if it's coach-assigned
   const workoutDoc = await adminDb
     .collection('users').doc(ownerUsername)
