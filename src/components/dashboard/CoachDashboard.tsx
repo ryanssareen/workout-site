@@ -32,18 +32,13 @@ export function CoachDashboard({ username, timezone }: CoachDashboardProps) {
     async function load() {
       setError(null);
       try {
-        const workoutsData = await Promise.race([
-          getUserWorkouts(username, 'coach'),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('timeout')), 15000)
-          ),
-        ]);
+        const workoutsData = await getUserWorkouts(username, 'coach');
         const statsData = await getCoachDashboardStats(username, workoutsData);
         setStats(statsData);
         setWorkouts(workoutsData);
       } catch (err) {
         console.error('Failed to load coach dashboard:', err);
-        setError('Could not load data. You may have hit the daily quota — try again later.');
+        setError('Could not load data. Please try again later.');
       } finally {
         setLoading(false);
       }

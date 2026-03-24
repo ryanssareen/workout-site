@@ -126,17 +126,12 @@ export default function WrapPage() {
       setError(null);
       try {
         const { getWorkouts } = useWorkoutStore.getState();
-        const data = await Promise.race([
-          getWorkouts(user.username, user.role),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('timeout')), 15000)
-          ),
-        ]);
+        const data = await getWorkouts(user.username, user.role);
         setWorkouts(data);
       } catch (err) {
         console.error('Failed to load wrap data:', err);
         if (workouts.length === 0) {
-          setError('Could not load workout data. You may have hit the daily quota — try again later.');
+          setError('Could not load workout data. Please try again later.');
         }
       } finally {
         setLoading(false);
