@@ -377,7 +377,7 @@ export async function getCoachStudents(coachUsername: string): Promise<any[]> {
       where('coachUsername', '==', coachUsername)
     );
     const snapshot = await getDocs(q);
-    const athletes = snapshot.docs.map(d => ({ uid: d.id, ...d.data() }));
+    const athletes = snapshot.docs.map(d => ({ ...d.data(), uid: d.id }));
 
     // Cache result
     coachStudentsCache.set(coachUsername, { data: athletes, fetchedAt: Date.now() });
