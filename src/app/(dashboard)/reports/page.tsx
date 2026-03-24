@@ -7,6 +7,8 @@ import { useWorkoutStore } from '@/lib/stores/workoutStore';
 import { getDbInstance } from '@/lib/firebase/config';
 import { doc, getDoc } from 'firebase/firestore';
 import { Workout } from '@/types';
+import { useCoachFilter } from '@/hooks/useCoachFilter';
+import { AthleteSelector } from '@/components/dashboard/AthleteSelector';
 import { AIInsightCard } from '@/components/reports/hub/AIInsightCard';
 import { AskAnythingBar } from '@/components/reports/hub/AskAnythingBar';
 import { YourReportsZone } from '@/components/reports/hub/YourReportsZone';
@@ -42,6 +44,10 @@ export default function ReportsHubPage() {
   const greeting = useMemo(() => getTimeGreeting(new Date()), []);
 
   const { getWorkouts } = useWorkoutStore();
+  const isCoach = user?.role === 'coach';
+  const { selectedAthlete, selectAthlete, athletes: coachAthletes } = useCoachFilter(
+    isCoach ? user?.username : undefined
+  );
 
   // Fetch workouts in background — Zone 3 cards show immediately with generic teasers
   const fetchWorkouts = useCallback(async () => {
@@ -95,6 +101,12 @@ export default function ReportsHubPage() {
     fetchInsight();
   }, [fetchWorkouts, fetchInsight]);
 
+  // Filter workouts by selected athlete for coaches
+  const filteredWorkouts = useMemo(() => {
+    if (!isCoach || selectedAthlete === 'all') return workouts;
+    return workouts.filter(w => w.ownerUsername === selectedAthlete || w.assignedTo === selectedAthlete);
+  }, [workouts, isCoach, selectedAthlete]);
+
   // Compute mini stats for Zone 2 cards
   const { weeklyCount, monthlyCount } = useMemo(() => {
     const now = new Date();
@@ -104,7 +116,7 @@ export default function ReportsHubPage() {
 
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const completed = workouts.filter((w) => w.completed);
+    const completed = filteredWorkouts.filter((w) => w.completed);
     return {
       weeklyCount: completed.filter((w) => toDate(w.date) >= startOfWeek).length,
       monthlyCount: completed.filter((w) => toDate(w.date) >= startOfMonth).length,
@@ -123,14 +135,23 @@ export default function ReportsHubPage() {
   return (
     <div className="w-full max-w-3xl mx-auto space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
-          <Sparkles className="h-6 w-6 sm:h-7 sm:w-7 text-orange-500" />
-          Your Reports
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {greeting}, {firstName}. Here&apos;s what your data is telling you.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
+            <Sparkles className="h-6 w-6 sm:h-7 sm:w-7 text-orange-500" />
+            {isCoach ? 'Athlete Reports' : 'Your Reports'}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {greeting}, {firstName}. Here&apos;s what your data is telling you.
+          </p>
+        </div>
+        {isCoach && (
+          <AthleteSelector
+            selectedAthlete={selectedAthlete}
+            onSelect={selectAthlete}
+            athletes={coachAthletes}
+          />
+        )}
       </div>
 
       {/* ═══ ZONE 1: THE SMART LAYER ═══ */}
@@ -164,7 +185,7 @@ export default function ReportsHubPage() {
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-0.5">
           Explore Your Data
         </h2>
-        <ExploreCards workouts={workouts} user={user} />
+        <ExploreCards workouts={filteredWorkouts} user={user} />
       </section>
     </div>
   );
