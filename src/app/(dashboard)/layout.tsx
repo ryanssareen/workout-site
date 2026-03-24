@@ -52,6 +52,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!user) return null;
 
+  const isDashboard = pathname === '/dashboard';
   const isReports = pathname === '/reports';
   const isCalendar = pathname === '/calendar';
   const isWrap = pathname === '/wrap';
@@ -59,6 +60,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isWrapped = pathname === '/wrapped';
   const isOnboardingPage = pathname === '/onboarding';
   const isWide = isReports || isCalendar;
+  const isFullWidth = isDashboard;
 
   // Wrap, Review & Wrapped get their own immersive full-screen layout
   if (isWrap || isReview || isWrapped) {
@@ -87,8 +89,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <Suspense fallback={null}><StravaSyncTrigger /></Suspense>
       <PushNotificationManager />
       <MobileBottomNav />
-      <main className={`relative container mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-24 lg:pb-8 ${isWide ? 'max-w-[1920px]' : 'max-w-[1440px]'}`}>
-        <div className={`panel-glow rounded-2xl sm:rounded-3xl ${isWide ? 'p-3 sm:p-4 md:p-6' : 'p-4 sm:p-6 md:p-8'}`}>
+      <main className={`relative container mx-auto pb-24 lg:pb-8 ${isFullWidth ? 'max-w-full px-2 sm:px-4 lg:px-8 py-3 sm:py-4' : isWide ? 'max-w-[1920px] px-3 sm:px-6 py-4 sm:py-8' : 'max-w-[1440px] px-3 sm:px-6 py-4 sm:py-8'}`}>
+        <div className={`${isFullWidth ? '' : 'panel-glow rounded-2xl sm:rounded-3xl'} ${isFullWidth ? 'p-0' : isWide ? 'p-3 sm:p-4 md:p-6' : 'p-4 sm:p-6 md:p-8'}`}>
           {children}
         </div>
       </main>
