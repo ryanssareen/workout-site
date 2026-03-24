@@ -66,7 +66,7 @@ export default function TrainingAnalysisPage() {
       console.error('Failed to fetch workouts:', err);
     } finally {
       setLoadingWorkouts(false);
-      setTimeout(() => setReady(true), 120);
+      setReady(true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.username, user?.role, selectedAthlete]);

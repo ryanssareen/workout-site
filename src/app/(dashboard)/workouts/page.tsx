@@ -209,7 +209,7 @@ function WorkoutsContent() {
     const data = await getWorkouts(user.username, user.role);
     setWorkouts(data);
     setLoading(false);
-    setTimeout(() => setReady(true), 120);
+    setReady(true);
   }, [user, getWorkouts]);
 
   useEffect(() => { loadWorkouts(); }, [loadWorkouts]);

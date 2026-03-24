@@ -141,7 +141,7 @@ export default function NewWorkoutPage() {
         }
       }
 
-      setTimeout(() => router.push('/workouts'), 1000);
+      router.push('/workouts');
     } catch (error: any) {
       toast.error(error.message || 'Failed to create workout');
     } finally {
