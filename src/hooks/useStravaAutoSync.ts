@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { User } from '@/types';
+import { User, Workout } from '@/types';
 import { toast } from 'sonner';
 
 const SYNC_COOLDOWN_KEY = 'coachtrack_last_strava_sync';
@@ -23,6 +23,43 @@ function setCooldownFor(ms: number): void {
     sessionStorage.setItem(SYNC_COOLDOWN_UNTIL_KEY, String(finalUntil));
   } catch {
     // Ignore storage failures (private mode / blocked storage)
+  }
+}
+
+/**
+ * Run achievement checks for recently synced Strava workouts.
+ * Fetches the 5 most recent completed workouts (likely just synced)
+ * and checks each for PRs/milestones. Non-blocking, fire-and-forget.
+ */
+async function runPostSyncAchievements(username: string, user: User) {
+  try {
+    const { checkAchievements } = await import('@/lib/achievements');
+    const { useWorkoutStore } = await import('@/lib/stores/workoutStore');
+    const allWorkouts = await useWorkoutStore.getState().getWorkouts(username, user.role);
+
+    // Get the 5 most recently completed Strava workouts
+    const recentStrava = allWorkouts
+      .filter((w: Workout) => w.completed && (w.source === 'strava' || w.completedBy === 'strava'))
+      .sort((a: Workout, b: Workout) => {
+        const da = (a.completedAt as any)?.toDate?.() ?? new Date(a.completedAt as any);
+        const db = (b.completedAt as any)?.toDate?.() ?? new Date(b.completedAt as any);
+        return db.getTime() - da.getTime();
+      })
+      .slice(0, 5);
+
+    for (const workout of recentStrava) {
+      const result = await checkAchievements(username, user.uid, workout, allWorkouts);
+      if (result.newPRs.length > 0 || result.newMilestones.length > 0) {
+        const prNames = result.newPRs.map(p => p.name).join(', ');
+        const mNames = result.newMilestones.map(m => m.name).join(', ');
+        const parts: string[] = [];
+        if (prNames) parts.push(`PR: ${prNames}`);
+        if (mNames) parts.push(mNames);
+        toast.success(parts.join(' | '), { icon: '🏆', duration: 6000 });
+      }
+    }
+  } catch (err) {
+    console.error('[post-sync-achievements] failed (non-fatal):', err);
   }
 }
 
@@ -258,6 +295,9 @@ export function useStravaAutoSync(
           icon: '🔄',
           duration: 4000,
         });
+
+        // Check achievements for newly synced workouts (non-blocking)
+        runPostSyncAchievements(userId, currentUser).catch(() => {});
       }
 
       // Update cooldown timestamp
