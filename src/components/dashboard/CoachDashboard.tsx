@@ -1,0 +1,227 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Users, CheckCircle2, Clock, Plus, Calendar, Loader2 } from 'lucide-react';
+import { getCoachDashboardStats, CoachStats, getUserWorkouts } from '@/lib/firebase/firestore';
+import { Workout } from '@/types';
+import { isCoachAssigned } from '@/types/workout';
+import { format, isPast, isFuture, startOfDay } from 'date-fns';
+import { formatInTimezone } from '@/lib/dateUtils';
+import Link from 'next/link';
+import { cn } from '@/lib/utils';
+import { TYPE_CONFIG } from '@/components/calendar/types';
+
+interface CoachDashboardProps {
+  username: string;
+  timezone?: string;
+}
+
+export function CoachDashboard({ username, timezone }: CoachDashboardProps) {
+  const [stats, setStats] = useState<CoachStats | null>(null);
+  const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const [statsData, workoutsData] = await Promise.all([
+          getCoachDashboardStats(username),
+          getUserWorkouts(username, 'coach'),
+        ]);
+        setStats(statsData);
+        setWorkouts(workoutsData);
+      } catch (error) {
+        console.error('Failed to load coach dashboard:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [username]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const today = startOfDay(new Date());
+
+  const upcoming = workouts
+    .filter(w => !w.completed && isFuture(w.date?.toDate?.() ?? new Date()))
+    .sort((a, b) => (a.date?.toDate?.()?.getTime() ?? 0) - (b.date?.toDate?.()?.getTime() ?? 0))
+    .slice(0, 8);
+
+  const recentlyCompleted = workouts
+    .filter(w => w.completed)
+    .sort((a, b) => {
+      const aTime = a.completedAt?.toDate?.()?.getTime() ?? a.updatedAt?.toDate?.()?.getTime() ?? 0;
+      const bTime = b.completedAt?.toDate?.()?.getTime() ?? b.updatedAt?.toDate?.()?.getTime() ?? 0;
+      return bTime - aTime;
+    })
+    .slice(0, 8);
+
+  const completionRate = stats ? Math.round(stats.overallCompletionRate * 100) : 0;
+
+  return (
+    <div className="space-y-6">
+      {/* Stats Row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-500/10">
+                <Users className="h-5 w-5 text-blue-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{stats?.totalStudents ?? 0}</p>
+                <p className="text-xs text-muted-foreground">Athletes</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-orange-500/10">
+                <Calendar className="h-5 w-5 text-orange-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{stats?.totalWorkouts ?? 0}</p>
+                <p className="text-xs text-muted-foreground">Assigned (90d)</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-green-500/10">
+                <CheckCircle2 className="h-5 w-5 text-green-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{completionRate}%</p>
+                <p className="text-xs text-muted-foreground">Completion</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-purple-500/10">
+                <Clock className="h-5 w-5 text-purple-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{stats?.pendingWorkouts ?? 0}</p>
+                <p className="text-xs text-muted-foreground">Pending</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="flex gap-2">
+        <Button asChild>
+          <Link href="/workouts/new">
+            <Plus className="h-4 w-4 mr-1.5" />
+            Assign Workout
+          </Link>
+        </Button>
+        <Button variant="outline" asChild>
+          <Link href="/workouts">View All Workouts</Link>
+        </Button>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Upcoming Assigned */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Upcoming Workouts</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {upcoming.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">No upcoming workouts</p>
+            ) : (
+              upcoming.map((w) => {
+                const typeConfig = TYPE_CONFIG[w.type];
+                return (
+                  <Link
+                    key={w.id}
+                    href={`/workouts/${w.id}`}
+                    className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-lg">{typeConfig?.emoji ?? '📋'}</span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{w.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {(w as any).assignedToName && <span className="font-medium">{(w as any).assignedToName} · </span>}
+                          {format(w.date?.toDate?.() ?? new Date(), 'MMM d')}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="capitalize text-xs shrink-0">
+                      {w.type}
+                    </Badge>
+                  </Link>
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recently Completed */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Recently Completed</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {recentlyCompleted.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">No completed workouts yet</p>
+            ) : (
+              recentlyCompleted.map((w) => {
+                const typeConfig = TYPE_CONFIG[w.type];
+                return (
+                  <Link
+                    key={w.id}
+                    href={`/workouts/${w.id}`}
+                    className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <CheckCircle2 className={cn('h-4 w-4 shrink-0', w.completedLate ? 'text-orange-500' : 'text-green-500')} />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{w.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {(w as any).assignedToName && <span className="font-medium">{(w as any).assignedToName} · </span>}
+                          {w.completedAt?.toDate ? format(w.completedAt.toDate(), 'MMM d') : 'Recently'}
+                        </p>
+                      </div>
+                    </div>
+                    {w.completionRating && (
+                      <span className="text-xs text-muted-foreground">
+                        {['', 'Struggled', 'Tough', 'Moderate', 'Strong', 'Crushed it'][w.completionRating]}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

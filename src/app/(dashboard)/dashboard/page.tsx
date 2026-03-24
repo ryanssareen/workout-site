@@ -18,6 +18,7 @@ import { format, startOfWeek, endOfWeek, subWeeks, isWithinInterval, differenceI
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useStravaAutoSync } from '@/hooks/useStravaAutoSync';
+import { CoachDashboard } from '@/components/dashboard/CoachDashboard';
 import { ProfileCompletionBar } from '@/components/dashboard/ProfileCompletionBar';
 import { DashboardAchievements } from '@/components/achievements/DashboardAchievements';
 
@@ -237,6 +238,11 @@ export default function DashboardPage() {
     ...recentCompleted.map(w => ({ workout: w, section: 'done' as const })),
     ...upcomingWorkouts.map(w => ({ workout: w, section: 'planned' as const })),
   ];
+
+  // Coach gets a dedicated dashboard
+  if (user?.role === 'coach') {
+    return <CoachDashboard username={user.username} timezone={user.timezone} />;
+  }
 
   return (
     <div className="space-y-6 pb-8">
