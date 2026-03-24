@@ -131,7 +131,6 @@ export function CalendarHeader({
               onChange={(e) => onSelectAthlete?.(e.target.value)}
               className="hidden md:block px-3 py-1.5 rounded-lg text-xs font-semibold border bg-background cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500/30"
             >
-              <option value="all">All Athletes</option>
               {athletes.map((a) => (
                 <option key={a.uid} value={a.uid}>
                   {a.displayName}
