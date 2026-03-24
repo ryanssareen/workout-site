@@ -82,7 +82,13 @@ export default function DeepDiveReportPage() {
       });
 
       if (!res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 503) {
+          throw new Error('Service temporarily unavailable — daily quota may be exceeded. Try again later.');
+        }
+        if (res.status === 401) {
+          throw new Error('Authentication failed — please refresh the page and try again.');
+        }
         throw new Error(data.error || 'Failed to generate report');
       }
 

@@ -52,7 +52,13 @@ export async function verifyApiRequest(
       role: userData.role || 'athlete',
       coachUsername: userData.coachUsername,
     };
-  } catch (error) {
+  } catch (error: any) {
+    const code = error?.code || error?.errorInfo?.code || '';
+    const message = error?.message || '';
+    // Firestore quota/unavailable errors should return 503, not 401
+    if (code === 'resource-exhausted' || code === 'unavailable' || message.includes('quota') || message.includes('RESOURCE_EXHAUSTED')) {
+      return NextResponse.json({ error: 'Service temporarily unavailable — quota may be exceeded' }, { status: 503 });
+    }
     return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 });
   }
 }
