@@ -6,6 +6,7 @@ import { useAuthStore } from '@/lib/stores/authStore';
 import { getWorkout, completeWorkout } from '@/lib/firebase/firestore';
 import { useWorkoutStore } from '@/lib/stores/workoutStore';
 import { Workout, AchievementResult } from '@/types';
+import { isCoachAssigned } from '@/types/workout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -103,17 +104,18 @@ export default function WorkoutDetailPage() {
     }
   }, [user, loading, router, params.id, searchParams]);
 
-  const handleComplete = async (notes?: string) => {
+  const handleComplete = async (notes?: string, rating?: 1 | 2 | 3 | 4 | 5) => {
     if (!workout || !user) return;
 
     setIsUpdating(true);
     try {
-      await completeWorkout(workout.ownerUsername, workout.id, true, notes);
+      await completeWorkout(workout.ownerUsername, workout.id, true, notes, rating);
       const updatedWorkout: Workout = {
         ...workout,
         completed: true,
         completedBy: 'manual',
         completionNotes: notes,
+        completionRating: rating,
       };
       setWorkout(updatedWorkout);
       setShowCompletionDialog(false);
@@ -318,6 +320,11 @@ export default function WorkoutDetailPage() {
                 <Badge variant="outline" className="capitalize">
                   {workout.type}
                 </Badge>
+                {isCoachAssigned(workout) && (
+                  <Badge variant="outline" className="text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800">
+                    Assigned by coach
+                  </Badge>
+                )}
                 {workout.completed ? (
                   <Badge className="bg-green-500 hover:bg-green-600">
                     <CheckCircle2 className="h-3 w-3 mr-1" />

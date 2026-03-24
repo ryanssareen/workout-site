@@ -14,11 +14,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { CheckCircle2 } from 'lucide-react';
 
+const RATING_LABELS: Record<number, string> = {
+  1: 'Struggled',
+  2: 'Tough',
+  3: 'Moderate',
+  4: 'Strong',
+  5: 'Crushed it',
+};
+
 interface CompletionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workoutName: string;
-  onConfirm: (notes?: string) => void;
+  onConfirm: (notes?: string, rating?: 1 | 2 | 3 | 4 | 5) => void;
   isLoading?: boolean;
 }
 
@@ -30,14 +38,17 @@ export function CompletionDialog({
   isLoading = false,
 }: CompletionDialogProps) {
   const [notes, setNotes] = useState('');
+  const [rating, setRating] = useState<1 | 2 | 3 | 4 | 5 | null>(null);
 
   const handleConfirm = () => {
-    onConfirm(notes.trim() || undefined);
+    onConfirm(notes.trim() || undefined, rating ?? undefined);
     setNotes('');
+    setRating(null);
   };
 
   const handleCancel = () => {
     setNotes('');
+    setRating(null);
     onOpenChange(false);
   };
 
@@ -55,7 +66,26 @@ export function CompletionDialog({
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="notes">How did it feel? (optional)</Label>
+            <Label>How did it feel? (optional)</Label>
+            <div className="flex gap-1">
+              {([1, 2, 3, 4, 5] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setRating(rating === value ? null : value)}
+                  className={`flex-1 py-2 px-1 rounded-md text-xs font-medium transition-colors border ${
+                    rating === value
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted'
+                  }`}
+                >
+                  {RATING_LABELS[value]}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="notes">Notes (optional)</Label>
             <Textarea
               id="notes"
               placeholder="Share any notes about this workout..."

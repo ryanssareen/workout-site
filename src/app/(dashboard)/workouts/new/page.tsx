@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { createWorkout, getCoachStudents } from '@/lib/firebase/firestore';
+import { getCoachStudents } from '@/lib/firebase/firestore';
+import { createWorkoutViaApi } from '@/lib/api-client';
 import { useWorkoutStore } from '@/lib/stores/workoutStore';
 import { WorkoutForm } from '@/components/workouts/WorkoutForm';
 import { WorkoutPreviewDialog } from '@/components/workouts/WorkoutPreviewDialog';
@@ -124,7 +125,7 @@ export default function NewWorkoutPage() {
         }
       }
 
-      const newWorkoutId = await createWorkout(workoutData as any, user.username);
+      const newWorkoutId = await createWorkoutViaApi(workoutData as any, user.username);
       useWorkoutStore.getState().clearCache();
       setShowPreview(false);
 

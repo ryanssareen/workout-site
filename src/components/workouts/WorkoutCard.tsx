@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Workout } from '@/types';
-import { WorkoutTag, getWorkoutSummary } from '@/types/workout';
+import { WorkoutTag, getWorkoutSummary, isCoachAssigned } from '@/types/workout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -34,7 +34,7 @@ interface WorkoutCardProps {
   workout: Workout;
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
-  onToggleComplete?: (id: string, completed: boolean, notes?: string) => void;
+  onToggleComplete?: (id: string, completed: boolean, notes?: string, rating?: 1 | 2 | 3 | 4 | 5) => void;
   onViewDetails?: (id: string) => void;
   commentCount?: number;
   isCoach?: boolean;
@@ -76,10 +76,10 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
     workout.completed ? setShowUncompletionDialog(true) : setShowCompletionDialog(true);
   };
 
-  const handleComplete = async (notes?: string) => {
+  const handleComplete = async (notes?: string, rating?: 1 | 2 | 3 | 4 | 5) => {
     if (!onToggleComplete) return;
     setIsLoading(true);
-    try { await onToggleComplete(workout.id, true, notes); setShowCompletionDialog(false); } 
+    try { await onToggleComplete(workout.id, true, notes, rating); setShowCompletionDialog(false); }
     finally { setIsLoading(false); }
   };
 
@@ -155,6 +155,9 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
               </div>
               {isCoach && workout.assignedToName && (
                 <p className="text-xs text-muted-foreground">For <span className="font-medium text-foreground/80">{workout.assignedToName}</span></p>
+              )}
+              {!isCoach && isCoachAssigned(workout) && (
+                <p className="text-xs text-indigo-600 dark:text-indigo-400">Assigned by coach</p>
               )}
             </div>
             <Badge variant="secondary" className={cn('capitalize text-xs', getTypeBadge(workout.type))}>{workout.type}</Badge>
