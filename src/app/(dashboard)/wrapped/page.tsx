@@ -18,14 +18,14 @@ import type { Slide } from '@/components/wrapped/WrappedSlides';
 // ── Slide gradient backgrounds ──────────────────────────────────────
 
 const SLIDE_GRADIENTS: Record<Slide, string> = {
-  guess: 'bg-gradient-to-br from-indigo-950 via-slate-950 to-black',
-  reveal: 'bg-gradient-to-br from-red-950 via-orange-950/80 to-black',
-  stats: 'bg-gradient-to-br from-blue-950 via-slate-950 to-indigo-950/80',
-  breakdown: 'bg-gradient-to-br from-purple-950 via-slate-950 to-fuchsia-950/60',
-  records: 'bg-gradient-to-br from-amber-950 via-slate-950 to-yellow-950/60',
-  heatmap: 'bg-gradient-to-br from-emerald-950 via-slate-950 to-teal-950/60',
-  summary: 'bg-gradient-to-br from-orange-950 via-slate-950 to-rose-950/60',
-  final: 'bg-gradient-to-br from-red-950 via-purple-950 to-indigo-950',
+  guess: 'from-indigo-950 via-slate-950 to-black',
+  reveal: 'from-red-950 via-orange-950/80 to-black',
+  stats: 'from-blue-950 via-slate-950 to-indigo-950/80',
+  breakdown: 'from-purple-950 via-slate-950 to-fuchsia-950/60',
+  records: 'from-amber-950 via-slate-950 to-yellow-950/60',
+  heatmap: 'from-emerald-950 via-slate-950 to-teal-950/60',
+  summary: 'from-orange-950 via-slate-950 to-rose-950/60',
+  final: 'from-red-950 via-purple-950 to-indigo-950',
 };
 
 // Radial glow overlays per slide (inline styles for radial gradients)
@@ -221,24 +221,37 @@ export default function YearlyWrappedPage() {
     </div>
   );
 
+  // Build inline gradient so it's immune to theme overrides
+  const gradientMap: Record<Slide, string> = {
+    guess: 'linear-gradient(to bottom right, #1e1b4b, #020617, #000)',
+    reveal: 'linear-gradient(to bottom right, #450a0a, #431407, #000)',
+    stats: 'linear-gradient(to bottom right, #172554, #020617, #1e1b4b)',
+    breakdown: 'linear-gradient(to bottom right, #3b0764, #020617, #4a044e)',
+    records: 'linear-gradient(to bottom right, #451a03, #020617, #422006)',
+    heatmap: 'linear-gradient(to bottom right, #022c22, #020617, #042f2e)',
+    summary: 'linear-gradient(to bottom right, #431407, #020617, #4c0519)',
+    final: 'linear-gradient(to bottom right, #450a0a, #3b0764, #1e1b4b)',
+  };
+
   return (
     <div
-      className={cn(
-        'min-h-screen relative transition-all duration-700 ease-in-out',
-        SLIDE_GRADIENTS[slide],
-      )}
-      style={{
-        // Force light-on-dark regardless of theme — wrapped always has dark backgrounds
-        colorScheme: 'dark',
-        // @ts-ignore - override CSS custom properties for shadcn/tailwind theme
-        '--foreground': '0 0% 98%',
-        '--muted-foreground': '240 5% 64.9%',
-        '--background': '240 10% 3.9%',
-        '--card': '240 10% 3.9%',
-        '--border': '240 3.7% 15.9%',
-        '--primary': '0 72.2% 50.6%',
-      } as React.CSSProperties}
+      className="min-h-screen relative transition-all duration-700 ease-in-out wrapped-dark-force"
+      style={{ background: gradientMap[slide] }}
     >
+      {/* Force all theme-aware text to be white regardless of user's theme */}
+      <style>{`
+        .wrapped-dark-force,
+        .wrapped-dark-force * {
+          --foreground: 0 0% 98% !important;
+          --muted-foreground: 240 5% 65% !important;
+          --background: 240 10% 4% !important;
+          --card: 240 10% 4% !important;
+          --border: 240 4% 16% !important;
+          --primary: 0 72% 51% !important;
+          --primary-foreground: 0 0% 98% !important;
+          color-scheme: dark;
+        }
+      `}</style>
       {/* Radial glow overlay */}
       <div
         className="fixed inset-0 pointer-events-none z-0 transition-opacity duration-700"
@@ -289,7 +302,8 @@ export default function YearlyWrappedPage() {
           </div>
           <span className="text-white/50 text-xs font-medium tracking-widest uppercase">{YEAR} Wrapped</span>
         </div>
-        <ThemeToggle />
+        {/* Theme toggle hidden — wrapped is always dark themed */}
+        <div className="w-8" />
       </div>
 
       {/* Slide content */}
