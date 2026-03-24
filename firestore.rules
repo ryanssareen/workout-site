@@ -16,6 +16,23 @@ service cloud.firestore {
       allow update: if request.auth != null && resource.data.uid == request.auth.uid;
       allow delete: if false;
 
+      // Milestones subcollection
+      match /milestones/{milestoneId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null;
+        allow update, delete: if request.auth != null;
+      }
+
+      // AI daily insights (written by cron via Admin SDK, read by client)
+      match /insights/{insightId} {
+        allow read: if request.auth != null;
+      }
+
+      // Cached reports (written by API via Admin SDK, read by client)
+      match /cachedReports/{reportId} {
+        allow read: if request.auth != null;
+      }
+
       // Workouts subcollection under each user
       match /workouts/{workoutId} {
         allow read: if request.auth != null;

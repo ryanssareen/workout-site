@@ -75,8 +75,7 @@
           "order": "DESCENDING"
         }
       ]
-    }
-  ],
+    },
     {
       "collectionGroup": "backups",
       "queryScope": "COLLECTION",
