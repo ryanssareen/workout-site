@@ -60,7 +60,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isWrapped = pathname === '/wrapped';
   const isOnboardingPage = pathname === '/onboarding';
   const isWide = isReports || isCalendar;
-  const isFullWidth = isDashboard;
+  const isFullWidth = isDashboard || isReports || pathname?.startsWith('/reports/');
 
   // Wrap, Review & Wrapped get their own immersive full-screen layout
   if (isWrap || isReview || isWrapped) {

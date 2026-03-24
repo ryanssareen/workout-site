@@ -58,7 +58,15 @@ export default function DeepDiveReportPage() {
     setReport(null);
 
     try {
-      const idToken = await getAuthInstance().currentUser?.getIdToken();
+      // Wait for Firebase Auth to have a current user before requesting
+      const auth = getAuthInstance();
+      let currentUser = auth.currentUser;
+      if (!currentUser) {
+        currentUser = await new Promise<any>((resolve) => {
+          const unsub = auth.onAuthStateChanged((u) => { unsub(); resolve(u); });
+        });
+      }
+      const idToken = await currentUser?.getIdToken();
       const res = await fetch('/api/ai/reports/generate', {
         method: 'POST',
         headers: {
