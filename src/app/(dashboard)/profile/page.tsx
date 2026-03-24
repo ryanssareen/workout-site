@@ -39,6 +39,9 @@ import { format } from 'date-fns';
 import Link from 'next/link';
 import type { Workout, PersonalRecord } from '@/types';
 import type { Milestone } from '@/types/achievements';
+import { getCoachDashboardStats, CoachStats } from '@/lib/firebase/firestore';
+import { Users, CheckCircle2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const MILESTONE_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   star: Star, medal: Medal, award: Award, trophy: Trophy, flame: Flame, dumbbell: Dumbbell,
@@ -121,6 +124,14 @@ export default function ProfilePage() {
       .slice(0, 3);
   }, [personalRecords]);
 
+  // Coach stats (loaded only for coaches)
+  const [coachStats, setCoachStats] = useState<CoachStats | null>(null);
+  useEffect(() => {
+    if (user?.role === 'coach') {
+      getCoachDashboardStats(user.username).then(setCoachStats).catch(() => {});
+    }
+  }, [user]);
+
   if (!user) return null;
 
   if (loading) {
@@ -130,6 +141,105 @@ export default function ProfilePage() {
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground">Loading profile...</p>
         </div>
+      </div>
+    );
+  }
+
+  // ── Coach Profile ──
+  if (user.role === 'coach') {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6 pb-8">
+        {/* Hero */}
+        <section className="text-center space-y-3">
+          <div className="flex justify-center">
+            <PhotoUpload user={user} size={96} />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{user.displayName}</h1>
+            <p className="text-muted-foreground font-mono text-sm">@{user.username}</p>
+          </div>
+          <Badge variant="secondary" className="text-xs gap-1">
+            <Users className="h-3 w-3" /> Coach
+          </Badge>
+          {user.bio && (
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">{user.bio}</p>
+          )}
+          <div className="flex gap-2 justify-center">
+            <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+              <Pencil className="h-4 w-4 mr-1.5" />Edit Profile
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/settings"><Settings className="h-4 w-4 mr-1.5" />Settings</Link>
+            </Button>
+          </div>
+        </section>
+
+        {/* Coaching Stats */}
+        {coachStats && (
+          <section>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <StatCard value={String(coachStats.totalStudents)} label="Athletes" icon={<Users className="w-3.5 h-3.5 text-blue-500" />} />
+              <StatCard value={String(coachStats.totalWorkouts)} label="Assigned" icon={<Dumbbell className="w-3.5 h-3.5" />} />
+              <StatCard value={String(coachStats.completedWorkouts)} label="Completed" icon={<CheckCircle2 className="w-3.5 h-3.5 text-green-500" />} />
+              <StatCard value={`${Math.round(coachStats.overallCompletionRate * 100)}%`} label="Completion Rate" icon={<Activity className="w-3.5 h-3.5" />} />
+            </div>
+          </section>
+        )}
+
+        {/* Athlete Roster */}
+        {coachStats && coachStats.studentsWithStats.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Your Athletes</h2>
+            <div className="grid gap-2.5">
+              {coachStats.studentsWithStats.map((student) => {
+                const completionPct = student.assignedWorkouts > 0
+                  ? Math.round((student.completedWorkouts / student.assignedWorkouts) * 100)
+                  : 0;
+                return (
+                  <div key={student.uid} className="rounded-xl border bg-card p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-sm font-semibold shrink-0">
+                        {getInitials(student.displayName || student.uid)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{student.displayName || student.uid}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {student.assignedWorkouts} workouts · {student.completedWorkouts} done
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className={cn(
+                        'text-lg font-bold tabular-nums',
+                        completionPct >= 80 ? 'text-green-500' : completionPct >= 50 ? 'text-orange-500' : 'text-muted-foreground'
+                      )}>
+                        {completionPct}%
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">completion</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* Empty state */}
+        {(!coachStats || coachStats.totalStudents === 0) && (
+          <div className="text-center py-10 space-y-2">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-muted">
+              <Users className="w-6 h-6 text-muted-foreground" />
+            </div>
+            <p className="text-base font-medium">No athletes yet</p>
+            <p className="text-sm text-muted-foreground">Athletes will appear here once linked by an admin.</p>
+          </div>
+        )}
+
+        <EditProfileDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          onSaved={() => setRefreshKey(k => k + 1)}
+        />
       </div>
     );
   }
