@@ -27,7 +27,6 @@ const RouteMap = dynamic(
 );
 import { CompletionDialog, UncompletionDialog } from '@/components/workouts/CompletionDialog';
 import { WorkoutPhotos } from '@/components/workouts/WorkoutPhotos';
-import { WorkoutRecommendations } from '@/components/ai/WorkoutRecommendations';
 import { CelebrationModal } from '@/components/achievements/CelebrationModal';
 import { checkAchievements } from '@/lib/achievements';
 import { cn } from '@/lib/utils';
@@ -689,8 +688,6 @@ export default function WorkoutDetailPage() {
         </CardContent>
       </Card>
 
-      {/* AI Recommendations */}
-      <WorkoutRecommendations workout={workout} />
 
       {/* Comments section */}
       <CommentSection
