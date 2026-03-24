@@ -276,7 +276,7 @@ export default function WrapPage() {
       </div>
 
       {/* Capsule content */}
-      <div ref={cardRef} className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-5 space-y-4">
+      <div ref={cardRef} className="w-full max-w-[calc(100vw-1rem)] sm:max-w-2xl lg:max-w-4xl mx-auto px-2 sm:px-6 py-5 space-y-4">
 
         {/* ═══ Hero — label, week, rating, stat badges ═══ */}
         <div className="rounded-2xl bg-gradient-to-br from-primary/10 via-transparent to-purple-500/10 border border-border/30 p-5 sm:p-6">
@@ -427,7 +427,7 @@ export default function WrapPage() {
 
       {/* Sticky share bar */}
       <div className="sticky bottom-0 z-20 px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] bg-background/80 backdrop-blur-xl border-t border-border/30">
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-[calc(100vw-1rem)] sm:max-w-2xl lg:max-w-4xl mx-auto">
           {showShare ? (
             <ShareButtons
               title="Share Your Wrap"
