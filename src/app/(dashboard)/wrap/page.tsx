@@ -114,6 +114,7 @@ export default function WrapPage() {
   const user = useAuthStore((s) => s.user);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showShare, setShowShare] = useState(false);
   const [weekOffset, setWeekOffset] = useState(0);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -122,10 +123,24 @@ export default function WrapPage() {
     async function load() {
       if (!user) return;
       if (workouts.length === 0) setLoading(true);
-      const { getWorkouts } = useWorkoutStore.getState();
-      const data = await getWorkouts(user.username, user.role);
-      setWorkouts(data);
-      setLoading(false);
+      setError(null);
+      try {
+        const { getWorkouts } = useWorkoutStore.getState();
+        const data = await Promise.race([
+          getWorkouts(user.username, user.role),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('timeout')), 15000)
+          ),
+        ]);
+        setWorkouts(data);
+      } catch (err) {
+        console.error('Failed to load wrap data:', err);
+        if (workouts.length === 0) {
+          setError('Could not load workout data. You may have hit the daily quota — try again later.');
+        }
+      } finally {
+        setLoading(false);
+      }
     }
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -220,6 +235,21 @@ export default function WrapPage() {
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-foreground" />
           <p className="text-muted-foreground animate-pulse">Loading your wrap...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background px-6">
+        <div className="text-center space-y-4 max-w-sm">
+          <div className="text-4xl">😴</div>
+          <h2 className="text-lg font-semibold">Data unavailable</h2>
+          <p className="text-sm text-muted-foreground">{error}</p>
+          <a href="/dashboard" className="inline-block text-sm text-primary hover:underline">
+            Back to Dashboard
+          </a>
         </div>
       </div>
     );

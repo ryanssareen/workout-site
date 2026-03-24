@@ -142,6 +142,7 @@ export default function MonthlyReviewPage() {
   const user = useAuthStore((s) => s.user);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [monthOffset, setMonthOffset] = useState(0);
   const cardRef = useRef<HTMLDivElement>(null);
   const [showShare, setShowShare] = useState(false);
@@ -150,10 +151,25 @@ export default function MonthlyReviewPage() {
     async function load() {
       if (!user) return;
       if (workouts.length === 0) setLoading(true);
-      const { getWorkouts } = useWorkoutStore.getState();
-      const data = await getWorkouts(user.username, user.role);
-      setWorkouts(data);
-      setLoading(false);
+      setError(null);
+      try {
+        const { getWorkouts } = useWorkoutStore.getState();
+        // Add timeout so page doesn't hang forever on quota/network issues
+        const data = await Promise.race([
+          getWorkouts(user.username, user.role),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('timeout')), 15000)
+          ),
+        ]);
+        setWorkouts(data);
+      } catch (err) {
+        console.error('Failed to load review data:', err);
+        if (workouts.length === 0) {
+          setError('Could not load workout data. You may have hit the daily quota — try again later.');
+        }
+      } finally {
+        setLoading(false);
+      }
     }
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -249,7 +265,25 @@ export default function MonthlyReviewPage() {
   if (loading) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-background">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading review...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background px-6">
+        <div className="text-center space-y-4 max-w-sm">
+          <div className="text-4xl">😴</div>
+          <h2 className="text-lg font-semibold">Data unavailable</h2>
+          <p className="text-sm text-muted-foreground">{error}</p>
+          <Link href="/dashboard" className="inline-block text-sm text-primary hover:underline">
+            Back to Dashboard
+          </Link>
+        </div>
       </div>
     );
   }

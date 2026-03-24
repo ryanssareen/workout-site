@@ -25,18 +25,25 @@ export function CoachDashboard({ username, timezone }: CoachDashboardProps) {
   const [stats, setStats] = useState<CoachStats | null>(null);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { selectedAthlete, selectAthlete, athletes: coachAthletes } = useCoachFilter(username);
 
   useEffect(() => {
     async function load() {
+      setError(null);
       try {
-        // Fetch workouts once, pass to stats (avoids double fetch)
-        const workoutsData = await getUserWorkouts(username, 'coach');
+        const workoutsData = await Promise.race([
+          getUserWorkouts(username, 'coach'),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('timeout')), 15000)
+          ),
+        ]);
         const statsData = await getCoachDashboardStats(username, workoutsData);
         setStats(statsData);
         setWorkouts(workoutsData);
-      } catch (error) {
-        console.error('Failed to load coach dashboard:', error);
+      } catch (err) {
+        console.error('Failed to load coach dashboard:', err);
+        setError('Could not load data. You may have hit the daily quota — try again later.');
       } finally {
         setLoading(false);
       }
@@ -50,6 +57,21 @@ export function CoachDashboard({ username, timezone }: CoachDashboardProps) {
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96 px-6">
+        <div className="text-center space-y-4 max-w-sm">
+          <div className="text-4xl">😴</div>
+          <h2 className="text-lg font-semibold">Data unavailable</h2>
+          <p className="text-sm text-muted-foreground">{error}</p>
+          <button onClick={() => window.location.reload()} className="text-sm text-primary hover:underline">
+            Try again
+          </button>
         </div>
       </div>
     );
