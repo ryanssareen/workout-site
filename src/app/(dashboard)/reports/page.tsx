@@ -37,10 +37,6 @@ export default function ReportsHubPage() {
   const [insight, setInsight] = useState<AIInsight | null>(null);
   const [loadingInsight, setLoadingInsight] = useState(true);
 
-  const firstName = useMemo(
-    () => (user?.displayName ? user.displayName.split(' ')[0] || user.displayName : 'Athlete'),
-    [user?.displayName],
-  );
   const greeting = useMemo(() => getTimeGreeting(new Date()), []);
 
   const { getWorkouts } = useWorkoutStore();
@@ -48,6 +44,19 @@ export default function ReportsHubPage() {
   const { selectedAthlete, selectAthlete, athletes: coachAthletes } = useCoachFilter(
     isCoach ? user?.username : undefined
   );
+
+  // For coaches, show the selected athlete's name (or "All Athletes")
+  const selectedAthleteData = useMemo(() => {
+    if (!isCoach || selectedAthlete === 'all') return null;
+    return coachAthletes.find(a => a.uid === selectedAthlete);
+  }, [isCoach, selectedAthlete, coachAthletes]);
+
+  const displayName = useMemo(() => {
+    if (isCoach && selectedAthleteData) {
+      return selectedAthleteData.displayName.split(' ')[0] || selectedAthleteData.displayName;
+    }
+    return user?.displayName ? user.displayName.split(' ')[0] || user.displayName : 'Athlete';
+  }, [isCoach, selectedAthleteData, user?.displayName]);
 
   // Fetch workouts in background — Zone 3 cards show immediately with generic teasers
   const fetchWorkouts = useCallback(async () => {
@@ -63,14 +72,16 @@ export default function ReportsHubPage() {
   }, [user?.username, user?.role, getWorkouts]);
 
   // Fetch cached daily insight from Firestore
+  // For coaches viewing a specific athlete, fetch the athlete's insight
+  const insightUsername = isCoach && selectedAthlete !== 'all' ? selectedAthlete : user?.username;
   const fetchInsight = useCallback(async () => {
-    if (!user?.username) {
+    if (!insightUsername) {
       setLoadingInsight(false);
       return;
     }
     try {
       const db = getDbInstance();
-      const insightRef = doc(db, 'users', user.username, 'insights', 'daily');
+      const insightRef = doc(db, 'users', insightUsername, 'insights', 'daily');
       const insightDoc = await getDoc(insightRef);
 
       if (insightDoc.exists()) {
@@ -94,7 +105,7 @@ export default function ReportsHubPage() {
     } finally {
       setLoadingInsight(false);
     }
-  }, [user?.username]);
+  }, [insightUsername]);
 
   useEffect(() => {
     fetchWorkouts();
@@ -121,7 +132,7 @@ export default function ReportsHubPage() {
       weeklyCount: completed.filter((w) => toDate(w.date) >= startOfWeek).length,
       monthlyCount: completed.filter((w) => toDate(w.date) >= startOfMonth).length,
     };
-  }, [workouts]);
+  }, [filteredWorkouts]);
 
   if (loading) {
     return (
@@ -142,7 +153,7 @@ export default function ReportsHubPage() {
             {isCoach ? 'Athlete Reports' : 'Your Reports'}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {greeting}, {firstName}. Here&apos;s what your data is telling you.
+            {greeting}, {displayName}. {isCoach && selectedAthlete === 'all' ? 'Viewing all athletes.' : 'Here\u0027s what the data is telling you.'}
           </p>
         </div>
         {isCoach && (
@@ -155,24 +166,28 @@ export default function ReportsHubPage() {
       </div>
 
       {/* ═══ ZONE 1: THE SMART LAYER ═══ */}
-      <section className="space-y-3">
-        <AIInsightCard
-          insight={insight}
-          loading={loadingInsight}
-          userName={firstName}
-        />
-        <AskAnythingBar
-          userId={user.uid}
-          userEmail={user.email}
-          userRole={user.role}
-          userName={firstName}
-        />
-      </section>
+      {(!isCoach || selectedAthlete !== 'all') && (
+        <section className="space-y-3">
+          <AIInsightCard
+            insight={insight}
+            loading={loadingInsight}
+            userName={displayName}
+          />
+          {!isCoach && (
+            <AskAnythingBar
+              userId={user.uid}
+              userEmail={user.email}
+              userRole={user.role}
+              userName={displayName}
+            />
+          )}
+        </section>
+      )}
 
       {/* ═══ ZONE 2: YOUR REPORTS ═══ */}
       <section className="space-y-2">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-0.5">
-          Your Reports
+          {isCoach ? 'Reports' : 'Your Reports'}
         </h2>
         <YourReportsZone
           weeklyWorkoutCount={weeklyCount}
@@ -183,7 +198,7 @@ export default function ReportsHubPage() {
       {/* ═══ ZONE 3: EXPLORE YOUR DATA ═══ */}
       <section className="space-y-2">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-0.5">
-          Explore Your Data
+          {isCoach ? 'Explore Data' : 'Explore Your Data'}
         </h2>
         <ExploreCards workouts={filteredWorkouts} user={user} />
       </section>
