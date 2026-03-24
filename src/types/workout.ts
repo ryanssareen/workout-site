@@ -79,12 +79,15 @@ export interface Workout {
   date: Date | { seconds: number };
   studentId?: string;
   createdBy: string;
+  ownerUsername?: string;
+  assignedTo?: string;
   completed: boolean;
   completedAt?: Date | { seconds: number };
   completedLate?: boolean;
+  completionRating?: 1 | 2 | 3 | 4 | 5;
   description?: string;
   duration?: number;
-  tags?: WorkoutTag[]; // NEW: Workout tags
+  tags?: WorkoutTag[];
   swim?: SwimData;
   bike?: BikeData;
   run?: RunData;
@@ -122,6 +125,16 @@ export interface WorkoutFormData {
   run?: Partial<RunData>;
   strength?: Partial<StrengthData>;
   other?: Partial<OtherData>;
+}
+
+/** Returns true if this workout was assigned by a coach (createdBy differs from ownerUsername) */
+export function isCoachAssigned(workout: Workout): boolean {
+  return !!(workout.ownerUsername && workout.createdBy && workout.createdBy !== workout.ownerUsername);
+}
+
+/** Returns the coach's username if this workout was coach-assigned, null otherwise */
+export function getCoachUsername(workout: Workout): string | null {
+  return isCoachAssigned(workout) ? workout.createdBy : null;
 }
 
 export function getWorkoutSummary(workout: Workout): string {

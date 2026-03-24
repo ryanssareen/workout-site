@@ -15,7 +15,11 @@ export function getAdminUids(): string[] {
 const SESSION_DURATION_MS = 4 * 60 * 60 * 1000; // 4 hours
 
 function getSecret(): string {
-  return process.env.ADMIN_SECRET ?? 'fallback-dev-secret';
+  const secret = process.env.ADMIN_SECRET;
+  if (!secret) {
+    throw new Error('ADMIN_SECRET environment variable is required');
+  }
+  return secret;
 }
 
 export function createPasswordSessionToken(): string {

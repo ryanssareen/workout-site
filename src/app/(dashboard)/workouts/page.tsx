@@ -6,6 +6,8 @@ import { useAuthStore } from '@/lib/stores/authStore';
 import { deleteWorkout, completeWorkout } from '@/lib/firebase/firestore';
 import { useWorkoutStore } from '@/lib/stores/workoutStore';
 import { Workout, WorkoutType } from '@/types';
+import { useCoachFilter } from '@/hooks/useCoachFilter';
+import { AthleteSelector } from '@/components/dashboard/AthleteSelector';
 import { AIWorkoutSuggestions } from '@/components/workouts/AIWorkoutSuggestions';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -197,6 +199,10 @@ function WorkoutsContent() {
   const [deleting, setDeleting] = useState(false);
 
   const { getWorkouts, invalidate: invalidateWorkouts } = useWorkoutStore();
+  const isCoach = user?.role === 'coach';
+  const { selectedAthlete, selectAthlete, athletes: coachAthletes } = useCoachFilter(
+    isCoach ? user?.username : undefined
+  );
 
   const loadWorkouts = useCallback(async () => {
     if (!user) return;
@@ -235,10 +241,15 @@ function WorkoutsContent() {
     !(w.tags?.includes('note') || (w.name === 'Note' && w.type === 'other'))
   );
 
+  // Coach athlete filter
+  const athleteFiltered = isCoach && selectedAthlete !== 'all'
+    ? nonNotes.filter(w => w.ownerUsername === selectedAthlete || w.assignedTo === selectedAthlete)
+    : nonNotes;
+
   // Time filter
   const today = startOfDay(new Date());
   const recurringHorizon = addDays(today, 7);
-  const timeFiltered = nonNotes.filter(w => {
+  const timeFiltered = athleteFiltered.filter(w => {
     if (timeFilter === 'all') return true;
     const d = getDate(w);
     if (timeFilter === 'planned') {
@@ -274,17 +285,18 @@ function WorkoutsContent() {
 
   // Counts per time filter
   const timeCounts: Record<TimeFilter, number> = {
-    all: nonNotes.length,
-    planned: nonNotes.filter(w => {
+    all: athleteFiltered.length,
+    planned: athleteFiltered.filter(w => {
       const d = getDate(w);
       if (d < today || w.completed) return false;
       if ((w as any).isRecurring && d > recurringHorizon) return false;
       return true;
     }).length,
-    past: nonNotes.filter(w => getDate(w) < today || w.completed).length,
+    past: athleteFiltered.filter(w => getDate(w) < today || w.completed).length,
   };
 
-  const canManageWorkouts = user?.role === 'coach' || ((user?.role === 'athlete' || user?.role === 'student') && !user?.coachUsername);
+  // Athletes can always manage their own workouts, even if they have a coach
+  const canManageWorkouts = user?.role === 'coach' || user?.role === 'athlete' || user?.role === 'student';
 
   if (loading || !ready) {
     return (
@@ -303,12 +315,20 @@ function WorkoutsContent() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold">
-            {user?.role === 'coach' ? 'My Workouts' : 'Workouts'}
+            {isCoach ? 'Athlete Workouts' : 'Workouts'}
           </h1>
           <p className="text-xs text-muted-foreground">
             {filteredWorkouts.length} workout{filteredWorkouts.length !== 1 ? 's' : ''}
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          {isCoach && (
+            <AthleteSelector
+              selectedAthlete={selectedAthlete}
+              onSelect={selectAthlete}
+              athletes={coachAthletes}
+            />
+          )}
         {canManageWorkouts && (
           <Button size="sm" asChild>
             <Link href="/workouts/new">
@@ -317,6 +337,7 @@ function WorkoutsContent() {
             </Link>
           </Button>
         )}
+        </div>
       </div>
 
       {/* AI Workout Suggestions — collapsed by default */}

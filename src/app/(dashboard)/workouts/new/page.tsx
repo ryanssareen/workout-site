@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { createWorkout, getCoachStudents } from '@/lib/firebase/firestore';
+import { getCoachStudents } from '@/lib/firebase/firestore';
+import { createWorkoutViaApi } from '@/lib/api-client';
 import { useWorkoutStore } from '@/lib/stores/workoutStore';
 import { WorkoutForm } from '@/components/workouts/WorkoutForm';
 import { WorkoutPreviewDialog } from '@/components/workouts/WorkoutPreviewDialog';
@@ -91,11 +92,10 @@ export default function NewWorkoutPage() {
     }
   }, [aiGenerated]);
 
-  // Redirect if not authorized (must be coach OR unconnected athlete)
+  // Redirect if not authorized (any authenticated user can create workouts)
   useEffect(() => {
     if (authLoading) return;
-    const canCreate = user?.role === 'coach' || ((user?.role === 'athlete' || user?.role === 'student') && !user?.coachUsername);
-    if (user && !canCreate) {
+    if (!user) {
       router.push('/dashboard');
     }
   }, [user, authLoading, router]);
@@ -125,7 +125,7 @@ export default function NewWorkoutPage() {
         }
       }
 
-      const newWorkoutId = await createWorkout(workoutData as any, user.username);
+      const newWorkoutId = await createWorkoutViaApi(workoutData as any, user.username);
       useWorkoutStore.getState().clearCache();
       setShowPreview(false);
 

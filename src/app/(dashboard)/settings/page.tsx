@@ -208,7 +208,7 @@ function SettingsContent() {
       </Card>
 
       {/* ═══════════════════ Strava ═══════════════════ */}
-      {(user?.role === 'athlete' || user?.role === 'student' || user?.role === 'coach') && (
+      {(user?.role === 'athlete' || user?.role === 'student') && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">

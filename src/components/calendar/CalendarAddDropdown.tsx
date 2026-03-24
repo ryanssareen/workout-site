@@ -7,7 +7,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { createWorkout } from '@/lib/firebase/firestore';
+import { createWorkoutViaApi } from '@/lib/api-client';
 import { useWorkoutStore } from '@/lib/stores/workoutStore';
 import { createPortal } from 'react-dom';
 
@@ -63,7 +63,7 @@ export function CalendarAddDropdown({ date, className, onNoteAdded }: CalendarAd
     setSaving(true);
     try {
       const noteDate = new Date(dateStr + 'T12:00:00');
-      await createWorkout(
+      await createWorkoutViaApi(
         {
           name: 'Note',
           type: 'other',
@@ -95,7 +95,7 @@ export function CalendarAddDropdown({ date, className, onNoteAdded }: CalendarAd
     setSaving(true);
     try {
       const eventDate = new Date(dateStr + 'T08:00:00');
-      await createWorkout(
+      await createWorkoutViaApi(
         {
           name: eventName.trim(),
           type: eventType,

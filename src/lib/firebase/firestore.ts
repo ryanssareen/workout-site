@@ -1,10 +1,13 @@
 import {
   collection, addDoc, updateDoc, deleteDoc, doc, getDoc, getDocs,
-  query, where, orderBy, serverTimestamp, Timestamp, writeBatch, deleteField,
+  query, where, orderBy, limit as firestoreLimit, serverTimestamp, Timestamp, writeBatch, deleteField,
 } from 'firebase/firestore';
 import { getDbInstance } from './config';
 import { Workout, WorkoutFormData, WorkoutComment, WorkoutRating, PersonalRecord, PRCategory, Milestone } from '@/types';
-import { addDays, addWeeks, addMonths } from 'date-fns';
+import { addDays, addWeeks, addMonths, subDays } from 'date-fns';
+
+/** Default date window for coach queries (in days) */
+export const COACH_QUERY_WINDOW_DAYS = 90;
 
 // Extended form data to include recurring fields
 export interface ExtendedWorkoutFormData extends WorkoutFormData {
@@ -137,37 +140,41 @@ export async function getUserWorkouts(username: string, role: 'coach' | 'athlete
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Workout[];
     } else {
-      // Coaches see:
-      // 1. Workouts they created (createdBy = coachUsername) across students
-      // 2. Workouts in their students' subcollections (including Strava imports)
-
-      // Get coach's students
+      // Coaches see workouts across all their linked athletes.
+      // Uses parallel per-athlete queries with date bounds for efficiency.
       const students = await getCoachStudents(username);
 
-      const allWorkouts: Workout[] = [];
+      if (students.length === 0) return [];
 
-      // For each student, get ALL their workouts
-      for (const student of students) {
-        const studentUsername = student.uid; // uid field contains username (doc.id)
-        const studentWorkoutsRef = collection(db, 'users', studentUsername, 'workouts');
-        const snap = await getDocs(query(studentWorkoutsRef, orderBy('date', 'desc')));
+      const cutoff = Timestamp.fromDate(subDays(new Date(), COACH_QUERY_WINDOW_DAYS));
 
-        const studentWorkouts = snap.docs.map(d => ({ id: d.id, ...d.data() }) as Workout);
+      // Parallel bounded queries — one per athlete, with date range + limit
+      const results = await Promise.all(
+        students.map(async (student) => {
+          const studentUsername = student.uid;
+          const studentWorkoutsRef = collection(db, 'users', studentUsername, 'workouts');
+          const q = query(
+            studentWorkoutsRef,
+            where('date', '>=', cutoff),
+            orderBy('date', 'desc'),
+            firestoreLimit(50)
+          );
+          const snap = await getDocs(q);
+          return snap.docs.map(d => {
+            const w = { id: d.id, ...d.data() } as Workout;
+            // Enrich with athlete name for coach views
+            if (!(w as any).assignedToName) {
+              (w as any).assignedToName = student.displayName || undefined;
+            }
+            return w;
+          });
+        })
+      );
 
-        // Enrich with athlete name
-        for (const w of studentWorkouts) {
-          if (!w.assignedToName) {
-            w.assignedToName = student.displayName || undefined;
-          }
-        }
+      const allWorkouts = results.flat();
 
-        allWorkouts.push(...studentWorkouts);
-      }
-
-      const uniqueWorkouts = allWorkouts;
-
-      // Sort by date descending
-      uniqueWorkouts.sort((a, b) => {
+      // Sort combined results by date descending
+      allWorkouts.sort((a, b) => {
         const dateA = a.date?.toDate ? a.date.toDate() : (a.date as any);
         const dateB = b.date?.toDate ? b.date.toDate() : (b.date as any);
         const timeA = dateA instanceof Date ? dateA.getTime() : new Date(dateA).getTime();
@@ -175,7 +182,7 @@ export async function getUserWorkouts(username: string, role: 'coach' | 'athlete
         return timeB - timeA;
       });
 
-      return uniqueWorkouts;
+      return allWorkouts;
     }
   } catch (error) {
     console.error('Error fetching workouts:', error);
@@ -236,7 +243,8 @@ export async function completeWorkout(
   ownerUsername: string,
   id: string,
   completed: boolean,
-  notes?: string
+  notes?: string,
+  rating?: 1 | 2 | 3 | 4 | 5
 ): Promise<void> {
   try {
     const docRef = doc(getDbInstance(), 'users', ownerUsername, 'workouts', id);
@@ -276,12 +284,16 @@ export async function completeWorkout(
       if (notes) {
         updateData.completionNotes = notes;
       }
+      if (rating && rating >= 1 && rating <= 5) {
+        updateData.completionRating = rating;
+      }
     } else {
       // Clear completion fields when un-completing
       updateData.completedAt = null;
       updateData.completedBy = null;
       updateData.completionNotes = null;
       updateData.completedLate = null;
+      updateData.completionRating = null;
     }
 
     await updateDoc(docRef, updateData);

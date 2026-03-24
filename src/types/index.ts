@@ -214,6 +214,7 @@ export interface Workout {
   stravaExtended?: StravaExtendedData;
   // Manual completion fields
   completionNotes?: string;
+  completionRating?: 1 | 2 | 3 | 4 | 5;
   completedBy?: 'manual' | 'strava';
   mergeMeta?: {
     method?: 'auto_planned' | 'auto_import' | 'manual' | 'duplicate_decision';
