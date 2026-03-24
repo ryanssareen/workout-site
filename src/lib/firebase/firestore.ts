@@ -368,11 +368,11 @@ export async function getCoachStudents(coachUsername: string): Promise<any[]> {
 
     const usersRef = collection(getDbInstance(), 'users');
 
-    // Single query with 'in' operator for both 'athlete' and legacy 'student' roles
+    // Query all users linked to this coach (any role — some athletes may have
+    // been coaches before or have legacy roles)
     const q = query(
       usersRef,
-      where('coachUsername', '==', coachUsername),
-      where('role', 'in', ['athlete', 'student'])
+      where('coachUsername', '==', coachUsername)
     );
     const snapshot = await getDocs(q);
     const athletes = snapshot.docs.map(d => ({ uid: d.id, ...d.data() }));
