@@ -12,7 +12,7 @@ import {
   Target, Zap,
   CheckCircle2, Clock, Flame,
   Activity, Trophy, ChevronRight, Gift, X, CalendarRange,
-  Circle,
+  Circle, Plus, BarChart3, Calendar as CalendarIcon, Settings, BookOpen,
 } from 'lucide-react';
 import { format, startOfWeek, endOfWeek, subWeeks, isWithinInterval, differenceInDays, isSameDay, subDays, parseISO, isPast, isToday as isTodayFn } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -490,6 +490,123 @@ export default function DashboardPage() {
             </Card>
           </Link>
         </div>
+      </div>
+
+      {/* ── WEEKLY ACTIVITY + SPORT BREAKDOWN ───────────────────── */}
+      {workouts.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Last 7 days activity */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-red-500" />Last 7 Days
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const days = Array.from({ length: 7 }, (_, i) => {
+                  const d = subDays(now, 6 - i);
+                  const count = workouts.filter(w => {
+                    const wd = getWorkoutDate(w);
+                    return isSameDay(wd, d) && w.completed;
+                  }).length;
+                  return { day: format(d, 'EEE'), count, isToday: isSameDay(d, now) };
+                });
+                const max = Math.max(...days.map(d => d.count), 1);
+                return (
+                  <div className="flex items-end gap-2 h-28">
+                    {days.map((d, i) => (
+                      <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+                        <div className="w-full relative" style={{ height: '80px' }}>
+                          <div
+                            className={cn(
+                              'absolute bottom-0 w-full rounded-md transition-all',
+                              d.count > 0
+                                ? d.isToday ? 'bg-red-500' : 'bg-red-500/60'
+                                : 'bg-muted/40'
+                            )}
+                            style={{ height: d.count > 0 ? `${Math.max((d.count / max) * 100, 12)}%` : '4px' }}
+                          />
+                        </div>
+                        <span className={cn('text-[10px]', d.isToday ? 'text-red-500 font-bold' : 'text-muted-foreground')}>
+                          {d.day}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+
+          {/* Sport breakdown */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Zap className="h-4 w-4 text-red-500" />Sport Breakdown
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const completed = workouts.filter(w => w.completed);
+                const types: Record<string, number> = {};
+                completed.forEach(w => { types[w.type] = (types[w.type] || 0) + 1; });
+                const sorted = Object.entries(types).sort(([, a], [, b]) => b - a);
+                const total = completed.length;
+                const TYPE_COLORS: Record<string, string> = {
+                  run: 'bg-red-500', bike: 'bg-amber-500', swim: 'bg-cyan-500',
+                  walk: 'bg-emerald-500', strength: 'bg-purple-500', other: 'bg-gray-500',
+                };
+                const TYPE_EMOJI: Record<string, string> = {
+                  run: '🏃', bike: '🚴', swim: '🏊', walk: '🚶', strength: '💪', other: '📋',
+                };
+                if (sorted.length === 0) return <p className="text-sm text-muted-foreground text-center py-4">No completed workouts yet</p>;
+                return (
+                  <div className="space-y-2.5">
+                    {sorted.slice(0, 5).map(([type, count]) => {
+                      const pct = Math.round((count / total) * 100);
+                      return (
+                        <div key={type} className="space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="flex items-center gap-1.5">
+                              <span>{TYPE_EMOJI[type] || '📋'}</span>
+                              <span className="capitalize font-medium">{type}</span>
+                            </span>
+                            <span className="text-muted-foreground">{count} ({pct}%)</span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-muted/50 overflow-hidden">
+                            <div className={cn('h-full rounded-full transition-all', TYPE_COLORS[type] || 'bg-gray-500')} style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ── QUICK LINKS ─────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        {[
+          { href: '/workouts/new', icon: Plus, label: 'New Workout', color: 'from-red-500 to-orange-500' },
+          { href: '/calendar', icon: CalendarIcon, label: 'Calendar', color: 'from-blue-500 to-cyan-500' },
+          { href: '/reports', icon: BookOpen, label: 'Reports', color: 'from-purple-500 to-fuchsia-500' },
+          { href: '/settings', icon: Settings, label: 'Settings', color: 'from-gray-500 to-gray-600' },
+        ].map(link => (
+          <Link key={link.href} href={link.href}>
+            <Card className="p-3 hover:border-foreground/20 transition-all group cursor-pointer">
+              <div className="flex items-center gap-2.5">
+                <div className={cn('h-8 w-8 rounded-lg bg-gradient-to-br flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform', link.color)}>
+                  <link.icon className="h-4 w-4 text-white" />
+                </div>
+                <span className="text-xs font-medium">{link.label}</span>
+              </div>
+            </Card>
+          </Link>
+        ))}
       </div>
     </div>
   );
