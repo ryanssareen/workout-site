@@ -284,7 +284,8 @@ function WorkoutsContent() {
     past: nonNotes.filter(w => getDate(w) < today || w.completed).length,
   };
 
-  const canManageWorkouts = user?.role === 'coach' || ((user?.role === 'athlete' || user?.role === 'student') && !user?.coachUsername);
+  // Athletes can always manage their own workouts, even if they have a coach
+  const canManageWorkouts = user?.role === 'coach' || user?.role === 'athlete' || user?.role === 'student';
 
   if (loading || !ready) {
     return (

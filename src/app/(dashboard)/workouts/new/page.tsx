@@ -91,11 +91,10 @@ export default function NewWorkoutPage() {
     }
   }, [aiGenerated]);
 
-  // Redirect if not authorized (must be coach OR unconnected athlete)
+  // Redirect if not authorized (any authenticated user can create workouts)
   useEffect(() => {
     if (authLoading) return;
-    const canCreate = user?.role === 'coach' || ((user?.role === 'athlete' || user?.role === 'student') && !user?.coachUsername);
-    if (user && !canCreate) {
+    if (!user) {
       router.push('/dashboard');
     }
   }, [user, authLoading, router]);

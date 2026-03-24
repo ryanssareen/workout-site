@@ -236,7 +236,8 @@ export async function completeWorkout(
   ownerUsername: string,
   id: string,
   completed: boolean,
-  notes?: string
+  notes?: string,
+  rating?: 1 | 2 | 3 | 4 | 5
 ): Promise<void> {
   try {
     const docRef = doc(getDbInstance(), 'users', ownerUsername, 'workouts', id);
@@ -276,12 +277,16 @@ export async function completeWorkout(
       if (notes) {
         updateData.completionNotes = notes;
       }
+      if (rating && rating >= 1 && rating <= 5) {
+        updateData.completionRating = rating;
+      }
     } else {
       // Clear completion fields when un-completing
       updateData.completedAt = null;
       updateData.completedBy = null;
       updateData.completionNotes = null;
       updateData.completedLate = null;
+      updateData.completionRating = null;
     }
 
     await updateDoc(docRef, updateData);
