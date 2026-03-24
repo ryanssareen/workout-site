@@ -224,9 +224,20 @@ export default function YearlyWrappedPage() {
   return (
     <div
       className={cn(
-        'min-h-screen text-foreground relative transition-all duration-700 ease-in-out',
+        'min-h-screen relative transition-all duration-700 ease-in-out',
         SLIDE_GRADIENTS[slide],
       )}
+      style={{
+        // Force light-on-dark regardless of theme — wrapped always has dark backgrounds
+        colorScheme: 'dark',
+        // @ts-ignore - override CSS custom properties for shadcn/tailwind theme
+        '--foreground': '0 0% 98%',
+        '--muted-foreground': '240 5% 64.9%',
+        '--background': '240 10% 3.9%',
+        '--card': '240 10% 3.9%',
+        '--border': '240 3.7% 15.9%',
+        '--primary': '0 72.2% 50.6%',
+      } as React.CSSProperties}
     >
       {/* Radial glow overlay */}
       <div
