@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useWorkoutStore } from '@/lib/stores/workoutStore';
 import { Workout, WorkoutType } from '@/types';
@@ -9,9 +9,30 @@ import {
   startOfWeek, endOfWeek, subWeeks, isWithinInterval, format,
   eachDayOfInterval, isSameDay,
 } from 'date-fns';
-import { Share2, Loader2, ChevronLeft, ChevronRight, X, Trophy } from 'lucide-react';
+import { Share2, Loader2, ChevronLeft, ChevronRight, X, Trophy, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/dashboard/ThemeToggle';
+
+// ── Animated counter hook ──
+function useCountUp(target: number, duration = 1200, enabled = true) {
+  const [value, setValue] = useState(0);
+  const startedRef = useRef(false);
+  useEffect(() => {
+    if (!enabled || startedRef.current) return;
+    startedRef.current = true;
+    const startTime = performance.now();
+    const step = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(Math.round(eased * target));
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }, [target, duration, enabled]);
+  return value;
+}
 
 // ── Helpers ──
 
@@ -120,7 +141,23 @@ export default function WrapPage() {
   const [error, setError] = useState<string | null>(null);
   const [showShare, setShowShare] = useState(false);
   const [weekOffset, setWeekOffset] = useState(0);
+  const [slide, setSlide] = useState(0);
+  const [animateIn, setAnimateIn] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  const TOTAL_SLIDES = 4;
+
+  // Trigger animation on slide change
+  useEffect(() => {
+    setAnimateIn(false);
+    const t = setTimeout(() => setAnimateIn(true), 50);
+    return () => clearTimeout(t);
+  }, [slide]);
+
+  // Reset to slide 0 when week changes
+  useEffect(() => { setSlide(0); }, [weekOffset]);
+
+  const goNext = useCallback(() => setSlide(s => Math.min(s + 1, TOTAL_SLIDES - 1)), []);
+  const goPrev = useCallback(() => setSlide(s => Math.max(s - 1, 0)), []);
 
   useEffect(() => {
     async function load() {
@@ -253,10 +290,17 @@ export default function WrapPage() {
     );
   }
 
+  // Animated counters for slide 1
+  const countWorkouts = useCountUp(totalWorkouts, 1000, slide === 1 && animateIn);
+  const countDist = useCountUp(Math.round(totalDistanceKm), 1200, slide === 1 && animateIn);
+  const countDur = useCountUp(totalDurationMin, 1400, slide === 1 && animateIn);
+
+  const progressPct = ((slide + 1) / TOTAL_SLIDES) * 100;
+
   return (
-    <div className="fixed inset-0 bg-background overflow-y-auto">
+    <div className="fixed inset-0 bg-background overflow-hidden flex flex-col">
       {/* Top bar */}
-      <div className="sticky top-0 z-20 flex items-center justify-between px-5 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] bg-background/80 backdrop-blur-xl">
+      <div className="z-20 flex items-center justify-between px-5 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] bg-background/80 backdrop-blur-xl border-b border-border/10">
         <Link href="/dashboard" className="p-2 -ml-2 rounded-full hover:bg-muted transition-colors">
           <X className="h-5 w-5 text-muted-foreground" />
         </Link>
@@ -273,179 +317,257 @@ export default function WrapPage() {
         <ThemeToggle />
       </div>
 
-      {/* Capsule content */}
-      <div ref={cardRef} className="w-full max-w-[calc(100vw-1rem)] sm:max-w-2xl lg:max-w-4xl mx-auto px-2 sm:px-6 py-5 space-y-4">
-
-        {/* ═══ Hero — label, week, rating, stat badges ═══ */}
-        <div className="rounded-2xl bg-gradient-to-br from-primary/10 via-transparent to-purple-500/10 border border-border/30 p-5 sm:p-6">
-          <p className="text-muted-foreground text-[10px] font-semibold tracking-widest uppercase mb-1">Your Week&apos;s Capsule</p>
-          <h2 className="text-foreground text-2xl sm:text-3xl font-black tracking-tight leading-none mb-0.5" style={{ WebkitFontSmoothing: 'antialiased', textRendering: 'optimizeLegibility' }}>
-            {weekLabel}
-          </h2>
-          <h1 className="text-foreground text-base sm:text-lg font-medium leading-tight mb-5">
-            Dear {firstName}, this week was <span className="font-bold text-foreground">{rating.word}</span> {rating.emoji}
-          </h1>
-          {/* Stat badges — 3 or 4 across */}
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3">
-            {[
-              { value: String(totalWorkouts), label: 'workouts' },
-              { value: totalDistanceKm > 0 ? `${totalDistanceKm}km` : '—', label: 'distance' },
-              { value: totalDurationMin > 0 ? fmtDur(totalDurationMin) : '—', label: 'time' },
-              ...(totalCalories > 0 ? [{ value: `${totalCalories}`, label: 'calories' }] : []),
-            ].map(s => (
-              <div key={s.label} className="rounded-xl bg-foreground/5 border border-border/20 py-3 text-center">
-                <p className="text-2xl font-black text-foreground leading-none">{s.value}</p>
-                <p className="text-[9px] text-muted-foreground mt-1.5 font-medium uppercase tracking-wide">{s.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ═══ Daily Activity — 7-day bar chart ═══ */}
-        <div className="rounded-2xl bg-muted/10 border border-border/20 p-4 sm:p-5">
-          <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Daily Activity</h2>
-          <div className="flex items-end gap-1.5 sm:gap-3 h-28 sm:h-36">
-            {dailyActivity.map((d, i) => {
-              const barH = d.count > 0 ? Math.max(12, (d.count / maxDailyCount) * 100) : 0;
-              const color = d.primaryType ? (TYPE_COLOR[d.primaryType] || '#6b7280') : '#6b7280';
-              return (
-                <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
-                  <div className="w-full flex flex-col items-center justify-end flex-1">
-                    {d.count > 0 && (
-                      <span className="text-[10px] font-bold text-foreground mb-1">{d.count}</span>
-                    )}
-                    <div
-                      className="w-full rounded-lg transition-all duration-500"
-                      style={{
-                        height: `${barH}%`,
-                        backgroundColor: d.count > 0 ? color : 'transparent',
-                        opacity: d.count > 0 ? 0.7 : 0,
-                        minHeight: d.count > 0 ? 12 : 0,
-                      }}
-                    />
-                    {d.count === 0 && (
-                      <div className="w-full h-1 rounded-full bg-muted-foreground/10" />
-                    )}
-                  </div>
-                  <span className="text-[10px] text-muted-foreground font-medium">{DAY_LABELS[i]}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ═══ Two-column: Highlight + Breakdown ═══ */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-          {/* Highlight of the Week */}
-          {highlight && (
-            <div className="rounded-2xl bg-gradient-to-br from-amber-500/10 to-orange-500/5 border border-border/20 p-4 sm:p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Trophy className="h-3.5 w-3.5 text-amber-500" />
-                <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{highlight.label} of the Week</h2>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-3xl">{TYPE_EMOJI[highlight.workout.type]}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-lg font-black text-foreground leading-tight truncate">
-                    {highlight.metric}
-                  </p>
-                  {highlight.sub && (
-                    <p className="text-xs text-muted-foreground">{highlight.sub}</p>
-                  )}
-                  <p className="text-[10px] text-muted-foreground/70 mt-0.5 truncate">
-                    {highlight.workout.name || TYPE_NAME[highlight.workout.type]} · {format(toDate(highlight.workout), 'EEE')}
-                  </p>
-                </div>
-              </div>
+      {/* Slide content — fills remaining space */}
+      <div
+        ref={cardRef}
+        className={cn(
+          'flex-1 flex flex-col justify-center px-6 sm:px-12 md:px-20 transition-all duration-500',
+          animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6',
+        )}
+      >
+        {/* ═══ SLIDE 0 — The Verdict ═══ */}
+        {slide === 0 && (
+          <div className="flex flex-col items-center text-center max-w-lg mx-auto">
+            <div className="text-8xl sm:text-9xl mb-6 drop-shadow-lg" style={{ animation: animateIn ? 'popIn 0.6s ease-out' : undefined }}>
+              {rating.emoji}
             </div>
-          )}
+            <p className="text-muted-foreground text-xs font-semibold tracking-widest uppercase mb-2">Your Week&apos;s Capsule</p>
+            <h1 className="text-3xl sm:text-5xl font-black text-foreground tracking-tight leading-tight mb-3">
+              This week was<br />
+              <span className="text-primary">{rating.word}</span>
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              {format(targetWeekStart, 'MMM d')} – {format(targetWeekEnd, 'MMM d')}
+            </p>
+            <button
+              onClick={goNext}
+              className="mt-10 group flex items-center gap-2 text-primary text-sm font-semibold hover:opacity-80 transition-opacity"
+            >
+              See the numbers <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
+        )}
 
-          {/* Breakdown — horizontal stacked bar */}
-          {pieData.length > 0 && (
-            <div className="rounded-2xl bg-muted/10 border border-border/20 p-4 sm:p-5">
-              <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Breakdown</h2>
-              <div className="flex h-4 rounded-full overflow-hidden mb-3">
-                {pieData.map(e => (
-                  <div
-                    key={e.type}
-                    className="h-full first:rounded-l-full last:rounded-r-full"
-                    style={{ width: `${e.pct}%`, backgroundColor: TYPE_COLOR[e.type] || '#6b7280' }}
-                  />
-                ))}
-              </div>
-              <div className="flex flex-wrap gap-x-3 gap-y-1">
-                {pieData.map(e => (
-                  <div key={e.type} className="flex items-center gap-1.5">
-                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: TYPE_COLOR[e.type] || '#6b7280' }} />
-                    <span className="text-xs text-muted-foreground font-medium">{TYPE_NAME[e.type] || e.type} {e.pct}%</span>
+        {/* ═══ SLIDE 1 — The Numbers ═══ */}
+        {slide === 1 && (
+          <div className="flex flex-col items-center text-center max-w-md mx-auto">
+            <p className="text-muted-foreground text-xs font-semibold tracking-widest uppercase mb-8">The Numbers</p>
+            <div className="space-y-8 w-full">
+              {[
+                { value: countWorkouts, unit: '', label: 'workouts', delay: '0ms' },
+                ...(totalDistanceKm > 0 ? [{ value: countDist, unit: 'km', label: 'distance covered', delay: '150ms' }] : []),
+                ...(totalDurationMin > 0 ? [{ value: countDur > 60 ? Math.floor(countDur / 60) : countDur, unit: countDur > 60 ? 'hrs' : 'min', label: 'of training', delay: '300ms' }] : []),
+              ].map((stat, i) => (
+                <div
+                  key={stat.label}
+                  className="transition-all duration-700"
+                  style={{
+                    opacity: animateIn ? 1 : 0,
+                    transform: animateIn ? 'translateY(0)' : 'translateY(20px)',
+                    transitionDelay: stat.delay,
+                  }}
+                >
+                  <div className="text-6xl sm:text-7xl font-black text-foreground tracking-tighter leading-none">
+                    {stat.value}<span className="text-primary">{stat.unit}</span>
                   </div>
-                ))}
-              </div>
+                  <p className="text-muted-foreground text-sm mt-1 font-medium">{stat.label}</p>
+                </div>
+              ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* ═══ By Sport — grid on wider screens ═══ */}
-        <div className="space-y-2">
-          <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">By Sport</h2>
-          {activeSports.length === 0 ? (
-            <div className="text-xs text-muted-foreground/50 text-center py-6">No workouts this week. Next week is a fresh start!</div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {activeSports.map(stat => {
-                const metric = stat.distanceKm > 0 ? `${stat.distanceKm}km` : stat.durationMin > 0 ? fmtDur(stat.durationMin) : `${stat.count}x`;
-                const detail = stat.distanceKm > 0
-                  ? `${stat.count} sessions · ${fmtDur(stat.durationMin)}`
-                  : `${stat.count} sessions`;
-                const comp = stat.distanceKm > 0 ? pctChange(stat.distanceKm, stat.prevDistanceKm) : stat.durationMin > 0 ? pctChange(stat.durationMin, stat.prevDurationMin) : pctChange(stat.count, stat.prevCount);
+        {/* ═══ SLIDE 2 — Day by Day ═══ */}
+        {slide === 2 && (
+          <div className="max-w-lg mx-auto w-full">
+            <p className="text-muted-foreground text-xs font-semibold tracking-widest uppercase mb-6 text-center">Day by Day</p>
+            <div className="flex items-end gap-2 sm:gap-4 h-40 sm:h-52 mb-8">
+              {dailyActivity.map((d, i) => {
+                const barH = d.count > 0 ? Math.max(16, (d.count / maxDailyCount) * 100) : 0;
+                const color = d.primaryType ? (TYPE_COLOR[d.primaryType] || '#6b7280') : '#6b7280';
                 return (
-                  <div key={stat.type} className={`flex items-center gap-3 rounded-xl bg-gradient-to-r ${TYPE_BG[stat.type] || TYPE_BG.other} border border-border/20 px-4 py-3`}>
-                    <span className="text-2xl">{TYPE_EMOJI[stat.type]}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-foreground leading-tight" style={{ color: TYPE_COLOR[stat.type] }}>
-                        {TYPE_NAME[stat.type] || stat.type}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {metric} · {detail}
-                      </p>
+                  <div key={i} className="flex-1 flex flex-col items-center gap-2">
+                    <div className="w-full flex flex-col items-center justify-end flex-1">
+                      {d.count > 0 && (
+                        <span className="text-lg font-black text-foreground mb-1">{d.count > 0 ? TYPE_EMOJI[d.primaryType] || '🏋️' : ''}</span>
+                      )}
+                      <div
+                        className="w-full rounded-xl transition-all"
+                        style={{
+                          height: animateIn ? `${barH}%` : '0%',
+                          backgroundColor: d.count > 0 ? color : 'transparent',
+                          opacity: d.count > 0 ? 0.75 : 0,
+                          minHeight: d.count > 0 ? 16 : 0,
+                          transitionDuration: '800ms',
+                          transitionDelay: `${i * 80}ms`,
+                          transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+                        }}
+                      />
+                      {d.count === 0 && <div className="w-full h-1 rounded-full bg-muted-foreground/10" />}
                     </div>
-                    {comp && <span className={`text-xs font-black ${comp.positive ? 'text-emerald-400' : 'text-red-400'}`}>{comp.text}</span>}
+                    <span className="text-xs text-muted-foreground font-bold">{DAY_LABELS[i]}</span>
                   </div>
                 );
               })}
             </div>
-          )}
-        </div>
 
-        {/* ═══ Footer branding ═══ */}
-        <div className="pt-2 pb-3 text-center">
-          <p className="text-[10px] text-muted-foreground/50 font-medium tracking-wider uppercase">The Daily Athlete</p>
-        </div>
+            {/* Highlight */}
+            {highlight && (
+              <div className="rounded-2xl bg-gradient-to-br from-amber-500/15 to-orange-500/10 border border-amber-500/20 p-5 flex items-center gap-4"
+                style={{ opacity: animateIn ? 1 : 0, transform: animateIn ? 'scale(1)' : 'scale(0.95)', transition: 'all 500ms 400ms' }}
+              >
+                <Trophy className="h-8 w-8 text-amber-500 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-amber-500/80 font-bold uppercase tracking-wider">{highlight.label} of the Week</p>
+                  <p className="text-2xl font-black text-foreground leading-tight truncate">
+                    {TYPE_EMOJI[highlight.workout.type]} {highlight.metric}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {highlight.workout.name || TYPE_NAME[highlight.workout.type]} · {format(toDate(highlight.workout), 'EEEE')}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ═══ SLIDE 3 — By Sport + Share ═══ */}
+        {slide === 3 && (
+          <div className="max-w-lg mx-auto w-full overflow-y-auto max-h-[calc(100vh-200px)]">
+            <p className="text-muted-foreground text-xs font-semibold tracking-widest uppercase mb-6 text-center">By Sport</p>
+
+            {/* Breakdown bar */}
+            {pieData.length > 0 && (
+              <div className="mb-6">
+                <div className="flex h-6 rounded-full overflow-hidden mb-3">
+                  {pieData.map((e, i) => (
+                    <div
+                      key={e.type}
+                      className="h-full first:rounded-l-full last:rounded-r-full transition-all"
+                      style={{
+                        width: animateIn ? `${e.pct}%` : '0%',
+                        backgroundColor: TYPE_COLOR[e.type] || '#6b7280',
+                        transitionDuration: '800ms',
+                        transitionDelay: `${i * 100}ms`,
+                      }}
+                    />
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 justify-center">
+                  {pieData.map(e => (
+                    <div key={e.type} className="flex items-center gap-1.5">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: TYPE_COLOR[e.type] || '#6b7280' }} />
+                      <span className="text-xs text-muted-foreground font-semibold">{TYPE_NAME[e.type]} {e.pct}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Sport cards */}
+            {activeSports.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-5xl mb-3">😴</div>
+                <p className="text-muted-foreground">No workouts this week. Next week is a fresh start!</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {activeSports.map((stat, i) => {
+                  const metric = stat.distanceKm > 0 ? `${stat.distanceKm}km` : stat.durationMin > 0 ? fmtDur(stat.durationMin) : `${stat.count}x`;
+                  const detail = stat.distanceKm > 0 ? `${stat.count} sessions · ${fmtDur(stat.durationMin)}` : `${stat.count} sessions`;
+                  const comp = stat.distanceKm > 0 ? pctChange(stat.distanceKm, stat.prevDistanceKm) : stat.durationMin > 0 ? pctChange(stat.durationMin, stat.prevDurationMin) : pctChange(stat.count, stat.prevCount);
+                  return (
+                    <div
+                      key={stat.type}
+                      className={`flex items-center gap-4 rounded-2xl bg-gradient-to-r ${TYPE_BG[stat.type] || TYPE_BG.other} border border-border/20 px-5 py-4 transition-all duration-500`}
+                      style={{ opacity: animateIn ? 1 : 0, transform: animateIn ? 'translateX(0)' : 'translateX(-20px)', transitionDelay: `${i * 100}ms` }}
+                    >
+                      <span className="text-3xl">{TYPE_EMOJI[stat.type]}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-base font-black leading-tight" style={{ color: TYPE_COLOR[stat.type] }}>{TYPE_NAME[stat.type]}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{metric} · {detail}</p>
+                      </div>
+                      {comp && <span className={`text-sm font-black ${comp.positive ? 'text-emerald-500' : 'text-red-500'}`}>{comp.text}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="pt-4 pb-2 text-center">
+              <p className="text-[10px] text-muted-foreground/40 font-medium tracking-wider uppercase">The Daily Athlete</p>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Sticky share bar */}
-      <div className="sticky bottom-0 z-20 px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] bg-background/80 backdrop-blur-xl border-t border-border/30">
-        <div className="max-w-[calc(100vw-1rem)] sm:max-w-2xl lg:max-w-4xl mx-auto">
-          {showShare ? (
-            <ShareButtons
-              title="Share Your Wrap"
-              shareText={shareText}
-              shareUrl={shareUrl}
-              fileName={`weekly-wrap-${format(targetWeekStart, 'yyyy-MM-dd')}`}
-              cardRef={cardRef}
-              onClose={() => setShowShare(false)}
-            />
+      {/* Bottom bar — progress + nav */}
+      <div className="z-20 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-background/80 backdrop-blur-xl border-t border-border/10">
+        <div className="max-w-lg mx-auto">
+          {/* Progress bar */}
+          <div className="h-1 rounded-full bg-muted/30 overflow-hidden mb-3">
+            <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${progressPct}%` }} />
+          </div>
+
+          {slide === TOTAL_SLIDES - 1 ? (
+            showShare ? (
+              <ShareButtons
+                title="Share Your Wrap"
+                shareText={shareText}
+                shareUrl={shareUrl}
+                fileName={`weekly-wrap-${format(targetWeekStart, 'yyyy-MM-dd')}`}
+                cardRef={cardRef}
+                onClose={() => setShowShare(false)}
+              />
+            ) : (
+              <button
+                onClick={() => setShowShare(true)}
+                className="w-full flex items-center justify-center gap-2 h-12 rounded-xl text-sm font-bold bg-primary text-primary-foreground hover:opacity-90 active:scale-[0.98] transition-all"
+              >
+                <Share2 className="h-4 w-4" />
+                Share Your Week
+              </button>
+            )
           ) : (
-            <button
-              onClick={() => setShowShare(true)}
-              className="w-full flex items-center justify-center gap-2 h-11 rounded-xl text-sm font-semibold bg-foreground text-background hover:opacity-90 active:scale-[0.98] transition-all"
-            >
-              <Share2 className="h-4 w-4" />
-              Share
-            </button>
+            <div className="flex items-center justify-between">
+              <button
+                onClick={goPrev}
+                disabled={slide === 0}
+                className="px-4 py-2.5 text-muted-foreground text-sm font-medium hover:text-foreground disabled:opacity-20 transition-colors"
+              >
+                Back
+              </button>
+              <div className="flex gap-1.5">
+                {Array.from({ length: TOTAL_SLIDES }).map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setSlide(i)}
+                    className={cn(
+                      'h-1.5 rounded-full transition-all duration-300',
+                      i === slide ? 'w-6 bg-primary' : 'w-1.5 bg-muted-foreground/20',
+                    )}
+                  />
+                ))}
+              </div>
+              <button
+                onClick={goNext}
+                className="group flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/15 transition-all active:scale-95"
+              >
+                Next <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            </div>
           )}
         </div>
       </div>
+
+      {/* Keyframes */}
+      <style>{`
+        @keyframes popIn {
+          0% { transform: scale(0.3); opacity: 0; }
+          70% { transform: scale(1.1); }
+          100% { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 }

@@ -705,24 +705,43 @@ export function SummarySlide({ stats, firstName, animateIn }: { stats: YearStats
 // ══════════════════════════════════════════════════════════════════
 
 export function FinalSlide({ stats, firstName }: { stats: YearStats; firstName: string }) {
+  // Fun facts
+  const funFacts: string[] = [];
+  const marathons = stats.totalDistanceKm / 42.195;
+  if (marathons >= 1) funFacts.push(`That's ${marathons.toFixed(1)} marathons worth of distance! 🏅`);
+  const everests = stats.totalElevationM / 8849;
+  if (everests >= 0.5) funFacts.push(`You climbed ${everests.toFixed(1)}x Mount Everest in elevation! ⛰️`);
+  const hours = Math.round(stats.totalDurationMin / 60);
+  if (hours >= 24) funFacts.push(`${hours} hours of training — that's ${(hours / 24).toFixed(1)} full days of non-stop movement! ⏱️`);
+  if (stats.totalCalories > 10000) funFacts.push(`You burned ${Math.round(stats.totalCalories / 1000)}K calories — enough to melt ${Math.round(stats.totalCalories / 7700)}kg of body fat! 🔥`);
+  if (stats.activeDays > 200) funFacts.push(`Active on ${stats.activeDays} days — more than half the year! 💯`);
+  if (stats.maxStreak >= 7) funFacts.push(`Your longest streak was ${stats.maxStreak} consecutive days! 🔗`);
+
+  const funFact = funFacts.length > 0 ? funFacts[Math.floor(Math.random() * funFacts.length)] : null;
+
   return (
     <div className="flex flex-col items-center text-center max-w-lg mx-auto">
-      <div className="text-6xl mb-6">🏆</div>
+      <div className="text-7xl mb-6">🏆</div>
       <h1 className="text-3xl sm:text-4xl font-bold mb-3">
         That&apos;s a wrap, <span className="text-red-500">{firstName}</span>!
       </h1>
-      <p className="text-foreground/50 text-lg mb-3">
+      <p className="text-foreground/50 text-lg mb-4">
         {YEAR} was {stats.totalWorkouts > 200 ? 'legendary' :
           stats.totalWorkouts > 100 ? 'incredible' :
           stats.totalWorkouts > 50 ? 'impressive' : 'a great start'}.
       </p>
-      <div className="flex items-center gap-4 text-foreground/30 text-sm mb-10">
+      <div className="flex items-center gap-4 text-foreground/30 text-sm mb-6">
         <span>{stats.totalWorkouts} workouts</span>
         <span>·</span>
         <span>{stats.totalDistanceKm}km</span>
         <span>·</span>
-        <span>{Math.round(stats.totalDurationMin / 60)}hrs</span>
+        <span>{hours}hrs</span>
       </div>
+      {funFact && (
+        <div className="px-5 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400/80 text-sm font-medium mb-8 max-w-sm">
+          {funFact}
+        </div>
+      )}
       <p className="text-foreground/30 text-xs mb-6">Share your {YEAR} wrapped with friends</p>
     </div>
   );

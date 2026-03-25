@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useWorkoutStore } from '@/lib/stores/workoutStore';
 import { Workout, WorkoutType } from '@/types';
@@ -9,10 +9,30 @@ import {
   eachDayOfInterval, isSameDay, getDay, isBefore, startOfWeek, endOfWeek, eachWeekOfInterval,
 } from 'date-fns';
 import { ShareButtons } from '@/components/workouts/ShareWorkoutCard';
-import { Share2, Loader2, ChevronLeft, ChevronRight, X, TrendingUp, TrendingDown, Minus, Calendar } from 'lucide-react';
+import { Share2, Loader2, ChevronLeft, ChevronRight, X, TrendingUp, TrendingDown, Minus, Calendar, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/dashboard/ThemeToggle';
+
+// ── Animated counter hook ──
+function useCountUp(target: number, duration = 1200, enabled = true) {
+  const [value, setValue] = useState(0);
+  const startedRef = useRef(false);
+  useEffect(() => {
+    if (!enabled || startedRef.current) return;
+    startedRef.current = true;
+    const startTime = performance.now();
+    const step = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(Math.round(eased * target));
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }, [target, duration, enabled]);
+  return value;
+}
 
 // ── Constants ──
 
@@ -147,8 +167,16 @@ export default function MonthlyReviewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [monthOffset, setMonthOffset] = useState(0);
+  const [slide, setSlide] = useState(0);
+  const [animateIn, setAnimateIn] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const [showShare, setShowShare] = useState(false);
+  const TOTAL_SLIDES = 5;
+
+  useEffect(() => { setAnimateIn(false); const t = setTimeout(() => setAnimateIn(true), 50); return () => clearTimeout(t); }, [slide]);
+  useEffect(() => { setSlide(0); }, [monthOffset]);
+  const goNext = useCallback(() => setSlide(s => Math.min(s + 1, TOTAL_SLIDES - 1)), []);
+  const goPrev = useCallback(() => setSlide(s => Math.max(s - 1, 0)), []);
 
   useEffect(() => {
     async function load() {
@@ -331,237 +359,270 @@ export default function MonthlyReviewPage() {
     );
   }
 
-  // ══ Full review ══
+  // Animated counters
+  const countWorkouts = useCountUp(totalWorkouts, 1000, slide === 1 && animateIn);
+  const countDist = useCountUp(Math.round(totalDistanceKm), 1200, slide === 1 && animateIn);
+  const countDur = useCountUp(totalDurationMin, 1400, slide === 1 && animateIn);
+  const countDays = useCountUp(activeDays, 1600, slide === 1 && animateIn);
+
+  const progressPct = ((slide + 1) / TOTAL_SLIDES) * 100;
+
+  // ══ Full review — slide-based ══
   return (
-    <div className="fixed inset-0 bg-background overflow-y-auto">
+    <div className="fixed inset-0 bg-background overflow-hidden flex flex-col">
       {navBar}
 
-      <div ref={cardRef} className="w-full max-w-[calc(100vw-1rem)] sm:max-w-2xl lg:max-w-4xl mx-auto px-2 sm:px-6 py-5 space-y-4">
-
-        {/* ═══ Hero — month, rating, big stats ═══ */}
-        <div className="rounded-2xl bg-gradient-to-br from-primary/10 via-transparent to-purple-500/10 border border-border/30 p-5 sm:p-6">
-          <p className="text-muted-foreground text-[10px] font-semibold tracking-widest uppercase mb-1">Month in Review</p>
-          <h2 className="text-foreground text-2xl sm:text-3xl font-black tracking-tight leading-none mb-0.5" style={{ WebkitFontSmoothing: 'antialiased', textRendering: 'optimizeLegibility' }}>
-            {monthLabel}
-          </h2>
-          <h1 className="text-foreground text-base sm:text-lg font-medium leading-tight mb-5">
-            Dear {firstName}, this was <span className={`font-bold ${rating.color}`}>{rating.word}</span> {rating.emoji}
-          </h1>
-          {/* Stat badges — 4 across */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-            {[
-              { value: String(totalWorkouts), label: 'workouts' },
-              { value: `${totalDistanceKm}km`, label: 'distance' },
-              { value: `${totalDurationHrs}h`, label: 'time' },
-              { value: `${activeDays}/${totalDays}`, label: 'active days' },
-            ].map(s => (
-              <div key={s.label} className="rounded-xl bg-foreground/5 border border-border/20 py-3 text-center">
-                <p className="text-2xl font-black text-foreground leading-none">{s.value}</p>
-                <p className="text-[9px] text-muted-foreground mt-1.5 font-medium uppercase tracking-wide">{s.label}</p>
-              </div>
-            ))}
+      {/* Slide content */}
+      <div
+        ref={cardRef}
+        className={cn(
+          'flex-1 flex flex-col justify-center px-6 sm:px-12 md:px-20 transition-all duration-500',
+          animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6',
+        )}
+      >
+        {/* ═══ SLIDE 0 — The Verdict ═══ */}
+        {slide === 0 && (
+          <div className="flex flex-col items-center text-center max-w-lg mx-auto">
+            <div className="text-8xl sm:text-9xl mb-6" style={{ animation: animateIn ? 'popIn 0.6s ease-out' : undefined }}>
+              {rating.emoji}
+            </div>
+            <p className="text-muted-foreground text-xs font-semibold tracking-widest uppercase mb-2">Month in Review</p>
+            <h1 className="text-3xl sm:text-5xl font-black text-foreground tracking-tight leading-tight mb-3">
+              {format(targetMonthStart, 'MMMM')} was<br />
+              <span className={rating.color}>{rating.word}</span>
+            </h1>
+            <p className="text-muted-foreground text-sm">{format(targetMonthStart, 'MMMM yyyy')}</p>
+            <button onClick={goNext} className="mt-10 group flex items-center gap-2 text-primary text-sm font-semibold hover:opacity-80 transition-opacity">
+              See the numbers <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+            </button>
           </div>
-        </div>
+        )}
 
-        {/* ═══ vs Last Month — card-style comparison ═══ */}
-        {prevTotalWorkouts > 0 && (() => {
-          const items = [
-            { label: 'Workouts', curr: totalWorkouts, prev: prevTotalWorkouts, fmt: (v: number) => String(v) },
-            { label: 'Distance', curr: totalDistanceKm, prev: prevDistKm, fmt: (v: number) => `${v}km` },
-            { label: 'Time', curr: totalDurationMin, prev: prevDurMin, fmt: (v: number) => fmtDur(v) },
-          ];
-          return (
-            <div className="rounded-2xl bg-muted/10 border border-border/20 p-4 sm:p-5">
-              <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">vs {format(prevMonthStart, 'MMMM')}</h2>
-              <div className="grid grid-cols-3 gap-3">
-                {items.map(item => {
-                  const change = pctChange(item.curr, item.prev);
-                  const isUp = change && change.pct > 0;
-                  const isDown = change && change.pct < 0;
-                  return (
-                    <div key={item.label} className="rounded-xl bg-foreground/[0.03] border border-border/10 p-3 text-center">
-                      <div className="flex items-center justify-center gap-1 mb-1.5">
-                        {isUp ? <TrendingUp className="h-3.5 w-3.5 text-emerald-400" /> : isDown ? <TrendingDown className="h-3.5 w-3.5 text-red-400" /> : <Minus className="h-3.5 w-3.5 text-muted-foreground" />}
-                        <span className={cn(
-                          'text-sm font-black',
-                          isUp ? 'text-emerald-400' : isDown ? 'text-red-400' : 'text-muted-foreground',
-                        )}>
-                          {change?.text || '='}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground font-medium">{item.label}</p>
-                      <p className="text-[9px] text-muted-foreground/60 mt-0.5">{item.fmt(item.prev)} → {item.fmt(item.curr)}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* ═══ Two-column: Activity Calendar + Breakdown ═══ */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-          {/* Activity Calendar */}
-          <div className="rounded-2xl bg-muted/10 border border-border/20 p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Activity</h2>
-              <span className="text-[10px] text-emerald-500 font-medium">{activeDays} active days</span>
-            </div>
-            <ActivityCalendar days={calendarDays} monthStart={targetMonthStart} />
-          </div>
-
-          {/* Breakdown — horizontal stacked bar */}
-          {pieData.length > 0 && (
-            <div className="rounded-2xl bg-muted/10 border border-border/20 p-4 sm:p-5">
-              <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Breakdown</h2>
-              <div className="flex h-5 rounded-full overflow-hidden mb-3">
-                {pieData.map(e => (
-                  <div
-                    key={e.type}
-                    className="h-full first:rounded-l-full last:rounded-r-full"
-                    style={{ width: `${e.pct}%`, backgroundColor: TYPE_COLOR[e.type] || '#6b7280' }}
-                  />
-                ))}
-              </div>
-              <div className="space-y-2 mt-4">
-                {pieData.map(e => (
-                  <div key={e.type} className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: TYPE_COLOR[e.type] || '#6b7280' }} />
-                    <span className="text-xs text-foreground font-medium flex-1">{TYPE_NAME[e.type] || e.name}</span>
-                    <span className="text-xs text-muted-foreground">{e.value} workouts</span>
-                    <span className="text-xs font-bold text-foreground w-10 text-right">{e.pct}%</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ═══ Daily Activity Bar Chart ═══ */}
-        <div className="rounded-2xl bg-muted/10 border border-border/20 p-4 sm:p-5">
-          <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Daily Activity</h2>
-          <div className="flex items-end gap-px h-24 sm:h-32">
-            {dailyBarData.map((d, i) => {
-              const barH = d.count > 0 ? Math.max(8, (d.count / maxDailyCount) * 100) : 0;
-              const color = d.primaryType ? (TYPE_COLOR[d.primaryType] || '#6b7280') : '#6b7280';
-              const isFirstOfWeek = i > 0 && d.date.getDay() === 1;
-              return (
+        {/* ═══ SLIDE 1 — The Numbers ═══ */}
+        {slide === 1 && (
+          <div className="flex flex-col items-center text-center max-w-md mx-auto">
+            <p className="text-muted-foreground text-xs font-semibold tracking-widest uppercase mb-8">By The Numbers</p>
+            <div className="grid grid-cols-2 gap-x-12 gap-y-8">
+              {[
+                { value: countWorkouts, unit: '', label: 'workouts', delay: '0ms' },
+                { value: countDays, unit: `/${totalDays}`, label: 'active days', delay: '150ms' },
+                ...(totalDistanceKm > 0 ? [{ value: countDist, unit: 'km', label: 'distance', delay: '300ms' }] : []),
+                ...(totalDurationMin > 0 ? [{ value: countDur > 60 ? Math.floor(countDur / 60) : countDur, unit: countDur > 60 ? 'hrs' : 'min', label: 'of training', delay: '450ms' }] : []),
+              ].map(stat => (
                 <div
-                  key={i}
-                  className={cn('flex-1 flex flex-col items-center justify-end', isFirstOfWeek && 'ml-1')}
-                  title={`${format(d.date, 'MMM d')}: ${d.count} workout${d.count !== 1 ? 's' : ''}`}
+                  key={stat.label}
+                  className="transition-all duration-700"
+                  style={{ opacity: animateIn ? 1 : 0, transform: animateIn ? 'translateY(0)' : 'translateY(20px)', transitionDelay: stat.delay }}
                 >
-                  <div
-                    className="w-full rounded-sm transition-all duration-300"
-                    style={{
-                      height: `${barH}%`,
-                      backgroundColor: d.count > 0 ? color : 'transparent',
-                      opacity: d.count > 0 ? 0.65 : 0,
-                      minHeight: d.count > 0 ? 4 : 0,
-                    }}
-                  />
-                  {d.count === 0 && <div className="w-full h-px bg-muted-foreground/10" />}
-                </div>
-              );
-            })}
-          </div>
-          <div className="flex justify-between mt-1.5">
-            <span className="text-[9px] text-muted-foreground/50">{format(targetMonthStart, 'MMM d')}</span>
-            <span className="text-[9px] text-muted-foreground/50">{format(targetMonthEnd, 'MMM d')}</span>
-          </div>
-        </div>
-
-        {/* ═══ Weekly Volume ═══ */}
-        {weeklyVolume.length > 1 && (
-          <div className="rounded-2xl bg-muted/10 border border-border/20 p-4 sm:p-5">
-            <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Weekly Volume</h2>
-            <div className="flex items-end gap-2 sm:gap-4 h-28 sm:h-32">
-              {weeklyVolume.map((w, i) => {
-                const barH = w.count > 0 ? Math.max(16, (w.count / maxWeeklyCount) * 100) : 0;
-                return (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
-                    <div className="w-full flex flex-col items-center justify-end flex-1">
-                      {w.count > 0 && (
-                        <span className="text-[10px] font-bold text-foreground mb-1">{w.count}</span>
-                      )}
-                      <div
-                        className="w-full rounded-lg bg-primary/60 transition-all duration-500"
-                        style={{ height: `${barH}%`, minHeight: w.count > 0 ? 16 : 0, opacity: w.count > 0 ? 1 : 0 }}
-                      />
-                      {w.count === 0 && <div className="w-full h-1 rounded-full bg-muted-foreground/10" />}
-                    </div>
-                    <div className="text-center">
-                      <span className="text-[10px] text-muted-foreground font-medium block">Wk {w.weekNum}</span>
-                      {w.distKm > 0 && <span className="text-[9px] text-muted-foreground/60">{w.distKm}km</span>}
-                    </div>
+                  <div className="text-5xl sm:text-6xl font-black text-foreground tracking-tighter leading-none">
+                    {stat.value}<span className="text-primary">{stat.unit}</span>
                   </div>
-                );
-              })}
+                  <p className="text-muted-foreground text-sm mt-1 font-medium">{stat.label}</p>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        {/* ═══ By Sport — grid on wider screens ═══ */}
-        <div className="space-y-2">
-          <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">By Sport</h2>
-          {sportStats.length === 0 ? (
-            <div className="text-xs text-muted-foreground/50 text-center py-6">No workouts this month</div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {sportStats.map(stat => {
-                const metric = stat.distanceKm > 0 ? `${stat.distanceKm}km` : stat.durationMin > 0 ? fmtDur(stat.durationMin) : `${stat.count}x`;
-                const detail = stat.distanceKm > 0
-                  ? `${stat.count} sessions · ${fmtDur(stat.durationMin)}`
-                  : `${stat.count} sessions`;
-                const comp = stat.distanceKm > 0 ? pctChange(stat.distanceKm, stat.prevDistanceKm) : stat.durationMin > 0 ? pctChange(stat.durationMin, stat.prevDurationMin) : pctChange(stat.count, stat.prevCount);
-                return (
-                  <div key={stat.type} className={`flex items-center gap-3 rounded-xl bg-gradient-to-r ${TYPE_BG[stat.type] || TYPE_BG.other} border border-border/20 px-4 py-3`}>
-                    <span className="text-2xl">{TYPE_EMOJI[stat.type]}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-foreground leading-tight" style={{ color: TYPE_COLOR[stat.type] }}>
-                        {TYPE_NAME[stat.type] || stat.type}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {metric} · {detail}
-                      </p>
+        {/* ═══ SLIDE 2 — vs Last Month ═══ */}
+        {slide === 2 && (
+          <div className="flex flex-col items-center max-w-md mx-auto w-full">
+            <p className="text-muted-foreground text-xs font-semibold tracking-widest uppercase mb-8 text-center">vs {format(prevMonthStart, 'MMMM')}</p>
+            {prevTotalWorkouts > 0 ? (
+              <div className="space-y-4 w-full">
+                {[
+                  { label: 'Workouts', curr: totalWorkouts, prev: prevTotalWorkouts, fmtFn: (v: number) => String(v) },
+                  { label: 'Distance', curr: totalDistanceKm, prev: prevDistKm, fmtFn: (v: number) => `${v}km` },
+                  { label: 'Time', curr: totalDurationMin, prev: prevDurMin, fmtFn: (v: number) => fmtDur(v) },
+                ].map((item, i) => {
+                  const change = pctChange(item.curr, item.prev);
+                  const isUp = change && change.pct > 0;
+                  const isDown = change && change.pct < 0;
+                  return (
+                    <div
+                      key={item.label}
+                      className="flex items-center gap-4 rounded-2xl bg-foreground/[0.03] border border-border/20 p-5 transition-all duration-500"
+                      style={{ opacity: animateIn ? 1 : 0, transform: animateIn ? 'translateX(0)' : 'translateX(-30px)', transitionDelay: `${i * 150}ms` }}
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                        {isUp ? <TrendingUp className="h-6 w-6 text-emerald-500" /> : isDown ? <TrendingDown className="h-6 w-6 text-red-500" /> : <Minus className="h-6 w-6 text-muted-foreground" />}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm text-muted-foreground font-medium">{item.label}</p>
+                        <p className="text-xs text-muted-foreground/60">{item.fmtFn(item.prev)} → {item.fmtFn(item.curr)}</p>
+                      </div>
+                      <span className={cn('text-2xl font-black', isUp ? 'text-emerald-500' : isDown ? 'text-red-500' : 'text-muted-foreground')}>
+                        {change?.text || '='}
+                      </span>
                     </div>
-                    {comp && <span className={`text-xs font-black ${comp.positive ? 'text-emerald-400' : 'text-red-400'}`}>{comp.text}</span>}
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <div className="text-5xl mb-3">🚀</div>
+                <p className="text-foreground font-bold text-lg">First month tracked!</p>
+                <p className="text-muted-foreground text-sm mt-1">Comparison will show up next month</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ═══ SLIDE 3 — Calendar + Daily Chart ═══ */}
+        {slide === 3 && (
+          <div className="max-w-lg mx-auto w-full overflow-y-auto max-h-[calc(100vh-200px)]">
+            <p className="text-muted-foreground text-xs font-semibold tracking-widest uppercase mb-6 text-center">Your Calendar</p>
+
+            {/* Activity Calendar */}
+            <div className="rounded-2xl bg-muted/10 border border-border/20 p-4 sm:p-5 mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-foreground">{format(targetMonthStart, 'MMMM yyyy')}</span>
+                <span className="text-xs text-emerald-500 font-bold">{activeDays} active days</span>
+              </div>
+              <ActivityCalendar days={calendarDays} monthStart={targetMonthStart} />
+            </div>
+
+            {/* Daily bar chart */}
+            <div className="rounded-2xl bg-muted/10 border border-border/20 p-4 sm:p-5">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Daily Activity</p>
+              <div className="flex items-end gap-px h-24 sm:h-32">
+                {dailyBarData.map((d, i) => {
+                  const barH = d.count > 0 ? Math.max(8, (d.count / maxDailyCount) * 100) : 0;
+                  const color = d.primaryType ? (TYPE_COLOR[d.primaryType] || '#6b7280') : '#6b7280';
+                  return (
+                    <div key={i} className="flex-1 flex flex-col items-center justify-end">
+                      <div
+                        className="w-full rounded-sm transition-all"
+                        style={{
+                          height: animateIn ? `${barH}%` : '0%',
+                          backgroundColor: d.count > 0 ? color : 'transparent',
+                          opacity: d.count > 0 ? 0.7 : 0,
+                          minHeight: d.count > 0 ? 4 : 0,
+                          transitionDuration: '600ms',
+                          transitionDelay: `${i * 15}ms`,
+                        }}
+                      />
+                      {d.count === 0 && <div className="w-full h-px bg-muted-foreground/10" />}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex justify-between mt-1.5">
+                <span className="text-[9px] text-muted-foreground/50">{format(targetMonthStart, 'MMM d')}</span>
+                <span className="text-[9px] text-muted-foreground/50">{format(targetMonthEnd, 'MMM d')}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ SLIDE 4 — Sport Breakdown + Share ═══ */}
+        {slide === 4 && (
+          <div className="max-w-lg mx-auto w-full overflow-y-auto max-h-[calc(100vh-200px)]">
+            <p className="text-muted-foreground text-xs font-semibold tracking-widest uppercase mb-6 text-center">Sport Breakdown</p>
+
+            {/* Breakdown bar */}
+            {pieData.length > 0 && (
+              <div className="mb-6">
+                <div className="flex h-6 rounded-full overflow-hidden mb-3">
+                  {pieData.map((e, i) => (
+                    <div
+                      key={e.type}
+                      className="h-full first:rounded-l-full last:rounded-r-full transition-all"
+                      style={{ width: animateIn ? `${e.pct}%` : '0%', backgroundColor: TYPE_COLOR[e.type] || '#6b7280', transitionDuration: '800ms', transitionDelay: `${i * 100}ms` }}
+                    />
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 justify-center">
+                  {pieData.map(e => (
+                    <div key={e.type} className="flex items-center gap-1.5">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: TYPE_COLOR[e.type] || '#6b7280' }} />
+                      <span className="text-xs text-muted-foreground font-semibold">{TYPE_NAME[e.type]} {e.pct}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Sport cards */}
+            {sportStats.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-5xl mb-3">😴</div>
+                <p className="text-muted-foreground">No workouts this month</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {sportStats.filter(s => s.count > 0).map((stat, i) => {
+                  const metric = stat.distanceKm > 0 ? `${stat.distanceKm}km` : stat.durationMin > 0 ? fmtDur(stat.durationMin) : `${stat.count}x`;
+                  const detail = stat.distanceKm > 0 ? `${stat.count} sessions · ${fmtDur(stat.durationMin)}` : `${stat.count} sessions`;
+                  const comp = stat.distanceKm > 0 ? pctChange(stat.distanceKm, stat.prevDistanceKm) : stat.durationMin > 0 ? pctChange(stat.durationMin, stat.prevDurationMin) : pctChange(stat.count, stat.prevCount);
+                  return (
+                    <div
+                      key={stat.type}
+                      className={`flex items-center gap-4 rounded-2xl bg-gradient-to-r ${TYPE_BG[stat.type] || TYPE_BG.other} border border-border/20 px-5 py-4 transition-all duration-500`}
+                      style={{ opacity: animateIn ? 1 : 0, transform: animateIn ? 'translateX(0)' : 'translateX(-20px)', transitionDelay: `${i * 100}ms` }}
+                    >
+                      <span className="text-3xl">{TYPE_EMOJI[stat.type]}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-base font-black leading-tight" style={{ color: TYPE_COLOR[stat.type] }}>{TYPE_NAME[stat.type]}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{metric} · {detail}</p>
+                      </div>
+                      {comp && <span className={`text-sm font-black ${comp.positive ? 'text-emerald-500' : 'text-red-500'}`}>{comp.text}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="pt-4 pb-2 text-center">
+              <p className="text-[10px] text-muted-foreground/40 font-medium tracking-wider uppercase">The Daily Athlete</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom bar */}
+      <div className="z-20 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-background/80 backdrop-blur-xl border-t border-border/10">
+        <div className="max-w-lg mx-auto">
+          <div className="h-1 rounded-full bg-muted/30 overflow-hidden mb-3">
+            <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${progressPct}%` }} />
+          </div>
+
+          {slide === TOTAL_SLIDES - 1 ? (
+            showShare ? (
+              <ShareButtons
+                title={`${format(targetMonthStart, 'MMMM yyyy')} Review`}
+                shareText={shareText}
+                shareUrl={shareUrl}
+                fileName={`monthly-review-${format(targetMonthStart, 'yyyy-MM')}`}
+                cardRef={cardRef}
+                onClose={() => setShowShare(false)}
+              />
+            ) : (
+              <button
+                onClick={() => setShowShare(true)}
+                className="w-full flex items-center justify-center gap-2 h-12 rounded-xl text-sm font-bold bg-primary text-primary-foreground hover:opacity-90 active:scale-[0.98] transition-all"
+              >
+                <Share2 className="h-4 w-4" />
+                Share Your Month
+              </button>
+            )
+          ) : (
+            <div className="flex items-center justify-between">
+              <button onClick={goPrev} disabled={slide === 0} className="px-4 py-2.5 text-muted-foreground text-sm font-medium hover:text-foreground disabled:opacity-20 transition-colors">Back</button>
+              <div className="flex gap-1.5">
+                {Array.from({ length: TOTAL_SLIDES }).map((_, i) => (
+                  <button key={i} onClick={() => setSlide(i)} className={cn('h-1.5 rounded-full transition-all duration-300', i === slide ? 'w-6 bg-primary' : 'w-1.5 bg-muted-foreground/20')} />
+                ))}
+              </div>
+              <button onClick={goNext} className="group flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/15 transition-all active:scale-95">
+                Next <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+              </button>
             </div>
           )}
         </div>
-
-        {/* ═══ Footer branding ═══ */}
-        <div className="pt-2 pb-3 text-center">
-          <p className="text-[10px] text-muted-foreground/50 font-medium tracking-wider uppercase">The Daily Athlete</p>
-        </div>
       </div>
 
-      {/* ═══ Share ═══ */}
-      <div className="sticky bottom-0 z-20 px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] bg-background/80 backdrop-blur-xl border-t border-border/30">
-        <div className="max-w-[calc(100vw-1rem)] sm:max-w-2xl lg:max-w-4xl mx-auto">
-          {showShare ? (
-            <ShareButtons
-              title={`${format(targetMonthStart, 'MMMM yyyy')} Review`}
-              shareText={shareText}
-              shareUrl={shareUrl}
-              fileName={`monthly-review-${format(targetMonthStart, 'yyyy-MM')}`}
-              cardRef={cardRef}
-              onClose={() => setShowShare(false)}
-            />
-          ) : (
-            <button
-              onClick={() => setShowShare(true)}
-              className="w-full flex items-center justify-center gap-2 h-11 rounded-xl text-sm font-semibold bg-foreground text-background hover:opacity-90 active:scale-[0.98] transition-all"
-            >
-              <Share2 className="h-4 w-4" />
-              Share
-            </button>
-          )}
-        </div>
-      </div>
+      <style>{`@keyframes popIn { 0% { transform: scale(0.3); opacity: 0; } 70% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }`}</style>
     </div>
   );
 }

@@ -289,6 +289,10 @@ export default function YearlyWrappedPage() {
           70% { transform: scale(1.05); }
           100% { transform: scale(1); opacity: 1; }
         }
+        @keyframes confettiFall {
+          0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+        }
       `}</style>
 
       {/* Top bar */}
@@ -365,6 +369,25 @@ export default function YearlyWrappedPage() {
         {/* ═══ SLIDE: REVEAL ═══ */}
         {slide === 'reveal' && (
           <div className="flex flex-col items-center text-center max-w-lg mx-auto">
+            {/* Confetti burst */}
+            {animateIn && (
+              <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+                {Array.from({ length: 40 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="absolute w-2 h-2 rounded-sm"
+                    style={{
+                      left: `${10 + Math.random() * 80}%`,
+                      top: '-5%',
+                      backgroundColor: ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ec4899'][i % 6],
+                      animation: `confettiFall ${1.5 + Math.random() * 2}s ease-in forwards`,
+                      animationDelay: `${Math.random() * 0.8}s`,
+                      transform: `rotate(${Math.random() * 360}deg)`,
+                    }}
+                  />
+                ))}
+              </div>
+            )}
             <div
               className="text-7xl mb-6"
               style={{ animation: animateIn ? 'numberPop 0.6s ease-out forwards' : undefined }}
