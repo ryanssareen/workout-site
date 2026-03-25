@@ -24,7 +24,10 @@ export const PIE_COLORS = ['#ef4444', '#f59e0b', '#06b6d4', '#a855f7', '#6b7280'
 // ── Helpers ────────────────────────────────────────────────────────
 
 export function toDate(w: any): Date {
-  return (w.date as any)?.toDate?.() ?? new Date(w.date as any);
+  try {
+    const d = (w.date as any)?.toDate?.() ?? new Date(w.date as any);
+    return isNaN(d.getTime()) ? new Date(0) : d;
+  } catch { return new Date(0); }
 }
 
 export function fmtDuration(totalMin: number): string {

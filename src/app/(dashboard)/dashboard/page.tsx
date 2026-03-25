@@ -27,7 +27,10 @@ const TYPE_EMOJI: Record<string, string> = {
 };
 
 function getWorkoutDate(w: Workout): Date {
-  return w.date?.toDate?.() ?? new Date(w.date as any);
+  try {
+    const d = w.date?.toDate?.() ?? new Date(w.date as any);
+    return isNaN(d.getTime()) ? new Date(0) : d;
+  } catch { return new Date(0); }
 }
 
 function calculateStreak(workouts: Workout[]): number {

@@ -7,7 +7,10 @@ import { addPersonalRecord, getMilestones, addMilestone } from './firebase/fires
 import { isSameDay, subDays } from 'date-fns';
 
 function toDate(w: Workout): Date {
-  return (w.date as any)?.toDate?.() ?? new Date(w.date as any);
+  try {
+    const d = (w.date as any)?.toDate?.() ?? new Date(w.date as any);
+    return isNaN(d.getTime()) ? new Date(0) : d;
+  } catch { return new Date(0); }
 }
 
 function calculateStreak(workouts: Workout[]): number {

@@ -26,13 +26,18 @@ export function filterByTimeRange(workouts: Workout[], range: TimeRange): Workou
   const start = getTimeRangeStart(range);
   if (!start) return workouts;
   return workouts.filter(w => {
-    const d = w.date?.toDate?.() ?? new Date(w.date as any);
-    return d >= start;
+    try {
+      const d = w.date?.toDate?.() ?? new Date(w.date as any);
+      return !isNaN(d.getTime()) && d >= start;
+    } catch { return false; }
   });
 }
 
 function toDate(w: Workout): Date {
-  return w.date?.toDate?.() ?? new Date(w.date as any);
+  try {
+    const d = w.date?.toDate?.() ?? new Date(w.date as any);
+    return isNaN(d.getTime()) ? new Date(0) : d;
+  } catch { return new Date(0); }
 }
 
 // ── Summary stats ──
