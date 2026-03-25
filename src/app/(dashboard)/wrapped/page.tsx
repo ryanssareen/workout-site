@@ -77,8 +77,8 @@ export default function YearlyWrappedPage() {
   const cardRef = useRef<HTMLDivElement>(null);
   const [animateIn, setAnimateIn] = useState(false);
 
-  // Stats computed once and locked — never recomputed even if component re-renders
-  const statsRef = useRef<ReturnType<typeof computeYearStats> | null>(null);
+  // Stats stored in state so React re-renders with correct values
+  const [stats, setStats] = useState<ReturnType<typeof computeYearStats>>(() => computeYearStats([]));
   const fetchedRef = useRef(false);
 
   useEffect(() => {
@@ -87,14 +87,13 @@ export default function YearlyWrappedPage() {
       fetchedRef.current = true;
       const { getWorkouts } = useWorkoutStore.getState();
       const data = await getWorkouts(user.username, user.role);
-      statsRef.current = computeYearStats(data);
+      const computed = computeYearStats(data);
+      setStats(computed);
       setLoading(false);
     }
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.username]);
-
-  const stats = statsRef.current ?? computeYearStats([]);
   const firstName = user?.displayName?.split(' ')[0] || 'Athlete';
 
   // Lock the guess answer at submission time so it never changes
