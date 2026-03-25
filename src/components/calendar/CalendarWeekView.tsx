@@ -124,24 +124,28 @@ export function CalendarWeekView({
                     </span>
                   </div>
 
-                  {/* Workout pills */}
-                  <div className="flex-1 space-y-1 min-h-0 overflow-y-auto">
-                    {visibleWorkouts.map((workout) => (
-                      <CalendarWorkoutCard
-                        key={workout.id}
-                        workout={workout}
-                        compact={false}
-                        onSelect={onSelectWorkout}
-                      />
-                    ))}
-                    {overflow > 0 && (
-                      <div className="text-[10px] text-muted-foreground font-medium pl-1">
-                        +{overflow} more
+                  {/* Workout pills + centered add button */}
+                  <div className="flex-1 relative min-h-0 overflow-y-auto">
+                    <div className="space-y-1">
+                      {visibleWorkouts.map((workout) => (
+                        <CalendarWorkoutCard
+                          key={workout.id}
+                          workout={workout}
+                          compact={false}
+                          onSelect={onSelectWorkout}
+                        />
+                      ))}
+                      {overflow > 0 && (
+                        <div className="text-[10px] text-muted-foreground font-medium pl-1">
+                          +{overflow} more
+                        </div>
+                      )}
+                    </div>
+                    {/* Add button — absolutely centered in the cell */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover/cell:opacity-100 transition-opacity">
+                      <div className="pointer-events-auto">
+                        <CalendarAddDropdown date={day} onNoteAdded={onNoteAdded} />
                       </div>
-                    )}
-                    {/* Add button — centered in empty area */}
-                    <div className="flex items-center justify-center py-1 opacity-0 group-hover/cell:opacity-100 transition-opacity">
-                      <CalendarAddDropdown date={day} onNoteAdded={onNoteAdded} />
                     </div>
                     {dayWorkouts.length === 0 && (
                       <div className="text-[10px] text-muted-foreground/40 italic pl-1 pt-1">

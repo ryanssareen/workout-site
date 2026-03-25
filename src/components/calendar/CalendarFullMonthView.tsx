@@ -111,25 +111,29 @@ export function CalendarFullMonthView({
                     </span>
                   </div>
 
-                  {/* Workout micro-pills */}
-                  <div className="flex-1 space-y-0.5 min-h-0 overflow-hidden">
-                    {visibleWorkouts.map((workout) => (
-                      <CalendarWorkoutCard
-                        key={workout.id}
-                        workout={workout}
-                        compact={false}
-                        micro
-                        onSelect={onSelectWorkout}
-                      />
-                    ))}
-                    {overflow > 0 && (
-                      <div className="text-[9px] text-muted-foreground font-medium pl-0.5">
-                        +{overflow} more
+                  {/* Workout micro-pills + centered add button */}
+                  <div className="flex-1 relative min-h-0 overflow-hidden">
+                    <div className="space-y-0.5">
+                      {visibleWorkouts.map((workout) => (
+                        <CalendarWorkoutCard
+                          key={workout.id}
+                          workout={workout}
+                          compact={false}
+                          micro
+                          onSelect={onSelectWorkout}
+                        />
+                      ))}
+                      {overflow > 0 && (
+                        <div className="text-[9px] text-muted-foreground font-medium pl-0.5">
+                          +{overflow} more
+                        </div>
+                      )}
+                    </div>
+                    {/* Add button — absolutely centered in cell */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover/cell:opacity-100 transition-opacity">
+                      <div className="pointer-events-auto">
+                        <CalendarAddDropdown date={day} onNoteAdded={onNoteAdded} />
                       </div>
-                    )}
-                    {/* Add button — centered in cell */}
-                    <div className="flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity">
-                      <CalendarAddDropdown date={day} onNoteAdded={onNoteAdded} />
                     </div>
                   </div>
                 </div>
