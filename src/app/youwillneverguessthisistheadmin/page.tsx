@@ -97,8 +97,8 @@ function QuotaBanner({ error, onRetry }: { error: string; onRetry?: () => void }
   return (
     <div className={`flex items-center gap-3 text-sm rounded-xl px-4 py-3 ${
       quota
-        ? 'text-amber-300 bg-amber-950/30 border border-amber-500/15'
-        : 'text-red-400 bg-red-950/30 border border-red-500/15'
+        ? 'text-amber-600 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/30 border border-amber-500/15'
+        : 'text-red-400 bg-red-100 dark:bg-red-950/30 border border-red-500/15'
     }`}>
       {quota ? <AlertTriangle size={15} className="shrink-0" /> : <XCircle size={15} className="shrink-0" />}
       <span className="flex-1">
@@ -121,10 +121,10 @@ function QuotaBanner({ error, onRetry }: { error: string; onRetry?: () => void }
 function AnimatedBackground() {
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none">
-      <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-red-600/[0.07] rounded-full blur-[150px] animate-pulse" style={{ animationDuration: '8s' }} />
-      <div className="absolute top-1/3 -left-60 w-[500px] h-[500px] bg-orange-600/[0.05] rounded-full blur-[130px] animate-pulse" style={{ animationDuration: '12s' }} />
-      <div className="absolute -bottom-40 right-1/4 w-[400px] h-[400px] bg-red-900/[0.06] rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '10s' }} />
-      <div className="absolute top-2/3 left-1/3 w-[300px] h-[300px] bg-rose-600/[0.04] rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '15s' }} />
+      <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-red-500/10 dark:bg-red-600/[0.07] rounded-full blur-[150px] animate-pulse" style={{ animationDuration: '8s' }} />
+      <div className="absolute top-1/3 -left-60 w-[500px] h-[500px] bg-orange-500/10 dark:bg-orange-600/[0.05] rounded-full blur-[130px] animate-pulse" style={{ animationDuration: '12s' }} />
+      <div className="absolute -bottom-40 right-1/4 w-[400px] h-[400px] bg-red-500/10 dark:bg-red-900/[0.06] rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '10s' }} />
+      <div className="absolute top-2/3 left-1/3 w-[300px] h-[300px] bg-rose-500/10 dark:bg-rose-600/[0.04] rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '15s' }} />
     </div>
   );
 }
@@ -156,7 +156,7 @@ function OverviewSection({ stats, error, onRetry }: { stats: OverviewStats | nul
       gradient: 'from-blue-500/20 to-cyan-500/20',
       border: 'border-blue-500/20',
       iconColor: 'text-blue-400',
-      valueColor: 'text-blue-300',
+      valueColor: 'text-blue-600 dark:text-blue-300',
     },
     {
       label: 'Total Workouts',
@@ -165,7 +165,7 @@ function OverviewSection({ stats, error, onRetry }: { stats: OverviewStats | nul
       gradient: 'from-emerald-500/20 to-green-500/20',
       border: 'border-emerald-500/20',
       iconColor: 'text-emerald-400',
-      valueColor: 'text-emerald-300',
+      valueColor: 'text-emerald-600 dark:text-emerald-300',
     },
     {
       label: 'Last Backup',
@@ -174,7 +174,7 @@ function OverviewSection({ stats, error, onRetry }: { stats: OverviewStats | nul
       gradient: 'from-amber-500/20 to-orange-500/20',
       border: 'border-amber-500/20',
       iconColor: 'text-amber-400',
-      valueColor: 'text-amber-300',
+      valueColor: 'text-amber-600 dark:text-amber-300',
     },
     {
       label: 'Backup Integrity',
@@ -185,7 +185,7 @@ function OverviewSection({ stats, error, onRetry }: { stats: OverviewStats | nul
         : 'from-gray-500/20 to-gray-600/20',
       border: stats.lastBackup?.integrityPassed ? 'border-green-500/20' : 'border-gray-500/20',
       iconColor: stats.lastBackup?.integrityPassed ? 'text-green-400' : 'text-gray-400',
-      valueColor: stats.lastBackup?.integrityPassed ? 'text-green-300' : 'text-gray-400',
+      valueColor: stats.lastBackup?.integrityPassed ? 'text-green-600 dark:text-green-300' : 'text-gray-400',
     },
   ];
 
@@ -216,17 +216,17 @@ function OverviewSection({ stats, error, onRetry }: { stats: OverviewStats | nul
         <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-muted/25 border border-border/50">
           <div className="w-2 h-2 rounded-full bg-green-400 shadow-lg shadow-green-400/50" />
           <span className="text-muted-foreground text-xs">Firebase</span>
-          <span className="text-green-400/80 text-xs font-medium">Connected</span>
+          <span className="text-green-600 dark:text-green-400/80 text-xs font-medium">Connected</span>
         </div>
         <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-muted/25 border border-border/50">
           <div className="w-2 h-2 rounded-full bg-green-400 shadow-lg shadow-green-400/50" />
           <span className="text-muted-foreground text-xs">Strava API</span>
-          <span className="text-green-400/80 text-xs font-medium">Active</span>
+          <span className="text-green-600 dark:text-green-400/80 text-xs font-medium">Active</span>
         </div>
         <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-muted/25 border border-border/50">
           <div className="w-2 h-2 rounded-full bg-green-400 shadow-lg shadow-green-400/50" />
           <span className="text-muted-foreground text-xs">Cron Jobs</span>
-          <span className="text-green-400/80 text-xs font-medium">Running</span>
+          <span className="text-green-600 dark:text-green-400/80 text-xs font-medium">Running</span>
         </div>
       </div>
     </div>
@@ -397,7 +397,7 @@ function BackupsSection() {
           <button
             onClick={() => triggerBackup('full')}
             disabled={creating}
-            className="group flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/15 hover:border-blue-500/25 text-xs text-blue-300 font-medium disabled:opacity-50 transition-all"
+            className="group flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/15 hover:border-blue-500/25 text-xs text-blue-600 dark:text-blue-300 font-medium disabled:opacity-50 transition-all"
           >
             <Database size={13} />
             {creating ? 'Running…' : 'Full seed'}
@@ -405,7 +405,7 @@ function BackupsSection() {
           <button
             onClick={() => triggerBackup('compact')}
             disabled={creating}
-            className="group flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/15 hover:border-emerald-500/25 text-xs text-emerald-300 font-medium disabled:opacity-50 transition-all"
+            className="group flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/15 hover:border-emerald-500/25 text-xs text-emerald-600 dark:text-emerald-300 font-medium disabled:opacity-50 transition-all"
           >
             <HardDrive size={13} />
             {creating ? 'Running…' : 'Compact'}
@@ -413,13 +413,13 @@ function BackupsSection() {
           <button
             onClick={downloadBackup}
             disabled={downloading}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-xs text-white font-medium shadow-lg shadow-red-900/30 disabled:opacity-50 transition-all hover:-translate-y-0.5 active:translate-y-0"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-xs text-white font-medium shadow-lg shadow-red-300/30 dark:shadow-red-900/30 disabled:opacity-50 transition-all hover:-translate-y-0.5 active:translate-y-0"
           >
             <Download size={13} className={downloading ? 'animate-bounce' : ''} />
             {downloading ? 'Generating…' : 'Download'}
           </button>
           <label
-            className={`group flex items-center gap-2 px-3 py-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/15 border border-purple-500/15 hover:border-purple-500/25 text-xs text-purple-300 font-medium cursor-pointer transition-all ${seeding ? 'opacity-50 pointer-events-none' : ''}`}
+            className={`group flex items-center gap-2 px-3 py-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/15 border border-purple-500/15 hover:border-purple-500/25 text-xs text-purple-600 dark:text-purple-300 font-medium cursor-pointer transition-all ${seeding ? 'opacity-50 pointer-events-none' : ''}`}
           >
             <Upload size={13} className={seeding ? 'animate-pulse' : ''} />
             {seeding ? 'Uploading…' : 'Upload seed'}
@@ -452,7 +452,7 @@ function BackupsSection() {
             className="bg-muted/50 border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder-muted-foreground/50 w-52 focus:border-red-500/40 focus:outline-none focus:ring-1 focus:ring-red-500/20 transition-all"
           />
           <label
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 hover:border-red-500/30 text-sm text-red-300 font-medium cursor-pointer transition-all ${restoring ? 'opacity-50 pointer-events-none' : ''}`}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 hover:border-red-500/30 text-sm text-red-600 dark:text-red-300 font-medium cursor-pointer transition-all ${restoring ? 'opacity-50 pointer-events-none' : ''}`}
           >
             <RotateCcw size={14} className={restoring ? 'animate-spin' : ''} />
             {restoring ? 'Restoring…' : 'Choose file & restore'}
@@ -501,9 +501,9 @@ function BackupsSection() {
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-md text-xs font-medium ${
                         b.tier === 'full'
-                          ? 'bg-blue-500/15 text-blue-300 border border-blue-500/15'
+                          ? 'bg-blue-500/15 text-blue-600 dark:text-blue-300 border border-blue-500/15'
                           : b.tier === 'delta'
-                          ? 'bg-amber-500/15 text-amber-300 border border-amber-500/15'
+                          ? 'bg-amber-500/15 text-amber-600 dark:text-amber-300 border border-amber-500/15'
                           : 'bg-muted/60 text-muted-foreground border border-border/60'
                       }`}>{b.tier ?? 'legacy'}</span>
                     </td>
@@ -639,14 +639,14 @@ function UsersSection() {
               {filtered.map((u, i) => (
                 <tr key={u.username} className={`text-foreground/60 border-t border-border/50 hover:bg-muted/30 transition-colors ${u.status === 'deleted' ? 'opacity-40' : ''} ${i % 2 === 0 ? 'bg-muted/20' : ''}`}>
                   <td className="px-4 py-3">
-                    <span className="font-mono text-xs text-red-300/90 bg-red-500/[0.08] px-2 py-1 rounded-md">{u.username}</span>
+                    <span className="font-mono text-xs text-red-600 dark:text-red-300/90 bg-red-500/[0.08] px-2 py-1 rounded-md">{u.username}</span>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground text-xs">{u.email}</td>
                   <td className="px-4 py-3">
                     <span className={`capitalize text-xs px-2.5 py-1 rounded-lg font-medium ${
                       u.role === 'coach'
-                        ? 'bg-amber-500/10 text-amber-300 border border-amber-500/15'
-                        : 'bg-blue-500/10 text-blue-300 border border-blue-500/15'
+                        ? 'bg-amber-500/10 text-amber-600 dark:text-amber-300 border border-amber-500/15'
+                        : 'bg-blue-500/10 text-blue-600 dark:text-blue-300 border border-blue-500/15'
                     }`}>{u.role}</span>
                   </td>
                   <td className="px-4 py-3 font-semibold">{u.workoutCount}</td>
@@ -777,7 +777,7 @@ function SystemActionsSection() {
         <div className="flex flex-wrap gap-3">
           <button
             onClick={openSyncDialog}
-            className="group flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-orange-500/10 to-amber-500/10 hover:from-orange-500/15 hover:to-amber-500/15 border border-orange-500/15 hover:border-orange-500/25 text-sm text-orange-300 font-medium transition-all"
+            className="group flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-orange-500/10 to-amber-500/10 hover:from-orange-500/15 hover:to-amber-500/15 border border-orange-500/15 hover:border-orange-500/25 text-sm text-orange-600 dark:text-orange-300 font-medium transition-all"
           >
             <Zap size={15} className="group-hover:rotate-12 transition-transform" /> Force Strava Sync All
           </button>
@@ -831,7 +831,7 @@ function SystemActionsSection() {
               <button
                 onClick={confirmSync}
                 disabled={syncing}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-sm text-white font-medium shadow-lg shadow-red-900/30 disabled:opacity-50 transition-all"
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-sm text-white font-medium shadow-lg shadow-red-300/30 dark:shadow-red-900/30 disabled:opacity-50 transition-all"
               >
                 {syncing ? 'Syncing…' : 'Confirm Sync'}
               </button>
@@ -850,7 +850,7 @@ function SystemActionsSection() {
               onClick={() => setLogTab(tab)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 logTab === tab
-                  ? 'bg-red-500/15 text-red-300 border border-red-500/20 shadow-sm'
+                  ? 'bg-red-500/15 text-red-600 dark:text-red-300 border border-red-500/20 shadow-sm'
                   : 'text-muted-foreground hover:text-foreground/60 hover:bg-muted/40 border border-transparent'
               }`}
             >
@@ -873,7 +873,7 @@ function SystemActionsSection() {
             {displayLogs.map(log => (
               <div key={log.id} className="group bg-muted/25 hover:bg-muted/40 border border-border/50 hover:border-border rounded-xl px-4 py-3 text-xs flex items-center gap-4 transition-all">
                 <span className="text-muted-foreground/70 whitespace-nowrap font-mono">{fmt(log.timestamp)}</span>
-                <span className="font-mono text-red-300 bg-red-500/[0.08] px-2 py-0.5 rounded-md">{log.action}</span>
+                <span className="font-mono text-red-600 dark:text-red-300 bg-red-500/[0.08] px-2 py-0.5 rounded-md">{log.action}</span>
                 {log.targetUid && <span className="text-muted-foreground/70">user: {log.targetUid}</span>}
                 {log.type && <span className="text-muted-foreground/70">type: {log.type}</span>}
                 <span className="text-muted-foreground/70 ml-auto text-[11px]">by {log.adminUid}</span>
@@ -1001,7 +1001,7 @@ function ApiEndpointsSection() {
         <div className="flex items-center gap-2">
           <a
             href="/youwillneverguessthisistheadmin/api"
-            className="flex items-center gap-2 px-4 py-2 text-xs font-medium bg-purple-600/15 hover:bg-purple-600/25 border border-purple-500/20 text-purple-300 rounded-lg transition-all"
+            className="flex items-center gap-2 px-4 py-2 text-xs font-medium bg-purple-600/15 hover:bg-purple-600/25 border border-purple-500/20 text-purple-600 dark:text-purple-300 rounded-lg transition-all"
           >
             <Zap size={14} />
             Playground
@@ -1009,7 +1009,7 @@ function ApiEndpointsSection() {
           <button
             onClick={testAll}
             disabled={testingAll || !!testing}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-medium bg-indigo-600/15 hover:bg-indigo-600/25 border border-indigo-500/20 text-indigo-300 rounded-lg transition-all disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 text-xs font-medium bg-indigo-600/15 hover:bg-indigo-600/25 border border-indigo-500/20 text-indigo-600 dark:text-indigo-300 rounded-lg transition-all disabled:opacity-50"
           >
             {testingAll ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
             Test All
@@ -1204,7 +1204,7 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
         {/* Logo & branding */}
         <div className="text-center mb-8">
           <div className="relative inline-block mb-5">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-red-600/20 to-red-900/20 border border-red-500/20 shadow-2xl shadow-red-900/30 flex items-center justify-center">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-red-600/20 to-red-900/20 border border-red-500/20 shadow-2xl shadow-red-300/30 dark:shadow-red-900/30 flex items-center justify-center">
               <Shield className="w-10 h-10 text-red-400" />
             </div>
             <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-red-500 flex items-center justify-center shadow-lg shadow-red-500/40">
@@ -1220,7 +1220,7 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
           {/* Restricted area badge */}
           <div className="flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-500/[0.08] to-orange-500/[0.06] border border-red-500/15">
             <Lock className="w-3.5 h-3.5 text-red-400/70" />
-            <span className="text-xs text-red-300/70 font-bold tracking-widest uppercase">Restricted Area</span>
+            <span className="text-xs text-red-600 dark:text-red-300/70 font-bold tracking-widest uppercase">Restricted Area</span>
           </div>
 
           <p className="text-muted-foreground text-sm text-center">
@@ -1228,7 +1228,7 @@ function AuthGate({ onAuthenticated }: { onAuthenticated: () => void }) {
           </p>
 
           {error && (
-            <div className="flex items-center gap-2.5 text-red-400 text-sm bg-red-950/40 border border-red-500/20 rounded-xl px-4 py-3 animate-in fade-in slide-in-from-top-1 duration-200">
+            <div className="flex items-center gap-2.5 text-red-400 text-sm bg-red-100 dark:bg-red-950/40 border border-red-500/20 rounded-xl px-4 py-3 animate-in fade-in slide-in-from-top-1 duration-200">
               <XCircle size={16} className="shrink-0" />
               <span>{error}</span>
             </div>
@@ -1316,7 +1316,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
       <AnimatedBackground />
 
       {/* Header */}
-      <header className="relative z-10 bg-gradient-to-r from-background/80 via-red-950/20 to-background/80 backdrop-blur-2xl border-b border-border/60">
+      <header className="relative z-10 bg-gradient-to-r from-background/80 via-red-100/50 dark:via-red-950/20 to-background/80 backdrop-blur-2xl border-b border-border/60">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500/25 to-red-900/25 border border-red-500/25 flex items-center justify-center shadow-lg shadow-red-900/25">
@@ -1330,12 +1330,12 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           <div className="flex items-center gap-4">
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/15">
               <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-              <span className="text-green-400/80 text-xs font-medium">System Online</span>
+              <span className="text-green-600 dark:text-green-600 dark:text-green-400/80 text-xs font-medium">System Online</span>
             </div>
             <ThemeToggle />
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 text-muted-foreground hover:text-red-300 hover:bg-red-500/10 rounded-xl px-4 py-2 text-sm transition-all"
+              className="flex items-center gap-2 text-muted-foreground hover:text-red-600 dark:text-red-300 hover:bg-red-500/10 rounded-xl px-4 py-2 text-sm transition-all"
             >
               <LogOut size={15} /> Sign out
             </button>
@@ -1360,7 +1360,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
               <div className="w-px h-8 bg-border/60" />
               <div className="text-right">
                 <p className="text-muted-foreground/70 text-xs">Environment</p>
-                <p className="text-emerald-400/70 text-sm font-medium">Production</p>
+                <p className="text-emerald-600 dark:text-emerald-400/70 text-sm font-medium">Production</p>
               </div>
             </div>
           </div>
@@ -1374,7 +1374,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
               onClick={() => setTab(id)}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
                 tab === id
-                  ? 'bg-gradient-to-r from-red-600/20 to-red-500/15 text-red-300 border border-red-500/20 shadow-lg shadow-red-900/10'
+                  ? 'bg-gradient-to-r from-red-600/20 to-red-500/15 text-red-600 dark:text-red-300 border border-red-500/20 shadow-lg shadow-red-300/10 dark:shadow-red-900/10'
                   : 'text-muted-foreground hover:text-foreground/60 hover:bg-muted/40 border border-transparent'
               }`}
             >
@@ -1420,7 +1420,7 @@ export default function AdminPage() {
       <div className="min-h-screen bg-background flex items-center justify-center relative overflow-hidden">
         <AnimatedBackground />
         <div className="flex flex-col items-center gap-4 relative z-10">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-600/20 to-red-900/20 border border-red-500/20 flex items-center justify-center animate-pulse shadow-2xl shadow-red-900/30">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-600/20 to-red-900/20 border border-red-500/20 flex items-center justify-center animate-pulse shadow-2xl shadow-red-300/30 dark:shadow-red-900/30">
             <Shield className="w-8 h-8 text-red-400" />
           </div>
           <div className="flex items-center gap-2">
