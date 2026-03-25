@@ -264,6 +264,11 @@ export default function WrapPage() {
 
   const maxDailyCount = Math.max(...dailyActivity.map(d => d.count), 1);
 
+  // Animated counters — MUST be called before any early returns (React hooks rule)
+  const countWorkouts = useCountUp(totalWorkouts, 1000, slide === 1 && animateIn && !loading);
+  const countDist = useCountUp(Math.round(totalDistanceKm), 1200, slide === 1 && animateIn && !loading);
+  const countDur = useCountUp(totalDurationMin, 1400, slide === 1 && animateIn && !loading);
+
   if (loading) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-background">
@@ -289,11 +294,6 @@ export default function WrapPage() {
       </div>
     );
   }
-
-  // Animated counters for slide 1
-  const countWorkouts = useCountUp(totalWorkouts, 1000, slide === 1 && animateIn);
-  const countDist = useCountUp(Math.round(totalDistanceKm), 1200, slide === 1 && animateIn);
-  const countDur = useCountUp(totalDurationMin, 1400, slide === 1 && animateIn);
 
   const progressPct = ((slide + 1) / TOTAL_SLIDES) * 100;
 
