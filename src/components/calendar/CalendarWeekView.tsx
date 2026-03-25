@@ -108,7 +108,7 @@ export function CalendarWeekView({
                     'hover:bg-muted/30',
                   )}
                 >
-                  {/* Date number + month + add button */}
+                  {/* Date number + month */}
                   <div className="flex items-center gap-1.5 mb-1.5">
                     <span
                       className={cn(
@@ -122,7 +122,6 @@ export function CalendarWeekView({
                     <span className="text-[10px] font-medium text-muted-foreground uppercase truncate flex-1">
                       {format(day, 'MMM')}
                     </span>
-                    <CalendarAddDropdown date={day} onNoteAdded={onNoteAdded} className="opacity-0 group-hover/cell:opacity-100 transition-opacity" />
                   </div>
 
                   {/* Workout pills */}
@@ -140,6 +139,10 @@ export function CalendarWeekView({
                         +{overflow} more
                       </div>
                     )}
+                    {/* Add button — centered in empty area */}
+                    <div className="flex items-center justify-center py-1 opacity-0 group-hover/cell:opacity-100 transition-opacity">
+                      <CalendarAddDropdown date={day} onNoteAdded={onNoteAdded} />
+                    </div>
                     {dayWorkouts.length === 0 && (
                       <div className="text-[10px] text-muted-foreground/40 italic pl-1 pt-1">
                         Rest day

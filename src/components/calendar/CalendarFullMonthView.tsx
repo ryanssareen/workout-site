@@ -98,7 +98,7 @@ export function CalendarFullMonthView({
                     'hover:bg-muted/30',
                   )}
                 >
-                  {/* Date number + add button */}
+                  {/* Date number */}
                   <div className="flex items-center gap-1 mb-0.5">
                     <span
                       className={cn(
@@ -109,8 +109,6 @@ export function CalendarFullMonthView({
                     >
                       {format(day, 'd')}
                     </span>
-                    <span className="flex-1" />
-                    <CalendarAddDropdown date={day} onNoteAdded={onNoteAdded} className="opacity-0 group-hover/cell:opacity-100 transition-opacity" />
                   </div>
 
                   {/* Workout micro-pills */}
@@ -129,6 +127,10 @@ export function CalendarFullMonthView({
                         +{overflow} more
                       </div>
                     )}
+                    {/* Add button — centered in cell */}
+                    <div className="flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity">
+                      <CalendarAddDropdown date={day} onNoteAdded={onNoteAdded} />
+                    </div>
                   </div>
                 </div>
               );
