@@ -21,25 +21,36 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
   const { dryRun = false, maxUsers = 100 } = body;
 
+  // Accept direct user list to bypass Firestore when quota is exhausted
+  // Format: { "users": [{"email": "x@y.com", "name": "John"}], ... }
+  const directUsers = body.users as { email: string; name: string }[] | undefined;
+
   try {
-    const db = getAdminDb();
+    let users: { email: string; displayName: string; username: string }[];
 
-    // Fetch all active users with emails
-    const usersSnap = await db.collection('users')
-      .where('role', 'in', ['athlete', 'student'])
-      .limit(maxUsers)
-      .get();
+    if (directUsers && Array.isArray(directUsers) && directUsers.length > 0) {
+      // Use provided list — no Firestore reads needed
+      users = directUsers
+        .filter(u => u.email)
+        .map(u => ({ email: u.email, displayName: u.name || 'Athlete', username: '' }));
+    } else {
+      const db = getAdminDb();
+      const usersSnap = await db.collection('users')
+        .where('role', 'in', ['athlete', 'student'])
+        .limit(maxUsers)
+        .get();
 
-    const users = usersSnap.docs
-      .map(doc => {
-        const data = doc.data();
-        return {
-          email: data.email as string,
-          displayName: (data.displayName || 'Athlete') as string,
-          username: doc.id,
-        };
-      })
-      .filter(u => u.email);
+      users = usersSnap.docs
+        .map(doc => {
+          const data = doc.data();
+          return {
+            email: data.email as string,
+            displayName: (data.displayName || 'Athlete') as string,
+            username: doc.id,
+          };
+        })
+        .filter(u => u.email);
+    }
 
     if (dryRun) {
       return NextResponse.json({
