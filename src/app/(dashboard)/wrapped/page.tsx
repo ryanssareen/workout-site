@@ -5,7 +5,7 @@ import { useAuthStore } from '@/lib/stores/authStore';
 import { useWorkoutStore } from '@/lib/stores/workoutStore';
 import { Workout } from '@/types';
 import { ShareButtons } from '@/components/workouts/ShareWorkoutCard';
-import { Loader2, X, Share2, ChevronRight, ChevronLeft, ArrowRight, Sparkles } from 'lucide-react';
+import { Loader2, X, Share2, ChevronRight, ChevronLeft, ArrowRight, Sparkles, Sun, Moon } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/dashboard/ThemeToggle';
@@ -76,6 +76,7 @@ export default function YearlyWrappedPage() {
   const [showShare, setShowShare] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const [animateIn, setAnimateIn] = useState(false);
+  const [wrappedDark, setWrappedDark] = useState(true);
 
   // Stats stored in state so React re-renders with correct values
   const [stats, setStats] = useState<ReturnType<typeof computeYearStats>>(() => computeYearStats([]));
@@ -185,7 +186,7 @@ export default function YearlyWrappedPage() {
   const progressBar = (
     <div className="relative w-full max-w-xs mx-auto mt-4">
       {/* Track */}
-      <div className="h-1 rounded-full bg-white/10 overflow-hidden backdrop-blur-sm">
+      <div className={cn('h-1 rounded-full overflow-hidden backdrop-blur-sm', wrappedDark ? 'bg-white/10' : 'bg-black/10')}>
         {/* Fill */}
         <div
           className="h-full rounded-full transition-all duration-500 ease-out"
@@ -208,10 +209,12 @@ export default function YearlyWrappedPage() {
             className={cn(
               'w-1.5 h-1.5 rounded-full transition-all duration-300',
               i === currentSlide
-                ? 'bg-white scale-150 shadow-[0_0_6px_rgba(255,255,255,0.5)]'
+                ? wrappedDark
+                  ? 'bg-white scale-150 shadow-[0_0_6px_rgba(255,255,255,0.5)]'
+                  : 'bg-red-500 scale-150 shadow-[0_0_6px_rgba(239,68,68,0.4)]'
                 : i < currentSlide
-                  ? 'bg-white/40'
-                  : 'bg-white/15',
+                  ? wrappedDark ? 'bg-white/40' : 'bg-black/30'
+                  : wrappedDark ? 'bg-white/15' : 'bg-black/10',
               i > 0 && !guessSubmitted && 'opacity-30 cursor-not-allowed',
             )}
           />
@@ -221,7 +224,7 @@ export default function YearlyWrappedPage() {
   );
 
   // Build inline gradient so it's immune to theme overrides
-  const gradientMap: Record<Slide, string> = {
+  const darkGradientMap: Record<Slide, string> = {
     guess: 'linear-gradient(to bottom right, #1e1b4b, #020617, #000)',
     reveal: 'linear-gradient(to bottom right, #450a0a, #431407, #000)',
     stats: 'linear-gradient(to bottom right, #172554, #020617, #1e1b4b)',
@@ -232,30 +235,63 @@ export default function YearlyWrappedPage() {
     final: 'linear-gradient(to bottom right, #450a0a, #3b0764, #1e1b4b)',
   };
 
+  const lightGradientMap: Record<Slide, string> = {
+    guess: 'linear-gradient(to bottom right, #eef2ff, #f8fafc, #fff)',
+    reveal: 'linear-gradient(to bottom right, #fef2f2, #fff7ed, #fff)',
+    stats: 'linear-gradient(to bottom right, #eff6ff, #f8fafc, #eef2ff)',
+    breakdown: 'linear-gradient(to bottom right, #faf5ff, #f8fafc, #fdf4ff)',
+    records: 'linear-gradient(to bottom right, #fffbeb, #f8fafc, #fefce8)',
+    heatmap: 'linear-gradient(to bottom right, #ecfdf5, #f8fafc, #f0fdfa)',
+    summary: 'linear-gradient(to bottom right, #fff7ed, #f8fafc, #fff1f2)',
+    final: 'linear-gradient(to bottom right, #fef2f2, #faf5ff, #eef2ff)',
+  };
+
+  const gradientMap = wrappedDark ? darkGradientMap : lightGradientMap;
+
   return (
     <div
-      className="min-h-screen relative transition-all duration-700 ease-in-out wrapped-dark-force"
+      className={cn('min-h-screen relative transition-all duration-700 ease-in-out', wrappedDark ? 'wrapped-dark-force' : 'wrapped-light-force')}
       style={{ background: gradientMap[slide] }}
     >
-      {/* Force all theme-aware text to be white regardless of user's theme */}
-      <style>{`
-        .wrapped-dark-force,
-        .wrapped-dark-force * {
-          --foreground: 0 0% 98% !important;
-          --muted-foreground: 240 5% 65% !important;
-          --background: 240 10% 4% !important;
-          --card: 240 10% 4% !important;
-          --border: 240 4% 16% !important;
-          --primary: 0 72% 51% !important;
-          --primary-foreground: 0 0% 98% !important;
-          color-scheme: dark;
-        }
-      `}</style>
-      {/* Radial glow overlay */}
-      <div
-        className="fixed inset-0 pointer-events-none z-0 transition-opacity duration-700"
-        style={{ background: SLIDE_GLOW[slide] }}
-      />
+      {/* Force dark theme variables when in dark mode */}
+      {wrappedDark && (
+        <style>{`
+          .wrapped-dark-force,
+          .wrapped-dark-force * {
+            --foreground: 0 0% 98% !important;
+            --muted-foreground: 240 5% 65% !important;
+            --background: 240 10% 4% !important;
+            --card: 240 10% 4% !important;
+            --border: 240 4% 16% !important;
+            --primary: 0 72% 51% !important;
+            --primary-foreground: 0 0% 98% !important;
+            color-scheme: dark;
+          }
+        `}</style>
+      )}
+      {/* Force light theme variables when in light mode */}
+      {!wrappedDark && (
+        <style>{`
+          .wrapped-light-force,
+          .wrapped-light-force * {
+            --foreground: 240 10% 10% !important;
+            --muted-foreground: 240 5% 40% !important;
+            --background: 0 0% 100% !important;
+            --card: 0 0% 100% !important;
+            --border: 240 6% 85% !important;
+            --primary: 0 72% 51% !important;
+            --primary-foreground: 0 0% 98% !important;
+            color-scheme: light;
+          }
+        `}</style>
+      )}
+      {/* Radial glow overlay — only in dark mode */}
+      {wrappedDark && (
+        <div
+          className="fixed inset-0 pointer-events-none z-0 transition-opacity duration-700"
+          style={{ background: SLIDE_GLOW[slide] }}
+        />
+      )}
 
       {/* Final slide animated shimmer overlay */}
       {slide === 'final' && (
@@ -295,18 +331,29 @@ export default function YearlyWrappedPage() {
       `}</style>
 
       {/* Top bar */}
-      <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] bg-black/30 backdrop-blur-xl border-b border-white/5">
-        <Link href="/dashboard" className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors">
-          <X className="h-5 w-5 text-white/60" />
+      <div className={cn(
+        'sticky top-0 z-30 flex items-center justify-between px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl border-b transition-colors duration-500',
+        wrappedDark ? 'bg-black/30 border-white/5' : 'bg-white/60 border-black/5',
+      )}>
+        <Link href="/dashboard" className={cn('p-2 -ml-2 rounded-full transition-colors', wrappedDark ? 'hover:bg-white/10' : 'hover:bg-black/5')}>
+          <X className={cn('h-5 w-5', wrappedDark ? 'text-white/60' : 'text-black/50')} />
         </Link>
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-md bg-red-600 flex items-center justify-center shadow-lg shadow-red-600/20">
             <span className="text-white font-bold text-[8px]">CT</span>
           </div>
-          <span className="text-white/50 text-xs font-medium tracking-widest uppercase">{YEAR} Wrapped</span>
+          <span className={cn('text-xs font-medium tracking-widest uppercase', wrappedDark ? 'text-white/50' : 'text-black/40')}>{YEAR} Wrapped</span>
         </div>
-        {/* Theme toggle hidden — wrapped is always dark themed */}
-        <div className="w-8" />
+        <button
+          onClick={() => setWrappedDark(d => !d)}
+          className={cn(
+            'p-2 rounded-full transition-colors',
+            wrappedDark ? 'hover:bg-white/10 text-white/60' : 'hover:bg-black/5 text-black/50',
+          )}
+          title={wrappedDark ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {wrappedDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        </button>
       </div>
 
       {/* Slide content */}
@@ -321,10 +368,10 @@ export default function YearlyWrappedPage() {
         {slide === 'guess' && (
           <div className="flex flex-col items-center text-center max-w-lg mx-auto">
             <div className="text-7xl sm:text-8xl mb-8 drop-shadow-2xl">🏋️</div>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-black mb-4 leading-tight tracking-tight text-white">
+            <h1 className={cn('text-4xl sm:text-5xl md:text-6xl font-black mb-4 leading-tight tracking-tight', wrappedDark ? 'text-white' : 'text-foreground')}>
               You did <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-orange-400">a lot</span> of workouts in {YEAR}
             </h1>
-            <p className="text-white/50 text-xl mb-12 font-light">Guess how many</p>
+            <p className={cn('text-xl mb-12 font-light', wrappedDark ? 'text-white/50' : 'text-muted-foreground')}>Guess how many</p>
 
             {!guessSubmitted ? (
               <div className="w-full max-w-xs space-y-5">
@@ -339,7 +386,12 @@ export default function YearlyWrappedPage() {
                     onChange={e => setGuess(e.target.value.replace(/\D/g, ''))}
                     onKeyDown={e => e.key === 'Enter' && handleGuess()}
                     placeholder="?"
-                    className="relative w-full text-center text-5xl sm:text-6xl font-black bg-white/5 border-2 border-white/10 rounded-2xl py-5 px-6 text-white placeholder:text-white/20 focus:outline-none focus:border-red-500/60 focus:bg-white/[0.07] transition-all duration-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className={cn(
+                      'relative w-full text-center text-5xl sm:text-6xl font-black rounded-2xl py-5 px-6 focus:outline-none focus:border-red-500/60 transition-all duration-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none border-2',
+                      wrappedDark
+                        ? 'bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:bg-white/[0.07]'
+                        : 'bg-black/[0.03] border-black/10 text-foreground placeholder:text-black/20 focus:bg-black/[0.05]',
+                    )}
                     style={{ animation: 'glowPulse 3s ease-in-out infinite' }}
                     autoFocus
                   />
@@ -355,7 +407,7 @@ export default function YearlyWrappedPage() {
             ) : (
               <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-orange-400">{guessNum}</div>
-                <p className="text-white/40 text-sm">Let&apos;s see...</p>
+                <p className={cn('text-sm', wrappedDark ? 'text-white/40' : 'text-muted-foreground')}>Let&apos;s see...</p>
                 <div className="relative">
                   <div className="absolute inset-0 rounded-full blur-lg bg-red-500/20 animate-pulse" />
                   <Loader2 className="h-6 w-6 animate-spin text-red-400 mx-auto relative" />
@@ -408,7 +460,7 @@ export default function YearlyWrappedPage() {
                 workouts
               </div>
             </div>
-            <p className="text-xl sm:text-2xl font-medium text-white/70 leading-relaxed max-w-sm">
+            <p className={cn('text-xl sm:text-2xl font-medium leading-relaxed max-w-sm', wrappedDark ? 'text-white/70' : 'text-foreground/70')}>
               {guessResponse}
             </p>
             <button
@@ -431,7 +483,10 @@ export default function YearlyWrappedPage() {
       </div>
 
       {/* Bottom bar */}
-      <div className="sticky bottom-0 z-30 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 bg-gradient-to-t from-black/80 via-black/40 to-transparent backdrop-blur-sm">
+      <div className={cn(
+        'sticky bottom-0 z-30 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-sm transition-colors duration-500',
+        wrappedDark ? 'bg-gradient-to-t from-black/80 via-black/40 to-transparent' : 'bg-gradient-to-t from-white/80 via-white/40 to-transparent',
+      )}>
         {progressBar}
 
         {slide === 'final' ? (
@@ -443,7 +498,7 @@ export default function YearlyWrappedPage() {
                 shareUrl={shareUrl}
                 fileName={`${YEAR}-wrapped`}
                 cardRef={cardRef}
-                captureBg="#000000"
+                captureBg={wrappedDark ? '#000000' : '#ffffff'}
                 onClose={() => setShowShare(false)}
               />
             ) : (
@@ -461,7 +516,10 @@ export default function YearlyWrappedPage() {
             <button
               onClick={goPrev}
               disabled={isFirst}
-              className="group flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-white/50 text-sm font-medium hover:text-white/80 hover:bg-white/5 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+              className={cn(
+                'group flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-medium disabled:opacity-20 disabled:cursor-not-allowed transition-all',
+                wrappedDark ? 'text-white/50 hover:text-white/80 hover:bg-white/5' : 'text-black/40 hover:text-black/70 hover:bg-black/5',
+              )}
             >
               <ChevronLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
               Back
@@ -469,7 +527,12 @@ export default function YearlyWrappedPage() {
             <button
               onClick={goNext}
               disabled={isLast}
-              className="group flex items-center gap-2 px-7 py-3 rounded-xl bg-white/10 text-white text-sm font-semibold hover:bg-white/15 disabled:opacity-20 disabled:cursor-not-allowed transition-all active:scale-95 backdrop-blur-sm border border-white/10 shadow-lg shadow-black/20"
+              className={cn(
+                'group flex items-center gap-2 px-7 py-3 rounded-xl text-sm font-semibold disabled:opacity-20 disabled:cursor-not-allowed transition-all active:scale-95 backdrop-blur-sm shadow-lg',
+                wrappedDark
+                  ? 'bg-white/10 text-white hover:bg-white/15 border border-white/10 shadow-black/20'
+                  : 'bg-black/5 text-black/80 hover:bg-black/10 border border-black/10 shadow-black/5',
+              )}
             >
               Next
               <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
