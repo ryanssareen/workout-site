@@ -9,7 +9,7 @@ export const metadata = {
 };
 
 export default function PrivacyPolicyPage() {
-  const lastUpdated = 'March 23, 2026';
+  const lastUpdated = 'March 26, 2026';
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -58,12 +58,18 @@ export default function PrivacyPolicyPage() {
               <section>
                 <h2 className="text-2xl font-bold text-foreground mb-3">1. Introduction</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  The Daily Athlete (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) is a workout tracking platform operated by Ryan Sareen.
-                  This Privacy Policy explains how we collect, use, store, and protect your personal information when you
-                  use our website and services at <strong>thedailyathlete.in</strong> (the &quot;Service&quot;).
+                  The Daily Athlete (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) is a workout tracking platform operated by Ryan Sareen,
+                  based in India. This Privacy Policy explains how we collect, use, store, and protect your personal information
+                  when you use our website and services at <strong>thedailyathlete.in</strong> (the &quot;Service&quot;).
                 </p>
                 <p className="text-muted-foreground leading-relaxed">
-                  By using the Service, you agree to the collection and use of information in accordance with this policy.
+                  This policy is designed to comply with the Information Technology Act, 2000, the Information Technology
+                  (Reasonable Security Practices and Procedures and Sensitive Personal Data or Information) Rules, 2011,
+                  and the Digital Personal Data Protection Act, 2023 (&quot;DPDP Act&quot;) as applicable. For users in the
+                  European Union, this policy also addresses rights under the General Data Protection Regulation (GDPR).
+                </p>
+                <p className="text-muted-foreground leading-relaxed">
+                  By using the Service, you consent to the collection and use of information in accordance with this policy.
                   If you do not agree, please do not use the Service.
                 </p>
               </section>
@@ -83,11 +89,17 @@ export default function PrivacyPolicyPage() {
                   sport preferences, training goals, bio, and profile photo.
                 </p>
 
-                <h3 className="text-lg font-semibold text-foreground mt-6 mb-2">2.3 Workout Data</h3>
+                <h3 className="text-lg font-semibold text-foreground mt-6 mb-2">2.3 Workout & Health-Related Data</h3>
                 <p className="text-muted-foreground leading-relaxed">
                   We store workout data you create manually, import via CSV/XLSX, or sync from third-party services.
                   This includes workout type, date, duration, distance, pace, heart rate, elevation, calories,
                   laps/splits, and any notes or descriptions you add.
+                </p>
+                <p className="text-muted-foreground leading-relaxed mt-2">
+                  <strong>Note on health data:</strong> Some workout data (heart rate, calories, body metrics) may be
+                  classified as health-related or sensitive personal data under certain jurisdictions. We treat all such
+                  data with the same level of protection as described in this policy. This data is used solely for
+                  providing you with training analytics and insights within the Service.
                 </p>
 
                 <h3 className="text-lg font-semibold text-foreground mt-6 mb-2">2.4 Third-Party Service Data</h3>
@@ -188,60 +200,117 @@ export default function PrivacyPolicyPage() {
 
               <section>
                 <h2 className="text-2xl font-bold text-foreground mb-3">7. Your Rights</h2>
-                <p className="text-muted-foreground leading-relaxed">You have the right to:</p>
+                <p className="text-muted-foreground leading-relaxed">
+                  Under the DPDP Act, IT Act, and GDPR (where applicable), you have the following rights as a Data Principal:
+                </p>
                 <ul className="list-disc pl-6 text-muted-foreground space-y-2 mt-2">
-                  <li><strong>Access:</strong> View all data we hold about you through your profile and settings pages</li>
-                  <li><strong>Export:</strong> Request a full export of your data in JSON format</li>
-                  <li><strong>Correction:</strong> Update your profile information at any time through Settings</li>
-                  <li><strong>Deletion:</strong> Request deletion of your account and all associated data by contacting us</li>
-                  <li><strong>Disconnect:</strong> Revoke access to any connected third-party service at any time</li>
-                  <li><strong>Opt out:</strong> Disable push notifications, email summaries, and analytics tracking</li>
+                  <li><strong>Right to Access:</strong> View all data we hold about you through your profile and settings pages</li>
+                  <li><strong>Right to Export / Portability:</strong> Request a full export of your data in JSON format</li>
+                  <li><strong>Right to Correction:</strong> Update your profile information at any time through Settings</li>
+                  <li><strong>Right to Erasure:</strong> Request deletion of your account and all associated data by contacting us</li>
+                  <li><strong>Right to Disconnect:</strong> Revoke access to any connected third-party service at any time</li>
+                  <li><strong>Right to Withdraw Consent:</strong> Withdraw consent for data processing at any time (this may affect Service functionality)</li>
+                  <li><strong>Right to Opt Out:</strong> Disable push notifications, email summaries, and analytics tracking</li>
+                  <li><strong>Right to Nominate:</strong> Under the DPDP Act, you may nominate another person to exercise your rights in case of your death or incapacity</li>
                 </ul>
                 <p className="text-muted-foreground leading-relaxed mt-3">
-                  To exercise any of these rights, contact us at <a href="mailto:ryanssareen@gmail.com" className="text-red-400 hover:text-red-300 underline">ryanssareen@gmail.com</a>.
+                  To exercise any of these rights, contact our Grievance Officer (see Section 13 below) at{' '}
+                  <a href="mailto:ryanssareen@gmail.com" className="text-red-400 hover:text-red-300 underline">ryanssareen@gmail.com</a>.
+                  We will respond to requests within 30 days.
                 </p>
               </section>
 
               <section>
-                <h2 className="text-2xl font-bold text-foreground mb-3">8. Data Retention</h2>
+                <h2 className="text-2xl font-bold text-foreground mb-3">8. Data Breach Notification</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  We retain your data for as long as your account is active. If you delete your account, we will delete
-                  your personal data within 30 days, except where we are required to retain it for legal or legitimate
-                  business purposes (e.g., backup integrity, fraud prevention). Automated backups containing your data
-                  are pruned on a regular schedule (daily backups kept for 7 days, weekly for 4 weeks, monthly for 12 months).
+                  In the event of a personal data breach that poses a risk to your rights and freedoms, we will:
+                </p>
+                <ul className="list-disc pl-6 text-muted-foreground space-y-2 mt-2">
+                  <li>Notify the Data Protection Board of India (once constituted under the DPDP Act) without unreasonable delay, and in any case within 72 hours of becoming aware of the breach</li>
+                  <li>Notify affected users via email and/or in-app notification as soon as practicable</li>
+                  <li>Provide details of the nature of the breach, the data affected, and the measures taken to mitigate it</li>
+                  <li>Document the breach and remediation steps in our internal records</li>
+                </ul>
+                <p className="text-muted-foreground leading-relaxed mt-3">
+                  For EU users, breach notifications will also comply with GDPR Article 33/34 requirements where applicable.
                 </p>
               </section>
 
               <section>
-                <h2 className="text-2xl font-bold text-foreground mb-3">9. Children&apos;s Privacy</h2>
+                <h2 className="text-2xl font-bold text-foreground mb-3">9. Data Retention</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  The Service is not intended for children under 13 years of age. We do not knowingly collect personal
-                  information from children under 13. If you believe we have collected data from a child under 13,
-                  please contact us immediately.
+                  We retain your data for as long as your account is active and the data is necessary for the purposes
+                  described in this policy. If you delete your account, we will delete your personal data within 30 days,
+                  except where we are required to retain it for legal or legitimate business purposes (e.g., backup integrity,
+                  fraud prevention, legal compliance).
+                </p>
+                <p className="text-muted-foreground leading-relaxed mt-2">
+                  Automated backups containing your data are pruned on a regular schedule: daily backups kept for 7 days,
+                  weekly for 4 weeks, monthly for 12 months. After these periods, backup data is permanently deleted.
                 </p>
               </section>
 
               <section>
-                <h2 className="text-2xl font-bold text-foreground mb-3">10. Changes to This Policy</h2>
+                <h2 className="text-2xl font-bold text-foreground mb-3">10. Children&apos;s Privacy</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  We may update this Privacy Policy from time to time. We will notify you of any material changes by
-                  posting the new policy on this page and updating the &quot;Last updated&quot; date. Continued use of
-                  the Service after changes constitutes acceptance of the updated policy.
+                  The Service is not intended for children under 18 years of age. We do not knowingly collect personal
+                  information from minors. Under the DPDP Act, processing personal data of children requires verifiable
+                  consent from a parent or lawful guardian.
+                </p>
+                <p className="text-muted-foreground leading-relaxed mt-2">
+                  If you are a parent or guardian and believe your child has provided us with personal data without your
+                  consent, please contact us immediately at{' '}
+                  <a href="mailto:ryanssareen@gmail.com" className="text-red-400 hover:text-red-300 underline">ryanssareen@gmail.com</a>.
+                  We will take steps to delete such data promptly.
                 </p>
               </section>
 
               <section>
-                <h2 className="text-2xl font-bold text-foreground mb-3">11. Contact Us</h2>
+                <h2 className="text-2xl font-bold text-foreground mb-3">11. International Data Transfers</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  If you have questions about this Privacy Policy or our data practices, contact us at:
+                  Your data may be processed and stored in servers located outside India (e.g., Google Cloud for Firebase,
+                  Vercel for hosting, Groq for AI processing). By using the Service, you consent to the transfer of your
+                  data to these locations. We ensure that all third-party processors maintain appropriate security measures.
+                </p>
+                <p className="text-muted-foreground leading-relaxed mt-2">
+                  For EU users: data transfers outside the EEA are conducted in accordance with GDPR requirements, relying
+                  on the third-party processors&apos; own compliance mechanisms (e.g., Standard Contractual Clauses).
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-2xl font-bold text-foreground mb-3">12. Changes to This Policy</h2>
+                <p className="text-muted-foreground leading-relaxed">
+                  We review and update this Privacy Policy at least annually, or more frequently when required by changes
+                  in law, our practices, or the Service. We will notify you of material changes by email and by posting
+                  the updated policy on this page with a revised &quot;Last updated&quot; date. Continued use of the
+                  Service after changes constitutes acceptance of the updated policy.
+                </p>
+                <p className="text-muted-foreground leading-relaxed mt-2">
+                  We are actively monitoring the rollout of the DPDP Rules (expected full enforcement by 2027) and will
+                  update this policy as new requirements are enacted.
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-2xl font-bold text-foreground mb-3">13. Grievance Officer &amp; Contact</h2>
+                <p className="text-muted-foreground leading-relaxed">
+                  In accordance with the Information Technology Act, 2000 and the DPDP Act, 2023, the following person
+                  has been designated as the Grievance Officer for the purpose of this Privacy Policy:
                 </p>
                 <div className="mt-3 p-4 rounded-xl bg-foreground/5 border border-border/30">
                   <p className="text-foreground font-medium">Ryan Sareen</p>
+                  <p className="text-muted-foreground text-sm">Grievance Officer &amp; Data Protection Contact</p>
                   <p className="text-muted-foreground text-sm">The Daily Athlete</p>
                   <p className="text-muted-foreground text-sm">
                     Email: <a href="mailto:ryanssareen@gmail.com" className="text-red-400 hover:text-red-300 underline">ryanssareen@gmail.com</a>
                   </p>
                 </div>
+                <p className="text-muted-foreground leading-relaxed mt-3">
+                  Grievances will be acknowledged within 24 hours and resolved within 30 days from the date of receipt.
+                  If you are not satisfied with our response, you may file a complaint with the Data Protection Board
+                  of India (once constituted) or the relevant supervisory authority in your jurisdiction.
+                </p>
               </section>
 
             </div>
