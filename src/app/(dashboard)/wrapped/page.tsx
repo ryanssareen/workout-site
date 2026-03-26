@@ -347,8 +347,10 @@ export default function YearlyWrappedPage() {
         <button
           onClick={() => setWrappedDark(d => !d)}
           className={cn(
-            'p-2 rounded-full transition-colors',
-            wrappedDark ? 'hover:bg-white/10 text-white/60' : 'hover:bg-black/5 text-black/50',
+            'p-2 rounded-lg border transition-all',
+            wrappedDark
+              ? 'bg-white/10 hover:bg-white/20 border-white/20 text-white'
+              : 'bg-black/5 hover:bg-black/10 border-black/10 text-black/70',
           )}
           title={wrappedDark ? 'Switch to light mode' : 'Switch to dark mode'}
         >

@@ -228,23 +228,23 @@ export function StatsSlide({ stats, animateIn }: { stats: YearStats; animateIn: 
   ];
 
   const gradients = [
-    'from-red-500/20 to-red-900/10',
-    'from-orange-500/15 to-orange-900/5',
-    'from-red-600/15 to-red-900/5',
-    'from-amber-500/15 to-amber-900/5',
-    'from-red-700/15 to-red-900/5',
-    'from-rose-500/15 to-rose-900/5',
+    'from-red-500/30 to-red-900/15',
+    'from-orange-500/25 to-orange-900/10',
+    'from-red-600/25 to-red-900/10',
+    'from-amber-500/25 to-amber-900/10',
+    'from-red-700/25 to-red-900/10',
+    'from-rose-500/25 to-rose-900/10',
   ];
 
   return (
     <div className="max-w-2xl mx-auto w-full">
-      <p className="text-foreground/40 text-xs font-medium tracking-widest uppercase mb-6">Your {YEAR} in numbers</p>
+      <p className="text-foreground/60 text-xs font-semibold tracking-widest uppercase mb-6">Your {YEAR} in numbers</p>
       <div className="grid grid-cols-2 gap-3 sm:gap-4">
         {items.map((stat, i) => (
           <div
             key={stat.label}
             className={cn(
-              'rounded-2xl border border-foreground/5 p-4 sm:p-5 bg-gradient-to-br transition-all duration-500',
+              'rounded-2xl border border-foreground/10 p-4 sm:p-5 bg-gradient-to-br backdrop-blur-sm transition-all duration-500',
               gradients[i],
               animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4',
             )}
@@ -254,16 +254,16 @@ export function StatsSlide({ stats, animateIn }: { stats: YearStats; animateIn: 
             <div className="mt-2">
               <div className="flex items-baseline gap-1">
                 <span className="text-3xl sm:text-4xl font-black text-foreground">{stat.value}</span>
-                <span className="text-sm text-foreground/40">{stat.unit}</span>
+                <span className="text-sm text-foreground/60">{stat.unit}</span>
               </div>
-              <p className="text-foreground/30 text-xs mt-0.5">{stat.label}</p>
+              <p className="text-foreground/50 text-xs mt-0.5 font-medium">{stat.label}</p>
             </div>
           </div>
         ))}
       </div>
       {stats.totalElevationM > 0 && (
         <div className="mt-4 text-center">
-          <p className="text-foreground/30 text-xs">
+          <p className="text-foreground/50 text-xs">
             That&apos;s <span className="text-red-400 font-bold">{(stats.totalElevationM / 8849).toFixed(1)}x</span> up Everest 🏔️
           </p>
         </div>
@@ -323,7 +323,7 @@ export function BreakdownSlide({ stats, animateIn }: { stats: YearStats; animate
                 </div>
                 <div className="text-right">
                   <span className="text-foreground font-bold">{s.count}</span>
-                  <span className="text-foreground/30 text-xs ml-1">({s.pct}%)</span>
+                  <span className="text-foreground/50 text-xs ml-1">({s.pct}%)</span>
                 </div>
               </div>
             </div>
@@ -381,10 +381,10 @@ export function RecordsSlide({ stats, animateIn }: { stats: YearStats; animateIn
                   {record.distanceKm > 0 && (
                     <p className="text-red-400 font-bold">{record.distanceKm.toFixed(1)}<span className="text-xs text-red-400/60 ml-0.5">km</span></p>
                   )}
-                  <p className="text-foreground/20 text-xs">{format(record.date, 'MMM d')}</p>
+                  <p className="text-foreground/40 text-xs">{format(record.date, 'MMM d')}</p>
                 </div>
               </div>
-              <p className="text-foreground/30 text-xs mt-2 truncate">{record.name}</p>
+              <p className="text-foreground/50 text-xs mt-2 truncate">{record.name}</p>
             </div>
           ))}
 
@@ -412,9 +412,9 @@ export function RecordsSlide({ stats, animateIn }: { stats: YearStats; animateIn
                       <p className="text-red-400 font-bold text-lg">{record.distanceKm.toFixed(1)}<span className="text-xs text-red-400/60 ml-0.5">km</span></p>
                     </div>
                   </div>
-                  <p className="text-foreground/20 text-xs">{format(record.date, 'MMM d')}</p>
+                  <p className="text-foreground/40 text-xs">{format(record.date, 'MMM d')}</p>
                 </div>
-                <p className="text-foreground/30 text-xs mt-2 truncate">{record.name}</p>
+                <p className="text-foreground/50 text-xs mt-2 truncate">{record.name}</p>
               </div>
             );
           })}
@@ -452,7 +452,7 @@ export function HeatmapSlide({ stats, animateIn }: { stats: YearStats; animateIn
   return (
     <div className="max-w-3xl mx-auto w-full">
       <p className="text-foreground/40 text-xs font-medium tracking-widest uppercase mb-2">Activity Heatmap</p>
-      <p className="text-foreground/20 text-xs mb-4">{stats.activeDays} active days out of 365</p>
+      <p className="text-foreground/40 text-xs mb-4">{stats.activeDays} active days out of 365</p>
 
       {/* Monthly bar chart */}
       <div className="mb-6">
@@ -474,7 +474,7 @@ export function HeatmapSlide({ stats, animateIn }: { stats: YearStats; animateIn
                     transitionDelay: `${i * 60}ms`,
                   }}
                 />
-                <span className="text-foreground/30 text-[9px]">{m.month}</span>
+                <span className="text-foreground/50 text-[9px]">{m.month}</span>
               </div>
             );
           })}
@@ -525,12 +525,12 @@ export function HeatmapSlide({ stats, animateIn }: { stats: YearStats; animateIn
           })()}
         </div>
         <div className="flex items-center justify-end gap-1 mt-2">
-          <span className="text-foreground/20 text-[9px] mr-1">Less</span>
+          <span className="text-foreground/40 text-[9px] mr-1">Less</span>
           <div className="w-[11px] h-[11px] rounded-[2px] bg-foreground/5" />
           <div className="w-[11px] h-[11px] rounded-[2px] bg-red-500/40" />
           <div className="w-[11px] h-[11px] rounded-[2px] bg-red-500/60" />
           <div className="w-[11px] h-[11px] rounded-[2px] bg-red-500" />
-          <span className="text-foreground/20 text-[9px] ml-1">More</span>
+          <span className="text-foreground/40 text-[9px] ml-1">More</span>
         </div>
       </div>
     </div>
@@ -567,9 +567,9 @@ function SportRecordRow({ emoji, label, records }: {
         <div className="flex flex-wrap gap-x-4 gap-y-1">
           {records.map((r, i) => (
             <div key={i} className="flex items-baseline gap-1">
-              <span className="text-foreground/30 text-[10px]">{r.label}</span>
+              <span className="text-foreground/50 text-[10px]">{r.label}</span>
               <span className="text-foreground font-bold text-sm">{r.value}</span>
-              <span className="text-foreground/30 text-[10px]">{r.unit}</span>
+              <span className="text-foreground/50 text-[10px]">{r.unit}</span>
             </div>
           ))}
         </div>
@@ -613,7 +613,7 @@ export function SummarySlide({ stats, firstName, animateIn }: { stats: YearStats
           <p className="text-foreground font-black text-lg sm:text-xl">{firstName}&apos;s {YEAR}</p>
         </div>
         <div className="text-right">
-          <p className="text-4xl sm:text-5xl font-black text-foreground/20 leading-none">{YEAR}</p>
+          <p className="text-4xl sm:text-5xl font-black text-foreground/40 leading-none">{YEAR}</p>
         </div>
       </div>
 
@@ -636,7 +636,7 @@ export function SummarySlide({ stats, firstName, animateIn }: { stats: YearStats
 
         {everestMultiple && (
           <div className="px-4 py-2 border-b border-foreground/5 text-center">
-            <p className="text-foreground/30 text-[10px] sm:text-xs">
+            <p className="text-foreground/50 text-[10px] sm:text-xs">
               ⛰️ <span className="text-red-400 font-bold">{everestMultiple}x</span> up Everest
             </p>
           </div>
@@ -676,7 +676,7 @@ export function SummarySlide({ stats, firstName, animateIn }: { stats: YearStats
                         transitionDelay: `${i * 40}ms`,
                       }}
                     />
-                    <span className="text-foreground/20 text-[7px] sm:text-[8px]">{m.month.charAt(0)}</span>
+                    <span className="text-foreground/40 text-[7px] sm:text-[8px]">{m.month.charAt(0)}</span>
                   </div>
                 );
               })}
@@ -687,7 +687,7 @@ export function SummarySlide({ stats, firstName, animateIn }: { stats: YearStats
         {/* Bottom: workout count + breakdown chips */}
         <div className="border-t border-foreground/5 px-3 sm:px-4 py-3 flex flex-wrap items-center gap-2">
           <span className="text-foreground font-black text-lg">{stats.totalWorkouts}</span>
-          <span className="text-foreground/30 text-xs">workouts</span>
+          <span className="text-foreground/50 text-xs">workouts</span>
           <span className="text-foreground/10 mx-1">|</span>
           {stats.sportBreakdown.slice(0, 4).map(s => (
             <span key={s.type} className="inline-flex items-center gap-1 text-foreground/40 text-[10px] sm:text-xs">
@@ -730,7 +730,7 @@ export function FinalSlide({ stats, firstName }: { stats: YearStats; firstName: 
           stats.totalWorkouts > 100 ? 'incredible' :
           stats.totalWorkouts > 50 ? 'impressive' : 'a great start'}.
       </p>
-      <div className="flex items-center gap-4 text-foreground/30 text-sm mb-6">
+      <div className="flex items-center gap-4 text-foreground/50 text-sm mb-6">
         <span>{stats.totalWorkouts} workouts</span>
         <span>·</span>
         <span>{stats.totalDistanceKm}km</span>
@@ -742,7 +742,7 @@ export function FinalSlide({ stats, firstName }: { stats: YearStats; firstName: 
           {funFact}
         </div>
       )}
-      <p className="text-foreground/30 text-xs mb-6">Share your {YEAR} wrapped with friends</p>
+      <p className="text-foreground/50 text-xs mb-6">Share your {YEAR} wrapped with friends</p>
     </div>
   );
 }
