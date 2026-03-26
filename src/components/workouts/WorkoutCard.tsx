@@ -194,6 +194,11 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
             {workout.completedBy === 'strava' && <Badge variant="outline" className="border-orange-500/50 text-orange-600 dark:text-orange-400 text-xs"><Activity className="h-3 w-3 mr-1" />Strava</Badge>}
             {hasRoute && <Badge variant="outline" className="border-green-500/50 text-green-600 dark:text-green-400 text-xs"><MapPin className="h-3 w-3 mr-1" />Route</Badge>}
             {commentCount > 0 && <Badge variant="secondary" className="text-xs"><MessageSquare className="h-3 w-3 mr-1" />{commentCount}</Badge>}
+            {workout.prs && workout.prs.length > 0 && (
+              <Badge className="bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-white text-xs shadow-sm shadow-yellow-500/20">
+                🏆 {workout.prs.length} PR{workout.prs.length > 1 ? 's' : ''}
+              </Badge>
+            )}
           </div>
 
           {workout.actualStats && (
