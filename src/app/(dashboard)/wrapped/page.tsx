@@ -466,7 +466,7 @@ export default function YearlyWrappedPage() {
               >
                 {countedValue}
               </div>
-              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-white/30 text-sm font-semibold tracking-[0.3em] uppercase">
+              <div className={cn("absolute -bottom-2 left-1/2 -translate-x-1/2 text-sm font-semibold tracking-[0.3em] uppercase", wrappedDark ? "text-white/30" : "text-foreground/30")}>
                 workouts
               </div>
             </div>
