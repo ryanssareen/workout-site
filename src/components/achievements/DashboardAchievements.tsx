@@ -66,7 +66,7 @@ export function DashboardAchievements({ username, prefetchedPRs, prefetchedMiles
   if (!hasPRs && !hasMilestones) return null;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className={`grid gap-4 ${hasPRs && hasMilestones ? 'lg:grid-cols-2' : ''}`}>
       {/* Recent PRs */}
       {hasPRs && (
         <Card>
