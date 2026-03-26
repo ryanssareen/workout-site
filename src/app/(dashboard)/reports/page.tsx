@@ -68,9 +68,11 @@ export default function ReportsHubPage() {
     } catch (err) {
       console.error('Failed to fetch workouts:', err);
       // If Firestore fails (quota), try to use whatever is in the store cache
-      const cached = useWorkoutStore.getState().workouts;
-      if (cached.length > 0) {
-        setWorkouts(cached);
+      if (user?.username) {
+        const entry = useWorkoutStore.getState().cache.get(user.username);
+        if (entry && entry.workouts.length > 0) {
+          setWorkouts(entry.workouts);
+        }
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

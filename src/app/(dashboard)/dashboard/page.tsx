@@ -165,8 +165,8 @@ export default function DashboardPage() {
       if (workoutResult.status === 'fulfilled') setWorkouts(workoutResult.value);
       else {
         // Try store cache as fallback
-        const cached = useWorkoutStore.getState().workouts;
-        if (cached.length > 0) setWorkouts(cached);
+        const entry = useWorkoutStore.getState().cache.get(user.username);
+        if (entry && entry.workouts.length > 0) setWorkouts(entry.workouts);
       }
       if (prResult.status === 'fulfilled') setPersonalRecords(prResult.value);
       if (msResult.status === 'fulfilled') setMilestones(msResult.value);
