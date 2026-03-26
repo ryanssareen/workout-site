@@ -1,4 +1,4 @@
-// Weekly Wrap email template
+// Weekly Wrap email template — Anthropic-inspired clean design
 
 export interface WrapSportStat {
   type: string;
@@ -27,18 +27,20 @@ export function generateWrapSubject(ratingEmoji: string, totalWorkouts: number):
 }
 
 export function generateWrapEmail(data: WrapEmailData): string {
+  const font = `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+
   const statsHtml = data.sportStats.map(stat => `
     <tr>
-      <td style="padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.06);">
+      <td style="padding: 16px 20px; border-bottom: 1px solid #f3f4f6;">
         <table cellpadding="0" cellspacing="0" border="0" width="100%">
           <tr>
-            <td width="40" style="font-size: 28px; vertical-align: top; padding-top: 2px;">${stat.emoji}</td>
-            <td style="vertical-align: top;">
-              <p style="margin: 0; color: #ffffff; font-size: 18px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-                You <span style="color: ${stat.color}; font-weight: 700;">${stat.label} ${stat.metric}</span>
+            <td width="44" style="font-size: 24px; vertical-align: middle;">${stat.emoji}</td>
+            <td style="vertical-align: middle;">
+              <p style="margin: 0; color: #111827; font-size: 16px; font-weight: 600; font-family: ${font};">
+                You ${stat.label} <span style="color: ${stat.color};">${stat.metric}</span>
               </p>
               ${stat.comparison ? `
-                <p style="margin: 4px 0 0; font-size: 14px; color: ${stat.isPositive ? '#34d399' : '#6b7280'}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+                <p style="margin: 3px 0 0; font-size: 13px; color: ${stat.isPositive ? '#059669' : '#9ca3af'}; font-family: ${font};">
                   ${stat.isPositive ? '↑' : '↓'} ${stat.comparison}
                 </p>
               ` : ''}
@@ -51,18 +53,18 @@ export function generateWrapEmail(data: WrapEmailData): string {
 
   const highlightHtml = data.highlight ? `
     <tr>
-      <td style="padding: 24px 0 0;">
+      <td style="padding: 24px 28px 0;">
         <table cellpadding="0" cellspacing="0" border="0" width="100%"
-          style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px;">
+          style="background: #fef3c7; border: 1px solid #fde68a; border-radius: 12px;">
           <tr>
-            <td style="padding: 20px 24px;">
-              <p style="margin: 0 0 8px; font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #6b7280; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-weight: 600;">
-                This week's highlight
+            <td style="padding: 16px 20px;">
+              <p style="margin: 0 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #92400e; font-family: ${font}; font-weight: 700;">
+                ⭐ Highlight of the week
               </p>
-              <p style="margin: 0; color: #ffffff; font-size: 18px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+              <p style="margin: 0; color: #111827; font-size: 16px; font-weight: 600; font-family: ${font};">
                 ${data.highlight.emoji} ${data.highlight.label}
               </p>
-              <p style="margin: 6px 0 0; color: #6b7280; font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+              <p style="margin: 4px 0 0; color: #6b7280; font-size: 13px; font-family: ${font};">
                 ${data.highlight.detail}
               </p>
             </td>
@@ -75,69 +77,92 @@ export function generateWrapEmail(data: WrapEmailData): string {
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin: 0; padding: 0; background-color: #000000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #000000;">
+<body style="margin: 0; padding: 0; background-color: #f9fafb; font-family: ${font};">
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f9fafb;">
     <tr>
-      <td align="center" style="padding: 20px;">
-        <table cellpadding="0" cellspacing="0" border="0" width="600" style="max-width: 600px; background: linear-gradient(165deg, #0a0a0a 0%, #0f1729 40%, #1a1a2e 70%, #16213e 100%); border-radius: 24px; overflow: hidden;">
-          <!-- Header -->
+      <td align="center" style="padding: 32px 16px;">
+        <table cellpadding="0" cellspacing="0" border="0" width="560" style="max-width: 560px;">
+
+          <!-- Logo -->
           <tr>
-            <td style="padding: 40px 32px 24px;">
+            <td style="padding: 0 0 24px;">
               <table cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                  <td width="36" style="vertical-align: middle;">
-                    <div style="width: 36px; height: 36px; background: #dc2626; border-radius: 10px; text-align: center; line-height: 36px; color: white; font-weight: bold; font-size: 14px;">CT</div>
+                  <td width="32" style="vertical-align: middle;">
+                    <div style="width: 32px; height: 32px; background: #dc2626; border-radius: 8px; text-align: center; line-height: 32px; color: white; font-weight: bold; font-size: 11px;">DA</div>
                   </td>
                   <td style="padding-left: 10px; vertical-align: middle;">
-                    <span style="color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 3px; font-weight: 600;">Your Week's Capsule</span>
+                    <span style="color: #111827; font-size: 15px; font-weight: 700; font-family: ${font};">The Daily Athlete</span>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
 
-          <!-- Greeting -->
+          <!-- Hero -->
           <tr>
-            <td style="padding: 0 32px 8px;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 36px; font-weight: 700; line-height: 1.2; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-                Dear ${data.userName},
+            <td style="padding: 0 0 24px;">
+              <p style="margin: 0 0 4px; color: #6b7280; font-size: 13px; font-family: ${font};">
+                ${data.weekLabel}
+              </p>
+              <h1 style="margin: 0 0 8px; color: #111827; font-size: 28px; font-weight: 800; line-height: 1.2; font-family: ${font};">
+                ${data.ratingEmoji} This week was ${data.ratingWord}, ${data.userName}.
               </h1>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 0 32px 32px;">
-              <p style="margin: 0; color: #9ca3af; font-size: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-                this week was <span style="color: #ffffff; font-weight: 600;">${data.ratingWord}</span> ${data.ratingEmoji}
+              <p style="margin: 0; color: #6b7280; font-size: 15px; line-height: 1.5; font-family: ${font};">
+                Here&rsquo;s your personalized training summary with ${data.totalWorkouts} workout${data.totalWorkouts !== 1 ? 's' : ''} logged.
               </p>
             </td>
           </tr>
 
-          <!-- Stats -->
+          <!-- Sport Stats Card -->
           <tr>
-            <td style="padding: 0 32px;">
-              <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <td style="padding: 0 0 16px;">
+              <table cellpadding="0" cellspacing="0" border="0" width="100%"
+                style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+                <tr>
+                  <td style="padding: 16px 20px 8px;">
+                    <p style="margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #9ca3af; font-family: ${font}; font-weight: 700;">
+                      Your training
+                    </p>
+                  </td>
+                </tr>
                 ${statsHtml}
               </table>
             </td>
           </tr>
 
           <!-- Highlight -->
+          ${highlightHtml ? `
           <tr>
-            <td style="padding: 0 32px;">
-              <table cellpadding="0" cellspacing="0" border="0" width="100%">
-                ${highlightHtml}
+            <td style="padding: 0 0 16px;">
+              <table cellpadding="0" cellspacing="0" border="0" width="100%"
+                style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px;">
+                <tr>
+                  <td style="padding: 16px 20px;">
+                    <p style="margin: 0 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #92400e; font-family: ${font}; font-weight: 700;">
+                      ⭐ Highlight of the week
+                    </p>
+                    <p style="margin: 0; color: #111827; font-size: 16px; font-weight: 600; font-family: ${font};">
+                      ${data.highlight?.emoji} ${data.highlight?.label}
+                    </p>
+                    <p style="margin: 4px 0 0; color: #6b7280; font-size: 13px; font-family: ${font};">
+                      ${data.highlight?.detail}
+                    </p>
+                  </td>
+                </tr>
               </table>
             </td>
           </tr>
+          ` : ''}
 
           <!-- CTA -->
           <tr>
-            <td style="padding: 32px 32px 16px;">
+            <td style="padding: 8px 0 24px;">
               <table cellpadding="0" cellspacing="0" border="0" width="100%">
                 <tr>
                   <td align="center">
-                    <a href="${data.appUrl}/wrap" style="display: inline-block; background: #ffffff; color: #000000; text-decoration: none; padding: 14px 40px; border-radius: 14px; font-size: 16px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-                      View Full Wrap
+                    <a href="${data.appUrl}/wrap" style="display: inline-block; background: #dc2626; color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-size: 14px; font-weight: 600; font-family: ${font};">
+                      View Full Wrap →
                     </a>
                   </td>
                 </tr>
@@ -145,17 +170,25 @@ export function generateWrapEmail(data: WrapEmailData): string {
             </td>
           </tr>
 
+          <!-- Divider -->
+          <tr>
+            <td style="padding: 0 0 20px;">
+              <div style="height: 1px; background: #e5e7eb;"></div>
+            </td>
+          </tr>
+
           <!-- Footer -->
           <tr>
-            <td style="padding: 16px 32px 32px;">
-              <p style="margin: 0; text-align: center; color: #4b5563; font-size: 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+            <td>
+              <p style="margin: 0 0 4px; color: #9ca3af; font-size: 12px; font-family: ${font};">
                 ${data.totalWorkouts} workouts · ${data.completedWorkouts} completed · ${data.weekLabel}
               </p>
-              <p style="margin: 8px 0 0; text-align: center; color: #374151; font-size: 11px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-                THE DAILY ATHLETE — Train Smarter. Every Day.
+              <p style="margin: 0; color: #d1d5db; font-size: 11px; font-family: ${font};">
+                The Daily Athlete · <a href="${data.appUrl}" style="color: #9ca3af; text-decoration: underline;">thedailyathlete.in</a>
               </p>
             </td>
           </tr>
+
         </table>
       </td>
     </tr>
