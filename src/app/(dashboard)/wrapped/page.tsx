@@ -225,14 +225,14 @@ export default function YearlyWrappedPage() {
 
   // Build inline gradient so it's immune to theme overrides
   const darkGradientMap: Record<Slide, string> = {
-    guess: 'linear-gradient(to bottom right, #1e1b4b, #020617, #000)',
-    reveal: 'linear-gradient(to bottom right, #450a0a, #431407, #000)',
-    stats: 'linear-gradient(to bottom right, #172554, #020617, #1e1b4b)',
-    breakdown: 'linear-gradient(to bottom right, #3b0764, #020617, #4a044e)',
-    records: 'linear-gradient(to bottom right, #451a03, #020617, #422006)',
-    heatmap: 'linear-gradient(to bottom right, #022c22, #020617, #042f2e)',
-    summary: 'linear-gradient(to bottom right, #431407, #020617, #4c0519)',
-    final: 'linear-gradient(to bottom right, #450a0a, #3b0764, #1e1b4b)',
+    guess: 'linear-gradient(to bottom right, #1e1b4b, #0f172a, #1e1b4b)',
+    reveal: 'linear-gradient(to bottom right, #7f1d1d, #431407, #1c1917)',
+    stats: 'linear-gradient(to bottom right, #1e3a5f, #0f172a, #312e81)',
+    breakdown: 'linear-gradient(to bottom right, #581c87, #1e1b4b, #701a75)',
+    records: 'linear-gradient(to bottom right, #78350f, #1c1917, #713f12)',
+    heatmap: 'linear-gradient(to bottom right, #064e3b, #0f172a, #134e4a)',
+    summary: 'linear-gradient(to bottom right, #7c2d12, #1c1917, #881337)',
+    final: 'linear-gradient(to bottom right, #7f1d1d, #581c87, #312e81)',
   };
 
   const lightGradientMap: Record<Slide, string> = {
