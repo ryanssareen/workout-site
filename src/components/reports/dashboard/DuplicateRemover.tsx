@@ -17,7 +17,10 @@ interface DuplicateRemoverProps {
 }
 
 function toDate(w: Workout): Date {
-  return w.date?.toDate?.() ?? new Date(w.date as any);
+  try {
+    const d = w.date?.toDate?.() ?? new Date(w.date as any);
+    return isNaN(d.getTime()) ? new Date(0) : d;
+  } catch { return new Date(0); }
 }
 
 export function DuplicateRemover({ workouts, onWorkoutsChanged }: DuplicateRemoverProps) {

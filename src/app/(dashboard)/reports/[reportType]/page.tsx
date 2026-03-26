@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useCoachFilter } from '@/hooks/useCoachFilter';
@@ -36,6 +36,7 @@ export default function DeepDiveReportPage() {
   const [loadingReport, setLoadingReport] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCached, setIsCached] = useState(false);
+  const fetchedRef = useRef(false);
 
   const displayName = useMemo(
     () => user?.displayName || 'Athlete',
@@ -111,6 +112,8 @@ export default function DeepDiveReportPage() {
 
   useEffect(() => {
     if (isCoach && !selectedAthlete) return; // wait for athlete selection
+    if (fetchedRef.current) return; // prevent re-fetch loops
+    fetchedRef.current = true;
     generateReport(searchParams.get('refresh') === 'true');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid, reportType, selectedAthlete]);
