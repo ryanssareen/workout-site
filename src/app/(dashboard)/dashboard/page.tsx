@@ -15,7 +15,7 @@ import {
   Activity, Trophy, ChevronRight, Gift, X, CalendarRange,
   Circle, Plus, BarChart3, Calendar as CalendarIcon, Settings, BookOpen,
 } from 'lucide-react';
-import { format, startOfWeek, endOfWeek, subWeeks, isWithinInterval, differenceInDays, isSameDay, subDays, parseISO, isPast, isToday as isTodayFn } from 'date-fns';
+import { format, startOfWeek, endOfWeek, startOfMonth, subWeeks, subMonths, isWithinInterval, differenceInDays, isSameDay, subDays, parseISO, isPast, isToday as isTodayFn } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useStravaAutoSync } from '@/hooks/useStravaAutoSync';
@@ -200,6 +200,29 @@ export default function DashboardPage() {
 
   const completedCount = workouts.filter(w => w.completed).length;
   const streak = useMemo(() => calculateStreak(workouts), [workouts]);
+
+  // "This time last month" comparison
+  const monthComparison = useMemo(() => {
+    const monthStart = startOfMonth(now);
+    const dayOfMonth = now.getDate();
+    const lastMonthStart = startOfMonth(subMonths(now, 1));
+    const lastMonthSameDay = subMonths(now, 1);
+
+    const thisMonthSoFar = workouts.filter(w => {
+      const d = getWorkoutDate(w);
+      return w.completed && d >= monthStart && d <= now;
+    }).length;
+
+    const lastMonthSamePoint = workouts.filter(w => {
+      const d = getWorkoutDate(w);
+      return w.completed && d >= lastMonthStart && d <= lastMonthSameDay;
+    }).length;
+
+    if (lastMonthSamePoint === 0) return null;
+    const diff = thisMonthSoFar - lastMonthSamePoint;
+    const pct = Math.round((diff / lastMonthSamePoint) * 100);
+    return { thisMonth: thisMonthSoFar, lastMonth: lastMonthSamePoint, diff, pct, dayOfMonth };
+  }, [workouts, now]);
 
   const todayStart = new Date(now);
   todayStart.setHours(0, 0, 0, 0);
@@ -397,6 +420,25 @@ export default function DashboardPage() {
           </div>
         </Card>
       </div>
+
+      {/* ── THIS TIME LAST MONTH ─────────────────────────────── */}
+      {monthComparison && (
+        <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm ${
+          monthComparison.diff >= 0
+            ? 'bg-emerald-500/5 border-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+            : 'bg-orange-500/5 border-orange-500/15 text-orange-600 dark:text-orange-400'
+        }`}>
+          <span className="text-lg">{monthComparison.diff >= 0 ? '📈' : '📉'}</span>
+          <span className="font-medium">
+            {monthComparison.diff >= 0
+              ? `You're ${monthComparison.diff > 0 ? `${monthComparison.pct}% ahead of` : 'matching'} this time last month`
+              : `${Math.abs(monthComparison.pct)}% behind this time last month`}
+          </span>
+          <span className="text-xs opacity-70 ml-auto">
+            {monthComparison.thisMonth} vs {monthComparison.lastMonth} by day {monthComparison.dayOfMonth}
+          </span>
+        </div>
+      )}
 
       {/* ── ACHIEVEMENTS ────────────────────────────────────────── */}
       {user && <DashboardAchievements username={user.username} prefetchedPRs={personalRecords} prefetchedMilestones={milestones} />}
