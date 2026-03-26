@@ -7,11 +7,35 @@
       "mcp__claude_ai_Vercel__list_teams",
       "mcp__claude_ai_Vercel__list_projects",
       "mcp__claude_ai_Vercel__list_deployments",
-      "mcp__claude_ai_Vercel__get_deployment_build_logs"
+      "mcp__claude_ai_Vercel__get_deployment_build_logs",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(npx tsc:*)",
+      "WebFetch(domain:thedailyathlete.in)",
+      "mcp__claude_ai_Vercel__get_project",
+      "Bash(grep:*)",
+      "Bash(find /Users/ryan/Documents/workout-site -name firestore* -type f)",
+      "Bash(ls -la /Users/ryan/Documents/workout-site/src/app/\\\\\\(dashboard\\\\\\)/)",
+      "Bash(find /Users/ryan/Documents/workout-site/.claude/skills -name *.md)",
+      "Read(//Users/ryan/.claude/**)",
+      "Read(//Users/ryan/.claude/plugins/cache/**)",
+      "Bash(find /Users/ryan/.claude/plugins/cache -path */skills/*/SKILL.md)",
+      "Bash(git symbolic-ref:*)",
+      "Bash(git pull:*)",
+      "Bash(git checkout:*)",
+      "Bash(gh pr:*)",
+      "Bash(git merge:*)",
+      "Bash(git stash:*)",
+      "Bash(gh issue:*)",
+      "Bash(npm i:*)",
+      "Bash(npm ls:*)",
+      "Bash(npm install:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "workout-mcp"
-  ]
+  ],
+  "disableAllHooks": true
 }
