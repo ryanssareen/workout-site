@@ -281,11 +281,11 @@ export default function YearlyWrappedPage() {
         <style>{`
           .wrapped-light-force,
           .wrapped-light-force * {
-            --foreground: 240 10% 10% !important;
-            --muted-foreground: 240 5% 40% !important;
+            --foreground: 240 10% 4% !important;
+            --muted-foreground: 240 5% 35% !important;
             --background: 0 0% 100% !important;
             --card: 0 0% 100% !important;
-            --border: 240 6% 85% !important;
+            --border: 240 6% 80% !important;
             --primary: 0 72% 51% !important;
             --primary-foreground: 0 0% 98% !important;
             color-scheme: light;
@@ -466,7 +466,7 @@ export default function YearlyWrappedPage() {
               >
                 {countedValue}
               </div>
-              <div className={cn("absolute -bottom-2 left-1/2 -translate-x-1/2 text-sm font-semibold tracking-[0.3em] uppercase", wrappedDark ? "text-white/30" : "text-foreground/30")}>
+              <div className={cn("absolute -bottom-2 left-1/2 -translate-x-1/2 text-sm font-semibold tracking-[0.3em] uppercase", wrappedDark ? "text-white/40" : "text-foreground/60")}>
                 workouts
               </div>
             </div>
