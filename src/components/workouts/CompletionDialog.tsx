@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { CheckCircle2 } from 'lucide-react';
+import { Confetti } from '@/components/ui/confetti';
 
 const RATING_LABELS: Record<number, string> = {
   1: 'Struggled',
@@ -39,8 +40,10 @@ export function CompletionDialog({
 }: CompletionDialogProps) {
   const [notes, setNotes] = useState('');
   const [rating, setRating] = useState<1 | 2 | 3 | 4 | 5 | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   const handleConfirm = () => {
+    setShowConfetti(true);
     onConfirm(notes.trim() || undefined, rating ?? undefined);
     setNotes('');
     setRating(null);
@@ -53,6 +56,8 @@ export function CompletionDialog({
   };
 
   return (
+    <>
+    <Confetti show={showConfetti} onDone={() => setShowConfetti(false)} />
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
@@ -105,6 +110,7 @@ export function CompletionDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    </>
   );
 }
 
