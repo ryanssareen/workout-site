@@ -13,6 +13,7 @@ import { Share2, Loader2, ChevronLeft, ChevronRight, X, Trophy, ArrowRight } fro
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/dashboard/ThemeToggle';
+import { useSwipe } from '@/hooks/useSwipe';
 
 // ── Animated counter hook ──
 function useCountUp(target: number, duration = 1200, enabled = true) {
@@ -158,6 +159,7 @@ export default function WrapPage() {
 
   const goNext = useCallback(() => setSlide(s => Math.min(s + 1, TOTAL_SLIDES - 1)), []);
   const goPrev = useCallback(() => setSlide(s => Math.max(s - 1, 0)), []);
+  const swipeHandlers = useSwipe(goNext, goPrev);
 
   useEffect(() => {
     async function load() {
@@ -317,11 +319,12 @@ export default function WrapPage() {
         <ThemeToggle />
       </div>
 
-      {/* Slide content — fills remaining space */}
+      {/* Slide content — fills remaining space, swipeable */}
       <div
         ref={cardRef}
+        {...swipeHandlers}
         className={cn(
-          'flex-1 flex flex-col justify-center px-6 sm:px-12 md:px-20 transition-all duration-500',
+          'flex-1 flex flex-col justify-center px-6 sm:px-12 md:px-20 transition-all duration-500 select-none',
           animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6',
         )}
       >

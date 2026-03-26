@@ -9,6 +9,7 @@ import { Loader2, X, Share2, ChevronRight, ChevronLeft, ArrowRight, Sparkles, Su
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/dashboard/ThemeToggle';
+import { useSwipe } from '@/hooks/useSwipe';
 import {
   YEAR, SLIDES, computeYearStats,
   StatsSlide, BreakdownSlide, RecordsSlide, HeatmapSlide, SummarySlide, FinalSlide,
@@ -118,6 +119,12 @@ export default function YearlyWrappedPage() {
       setCurrentSlide(c => c - 1);
     }
   }, [currentSlide]);
+
+  // Swipe: only allow after guess submitted (don't skip the game)
+  const swipeNext = useCallback(() => {
+    if (guessSubmitted) goNext();
+  }, [guessSubmitted, goNext]);
+  const swipeHandlers = useSwipe(swipeNext, goPrev);
 
   // Handle guess submit — lock the answer immediately
   const handleGuess = () => {
@@ -236,14 +243,14 @@ export default function YearlyWrappedPage() {
   };
 
   const lightGradientMap: Record<Slide, string> = {
-    guess: 'linear-gradient(to bottom right, #eef2ff, #f8fafc, #fff)',
-    reveal: 'linear-gradient(to bottom right, #fef2f2, #fff7ed, #fff)',
-    stats: 'linear-gradient(to bottom right, #eff6ff, #f8fafc, #eef2ff)',
-    breakdown: 'linear-gradient(to bottom right, #faf5ff, #f8fafc, #fdf4ff)',
-    records: 'linear-gradient(to bottom right, #fffbeb, #f8fafc, #fefce8)',
-    heatmap: 'linear-gradient(to bottom right, #ecfdf5, #f8fafc, #f0fdfa)',
-    summary: 'linear-gradient(to bottom right, #fff7ed, #f8fafc, #fff1f2)',
-    final: 'linear-gradient(to bottom right, #fef2f2, #faf5ff, #eef2ff)',
+    guess: 'linear-gradient(135deg, #e0e7ff, #f1f5f9, #ede9fe)',
+    reveal: 'linear-gradient(135deg, #fee2e2, #fff7ed, #fef3c7)',
+    stats: 'linear-gradient(135deg, #dbeafe, #ede9fe, #e0e7ff)',
+    breakdown: 'linear-gradient(135deg, #f3e8ff, #fce7f3, #ede9fe)',
+    records: 'linear-gradient(135deg, #fef3c7, #ffedd5, #fef9c3)',
+    heatmap: 'linear-gradient(135deg, #d1fae5, #ccfbf1, #cffafe)',
+    summary: 'linear-gradient(135deg, #ffedd5, #fee2e2, #fce7f3)',
+    final: 'linear-gradient(135deg, #fee2e2, #f3e8ff, #dbeafe)',
   };
 
   const gradientMap = wrappedDark ? darkGradientMap : lightGradientMap;
@@ -358,11 +365,12 @@ export default function YearlyWrappedPage() {
         </button>
       </div>
 
-      {/* Slide content */}
+      {/* Slide content — swipeable */}
       <div
         ref={cardRef}
+        {...swipeHandlers}
         className={cn(
-          'relative z-10 min-h-[calc(100vh-120px)] flex flex-col justify-center px-6 sm:px-12 md:px-20 py-8 transition-all duration-500',
+          'relative z-10 min-h-[calc(100vh-120px)] flex flex-col justify-center px-6 sm:px-12 md:px-20 py-8 transition-all duration-500 select-none',
           animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6',
         )}
       >
