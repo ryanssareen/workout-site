@@ -156,14 +156,20 @@ export default function DashboardPage() {
     async function loadData() {
       if (!user) return;
       // Fetch workouts (cached), PRs, and milestones in parallel
-      const [workoutData, prData, msData] = await Promise.all([
+      // Use allSettled so quota errors on one don't block others
+      const [workoutResult, prResult, msResult] = await Promise.allSettled([
         getWorkouts(user.username, user.role),
         getPersonalRecords(user.username),
         getMilestones(user.username),
       ]);
-      setWorkouts(workoutData);
-      setPersonalRecords(prData);
-      setMilestones(msData);
+      if (workoutResult.status === 'fulfilled') setWorkouts(workoutResult.value);
+      else {
+        // Try store cache as fallback
+        const cached = useWorkoutStore.getState().workouts;
+        if (cached.length > 0) setWorkouts(cached);
+      }
+      if (prResult.status === 'fulfilled') setPersonalRecords(prResult.value);
+      if (msResult.status === 'fulfilled') setMilestones(msResult.value);
       setDataLoaded(true);
     }
     loadData();

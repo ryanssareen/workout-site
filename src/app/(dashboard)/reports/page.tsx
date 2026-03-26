@@ -58,7 +58,7 @@ export default function ReportsHubPage() {
     return user?.displayName ? user.displayName.split(' ')[0] || user.displayName : 'Athlete';
   }, [isCoach, selectedAthleteData, user?.displayName]);
 
-  // Fetch workouts in background — Zone 3 cards show immediately with generic teasers
+  // Fetch workouts — try cache first, then Firestore
   const fetchWorkouts = useCallback(async () => {
     if (!user) return;
     try {
@@ -67,6 +67,11 @@ export default function ReportsHubPage() {
       setWorkouts(data);
     } catch (err) {
       console.error('Failed to fetch workouts:', err);
+      // If Firestore fails (quota), try to use whatever is in the store cache
+      const cached = useWorkoutStore.getState().workouts;
+      if (cached.length > 0) {
+        setWorkouts(cached);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.username, user?.role, getWorkouts]);
@@ -100,8 +105,11 @@ export default function ReportsHubPage() {
           });
         }
       }
-    } catch (err) {
-      console.error('Failed to fetch insight:', err);
+    } catch (err: any) {
+      // Silently fail on quota errors — insight is optional
+      if (!err?.message?.includes('quota') && !err?.message?.includes('RESOURCE_EXHAUSTED') && !err?.code?.includes('permission')) {
+        console.error('Failed to fetch insight:', err);
+      }
     } finally {
       setLoadingInsight(false);
     }
