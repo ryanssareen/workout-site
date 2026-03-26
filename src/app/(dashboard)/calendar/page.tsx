@@ -28,6 +28,13 @@ import {
 import { formatInTimezone } from '@/lib/dateUtils';
 import { toast } from 'sonner';
 
+function safeToDate(w: { date?: any }): Date {
+  try {
+    const d = w.date?.toDate?.() ?? new Date(w.date as any);
+    return isNaN(d.getTime()) ? new Date(0) : d;
+  } catch { return new Date(0); }
+}
+
 // Calendar components
 import { CalendarHeader } from '@/components/calendar/CalendarHeader';
 import { CalendarWeekView } from '@/components/calendar/CalendarWeekView';
@@ -110,7 +117,7 @@ export default function CalendarPage() {
       if (isCoach && selectedAthlete && w.assignedTo !== selectedAthlete && w.ownerUsername !== selectedAthlete) return;
 
       // Use user timezone so workouts land on the correct calendar day
-      const key = formatInTimezone(w.date.toDate(), 'yyyy-MM-dd', userTimezone);
+      const key = formatInTimezone(safeToDate(w), 'yyyy-MM-dd', userTimezone);
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(w);
     });
@@ -212,7 +219,7 @@ export default function CalendarPage() {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
     const monthWorkouts = workouts.filter((w) => {
-      const d = w.date.toDate();
+      const d = safeToDate(w);
       return d >= monthStart && d <= monthEnd;
     });
 
@@ -224,7 +231,7 @@ export default function CalendarPage() {
       'METHOD:PUBLISH',
     ];
     monthWorkouts.forEach((w) => {
-      const d = w.date.toDate();
+      const d = safeToDate(w);
       const dateStr = format(d, "yyyyMMdd'T'HHmmss");
       const end = new Date(d);
       end.setMinutes(end.getMinutes() + (w.duration || 60));

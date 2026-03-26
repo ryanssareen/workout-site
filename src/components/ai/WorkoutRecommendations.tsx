@@ -7,6 +7,13 @@ import { Sparkles, Loader2, Lightbulb } from 'lucide-react';
 import { Workout } from '@/types';
 import { format } from 'date-fns';
 
+function safeToDate(w: { date?: any }): Date {
+  try {
+    const d = w.date?.toDate?.() ?? new Date(w.date as any);
+    return isNaN(d.getTime()) ? new Date(0) : d;
+  } catch { return new Date(0); }
+}
+
 interface WorkoutRecommendationsProps {
   workout: Workout;
 }
@@ -28,7 +35,7 @@ export function WorkoutRecommendations({ workout }: WorkoutRecommendationsProps)
             type: workout.type,
             duration: workout.duration,
             description: workout.description,
-            date: format(workout.date.toDate(), 'MMM d, yyyy'),
+            date: format(safeToDate(workout), 'MMM d, yyyy'),
             completed: workout.completed,
             completedLate: workout.completedLate,
             completionNotes: workout.completionNotes,

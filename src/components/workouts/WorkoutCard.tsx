@@ -14,6 +14,13 @@ import { MiniRoutePreview } from './MiniRoutePreview';
 import { WorkoutPhotos } from './WorkoutPhotos';
 import { cn } from '@/lib/utils';
 
+function safeToDate(w: Workout): Date {
+  try {
+    const d = w.date?.toDate?.() ?? new Date(w.date as any);
+    return isNaN(d.getTime()) ? new Date(0) : d;
+  } catch { return new Date(0); }
+}
+
 const TAG_COLORS: Record<WorkoutTag, string> = {
   easy: 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20',
   moderate: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20',
@@ -47,7 +54,7 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
   const [isLoading, setIsLoading] = useState(false);
 
   const hasActions = onEdit || onDelete || onToggleComplete;
-  const isPastWorkout = workout.date.toDate() < new Date();
+  const isPastWorkout = safeToDate(workout) < new Date();
   const isUpcoming = !isPastWorkout && !workout.completed;
   const isMissed = isPastWorkout && !workout.completed;
   const isCompletedLate = workout.completed && workout.completedLate;
@@ -65,12 +72,12 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
 
   const handleCompletionClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const workoutDate = workout.date.toDate();
+    const workoutDate = safeToDate(workout);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     workoutDate.setHours(0, 0, 0, 0);
     if (!workout.completed && workoutDate > today) {
-      alert(`This workout is scheduled for ${format(workout.date.toDate(), 'MMM d, yyyy')}. You can only complete it on or after that date.`);
+      alert(`This workout is scheduled for ${format(safeToDate(workout), 'MMM d, yyyy')}. You can only complete it on or after that date.`);
       return;
     }
     workout.completed ? setShowUncompletionDialog(true) : setShowCompletionDialog(true);
@@ -150,7 +157,7 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
             <div className="space-y-1">
               <h3 className={cn('font-semibold', workout.completed && 'text-muted-foreground')}>{workout.name}</h3>
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{format(workout.date.toDate(), 'MMM d')}</span>
+                <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{format(safeToDate(workout), 'MMM d')}</span>
                 {workout.duration && <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{workout.duration}min</span>}
               </div>
               {isCoach && workout.assignedToName && (

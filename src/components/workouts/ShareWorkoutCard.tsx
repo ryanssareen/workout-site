@@ -281,6 +281,13 @@ export { ShareButtons };
 
 import { Workout } from '@/types';
 
+function safeToDate(w: { date?: any }): Date {
+  try {
+    const d = w.date?.toDate?.() ?? new Date(w.date as any);
+    return isNaN(d.getTime()) ? new Date(0) : d;
+  } catch { return new Date(0); }
+}
+
 interface ShareWorkoutCardProps {
   workout: Workout;
 }
@@ -289,9 +296,7 @@ export function ShareWorkoutCard({ workout }: ShareWorkoutCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
 
-  const workoutDate = workout.date?.toDate
-    ? format(workout.date.toDate(), 'MMM d, yyyy')
-    : '';
+  const workoutDate = format(safeToDate(workout), 'MMM d, yyyy');
 
   const distance = workout.actualStats?.distance
     ? (workout.actualStats.distance / 1000).toFixed(1)

@@ -19,6 +19,13 @@ import {
 import { cn } from '@/lib/utils';
 import { format, subWeeks, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 
+function safeToDate(w: { date?: any }): Date {
+  try {
+    const d = w.date?.toDate?.() ?? new Date(w.date as any);
+    return isNaN(d.getTime()) ? new Date(0) : d;
+  } catch { return new Date(0); }
+}
+
 // ── Responsive chart height hook ──
 function useChartHeight(desktopHeight: number) {
   const [height, setHeight] = useState(desktopHeight);
@@ -499,7 +506,7 @@ export function CalendarViews({ workouts }: SectionProps) {
       const weekStart = startOfWeek(subWeeks(now, i), { weekStartsOn: 1 });
       const weekEnd = endOfWeek(subWeeks(now, i), { weekStartsOn: 1 });
       const count = workouts.filter(w => {
-        const d = w.date?.toDate ? w.date.toDate() : new Date(w.date as any);
+        const d = safeToDate(w);
         return isWithinInterval(d, { start: weekStart, end: weekEnd });
       }).length;
       weeks.push({ label: format(weekStart, 'MMM d'), workouts: count });

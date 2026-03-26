@@ -12,6 +12,13 @@ import { Loader2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
+function safeToDate(w: { date?: any }): Date {
+  try {
+    const d = w.date?.toDate?.() ?? new Date(w.date as any);
+    return isNaN(d.getTime()) ? new Date(0) : d;
+  } catch { return new Date(0); }
+}
+
 // Ensure type-specific data from Firestore has valid enum values for Zod.
 // Also creates a minimal valid object if the workout type matches but no sub-object exists.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -183,7 +190,7 @@ export default function EditWorkoutPage() {
           name: workout.name,
           type: workout.type,
           description: workout.description,
-          date: workout.date.toDate(),
+          date: safeToDate(workout),
           duration: workout.duration,
           assignedTo: workout.assignedTo,
           tags: (workout as any).tags,

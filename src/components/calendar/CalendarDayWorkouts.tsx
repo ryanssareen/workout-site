@@ -6,6 +6,13 @@ import { format, isPast, isToday } from 'date-fns';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 
+function safeToDate(w: { date?: any }): Date {
+  try {
+    const d = w.date?.toDate?.() ?? new Date(w.date as any);
+    return isNaN(d.getTime()) ? new Date(0) : d;
+  } catch { return new Date(0); }
+}
+
 interface CalendarDayWorkoutsProps {
   date: Date;
   workouts: Workout[];
@@ -22,11 +29,11 @@ export function CalendarDayWorkouts({
 
   // Split workouts into planned (future/upcoming) and past/completed
   const planned = workouts.filter((w) => {
-    const wDate = w.date.toDate();
+    const wDate = safeToDate(w);
     return !isPast(wDate) || isToday(wDate);
   });
   const pastWorkouts = workouts.filter((w) => {
-    const wDate = w.date.toDate();
+    const wDate = safeToDate(w);
     return isPast(wDate) && !isToday(wDate);
   });
 

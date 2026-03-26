@@ -30,6 +30,13 @@ import { WorkoutPhotos } from '@/components/workouts/WorkoutPhotos';
 import { CelebrationModal } from '@/components/achievements/CelebrationModal';
 import { checkAchievements } from '@/lib/achievements';
 import { cn } from '@/lib/utils';
+
+function safeToDate(w: { date?: any }): Date {
+  try {
+    const d = w.date?.toDate?.() ?? new Date(w.date as any);
+    return isNaN(d.getTime()) ? new Date(0) : d;
+  } catch { return new Date(0); }
+}
 import {
   Dialog,
   DialogContent,
@@ -256,7 +263,7 @@ export default function WorkoutDetailPage() {
   if (!user || !workout) return null;
 
   const canEdit = user.role === 'coach' && workout.createdBy === user.username;
-  const isPastWorkout = workout.date.toDate() < new Date();
+  const isPastWorkout = safeToDate(workout) < new Date();
   const isMissed = isPastWorkout && !workout.completed;
   const isAthlete = user.role === 'athlete' || user.role === 'student';
   const hasTemplate = !!(workout as any).templateId;
@@ -358,10 +365,10 @@ export default function WorkoutDetailPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Date</p>
                 <p className="font-medium">
-                  {formatInTimezone(workout.date.toDate(), 'MMMM d, yyyy', user?.timezone)}
+                  {formatInTimezone(safeToDate(workout), 'MMMM d, yyyy', user?.timezone)}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {formatTime(workout.date.toDate(), user?.timezone)}
+                  {formatTime(safeToDate(workout), user?.timezone)}
                 </p>
               </div>
             </div>

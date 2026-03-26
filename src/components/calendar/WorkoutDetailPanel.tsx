@@ -28,6 +28,13 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
+function safeToDate(w: { date?: any }): Date {
+  try {
+    const d = w.date?.toDate?.() ?? new Date(w.date as any);
+    return isNaN(d.getTime()) ? new Date(0) : d;
+  } catch { return new Date(0); }
+}
+
 interface WorkoutDetailPanelProps {
   workout: Workout;
   onClose: () => void;
@@ -47,7 +54,7 @@ export function WorkoutDetailPanel({
 }: WorkoutDetailPanelProps) {
   const cfg = TYPE_CONFIG[workout.type] || TYPE_CONFIG.other;
   const stats = getTypeData(workout);
-  const workoutDate = workout.date.toDate();
+  const workoutDate = safeToDate(workout);
   const userTimezone = useAuthStore((s) => s.user?.timezone);
   const today = isToday(workoutDate);
   const past = isPast(workoutDate) && !today;

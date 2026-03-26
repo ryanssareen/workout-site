@@ -9,6 +9,14 @@ import { useAuthStore } from '@/lib/stores/authStore';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
+// ── Safe date extraction ────────────────────────────────────────────────
+function safeToDate(w: { date?: any }): Date {
+  try {
+    const d = w.date?.toDate?.() ?? new Date(w.date as any);
+    return isNaN(d.getTime()) ? new Date(0) : d;
+  } catch { return new Date(0); }
+}
+
 // ── Note detection ──────────────────────────────────────────────────────
 function isNote(workout: Workout): boolean {
   return workout.type === 'other' && workout.name === 'Note';
@@ -33,7 +41,7 @@ function StravaIcon({ className }: { className?: string }) {
 
 // ── Workout status derivation ────────────────────────────────────────────
 function getWorkoutStatus(workout: Workout) {
-  const workoutDate = workout.date.toDate();
+  const workoutDate = safeToDate(workout);
   const today = isToday(workoutDate);
   const past = isPast(workoutDate) && !today;
 
@@ -119,7 +127,7 @@ function MiniPill({ workout, onSelect }: { workout: Workout; onSelect?: (id: str
   const noteMode = isNote(workout);
   const cfg = noteMode ? NOTE_CONFIG : (TYPE_CONFIG[workout.type] || TYPE_CONFIG.other);
   const stats = getTypeData(workout);
-  const workoutDate = workout.date.toDate();
+  const workoutDate = safeToDate(workout);
   const userTimezone = useAuthStore((s) => s.user?.timezone);
   const timeStr = formatInTimezone(workoutDate, 'h:mma', userTimezone).toLowerCase();
   const status = getWorkoutStatus(workout);
@@ -232,7 +240,7 @@ function CompactCard({
   const noteMode = isNote(workout);
   const cfg = noteMode ? NOTE_CONFIG : (TYPE_CONFIG[workout.type] || TYPE_CONFIG.other);
   const stats = getTypeData(workout);
-  const workoutDate = workout.date.toDate();
+  const workoutDate = safeToDate(workout);
   const userTimezone = useAuthStore((s) => s.user?.timezone);
   const timeStr = formatInTimezone(workoutDate, 'h:mm a', userTimezone);
   const status = getWorkoutStatus(workout);
