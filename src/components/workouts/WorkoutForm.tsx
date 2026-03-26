@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { workoutSchema, WorkoutSchema, RECURRING_FREQUENCIES } from '@/lib/schemas/workout';
@@ -103,6 +103,38 @@ export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAt
   const isRecurring = watch('isRecurring');
   const recurringFrequency = watch('recurringFrequency');
   const recurringEndDate = watch('recurringEndDate');
+  const currentName = watch('name');
+
+  // Smart workout name suggestion based on type + time of day
+  const smartName = useMemo(() => {
+    if (!selectedType) return '';
+    const date = selectedDate instanceof Date ? selectedDate : new Date();
+    const hour = date.getHours();
+    const timeOfDay = hour < 6 ? 'Early' : hour < 12 ? 'Morning' : hour < 17 ? 'Afternoon' : hour < 21 ? 'Evening' : 'Late Night';
+    const typeNames: Record<string, string> = {
+      run: 'Run', bike: 'Ride', swim: 'Swim', walk: 'Walk', strength: 'Strength', other: 'Workout',
+    };
+    const day = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][date.getDay()];
+    const variants = [
+      `${timeOfDay} ${typeNames[selectedType] || 'Workout'}`,
+      `${day} ${typeNames[selectedType] || 'Workout'}`,
+      `${timeOfDay} ${typeNames[selectedType] || 'Workout'} Session`,
+    ];
+    return variants[0];
+  }, [selectedType, selectedDate]);
+
+  // Auto-fill name when type changes and name is empty or was a previous auto-suggestion
+  const lastAutoNameRef = useRef('');
+  useEffect(() => {
+    if (!smartName) return;
+    const name = currentName?.trim() || '';
+    // Only auto-fill if name is empty or matches a previous auto-suggestion
+    if (name === '' || name === lastAutoNameRef.current) {
+      setValue('name', smartName);
+      lastAutoNameRef.current = smartName;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [smartName]);
 
   // Watch type-specific data
   const swimData = useWatch({ control, name: 'swim' });
