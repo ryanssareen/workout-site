@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { WorkoutSchema } from '@/lib/schemas/workout';
-import { ArrowLeft, BookmarkCheck, Loader2, Mail, Sparkles } from 'lucide-react';
+import { ArrowLeft, BookmarkCheck, ChevronDown, ChevronUp, Loader2, Mail, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
@@ -25,6 +25,8 @@ export default function NewWorkoutPage() {
   const [loading, setLoading] = useState(false);
   const [templateData, setTemplateData] = useState<any>(null);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
+  const [savedTemplates, setSavedTemplates] = useState<any[]>([]);
+  const [showTemplates, setShowTemplates] = useState(false);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [createdWorkoutData, setCreatedWorkoutData] = useState<WorkoutSchema | null>(null);
   const [createdWorkoutId, setCreatedWorkoutId] = useState<string | null>(null);
@@ -49,6 +51,21 @@ export default function NewWorkoutPage() {
     }
 
     loadStudents();
+  }, [user]);
+
+  // Fetch saved templates for the template picker
+  useEffect(() => {
+    async function fetchTemplates() {
+      if (!user) return;
+      try {
+        const res = await fetch(`/api/templates?userId=${user.username}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSavedTemplates(data);
+        }
+      } catch { /* non-critical */ }
+    }
+    fetchTemplates();
   }, [user]);
 
   // Load template if templateId is provided
@@ -294,6 +311,46 @@ export default function NewWorkoutPage() {
           </p>
         </div>
       </div>
+
+      {/* Saved Templates picker */}
+      {savedTemplates.length > 0 && !templateData && !aiGenerated && (
+        <div className="rounded-xl border bg-card overflow-hidden">
+          <button
+            onClick={() => setShowTemplates(o => !o)}
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors"
+          >
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <BookmarkCheck className="h-4 w-4 text-orange-500" />
+              Saved Templates ({savedTemplates.length})
+            </div>
+            {showTemplates ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </button>
+          {showTemplates && (
+            <div className="border-t divide-y">
+              {savedTemplates.map((t: any) => (
+                <button
+                  key={t.id}
+                  onClick={() => {
+                    setTemplateData(t);
+                    setShowTemplates(false);
+                    toast.success(`Loaded template: ${t.name}`);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors text-left"
+                >
+                  <span className="text-lg">
+                    {{ run: '🏃', bike: '🚴', swim: '🏊', walk: '🚶', strength: '💪', other: '🏋️' }[t.type as string] || '🏋️'}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{t.name}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{t.type}{t.duration ? ` · ${t.duration} min` : ''}</p>
+                  </div>
+                  <span className="text-xs text-muted-foreground">Use →</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <Card className={aiGenerated ? 'border-red-200 dark:border-red-900' : ''}>
         <CardHeader>
