@@ -116,12 +116,12 @@ export function ActivityHeatmap({ workouts, days = 365 }: ActivityHeatmapProps) 
       <div className="overflow-x-auto scrollbar-hide">
         <div style={{ minWidth: weeks.length * (cellSize + gap) + 30 }}>
           {/* Month labels */}
-          <div className="flex mb-1 ml-[18px]" style={{ gap: 0 }}>
+          <div className="relative mb-1 h-4" style={{ marginLeft: 18 }}>
             {months.map((m, i) => (
               <span
                 key={i}
-                className="text-[9px] text-muted-foreground/60 font-medium absolute"
-                style={{ left: m.col * (cellSize + gap) + 18 }}
+                className="text-[9px] text-muted-foreground/60 font-medium absolute top-0"
+                style={{ left: m.col * (cellSize + gap) }}
               >
                 {m.label}
               </span>
@@ -129,7 +129,7 @@ export function ActivityHeatmap({ workouts, days = 365 }: ActivityHeatmapProps) 
           </div>
 
           {/* Grid */}
-          <div className="flex gap-[2px] mt-4 relative">
+          <div className="flex gap-[2px] relative">
             {/* Day labels */}
             <div className="flex flex-col gap-[2px] mr-1" style={{ width: 14 }}>
               {['', 'M', '', 'W', '', 'F', ''].map((d, i) => (
