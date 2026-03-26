@@ -9,7 +9,7 @@ export const metadata = {
 };
 
 export default function TermsOfServicePage() {
-  const lastUpdated = 'March 23, 2026';
+  const lastUpdated = 'March 26, 2026';
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -176,8 +176,16 @@ export default function TermsOfServicePage() {
                   <li>Impose usage limits or rate limits as needed</li>
                 </ul>
                 <p className="text-muted-foreground leading-relaxed mt-3">
-                  The Service currently operates on a free tier with certain resource limitations (database read quotas,
-                  AI token limits, storage limits). These limits may change at our discretion.
+                  The Service currently operates on a free tier with the following resource limitations:
+                </p>
+                <ul className="list-disc pl-6 text-muted-foreground space-y-2 mt-2">
+                  <li><strong>Database:</strong> Shared daily read quota across all users (currently 50,000 reads/day). During peak usage, some features may temporarily show cached data or be unavailable.</li>
+                  <li><strong>AI Features:</strong> Workout suggestions and AI reports are subject to third-party API rate limits (approximately 100,000 tokens/day). When limits are reached, AI features may be temporarily unavailable.</li>
+                  <li><strong>Storage:</strong> Profile photos and backups are subject to storage quotas. Large file uploads may be restricted.</li>
+                  <li><strong>Strava Sync:</strong> Subject to Strava&apos;s API rate limits (100 requests per 15 minutes, 1,000 per day per application).</li>
+                </ul>
+                <p className="text-muted-foreground leading-relaxed mt-2">
+                  These limits may change at our discretion. We will make reasonable efforts to notify users of significant changes. The introduction of paid tiers in the future will not remove or degrade features currently available on the free tier without notice.
                 </p>
               </section>
 
@@ -196,11 +204,27 @@ export default function TermsOfServicePage() {
               </section>
 
               <section>
-                <h2 className="text-2xl font-bold text-foreground mb-3">10. Limitation of Liability</h2>
+                <h2 className="text-2xl font-bold text-foreground mb-3">10. Indemnification</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  To the maximum extent permitted by law, The Daily Athlete and its operator shall not be liable for
-                  any indirect, incidental, special, consequential, or punitive damages arising from your use of the
-                  Service, including but not limited to:
+                  You agree to indemnify, defend, and hold harmless The Daily Athlete, its operator, and affiliates from
+                  any claims, damages, losses, liabilities, costs, or expenses (including reasonable attorney&apos;s fees)
+                  arising from:
+                </p>
+                <ul className="list-disc pl-6 text-muted-foreground space-y-2 mt-2">
+                  <li>Your use of the Service or violation of these Terms</li>
+                  <li>Content you create, upload, or make publicly available through the Service</li>
+                  <li>Your violation of any rights of a third party</li>
+                  <li>Misuse of your account credentials or unauthorized sharing of your account</li>
+                </ul>
+              </section>
+
+              <section>
+                <h2 className="text-2xl font-bold text-foreground mb-3">11. Limitation of Liability</h2>
+                <p className="text-muted-foreground leading-relaxed">
+                  To the maximum extent permitted by applicable law (including the Consumer Protection Act, 2019 and the
+                  Indian Contract Act, 1872), The Daily Athlete and its operator shall not be liable for any indirect,
+                  incidental, special, consequential, or punitive damages arising from your use of the Service, including
+                  but not limited to:
                 </p>
                 <ul className="list-disc pl-6 text-muted-foreground space-y-2 mt-2">
                   <li>Loss of data, workouts, or training history</li>
@@ -209,28 +233,57 @@ export default function TermsOfServicePage() {
                   <li>Inaccuracies in synced data from third-party services</li>
                   <li>Unauthorized access to your account due to credential compromise</li>
                 </ul>
-              </section>
-
-              <section>
-                <h2 className="text-2xl font-bold text-foreground mb-3">11. Disclaimer of Warranties</h2>
-                <p className="text-muted-foreground leading-relaxed">
-                  The Service is provided &quot;as is&quot; without warranties of any kind, express or implied, including
-                  but not limited to warranties of merchantability, fitness for a particular purpose, or non-infringement.
-                  We do not warrant that the Service will be available, secure, or error-free.
+                <p className="text-muted-foreground leading-relaxed mt-3">
+                  In no event shall our total liability exceed the amount paid by you to us (if any) in the 12 months
+                  preceding the claim.
                 </p>
               </section>
 
               <section>
-                <h2 className="text-2xl font-bold text-foreground mb-3">12. Governing Law</h2>
+                <h2 className="text-2xl font-bold text-foreground mb-3">12. Disclaimer of Warranties</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  These Terms shall be governed by and construed in accordance with the laws of India, without regard to
-                  conflict of law principles. Any disputes arising from these Terms or your use of the Service shall be
-                  resolved in the courts of New Delhi, India.
+                  The Service is provided &quot;as is&quot; and &quot;as available&quot; without warranties of any kind,
+                  express or implied, including but not limited to warranties of merchantability, fitness for a particular
+                  purpose, or non-infringement. We do not warrant that the Service will be available, secure, or error-free.
                 </p>
               </section>
 
               <section>
-                <h2 className="text-2xl font-bold text-foreground mb-3">13. Contact</h2>
+                <h2 className="text-2xl font-bold text-foreground mb-3">13. Dispute Resolution</h2>
+                <p className="text-muted-foreground leading-relaxed">
+                  In the event of any dispute arising from or relating to these Terms or your use of the Service, the
+                  parties agree to the following resolution process:
+                </p>
+                <ul className="list-disc pl-6 text-muted-foreground space-y-2 mt-2">
+                  <li><strong>Step 1 — Informal Resolution:</strong> You agree to first contact us at{' '}
+                    <a href="mailto:ryanssareen@gmail.com" className="text-red-400 hover:text-red-300 underline">ryanssareen@gmail.com</a>{' '}
+                    and attempt to resolve the dispute informally within 30 days.</li>
+                  <li><strong>Step 2 — Mediation:</strong> If informal resolution fails, the parties agree to attempt
+                    mediation through a mutually agreed mediator before pursuing litigation.</li>
+                  <li><strong>Step 3 — Arbitration:</strong> If mediation fails, the dispute shall be referred to and
+                    resolved by arbitration in accordance with the Arbitration and Conciliation Act, 1996, as amended.
+                    The arbitration shall be conducted by a sole arbitrator mutually appointed by both parties. The
+                    seat of arbitration shall be New Delhi, India. The language of arbitration shall be English.
+                    The arbitral award shall be final and binding.</li>
+                </ul>
+                <p className="text-muted-foreground leading-relaxed mt-3">
+                  Nothing in this section prevents either party from seeking interim or injunctive relief from a court
+                  of competent jurisdiction where necessary.
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-2xl font-bold text-foreground mb-3">14. Governing Law &amp; Jurisdiction</h2>
+                <p className="text-muted-foreground leading-relaxed">
+                  These Terms shall be governed by and construed in accordance with the laws of India, including the
+                  Information Technology Act, 2000, the Indian Contract Act, 1872, and the Consumer Protection Act, 2019,
+                  without regard to conflict of law principles. Subject to the dispute resolution process above, any legal
+                  proceedings shall be brought exclusively in the courts of New Delhi, India.
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-2xl font-bold text-foreground mb-3">15. Contact</h2>
                 <p className="text-muted-foreground leading-relaxed">
                   If you have questions about these Terms, contact us at:
                 </p>
@@ -241,6 +294,9 @@ export default function TermsOfServicePage() {
                     Email: <a href="mailto:ryanssareen@gmail.com" className="text-red-400 hover:text-red-300 underline">ryanssareen@gmail.com</a>
                   </p>
                 </div>
+                <p className="text-muted-foreground leading-relaxed mt-3 text-sm">
+                  We review these Terms at least annually. Existing users will be notified via email of any material changes.
+                </p>
               </section>
 
             </div>
