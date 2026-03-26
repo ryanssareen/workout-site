@@ -8,6 +8,7 @@ import { Workout, PersonalRecord } from '@/types';
 import type { Milestone } from '@/types/achievements';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Target, Zap,
   CheckCircle2, Clock, Flame,
@@ -228,15 +229,48 @@ export default function DashboardPage() {
       .slice(0, 3);
   }, [user?.events, now]);
 
-  if (!user) {
+  if (!user || !dataLoaded) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="h-12 w-12 rounded-full border-4 border-muted" />
-            <div className="absolute inset-0 h-12 w-12 rounded-full border-4 border-red-500 border-t-transparent animate-spin" />
+      <div className="space-y-6 pb-8">
+        {/* Greeting skeleton */}
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-96" />
+        </div>
+        {/* Stats row skeleton */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="rounded-2xl border border-border/30 p-5 space-y-3">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-10 w-24" />
+              <Skeleton className="h-3 w-32" />
+            </div>
+          ))}
+        </div>
+        {/* Workouts skeleton */}
+        <div className="space-y-3">
+          <Skeleton className="h-5 w-32" />
+          {[1, 2, 3].map(i => (
+            <div key={i} className="rounded-xl border border-border/20 p-4 flex items-center gap-4">
+              <Skeleton className="h-10 w-10 rounded-lg" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+              <Skeleton className="h-6 w-16 rounded-full" />
+            </div>
+          ))}
+        </div>
+        {/* Charts skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="rounded-2xl border border-border/30 p-5 space-y-3">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-40 w-full rounded-xl" />
           </div>
-          <p className="text-muted-foreground animate-pulse">Loading dashboard...</p>
+          <div className="rounded-2xl border border-border/30 p-5 space-y-3">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-40 w-full rounded-xl" />
+          </div>
         </div>
       </div>
     );
