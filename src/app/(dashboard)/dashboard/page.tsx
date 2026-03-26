@@ -336,9 +336,10 @@ export default function DashboardPage() {
       {/* ── STATS ROW ──────────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-3">
         {/* Streak */}
-        <Card className="p-4 hover:border-red-500/20 transition-all">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-sm">
+        <Card className="relative overflow-hidden p-4 border-orange-500/15 hover:border-orange-500/30 transition-all group">
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-transparent to-red-500/5 opacity-60 group-hover:opacity-100 transition-opacity" />
+          <div className="relative flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg shadow-orange-500/20">
               <Flame className="h-5 w-5 text-white" />
             </div>
             <div>
@@ -349,9 +350,10 @@ export default function DashboardPage() {
         </Card>
 
         {/* This Week */}
-        <Card className="p-4 hover:border-red-500/20 transition-all">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center shadow-sm">
+        <Card className="relative overflow-hidden p-4 border-red-500/15 hover:border-red-500/30 transition-all group">
+          <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 via-transparent to-rose-500/5 opacity-60 group-hover:opacity-100 transition-opacity" />
+          <div className="relative flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center shadow-lg shadow-red-500/20">
               <Zap className="h-5 w-5 text-white" />
             </div>
             <div>
@@ -362,9 +364,10 @@ export default function DashboardPage() {
         </Card>
 
         {/* All-time */}
-        <Card className="p-4 hover:border-red-500/20 transition-all">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-red-600 to-red-900 flex items-center justify-center shadow-sm">
+        <Card className="relative overflow-hidden p-4 border-emerald-500/15 hover:border-emerald-500/30 transition-all group">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-green-500/5 opacity-60 group-hover:opacity-100 transition-opacity" />
+          <div className="relative flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-700 flex items-center justify-center shadow-lg shadow-emerald-500/20">
               <Trophy className="h-5 w-5 text-white" />
             </div>
             <div>
