@@ -31,9 +31,9 @@ export async function GET(request: NextRequest) {
       // Cost: ~N+1 Firestore reads (1 users query + 1 count per user)
       result = { ...await createBackup('daily', 'cron'), tier: 'metadata' };
     } else if (type === 'weekly') {
-      // Weekly: full snapshot to Vercel Blob
-      result = await createSeedBackup('cron');
-      result = { ...result, tier: 'full' };
+      // Weekly: metadata-only (same as daily) to save Firestore reads
+      // Full snapshots only run on-demand via admin download button
+      result = { ...await createBackup('weekly', 'cron'), tier: 'metadata' };
     } else {
       // Monthly: compact from existing full + deltas in Blob (0 Firestore data reads)
       result = await compactFullBackup('cron');

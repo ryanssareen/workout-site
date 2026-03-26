@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { useWorkoutStore } from '@/lib/stores/workoutStore';
 import { useCoachFilter } from '@/hooks/useCoachFilter';
 import { AthleteSelector } from '@/components/dashboard/AthleteSelector';
 import { Loader2, ArrowLeft, AlertCircle, RefreshCw } from 'lucide-react';
@@ -68,6 +69,23 @@ export default function DeepDiveReportPage() {
         });
       }
       const idToken = await currentUser?.getIdToken();
+
+      // Send cached workouts to avoid Firestore reads on the server
+      let clientWorkouts: any[] | undefined;
+      try {
+        const role = user.role === 'student' ? 'athlete' : user.role;
+        const cached = await useWorkoutStore.getState().getWorkouts(user.username, role as 'coach' | 'athlete');
+        if (cached.length > 0) {
+          // Serialize workouts — convert Firestore Timestamps to plain objects
+          clientWorkouts = cached.map(w => ({
+            ...w,
+            date: w.date?.toDate ? { _seconds: Math.floor(w.date.toDate().getTime() / 1000) } : w.date,
+            createdAt: undefined,
+            updatedAt: undefined,
+          }));
+        }
+      } catch { /* fallback: server will fetch from Firestore */ }
+
       const res = await fetch('/api/ai/reports/generate', {
         method: 'POST',
         headers: {
@@ -79,6 +97,7 @@ export default function DeepDiveReportPage() {
           params,
           refresh,
           ...(isCoach && selectedAthlete ? { athleteUsername: selectedAthlete } : {}),
+          ...(clientWorkouts ? { clientWorkouts } : {}),
         }),
       });
 

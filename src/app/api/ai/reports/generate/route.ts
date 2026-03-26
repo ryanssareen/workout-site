@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     const caller = await verifyApiRequest(req);
     if (!isVerifiedUser(caller)) return caller;
 
-    const { reportType, params = {}, refresh = false, athleteUsername } = await req.json();
+    const { reportType, params = {}, refresh = false, athleteUsername, clientWorkouts } = await req.json();
 
     if (!reportType) {
       return NextResponse.json({ error: 'reportType is required' }, { status: 400 });
@@ -76,24 +76,37 @@ export async function POST(req: NextRequest) {
 
     console.log(`📊 Generating ${reportType} for ${username}`);
 
-    // Fetch all workouts via Admin SDK
+    // Use client-supplied workouts if available (saves Firestore reads)
+    // Client sends serialized workouts from Zustand cache — dates are ISO strings
     let workouts: WorkoutDoc[];
-    try {
-      const workoutsSnapshot = await adminDb
-        .collection('users')
-        .doc(username)
-        .collection('workouts')
-        .get();
-      workouts = workoutsSnapshot.docs.map((doc) => doc.data() as WorkoutDoc);
-    } catch (fetchErr: unknown) {
-      const msg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
-      if (msg.includes('RESOURCE_EXHAUSTED') || msg.includes('quota')) {
-        return NextResponse.json(
-          { error: 'Firebase daily quota reached. Reports will be available when quota resets.' },
-          { status: 503 }
-        );
+    if (Array.isArray(clientWorkouts) && clientWorkouts.length > 0) {
+      console.log(`📊 Using ${clientWorkouts.length} client-supplied workouts (0 Firestore reads)`);
+      // Convert ISO date strings back to Firestore-like Timestamp objects
+      workouts = clientWorkouts.map((w: any) => ({
+        ...w,
+        date: {
+          toDate: () => new Date(w.date?._seconds ? w.date._seconds * 1000 : w.date),
+        },
+      })) as WorkoutDoc[];
+    } else {
+      // Fallback: fetch from Firestore (costs N reads)
+      try {
+        const workoutsSnapshot = await adminDb
+          .collection('users')
+          .doc(username)
+          .collection('workouts')
+          .get();
+        workouts = workoutsSnapshot.docs.map((doc) => doc.data() as WorkoutDoc);
+      } catch (fetchErr: unknown) {
+        const msg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
+        if (msg.includes('RESOURCE_EXHAUSTED') || msg.includes('quota')) {
+          return NextResponse.json(
+            { error: 'Firebase daily quota reached. Reports will be available when quota resets.' },
+            { status: 503 }
+          );
+        }
+        throw fetchErr;
       }
-      throw fetchErr;
     }
 
     if (workouts.length === 0) {

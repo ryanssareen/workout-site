@@ -58,11 +58,23 @@ export async function GET(req: NextRequest) {
 
     const groq = new Groq({ apiKey: process.env.GROQ_API_KEY.trim() });
 
-    // Fetch all users (up to MAX_USERS_PER_RUN)
-    const usersSnapshot = await adminDb
-      .collection('users')
-      .limit(MAX_USERS_PER_RUN)
-      .get();
+    // Fetch only active users (logged in within last 7 days) to save Firestore reads
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    let usersSnapshot;
+    try {
+      usersSnapshot = await adminDb
+        .collection('users')
+        .where('lastLoginAt', '>=', admin.firestore.Timestamp.fromDate(sevenDaysAgo))
+        .limit(MAX_USERS_PER_RUN)
+        .get();
+    } catch {
+      // Fallback if lastLoginAt field doesn't exist on all docs
+      usersSnapshot = await adminDb
+        .collection('users')
+        .limit(MAX_USERS_PER_RUN)
+        .get();
+    }
 
     console.log(`🧠 Generating insights for ${usersSnapshot.size} users`);
 
