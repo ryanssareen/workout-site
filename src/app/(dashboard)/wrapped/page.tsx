@@ -260,34 +260,34 @@ export default function YearlyWrappedPage() {
       className={cn('min-h-screen relative transition-all duration-700 ease-in-out', wrappedDark ? 'wrapped-dark-force' : 'wrapped-light-force')}
       style={{ background: gradientMap[slide] }}
     >
-      {/* Force dark theme variables when in dark mode */}
+      {/* Force dark theme variables when in dark mode (hex format to match Tailwind v4) */}
       {wrappedDark && (
         <style>{`
           .wrapped-dark-force,
           .wrapped-dark-force * {
-            --foreground: 0 0% 98% !important;
-            --muted-foreground: 240 5% 65% !important;
-            --background: 240 10% 4% !important;
-            --card: 240 10% 4% !important;
-            --border: 240 4% 16% !important;
-            --primary: 0 72% 51% !important;
-            --primary-foreground: 0 0% 98% !important;
+            --foreground: #f8fafc !important;
+            --muted-foreground: #9ca3af !important;
+            --background: #050507 !important;
+            --card: #0b0b10 !important;
+            --border: #1f2937 !important;
+            --primary: #ef4444 !important;
+            --primary-foreground: #fef2f2 !important;
             color-scheme: dark;
           }
         `}</style>
       )}
-      {/* Force light theme variables when in light mode */}
+      {/* Force light theme variables when in light mode (hex format to match Tailwind v4) */}
       {!wrappedDark && (
         <style>{`
           .wrapped-light-force,
           .wrapped-light-force * {
-            --foreground: 240 10% 4% !important;
-            --muted-foreground: 240 5% 35% !important;
-            --background: 0 0% 100% !important;
-            --card: 0 0% 100% !important;
-            --border: 240 6% 80% !important;
-            --primary: 0 72% 51% !important;
-            --primary-foreground: 0 0% 98% !important;
+            --foreground: #0b0b10 !important;
+            --muted-foreground: #4b5563 !important;
+            --background: #f7f7fa !important;
+            --card: #ffffff !important;
+            --border: #d1d5db !important;
+            --primary: #dc2626 !important;
+            --primary-foreground: #fef2f2 !important;
             color-scheme: light;
           }
         `}</style>
