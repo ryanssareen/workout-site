@@ -40,16 +40,23 @@ Be specific with numbers. Highlight non-obvious patterns.`,
     const thisMonthName = thisMonthStart.toLocaleDateString('en-US', { month: 'long' });
     const lastMonthName = lastMonthStart.toLocaleDateString('en-US', { month: 'long' });
 
+    const safeDate = (w: WorkoutDoc): Date | null => {
+      try {
+        const d = w.date?.toDate ? w.date.toDate() : new Date(w.date as any);
+        return isNaN(d.getTime()) ? null : d;
+      } catch { return null; }
+    };
+
     const completed = workouts.filter((w) => w.completed);
 
     const thisMonth = completed.filter((w) => {
-      const d = w.date.toDate();
-      return d >= thisMonthStart && d <= now;
+      const d = safeDate(w);
+      return d ? d >= thisMonthStart && d <= now : false;
     });
 
     const lastMonth = completed.filter((w) => {
-      const d = w.date.toDate();
-      return d >= lastMonthStart && d < thisMonthStart;
+      const d = safeDate(w);
+      return d ? d >= lastMonthStart && d < thisMonthStart : false;
     });
 
     function computeStats(wkts: WorkoutDoc[]) {
@@ -64,7 +71,8 @@ Be specific with numbers. Highlight non-obvious patterns.`,
         const dur = w.actualStats?.duration ? w.actualStats.duration / 60 : (w.duration || 0);
         duration += dur;
         if (w.actualStats?.calories) calories += w.actualStats.calories;
-        activeDays.add(w.date.toDate().toISOString().slice(0, 10));
+        const wd = safeDate(w);
+        if (wd) activeDays.add(wd.toISOString().slice(0, 10));
         sportCounts[w.type] = (sportCounts[w.type] || 0) + 1;
       }
 

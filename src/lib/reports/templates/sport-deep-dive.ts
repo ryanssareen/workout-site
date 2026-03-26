@@ -39,14 +39,21 @@ Be specific with numbers. Lead with non-obvious insights. Keep highlights warm b
     const sport = params.sport || 'run';
     const sportLabel = SPORT_LABELS[sport] || sport;
 
+    const safeDate = (w: WorkoutDoc): Date | null => {
+      try {
+        const d = w.date?.toDate ? w.date.toDate() : new Date(w.date as any);
+        return isNaN(d.getTime()) ? null : d;
+      } catch { return null; }
+    };
+
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
 
     const sportWorkouts = workouts.filter((w) => w.type === sport && w.completed);
-    const recent = sportWorkouts.filter((w) => w.date.toDate() >= thirtyDaysAgo);
+    const recent = sportWorkouts.filter((w) => { const d = safeDate(w); return d ? d >= thirtyDaysAgo : false; });
     const previous = sportWorkouts.filter(
-      (w) => w.date.toDate() >= sixtyDaysAgo && w.date.toDate() < thirtyDaysAgo
+      (w) => { const d = safeDate(w); return d ? d >= sixtyDaysAgo && d < thirtyDaysAgo : false; }
     );
 
     // Compute stats
@@ -68,7 +75,9 @@ Be specific with numbers. Lead with non-obvious insights. Keep highlights warm b
       }
 
       // Weekly bucketing
-      const weekStart = new Date(w.date.toDate());
+      const wd = safeDate(w);
+      if (!wd) continue;
+      const weekStart = new Date(wd);
       weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
       const weekKey = weekStart.toISOString().slice(0, 10);
       if (!weeklyData[weekKey]) weeklyData[weekKey] = { distance: 0, duration: 0, count: 0 };
@@ -82,7 +91,7 @@ Be specific with numbers. Lead with non-obvious insights. Keep highlights warm b
           prs.push({
             exercise: pr.exercise,
             value: pr.value,
-            date: w.date.toDate().toLocaleDateString(),
+            date: (safeDate(w) || new Date()).toLocaleDateString(),
           });
         }
       }

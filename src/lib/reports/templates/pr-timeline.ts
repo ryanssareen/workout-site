@@ -40,11 +40,16 @@ Be celebratory about achievements. Suggest realistic next targets based on traje
 
     for (const w of completed) {
       if (w.prs && w.prs.length > 0) {
+        let wDate: Date;
+        try {
+          wDate = w.date?.toDate ? w.date.toDate() : new Date(w.date as any);
+          if (isNaN(wDate.getTime())) continue;
+        } catch { continue; }
         for (const pr of w.prs) {
           allPrs.push({
             exercise: pr.exercise,
             value: pr.value,
-            date: w.date.toDate(),
+            date: wDate,
             workoutType: w.type,
           });
         }

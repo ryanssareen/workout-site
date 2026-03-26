@@ -33,15 +33,22 @@ Section types: stat (label, value, trend, change, subtitle), chart (chartType, t
 Be honest about overtraining risks. Err on the side of recommending rest — recreational athletes undertrain recovery, not volume.`,
 
   buildContext(workouts: WorkoutDoc[]) {
+    const safeDate = (w: WorkoutDoc): Date | null => {
+      try {
+        const d = w.date?.toDate ? w.date.toDate() : new Date(w.date as any);
+        return isNaN(d.getTime()) ? null : d;
+      } catch { return null; }
+    };
+
     const now = new Date();
     const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const twentyEightDaysAgo = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000);
 
     const completed = workouts.filter((w) => w.completed);
-    const last14 = completed.filter((w) => w.date.toDate() >= fourteenDaysAgo);
-    const last7 = completed.filter((w) => w.date.toDate() >= sevenDaysAgo);
-    const last28 = completed.filter((w) => w.date.toDate() >= twentyEightDaysAgo);
+    const last14 = completed.filter((w) => { const d = safeDate(w); return d ? d >= fourteenDaysAgo : false; });
+    const last7 = completed.filter((w) => { const d = safeDate(w); return d ? d >= sevenDaysAgo : false; });
+    const last28 = completed.filter((w) => { const d = safeDate(w); return d ? d >= twentyEightDaysAgo : false; });
 
     // Daily activity for last 14 days
     const dailyActivity: Record<string, { count: number; duration: number; types: string[] }> = {};
@@ -52,7 +59,9 @@ Be honest about overtraining risks. Err on the side of recommending rest — rec
     }
 
     for (const w of last14) {
-      const dateStr = w.date.toDate().toISOString().slice(0, 10);
+      const wd = safeDate(w);
+      if (!wd) continue;
+      const dateStr = wd.toISOString().slice(0, 10);
       if (dailyActivity[dateStr]) {
         dailyActivity[dateStr].count += 1;
         const dur = w.actualStats?.duration ? w.actualStats.duration / 60 : (w.duration || 0);

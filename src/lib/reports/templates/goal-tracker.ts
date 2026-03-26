@@ -43,10 +43,17 @@ Be encouraging but honest. If the athlete needs to do more, say so clearly. If t
       eventDate = new Date(eventDateStr);
     }
 
+    const safeDate = (w: WorkoutDoc): Date | null => {
+      try {
+        const d = w.date?.toDate ? w.date.toDate() : new Date(w.date as any);
+        return isNaN(d.getTime()) ? null : d;
+      } catch { return null; }
+    };
+
     // Analyze the last 8 weeks of training
     const eightWeeksAgo = new Date(now.getTime() - 8 * 7 * 24 * 60 * 60 * 1000);
     const completed = workouts.filter((w) => w.completed);
-    const prepPeriod = completed.filter((w) => w.date.toDate() >= eightWeeksAgo);
+    const prepPeriod = completed.filter((w) => { const d = safeDate(w); return d ? d >= eightWeeksAgo : false; });
 
     // Weekly breakdown (last 8 weeks)
     const weeks: Array<{
@@ -62,8 +69,8 @@ Be encouraging but honest. If the athlete needs to do more, say so clearly. If t
       const weekStart = new Date(now.getTime() - (i + 1) * 7 * 24 * 60 * 60 * 1000);
       const weekEnd = new Date(now.getTime() - i * 7 * 24 * 60 * 60 * 1000);
       const weekWorkouts = prepPeriod.filter((w) => {
-        const d = w.date.toDate();
-        return d >= weekStart && d < weekEnd;
+        const d = safeDate(w);
+        return d ? d >= weekStart && d < weekEnd : false;
       });
 
       let distance = 0;
