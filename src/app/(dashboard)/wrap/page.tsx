@@ -330,7 +330,7 @@ export default function WrapPage() {
       >
         {/* ═══ SLIDE 0 — The Verdict ═══ */}
         {slide === 0 && (
-          <div className="flex flex-col items-center text-center max-w-lg mx-auto">
+          <div className="flex flex-col items-center text-center max-w-3xl mx-auto">
             <div className="text-8xl sm:text-9xl mb-6 drop-shadow-lg" style={{ animation: animateIn ? 'popIn 0.6s ease-out' : undefined }}>
               {rating.emoji}
             </div>
@@ -353,38 +353,44 @@ export default function WrapPage() {
 
         {/* ═══ SLIDE 1 — The Numbers ═══ */}
         {slide === 1 && (
-          <div className="flex flex-col items-center text-center max-w-md mx-auto">
-            <p className="text-muted-foreground text-xs font-semibold tracking-widest uppercase mb-8">The Numbers</p>
-            <div className="space-y-8 w-full">
+          <div className="w-full max-w-4xl mx-auto">
+            <p className="text-muted-foreground text-xs font-semibold tracking-widest uppercase mb-8 text-center">The Numbers</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
               {[
-                { value: countWorkouts, unit: '', label: 'workouts', delay: '0ms' },
-                ...(totalDistanceKm > 0 ? [{ value: countDist, unit: 'km', label: 'distance covered', delay: '150ms' }] : []),
-                ...(totalDurationMin > 0 ? [{ value: countDur > 60 ? Math.floor(countDur / 60) : countDur, unit: countDur > 60 ? 'hrs' : 'min', label: 'of training', delay: '300ms' }] : []),
-              ].map((stat, i) => (
+                { value: countWorkouts, unit: '', label: 'workouts', emoji: '💪', delay: '0ms' },
+                ...(totalDistanceKm > 0 ? [{ value: countDist, unit: 'km', label: 'distance', emoji: '🌍', delay: '150ms' }] : []),
+                ...(totalDurationMin > 0 ? [{ value: countDur > 60 ? Math.floor(countDur / 60) : countDur, unit: countDur > 60 ? 'hrs' : 'min', label: 'training', emoji: '⏱️', delay: '300ms' }] : []),
+              ].map((stat) => (
                 <div
                   key={stat.label}
-                  className="transition-all duration-700"
+                  className="text-center rounded-3xl bg-gradient-to-br from-primary/10 to-primary/5 border border-border/30 p-8 sm:p-10 transition-all duration-700"
                   style={{
                     opacity: animateIn ? 1 : 0,
-                    transform: animateIn ? 'translateY(0)' : 'translateY(20px)',
+                    transform: animateIn ? 'scale(1)' : 'scale(0.9)',
                     transitionDelay: stat.delay,
                   }}
                 >
-                  <div className="text-6xl sm:text-7xl font-black text-foreground tracking-tighter leading-none">
+                  <div className="text-4xl mb-3">{stat.emoji}</div>
+                  <div className="text-5xl sm:text-6xl lg:text-7xl font-black text-foreground tracking-tighter leading-none">
                     {stat.value}<span className="text-primary">{stat.unit}</span>
                   </div>
-                  <p className="text-muted-foreground text-sm mt-1 font-medium">{stat.label}</p>
+                  <p className="text-muted-foreground text-sm mt-2 font-medium">{stat.label}</p>
                 </div>
               ))}
             </div>
+            {totalCalories > 0 && (
+              <p className="text-center text-muted-foreground/60 text-xs mt-6">
+                You burned <span className="text-primary font-bold">{totalCalories.toLocaleString()}</span> calories this week
+              </p>
+            )}
           </div>
         )}
 
         {/* ═══ SLIDE 2 — Day by Day ═══ */}
         {slide === 2 && (
-          <div className="max-w-lg mx-auto w-full">
+          <div className="max-w-4xl mx-auto w-full">
             <p className="text-muted-foreground text-xs font-semibold tracking-widest uppercase mb-6 text-center">Day by Day</p>
-            <div className="flex items-end gap-2 sm:gap-4 h-40 sm:h-52 mb-8">
+            <div className="flex items-end gap-3 sm:gap-5 h-48 sm:h-64 lg:h-72 mb-8">
               {dailyActivity.map((d, i) => {
                 const barH = d.count > 0 ? Math.max(16, (d.count / maxDailyCount) * 100) : 0;
                 const color = d.primaryType ? (TYPE_COLOR[d.primaryType] || '#6b7280') : '#6b7280';
@@ -436,7 +442,7 @@ export default function WrapPage() {
 
         {/* ═══ SLIDE 3 — By Sport + Share ═══ */}
         {slide === 3 && (
-          <div className="max-w-lg mx-auto w-full overflow-y-auto max-h-[calc(100vh-200px)]">
+          <div className="max-w-4xl mx-auto w-full overflow-y-auto max-h-[calc(100vh-200px)]">
             <p className="text-muted-foreground text-xs font-semibold tracking-widest uppercase mb-6 text-center">By Sport</p>
 
             {/* Breakdown bar */}
@@ -474,7 +480,7 @@ export default function WrapPage() {
                 <p className="text-muted-foreground">No workouts this week. Next week is a fresh start!</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {activeSports.map((stat, i) => {
                   const metric = stat.distanceKm > 0 ? `${stat.distanceKm}km` : stat.durationMin > 0 ? fmtDur(stat.durationMin) : `${stat.count}x`;
                   const detail = stat.distanceKm > 0 ? `${stat.count} sessions · ${fmtDur(stat.durationMin)}` : `${stat.count} sessions`;
@@ -482,15 +488,16 @@ export default function WrapPage() {
                   return (
                     <div
                       key={stat.type}
-                      className={`flex items-center gap-4 rounded-2xl bg-gradient-to-r ${TYPE_BG[stat.type] || TYPE_BG.other} border border-border/20 px-5 py-4 transition-all duration-500`}
-                      style={{ opacity: animateIn ? 1 : 0, transform: animateIn ? 'translateX(0)' : 'translateX(-20px)', transitionDelay: `${i * 100}ms` }}
+                      className={`flex items-center gap-4 rounded-2xl bg-gradient-to-r ${TYPE_BG[stat.type] || TYPE_BG.other} border border-border/20 px-5 py-5 transition-all duration-500`}
+                      style={{ opacity: animateIn ? 1 : 0, transform: animateIn ? 'scale(1)' : 'scale(0.9)', transitionDelay: `${i * 100}ms` }}
                     >
-                      <span className="text-3xl">{TYPE_EMOJI[stat.type]}</span>
+                      <span className="text-4xl">{TYPE_EMOJI[stat.type]}</span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-base font-black leading-tight" style={{ color: TYPE_COLOR[stat.type] }}>{TYPE_NAME[stat.type]}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{metric} · {detail}</p>
+                        <p className="text-lg font-black leading-tight" style={{ color: TYPE_COLOR[stat.type] }}>{TYPE_NAME[stat.type]}</p>
+                        <p className="text-lg font-bold text-foreground">{metric}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{detail}</p>
                       </div>
-                      {comp && <span className={`text-sm font-black ${comp.positive ? 'text-emerald-500' : 'text-red-500'}`}>{comp.text}</span>}
+                      {comp && <span className={`text-base font-black ${comp.positive ? 'text-emerald-500' : 'text-red-500'}`}>{comp.text}</span>}
                     </div>
                   );
                 })}
@@ -506,7 +513,7 @@ export default function WrapPage() {
 
       {/* Bottom bar — progress + nav */}
       <div className="z-20 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-background/80 backdrop-blur-xl border-t border-border/10">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-3xl mx-auto">
           {/* Progress bar */}
           <div className="h-1 rounded-full bg-muted/30 overflow-hidden mb-3">
             <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${progressPct}%` }} />

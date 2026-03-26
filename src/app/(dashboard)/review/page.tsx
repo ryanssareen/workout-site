@@ -385,7 +385,7 @@ export default function MonthlyReviewPage() {
       >
         {/* ═══ SLIDE 0 — The Verdict ═══ */}
         {slide === 0 && (
-          <div className="flex flex-col items-center text-center max-w-lg mx-auto">
+          <div className="flex flex-col items-center text-center max-w-3xl mx-auto">
             <div className="text-8xl sm:text-9xl mb-6" style={{ animation: animateIn ? 'popIn 0.6s ease-out' : undefined }}>
               {rating.emoji}
             </div>
@@ -403,24 +403,25 @@ export default function MonthlyReviewPage() {
 
         {/* ═══ SLIDE 1 — The Numbers ═══ */}
         {slide === 1 && (
-          <div className="flex flex-col items-center text-center max-w-md mx-auto">
-            <p className="text-muted-foreground text-xs font-semibold tracking-widest uppercase mb-8">By The Numbers</p>
-            <div className="grid grid-cols-2 gap-x-12 gap-y-8">
+          <div className="w-full max-w-4xl mx-auto">
+            <p className="text-muted-foreground text-xs font-semibold tracking-widest uppercase mb-8 text-center">By The Numbers</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
               {[
-                { value: countWorkouts, unit: '', label: 'workouts', delay: '0ms' },
-                { value: countDays, unit: `/${totalDays}`, label: 'active days', delay: '150ms' },
-                ...(totalDistanceKm > 0 ? [{ value: countDist, unit: 'km', label: 'distance', delay: '300ms' }] : []),
-                ...(totalDurationMin > 0 ? [{ value: countDur > 60 ? Math.floor(countDur / 60) : countDur, unit: countDur > 60 ? 'hrs' : 'min', label: 'of training', delay: '450ms' }] : []),
+                { value: countWorkouts, unit: '', label: 'workouts', emoji: '💪', delay: '0ms' },
+                { value: countDays, unit: `/${totalDays}`, label: 'active days', emoji: '📅', delay: '150ms' },
+                ...(totalDistanceKm > 0 ? [{ value: countDist, unit: 'km', label: 'distance', emoji: '🌍', delay: '300ms' }] : []),
+                ...(totalDurationMin > 0 ? [{ value: countDur > 60 ? Math.floor(countDur / 60) : countDur, unit: countDur > 60 ? 'hrs' : 'min', label: 'training', emoji: '⏱️', delay: '450ms' }] : []),
               ].map(stat => (
                 <div
                   key={stat.label}
-                  className="transition-all duration-700"
-                  style={{ opacity: animateIn ? 1 : 0, transform: animateIn ? 'translateY(0)' : 'translateY(20px)', transitionDelay: stat.delay }}
+                  className="text-center rounded-3xl bg-gradient-to-br from-primary/10 to-primary/5 border border-border/30 p-6 sm:p-8 transition-all duration-700"
+                  style={{ opacity: animateIn ? 1 : 0, transform: animateIn ? 'scale(1)' : 'scale(0.9)', transitionDelay: stat.delay }}
                 >
-                  <div className="text-5xl sm:text-6xl font-black text-foreground tracking-tighter leading-none">
+                  <div className="text-3xl mb-2">{stat.emoji}</div>
+                  <div className="text-4xl sm:text-5xl font-black text-foreground tracking-tighter leading-none">
                     {stat.value}<span className="text-primary">{stat.unit}</span>
                   </div>
-                  <p className="text-muted-foreground text-sm mt-1 font-medium">{stat.label}</p>
+                  <p className="text-muted-foreground text-sm mt-2 font-medium">{stat.label}</p>
                 </div>
               ))}
             </div>
@@ -429,10 +430,10 @@ export default function MonthlyReviewPage() {
 
         {/* ═══ SLIDE 2 — vs Last Month ═══ */}
         {slide === 2 && (
-          <div className="flex flex-col items-center max-w-md mx-auto w-full">
+          <div className="flex flex-col items-center max-w-4xl mx-auto w-full">
             <p className="text-muted-foreground text-xs font-semibold tracking-widest uppercase mb-8 text-center">vs {format(prevMonthStart, 'MMMM')}</p>
             {prevTotalWorkouts > 0 ? (
-              <div className="space-y-4 w-full">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
                 {[
                   { label: 'Workouts', curr: totalWorkouts, prev: prevTotalWorkouts, fmtFn: (v: number) => String(v) },
                   { label: 'Distance', curr: totalDistanceKm, prev: prevDistKm, fmtFn: (v: number) => `${v}km` },
@@ -444,19 +445,17 @@ export default function MonthlyReviewPage() {
                   return (
                     <div
                       key={item.label}
-                      className="flex items-center gap-4 rounded-2xl bg-foreground/[0.03] border border-border/20 p-5 transition-all duration-500"
-                      style={{ opacity: animateIn ? 1 : 0, transform: animateIn ? 'translateX(0)' : 'translateX(-30px)', transitionDelay: `${i * 150}ms` }}
+                      className="flex flex-col items-center text-center rounded-3xl bg-foreground/[0.03] border border-border/20 p-6 sm:p-8 transition-all duration-500"
+                      style={{ opacity: animateIn ? 1 : 0, transform: animateIn ? 'scale(1)' : 'scale(0.9)', transitionDelay: `${i * 150}ms` }}
                     >
-                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                        {isUp ? <TrendingUp className="h-6 w-6 text-emerald-500" /> : isDown ? <TrendingDown className="h-6 w-6 text-red-500" /> : <Minus className="h-6 w-6 text-muted-foreground" />}
+                      <div className={cn('w-14 h-14 rounded-2xl flex items-center justify-center mb-3', isUp ? 'bg-emerald-500/15' : isDown ? 'bg-red-500/15' : 'bg-muted')}>
+                        {isUp ? <TrendingUp className="h-7 w-7 text-emerald-500" /> : isDown ? <TrendingDown className="h-7 w-7 text-red-500" /> : <Minus className="h-7 w-7 text-muted-foreground" />}
                       </div>
-                      <div className="flex-1">
-                        <p className="text-sm text-muted-foreground font-medium">{item.label}</p>
-                        <p className="text-xs text-muted-foreground/60">{item.fmtFn(item.prev)} → {item.fmtFn(item.curr)}</p>
-                      </div>
-                      <span className={cn('text-2xl font-black', isUp ? 'text-emerald-500' : isDown ? 'text-red-500' : 'text-muted-foreground')}>
+                      <p className="text-sm text-muted-foreground font-medium mb-1">{item.label}</p>
+                      <span className={cn('text-3xl sm:text-4xl font-black', isUp ? 'text-emerald-500' : isDown ? 'text-red-500' : 'text-muted-foreground')}>
                         {change?.text || '='}
                       </span>
+                      <p className="text-xs text-muted-foreground/60 mt-2">{item.fmtFn(item.prev)} → {item.fmtFn(item.curr)}</p>
                     </div>
                   );
                 })}
@@ -473,7 +472,7 @@ export default function MonthlyReviewPage() {
 
         {/* ═══ SLIDE 3 — Calendar + Daily Chart ═══ */}
         {slide === 3 && (
-          <div className="max-w-lg mx-auto w-full overflow-y-auto max-h-[calc(100vh-200px)]">
+          <div className="max-w-4xl mx-auto w-full overflow-y-auto max-h-[calc(100vh-200px)]">
             <p className="text-muted-foreground text-xs font-semibold tracking-widest uppercase mb-6 text-center">Your Calendar</p>
 
             {/* Activity Calendar */}
@@ -488,7 +487,7 @@ export default function MonthlyReviewPage() {
             {/* Daily bar chart */}
             <div className="rounded-2xl bg-muted/10 border border-border/20 p-4 sm:p-5">
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Daily Activity</p>
-              <div className="flex items-end gap-px h-24 sm:h-32">
+              <div className="flex items-end gap-px h-32 sm:h-44">
                 {dailyBarData.map((d, i) => {
                   const barH = d.count > 0 ? Math.max(8, (d.count / maxDailyCount) * 100) : 0;
                   const color = d.primaryType ? (TYPE_COLOR[d.primaryType] || '#6b7280') : '#6b7280';
@@ -520,7 +519,7 @@ export default function MonthlyReviewPage() {
 
         {/* ═══ SLIDE 4 — Sport Breakdown + Share ═══ */}
         {slide === 4 && (
-          <div className="max-w-lg mx-auto w-full overflow-y-auto max-h-[calc(100vh-200px)]">
+          <div className="max-w-4xl mx-auto w-full overflow-y-auto max-h-[calc(100vh-200px)]">
             <p className="text-muted-foreground text-xs font-semibold tracking-widest uppercase mb-6 text-center">Sport Breakdown</p>
 
             {/* Breakdown bar */}
@@ -553,7 +552,7 @@ export default function MonthlyReviewPage() {
                 <p className="text-muted-foreground">No workouts this month</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {sportStats.filter(s => s.count > 0).map((stat, i) => {
                   const metric = stat.distanceKm > 0 ? `${stat.distanceKm}km` : stat.durationMin > 0 ? fmtDur(stat.durationMin) : `${stat.count}x`;
                   const detail = stat.distanceKm > 0 ? `${stat.count} sessions · ${fmtDur(stat.durationMin)}` : `${stat.count} sessions`;
@@ -561,15 +560,16 @@ export default function MonthlyReviewPage() {
                   return (
                     <div
                       key={stat.type}
-                      className={`flex items-center gap-4 rounded-2xl bg-gradient-to-r ${TYPE_BG[stat.type] || TYPE_BG.other} border border-border/20 px-5 py-4 transition-all duration-500`}
-                      style={{ opacity: animateIn ? 1 : 0, transform: animateIn ? 'translateX(0)' : 'translateX(-20px)', transitionDelay: `${i * 100}ms` }}
+                      className={`flex items-center gap-4 rounded-2xl bg-gradient-to-r ${TYPE_BG[stat.type] || TYPE_BG.other} border border-border/20 px-5 py-5 transition-all duration-500`}
+                      style={{ opacity: animateIn ? 1 : 0, transform: animateIn ? 'scale(1)' : 'scale(0.9)', transitionDelay: `${i * 100}ms` }}
                     >
-                      <span className="text-3xl">{TYPE_EMOJI[stat.type]}</span>
+                      <span className="text-4xl">{TYPE_EMOJI[stat.type]}</span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-base font-black leading-tight" style={{ color: TYPE_COLOR[stat.type] }}>{TYPE_NAME[stat.type]}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{metric} · {detail}</p>
+                        <p className="text-lg font-black leading-tight" style={{ color: TYPE_COLOR[stat.type] }}>{TYPE_NAME[stat.type]}</p>
+                        <p className="text-lg font-bold text-foreground">{metric}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{detail}</p>
                       </div>
-                      {comp && <span className={`text-sm font-black ${comp.positive ? 'text-emerald-500' : 'text-red-500'}`}>{comp.text}</span>}
+                      {comp && <span className={`text-base font-black ${comp.positive ? 'text-emerald-500' : 'text-red-500'}`}>{comp.text}</span>}
                     </div>
                   );
                 })}
@@ -585,7 +585,7 @@ export default function MonthlyReviewPage() {
 
       {/* Bottom bar */}
       <div className="z-20 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-background/80 backdrop-blur-xl border-t border-border/10">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-3xl mx-auto">
           <div className="h-1 rounded-full bg-muted/30 overflow-hidden mb-3">
             <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${progressPct}%` }} />
           </div>
