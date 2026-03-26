@@ -5,6 +5,7 @@ import { useAuthStore } from '@/lib/stores/authStore';
 import { getPersonalRecords, getMilestones } from '@/lib/firebase/firestore';
 import { useWorkoutStore } from '@/lib/stores/workoutStore';
 import { computeSummary, computeTypeDistribution } from '@/lib/analytics';
+import { ActivityHeatmap } from '@/components/profile/ActivityHeatmap';
 import { PhotoUpload } from '@/components/profile/PhotoUpload';
 import { EditProfileDialog } from '@/components/profile/EditProfileDialog';
 import {
@@ -329,6 +330,9 @@ export default function ProfilePage() {
           </div>
         </section>
       )}
+
+      {/* ── Activity Heatmap ── */}
+      {hasWorkouts && <ActivityHeatmap workouts={workouts} />}
 
       {/* ── Training Breakdown + Recent Workouts ── */}
       {hasWorkouts && (
