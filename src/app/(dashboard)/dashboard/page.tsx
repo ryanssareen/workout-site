@@ -477,21 +477,25 @@ export default function DashboardPage() {
 
       {/* ── THIS TIME LAST MONTH ─────────────────────────────── */}
       {monthComparison && (
-        <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm ${
-          monthComparison.diff >= 0
-            ? 'bg-emerald-500/5 border-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-            : 'bg-orange-500/5 border-orange-500/15 text-orange-600 dark:text-orange-400'
-        }`}>
+        <Link
+          href="/reports/trend-report"
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm transition-all hover:shadow-md hover:scale-[1.01] active:scale-[0.99] ${
+            monthComparison.diff >= 0
+              ? 'bg-emerald-500/5 border-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:border-emerald-500/30'
+              : 'bg-orange-500/5 border-orange-500/15 text-orange-600 dark:text-orange-400 hover:border-orange-500/30'
+          }`}
+        >
           <span className="text-lg">{monthComparison.diff >= 0 ? '📈' : '📉'}</span>
           <span className="font-medium">
             {monthComparison.diff >= 0
               ? `You're ${monthComparison.diff > 0 ? `${monthComparison.pct}% ahead of` : 'matching'} this time last month`
               : `${Math.abs(monthComparison.pct)}% behind this time last month`}
           </span>
-          <span className="text-xs opacity-70 ml-auto">
+          <span className="text-xs opacity-70 ml-auto flex items-center gap-1">
             {monthComparison.thisMonth} vs {monthComparison.lastMonth} by day {monthComparison.dayOfMonth}
+            <ChevronRight className="h-3 w-3" />
           </span>
-        </div>
+        </Link>
       )}
 
       {/* ── ACHIEVEMENTS ────────────────────────────────────────── */}
