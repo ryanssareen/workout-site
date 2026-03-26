@@ -335,16 +335,36 @@ export default function DashboardPage() {
 
       {/* ── STATS ROW ──────────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-3">
-        {/* Streak */}
+        {/* Streak — Duolingo-style flame widget */}
         <Card className="relative overflow-hidden p-4 border-orange-500/15 hover:border-orange-500/30 transition-all group">
           <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-transparent to-red-500/5 opacity-60 group-hover:opacity-100 transition-opacity" />
+          {/* Animated flame glow behind the icon — scales with streak */}
+          {streak > 0 && (
+            <div
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition-opacity"
+              style={{
+                width: Math.min(40 + streak * 4, 100),
+                height: Math.min(40 + streak * 4, 100),
+                background: 'radial-gradient(circle, #f97316, #ef4444, transparent)',
+              }}
+            />
+          )}
           <div className="relative flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg shadow-orange-500/20">
-              <Flame className="h-5 w-5 text-white" />
+            <div className={`flex items-center justify-center rounded-xl shadow-lg shadow-orange-500/20 transition-all duration-500 ${
+              streak >= 7 ? 'h-12 w-12 bg-gradient-to-br from-yellow-400 via-orange-500 to-red-600' :
+              streak >= 3 ? 'h-11 w-11 bg-gradient-to-br from-orange-400 to-red-600' :
+              'h-10 w-10 bg-gradient-to-br from-orange-500 to-red-600'
+            }`}>
+              <Flame className={`text-white transition-all ${
+                streak >= 7 ? 'h-7 w-7 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)]' :
+                streak >= 3 ? 'h-6 w-6' : 'h-5 w-5'
+              }`} />
             </div>
             <div>
               <p className="text-2xl font-bold leading-none">{streak}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Day streak</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {streak === 0 ? 'Start a streak!' : streak === 1 ? 'Day streak' : streak >= 7 ? 'Day streak 🔥' : 'Day streak'}
+              </p>
             </div>
           </div>
         </Card>
