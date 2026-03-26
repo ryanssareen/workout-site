@@ -29,15 +29,18 @@ src/
 │   ├── api/             # API routes (ai, auth, admin, cron, push, reports, strava, webhooks, workouts, import)
 │   └── page.tsx         # Landing page
 ├── components/
-│   ├── auth/            # LoginForm, RegisterForm (Google + email)
+│   ├── achievements/    # DashboardAchievements (PRs + milestones)
+│   ├── auth/            # LoginForm, RegisterForm (Google + email, terms consent checkbox)
 │   ├── calendar/        # Calendar views, workout type config (TYPE_CONFIG, getTypeData)
-│   ├── dashboard/       # Navbar, layout components, ProfileCompletionBar
-│   ├── profile/         # ProfileComponents (shared PieChart, StatCard, helpers), PhotoUpload
+│   ├── dashboard/       # Navbar, layout, ProfileCompletionBar, StreakWidget, RecoveryNudge, QuickLogFAB
+│   ├── profile/         # ProfileComponents (shared PieChart, StatCard, helpers), PhotoUpload, ActivityHeatmap
 │   ├── reports/         # ReportContainer, ReportRenderer, section components, ReportsSections (5 chart/stat sections)
 │   ├── wrapped/         # WrappedSlides (6 slide components + YearStats computation for yearly wrapped)
 │   ├── strava/          # DuplicateDialog for Strava sync conflicts, ManualMergeDialog
-│   ├── workouts/        # WorkoutCard, WorkoutForm, AIWorkoutSuggestions, StrengthForm, comments, ShareWorkoutCard
+│   ├── workouts/        # WorkoutCard (with PR badge), WorkoutForm, AIWorkoutSuggestions, StrengthForm, comments, ShareWorkoutCard, WorkoutRating
 │   └── ui/              # shadcn/ui primitives
+├── hooks/
+│   └── useSwipe.ts      # Touch swipe gesture hook for slide-based pages
 ├── lib/
 │   ├── analytics.ts     # computeSummary, computeTypeDistribution, computeTimeSeries, computeWeeklyRhythm, computeCalendarData, computeInsights, computePRTimeline
 │   ├── admin-auth.ts    # verifyAdminSession, checkOrigin, logAdminAction helpers for admin API routes
@@ -224,21 +227,69 @@ npx tsc --noEmit     # Type check without building
 - **Env vars required:** `ADMIN_UIDS` (comma-separated Firebase UIDs), `ADMIN_SECRET` (32-char random, signs session cookie), `BLOB_READ_WRITE_TOKEN` (Vercel Blob access)
 
 ## Known Issues & Active Work
-- "Save as Template" feature navigates to non-existent page — broken
 - Custom domain (thedailyathlete.in) has DNS/NXDOMAIN issues — likely Squarespace registration problem
 - Groq rate limits (100K tokens/day on 70B model) — mitigated with 8B fallback but can still hit both limits
+- Firebase Spark plan daily quota (50K reads) — mitigated with Zustand caching, but heavy usage days can still exhaust quota
 
-## Recent Changes
-- Privacy Policy (`/privacy`) and Terms of Service (`/terms`) pages added — required for Garmin API application
-- Garmin Connect integration planned (API application pending)
-- Footer links to Privacy/Terms added across all public pages (landing, features, contact)
-- Walk workout type added across 33 files (#81)
-- PostHog analytics integrated (PostHogProvider wrapping app)
-- Vercel Blob replaces Firebase Storage for backups (no Blaze plan needed)
-- Dashboard fix (#56, #60) — Unified workout view, removed redundant sections, fixed "Coming up" showing past workouts, fixed broken /records link (#58)
-- Calendar notes — Excluded from workouts page, added note tag type
-- Reports refresh loop (#76) — Fixed infinite re-fetch from object reference changes in useCallback deps
-- Strength form (#52) — Simplified, removed mandatory exercise details
+## Recent Changes (March 2026)
+
+### UX Polish & Gamification
+- Animated page transitions via `next-view-transitions` ViewTransitions wrapper
+- Confetti burst on workout completion (CSS-only, no library)
+- Skeleton loading states on dashboard (shimmer placeholders instead of spinners)
+- Gradient accent stat cards on dashboard (streak, weekly, all-time)
+- Duolingo-style streak widget with animated flame that scales with streak length
+- "This time last month" comparison badge on dashboard (links to trend report)
+- GitHub-style activity heatmap on profile page (reuses wrapped heatmap pattern)
+- Gold PR badges on workout cards when a workout set a personal record
+- Quick-log floating action button (FAB) on mobile for fast workout creation
+- Workout templates — save/load reusable workout presets (fix for broken #42)
+- Post-workout emoji rating picker (😫😐😊🔥💀) stored on workout doc
+- Smart workout naming — auto-suggests name based on type + time of day
+- Swipe navigation on all review pages (wrap, review, wrapped) for mobile/tablet
+- Monthly comparison badge links to `/reports/trend-report`
+
+### Weekly Wrap & Monthly Review Gamification
+- Both pages converted from scrollable layouts to slide-based reveal experiences
+- Animated count-up numbers (useCountUp hook) with staggered card reveals
+- Weekly wrap: 4 slides (Verdict → Numbers → Day by Day → By Sport)
+- Monthly review: 5 slides (Month → Numbers → vs Last Month → Calendar → Breakdown)
+- Daily activity bar charts with animated growing bars colored by sport
+- Highlight of the week with trophy icon
+
+### Yearly Wrapped Improvements
+- Light/dark theme toggle (Sun/Moon button in top bar)
+- CSS variable overrides in hex format for Tailwind v4 compatibility
+- Improved contrast on all 8 slides in both light and dark modes
+- Stats stored in useState (not useRef) — fixes inconsistent workout count bug
+- Confetti burst on reveal slide
+
+### Login Performance
+- Removed `setPersistence(browserLocalPersistence)` — was adding 20-30s latency on production
+- localStorage auth cache for instant returning-user loads
+- Eager profile fetch after sign-in (parallel with navigation)
+- Workout prefetch in background from auth store hydration
+
+### Reports & Data
+- All 5 report templates guarded with `safeDate()` against corrupted Firestore dates
+- All client-side `.date.toDate()` calls guarded (10 files) — prevents `Invalid time value` crashes
+- Reports and dashboard gracefully handle Firebase quota errors (show cached data or friendly message)
+- Recovery nudge on dashboard when 3+ consecutive training days detected
+- AI broadcast email endpoint (`/api/admin/broadcast`)
+
+### Legal & Auth
+- Privacy Policy (`/privacy`) and Terms of Service (`/terms`) pages
+- Terms/Privacy consent checkbox on registration form (gates both email and Google sign-up)
+- Footer links to Privacy/Terms on all public pages
+- Remember me enabled by default on login
+- Redesigned weekly email digest (Anthropic-inspired clean style)
+
+### Bug Fixes
+- WhatsApp/iMessage share now opens native apps instead of browser tabs
+- Achievements section spans full width when only PRs or milestones exist
+- Activity heatmap month labels properly positioned on profile page
+- React hooks order violation fixed in wrap/review (useCountUp before early returns)
+- Calendar add button centered in day cell instead of top-right corner
 
 ## Firestore Read Budget
 This project runs on Firebase with a **50k reads/day limit**. Every API route, migration, and cron job must be designed with read cost as a primary constraint.

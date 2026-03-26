@@ -40,10 +40,14 @@
 | **Monetization** | No payment system, no tiers, no pricing page | MEDIUM — not urgent pre-PMF |
 | ~~**Push notifications**~~ | ✅ DONE — Web Push API with VAPID, multi-device support, auto-cleanup, scoped to logged-in user (cross-user leakage fixed #74). Used for Strava sync + weekly wrap. | ~~MEDIUM~~ |
 | **Month calendar view** | ✅ DONE — Calendar now has 4 views (day/week/month/year) with heatmap year view | ~~LOW-MEDIUM~~ |
-| **Streak gamification** | ✅ PARTIAL — Streak counter on profile/public profile, dashboard stats row. Still missing: streak notifications, at-risk nudges, visual enhancements | MEDIUM — retention lever |
-| **Firebase Spark quota** | ✅ MUCH IMPROVED — Zustand workout cache (5-min TTL + dedup), batched Strava lookups, auth store double-call fix, coach students query optimization, and auth guards significantly reduce daily reads. Quota-safe POST mode still active. Blaze upgrade less urgent now but still recommended for scale. | MEDIUM — mitigated by caching |
-| ~~**Legal pages**~~ | ✅ DONE — `/privacy` (Privacy Policy) and `/terms` (Terms of Service) pages live. Covers Strava, Garmin, AI data handling, user rights, COPPA. Footer links added across all public pages. Required for Garmin API application. | ~~HIGH~~ |
-| **Garmin Connect sync** | 🔄 IN PROGRESS — API application submitted with privacy policy + ToS. Pending Garmin approval. Once approved: OAuth flow, activity sync, webhook support. | HIGH |
+| ~~**Streak gamification**~~ | ✅ DONE — Duolingo-style streak widget on dashboard with animated flame icon that scales with streak length, flame glow effect, recovery nudge after 3+ consecutive days | ~~MEDIUM~~ |
+| **Firebase Spark quota** | ✅ MUCH IMPROVED — Zustand workout cache (5-min TTL + dedup), localStorage auth cache, batched lookups, auth guards. Reports/dashboard gracefully handle quota errors. Blaze upgrade recommended for scale. | MEDIUM — mitigated by caching |
+| ~~**Legal pages**~~ | ✅ DONE — `/privacy` + `/terms` pages. Terms consent checkbox on registration. Footer links on all public pages. | ~~HIGH~~ |
+| **Garmin Connect sync** | 🔄 IN PROGRESS — API application submitted with privacy policy + ToS. Pending Garmin approval. | HIGH |
+| ~~**UX gamification**~~ | ✅ DONE — Page transitions, workout completion confetti, skeleton loaders, gradient stat cards, PR badges on cards, post-workout emoji rating, smart workout naming, quick-log FAB, workout templates fixed, swipe nav on reviews | ~~HIGH~~ |
+| ~~**Login performance**~~ | ✅ DONE — Removed redundant `setPersistence()` (was 20-30s latency), localStorage auth cache, eager profile fetch, workout prefetch from auth store | ~~HIGH~~ |
+| ~~**Share UX**~~ | ✅ DONE — WhatsApp/iMessage now open native apps. Month comparison badge links to trend report. | ~~MEDIUM~~ |
+| ~~**Date safety**~~ | ✅ DONE — All client-side and server-side `.date.toDate()` calls guarded with `safeDate()`. All 5 report templates patched. | ~~MEDIUM~~ |
 
 ### Competitive Position
 

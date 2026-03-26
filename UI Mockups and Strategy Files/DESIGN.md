@@ -1319,3 +1319,24 @@ The app is installable as a Progressive Web App on iOS and Android.
 | Strava webhook | Improved reconciliation, update/delete handling |
 | Recurring workouts | Only show in Planned tab within next 7 days |
 | Light mode default | Replaced hardcoded dark theme with theme-aware CSS variables |
+| Page transitions | Animated route transitions via `next-view-transitions` |
+| Workout completion confetti | CSS-only confetti burst on marking workout done |
+| Skeleton loading states | Shimmer placeholders on dashboard instead of spinners |
+| Dashboard stat cards | Gradient accents (streak, weekly, all-time) |
+| Streak widget | Duolingo-style flame with scale/glow based on streak length |
+| Month comparison | "X% ahead of this time last month" badge links to trend report |
+| Profile heatmap | GitHub-style activity heatmap on profile page |
+| PR badges | Gold badge on workout cards when a PR was set |
+| Quick-log FAB | Floating action button on mobile for fast workout creation |
+| Workout templates | Save/load reusable workout presets (fixed #42) |
+| Post-workout rating | Emoji picker (😫😐😊🔥💀) stored on workout doc |
+| Smart naming | Auto-suggest workout names based on type + time of day |
+| Swipe navigation | Touch swipe support on wrap, review, wrapped pages |
+| WhatsApp/iMessage share | Native app deep links instead of browser tabs |
+| Login performance | Removed redundant `setPersistence()`, localStorage cache, eager fetch |
+| Wrapped light mode | Sun/Moon toggle, hex CSS variables, proper contrast on all 8 slides |
+| Recovery nudge | Dashboard banner after 3+ consecutive training days |
+| Date safety | `safeDate()` guards on all client + server `.date.toDate()` calls |
+| Report template crashes | All 5 templates patched against corrupted Firestore dates |
+| Terms consent | Checkbox on registration form gates both email and Google sign-up |
+| Email digest | Anthropic-inspired clean email design with sections and CTA buttons |
