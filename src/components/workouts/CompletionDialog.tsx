@@ -15,12 +15,12 @@ import { Label } from '@/components/ui/label';
 import { CheckCircle2 } from 'lucide-react';
 import { Confetti } from '@/components/ui/confetti';
 
-const RATING_LABELS: Record<number, string> = {
-  1: 'Struggled',
-  2: 'Tough',
-  3: 'Moderate',
-  4: 'Strong',
-  5: 'Crushed it',
+const RATING_EMOJIS: Record<number, { emoji: string; label: string }> = {
+  1: { emoji: '😫', label: 'Struggled' },
+  2: { emoji: '😓', label: 'Tough' },
+  3: { emoji: '😊', label: 'Solid' },
+  4: { emoji: '💪', label: 'Strong' },
+  5: { emoji: '🔥', label: 'Crushed it' },
 };
 
 interface CompletionDialogProps {
@@ -72,21 +72,26 @@ export function CompletionDialog({
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label>How did it feel? (optional)</Label>
-            <div className="flex gap-1">
-              {([1, 2, 3, 4, 5] as const).map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setRating(rating === value ? null : value)}
-                  className={`flex-1 py-2 px-1 rounded-md text-xs font-medium transition-colors border ${
-                    rating === value
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted'
-                  }`}
-                >
-                  {RATING_LABELS[value]}
-                </button>
-              ))}
+            <div className="flex gap-2 justify-center">
+              {([1, 2, 3, 4, 5] as const).map((value) => {
+                const { emoji, label } = RATING_EMOJIS[value];
+                const selected = rating === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setRating(rating === value ? null : value)}
+                    className={`flex flex-col items-center gap-1 py-2.5 px-3 rounded-xl transition-all duration-200 border ${
+                      selected
+                        ? 'bg-primary/10 border-primary/40 scale-110 shadow-sm'
+                        : 'bg-muted/30 border-transparent hover:bg-muted/60 hover:scale-105'
+                    }`}
+                  >
+                    <span className={`text-2xl transition-transform ${selected ? 'scale-110' : ''}`}>{emoji}</span>
+                    <span className={`text-[10px] font-medium ${selected ? 'text-primary' : 'text-muted-foreground'}`}>{label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
           <div className="grid gap-2">
