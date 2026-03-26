@@ -150,7 +150,7 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
       toast.success('Image saved! Attach it in WhatsApp');
     }
     track('report_shared', { platform: 'whatsapp', source });
-    window.open(`https://wa.me/`, '_blank');
+    window.location.href = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
   };
 
   const handleTwitter = async () => {
@@ -198,9 +198,9 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
     } catch (err: any) {
       if (err?.name === 'AbortError') return;
     }
-    // Fallback to sms: link
+    // Fallback to sms: link — use location.href so the OS handles the protocol
     track('report_shared', { platform: 'imessage', source });
-    window.open(`sms:&body=${encodeURIComponent(shareText)}`, '_blank');
+    window.location.href = `sms:&body=${encodeURIComponent(shareText)}`;
   };
 
   return (
