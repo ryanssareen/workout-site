@@ -77,13 +77,24 @@ export async function POST(req: NextRequest) {
     console.log(`📊 Generating ${reportType} for ${username}`);
 
     // Fetch all workouts via Admin SDK
-    const workoutsSnapshot = await adminDb
-      .collection('users')
-      .doc(username)
-      .collection('workouts')
-      .get();
-
-    const workouts: WorkoutDoc[] = workoutsSnapshot.docs.map((doc) => doc.data() as WorkoutDoc);
+    let workouts: WorkoutDoc[];
+    try {
+      const workoutsSnapshot = await adminDb
+        .collection('users')
+        .doc(username)
+        .collection('workouts')
+        .get();
+      workouts = workoutsSnapshot.docs.map((doc) => doc.data() as WorkoutDoc);
+    } catch (fetchErr: unknown) {
+      const msg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
+      if (msg.includes('RESOURCE_EXHAUSTED') || msg.includes('quota')) {
+        return NextResponse.json(
+          { error: 'Firebase daily quota reached. Reports will be available when quota resets.' },
+          { status: 503 }
+        );
+      }
+      throw fetchErr;
+    }
 
     if (workouts.length === 0) {
       return NextResponse.json({
@@ -185,8 +196,22 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: unknown) {
     console.error('📊 Report generation error:', error);
+    const message = error instanceof Error ? error.message : 'Failed to generate report';
+    // Detect quota/rate limit errors and return 503 with friendly message
+    if (message.includes('RESOURCE_EXHAUSTED') || message.includes('quota') || message.includes('Quota')) {
+      return NextResponse.json(
+        { error: 'Firebase daily quota reached. Reports will be available when quota resets (Pacific midnight).' },
+        { status: 503 }
+      );
+    }
+    if (message.includes('429') || message.includes('rate limit') || message.includes('Rate limit')) {
+      return NextResponse.json(
+        { error: 'AI service rate limit reached. Please try again in a few minutes.' },
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to generate report' },
+      { error: message },
       { status: 500 }
     );
   }
