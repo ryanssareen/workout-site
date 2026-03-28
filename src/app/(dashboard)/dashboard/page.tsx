@@ -201,35 +201,6 @@ export default function DashboardPage() {
   const completedCount = workouts.filter(w => w.completed).length;
   const streak = useMemo(() => calculateStreak(workouts), [workouts]);
 
-  // Recovery nudge — detect 3+ consecutive days of workouts ending today/yesterday
-  const [recoveryDismissed, setRecoveryDismissed] = useState(false);
-  const consecutiveHardDays = useMemo(() => {
-    const completed = workouts
-      .filter(w => w.completed)
-      .map(w => getWorkoutDate(w));
-    if (completed.length === 0) return 0;
-
-    let count = 0;
-    let check = new Date();
-    check.setHours(0, 0, 0, 0);
-
-    // Check if today has a workout, else start from yesterday
-    if (!completed.some(d => isSameDay(d, check))) {
-      check = subDays(check, 1);
-    }
-
-    for (let i = 0; i < 14; i++) {
-      if (completed.some(d => isSameDay(d, check))) {
-        count++;
-        check = subDays(check, 1);
-      } else {
-        break;
-      }
-    }
-    return count;
-  }, [workouts]);
-  const showRecoveryNudge = consecutiveHardDays >= 3 && !recoveryDismissed;
-
   // "This time last month" comparison
   const monthComparison = useMemo(() => {
     const monthStart = startOfMonth(now);
@@ -369,31 +340,6 @@ export default function DashboardPage() {
             </div>
           </div>
         </Link>
-      )}
-
-      {/* ── RECOVERY NUDGE ─────────────────────────────────────── */}
-      {showRecoveryNudge && (
-        <div className="relative overflow-hidden rounded-2xl border border-blue-500/20 bg-gradient-to-r from-blue-500/10 via-cyan-500/10 to-blue-500/10 p-4">
-          <button
-            onClick={() => setRecoveryDismissed(true)}
-            className="absolute top-3 right-3 p-1 rounded-full hover:bg-white/10 transition-colors z-10"
-          >
-            <X className="h-4 w-4 text-muted-foreground" />
-          </button>
-          <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-md shrink-0">
-              <span className="text-2xl">🧘</span>
-            </div>
-            <div>
-              <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
-                {consecutiveHardDays} days in a row — consider a rest day
-              </p>
-              <p className="text-xs text-muted-foreground">
-                You&apos;ve been crushing it! Recovery is where gains happen. A rest day can help prevent overtraining and injury.
-              </p>
-            </div>
-          </div>
-        </div>
       )}
 
       {/* ── HERO HEADER ────────────────────────────────────────── */}
