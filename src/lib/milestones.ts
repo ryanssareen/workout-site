@@ -68,54 +68,68 @@ export function detectNewMilestones(
   const alreadyHas = (category: MilestoneCategory, value: number) =>
     existingMilestones.some(m => m.category === category && m.value === value);
 
-  // Workout count milestones
-  for (const m of WORKOUT_COUNT_MILESTONES) {
-    if (stats.completedCount >= m.threshold && !alreadyHas('workout_count', m.threshold)) {
-      earned.push({
-        category: 'workout_count',
-        name: m.name,
-        description: m.description,
-        value: m.threshold,
-        unit: 'workouts',
-        icon: m.icon,
-      });
-    }
+  // Workout count milestones — only award the highest new one
+  const highestOwnedCount = existingMilestones
+    .filter(m => m.category === 'workout_count')
+    .reduce((max, m) => Math.max(max, m.value), 0);
+  const newCountMilestones = WORKOUT_COUNT_MILESTONES
+    .filter(m => stats.completedCount >= m.threshold && m.threshold > highestOwnedCount);
+  if (newCountMilestones.length > 0) {
+    const highest = newCountMilestones[newCountMilestones.length - 1];
+    earned.push({
+      category: 'workout_count',
+      name: highest.name,
+      description: highest.description,
+      value: highest.threshold,
+      unit: 'workouts',
+      icon: highest.icon,
+    });
   }
 
-  // Distance milestones
-  for (const m of DISTANCE_MILESTONES) {
-    if (stats.totalDistanceKm >= m.threshold && !alreadyHas('distance', m.threshold)) {
-      earned.push({
-        category: 'distance',
-        name: m.name,
-        description: m.description,
-        value: m.threshold,
-        unit: 'km',
-        icon: m.icon,
-      });
-    }
+  // Distance milestones — only award the highest new one
+  const highestOwnedDist = existingMilestones
+    .filter(m => m.category === 'distance')
+    .reduce((max, m) => Math.max(max, m.value), 0);
+  const newDistMilestones = DISTANCE_MILESTONES
+    .filter(m => stats.totalDistanceKm >= m.threshold && m.threshold > highestOwnedDist);
+  if (newDistMilestones.length > 0) {
+    const highest = newDistMilestones[newDistMilestones.length - 1];
+    earned.push({
+      category: 'distance',
+      name: highest.name,
+      description: highest.description,
+      value: highest.threshold,
+      unit: 'km',
+      icon: highest.icon,
+    });
   }
 
-  // Streak milestones
-  for (const m of STREAK_MILESTONES) {
-    if (stats.currentStreak >= m.threshold && !alreadyHas('streak', m.threshold)) {
-      earned.push({
-        category: 'streak',
-        name: m.name,
-        description: m.description,
-        value: m.threshold,
-        unit: 'days',
-        icon: m.icon,
-      });
-    }
+  // Streak milestones — only award the highest new one
+  const highestOwnedStreak = existingMilestones
+    .filter(m => m.category === 'streak')
+    .reduce((max, m) => Math.max(max, m.value), 0);
+  const newStreakMilestones = STREAK_MILESTONES
+    .filter(m => stats.currentStreak >= m.threshold && m.threshold > highestOwnedStreak);
+  if (newStreakMilestones.length > 0) {
+    const highest = newStreakMilestones[newStreakMilestones.length - 1];
+    earned.push({
+      category: 'streak',
+      name: highest.name,
+      description: highest.description,
+      value: highest.threshold,
+      unit: 'days',
+      icon: highest.icon,
+    });
   }
 
-  // First-ever milestones
+  // First-ever milestones — check by name to avoid value mismatch bugs
   for (const m of FIRST_EVER_MILESTONES) {
-    if ((stats.typeCounts[m.type] || 0) >= 1 && !alreadyHas('first_ever', m.type.length)) {
-      // Use a unique value per type: hash of type string length won't work, use index
-      const typeIndex = FIRST_EVER_MILESTONES.findIndex(f => f.type === m.type) + 1;
-      if (!existingMilestones.some(em => em.category === 'first_ever' && em.name === m.name)) {
+    if ((stats.typeCounts[m.type] || 0) >= 1) {
+      const alreadyEarned = existingMilestones.some(
+        em => em.category === 'first_ever' && em.name === m.name
+      );
+      if (!alreadyEarned) {
+        const typeIndex = FIRST_EVER_MILESTONES.findIndex(f => f.type === m.type) + 1;
         earned.push({
           category: 'first_ever',
           name: m.name,
