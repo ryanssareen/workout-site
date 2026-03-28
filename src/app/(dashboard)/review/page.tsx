@@ -530,18 +530,25 @@ export default function MonthlyReviewPage() {
           <div className="max-w-4xl mx-auto w-full overflow-y-auto max-h-[calc(100vh-200px)]">
             <p className="text-muted-foreground text-xs font-semibold tracking-widest uppercase mb-6 text-center">Sport Breakdown</p>
 
-            {/* Breakdown bar */}
+            {/* Pie chart */}
             {pieData.length > 0 && (
-              <div className="mb-6">
-                <div className="flex h-6 rounded-full overflow-hidden mb-3">
-                  {pieData.map((e, i) => (
-                    <div
-                      key={e.type}
-                      className="h-full first:rounded-l-full last:rounded-r-full transition-all"
-                      style={{ width: animateIn ? `${e.pct}%` : '0%', backgroundColor: TYPE_COLOR[e.type] || '#6b7280', transitionDuration: '800ms', transitionDelay: `${i * 100}ms` }}
-                    />
-                  ))}
-                </div>
+              <div className="mb-6 flex flex-col items-center gap-4">
+                <svg viewBox="-1 -1 2 2" className="w-40 h-40" style={{ transform: 'rotate(-90deg)' }}>
+                  {(() => {
+                    let cumPct = 0;
+                    return pieData.map((e) => {
+                      const startAngle = cumPct * 2 * Math.PI;
+                      cumPct += e.pct / 100;
+                      const endAngle = cumPct * 2 * Math.PI;
+                      const largeArc = e.pct > 50 ? 1 : 0;
+                      const x1 = Math.cos(startAngle), y1 = Math.sin(startAngle);
+                      const x2 = Math.cos(endAngle), y2 = Math.sin(endAngle);
+                      return e.pct >= 100
+                        ? <circle key={e.type} r="1" fill={TYPE_COLOR[e.type] || '#6b7280'} />
+                        : <path key={e.type} d={`M ${x1} ${y1} A 1 1 0 ${largeArc} 1 ${x2} ${y2} L 0 0`} fill={TYPE_COLOR[e.type] || '#6b7280'} />;
+                    });
+                  })()}
+                </svg>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 justify-center">
                   {pieData.map(e => (
                     <div key={e.type} className="flex items-center gap-1.5">
