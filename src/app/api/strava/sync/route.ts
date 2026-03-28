@@ -119,6 +119,114 @@ function buildTypeSpecificFields(workoutType: string, activity: any): Record<str
   return fields;
 }
 
+// ── Server-side PR detection for Strava-synced workouts ──
+interface PRCandidate { name: string; category: string; value: number; unit: string; }
+
+function extractStravaPRCandidates(workoutType: string, activity: any): PRCandidate[] {
+  const candidates: PRCandidate[] = [];
+  const distKm = (activity.distance || 0) / 1000;
+  const timeMin = Math.round((activity.moving_time || 0) / 60);
+
+  if (workoutType === 'run') {
+    if (distKm > 0) candidates.push({ name: 'Longest Run', category: 'distance', value: Math.round(distKm * 100) / 100, unit: 'km' });
+    if (distKm > 0 && timeMin > 0) candidates.push({ name: 'Fastest Run Pace', category: 'speed', value: Math.round((timeMin / distKm) * 100) / 100, unit: 'min/km' });
+    if (timeMin > 0) candidates.push({ name: 'Longest Run Duration', category: 'endurance', value: timeMin, unit: 'min' });
+  } else if (workoutType === 'bike') {
+    if (distKm > 0) candidates.push({ name: 'Longest Ride', category: 'distance', value: Math.round(distKm * 100) / 100, unit: 'km' });
+    if (activity.total_elevation_gain > 0) candidates.push({ name: 'Most Climbing (Bike)', category: 'endurance', value: Math.round(activity.total_elevation_gain), unit: 'm' });
+    if (activity.average_watts > 0) candidates.push({ name: 'Highest Avg Power', category: 'endurance', value: Math.round(activity.average_watts), unit: 'W' });
+    if (timeMin > 0) candidates.push({ name: 'Longest Ride Duration', category: 'endurance', value: timeMin, unit: 'min' });
+  } else if (workoutType === 'swim') {
+    const distM = activity.distance || 0;
+    if (distM > 0) candidates.push({ name: 'Longest Swim', category: 'distance', value: Math.round(distM), unit: 'm' });
+    if (distM >= 100 && timeMin > 0) candidates.push({ name: 'Fastest Swim Pace', category: 'speed', value: Math.round(((timeMin / distM) * 100) * 100) / 100, unit: 'min/100m' });
+  }
+  return candidates;
+}
+
+async function checkStravaPRs(
+  userId: string,
+  syncedActivities: Array<{ type: string; activity: any; stravaId: string; date: Date }>,
+): Promise<string[]> {
+  const newPRNames: string[] = [];
+  if (syncedActivities.length === 0) return newPRNames;
+
+  try {
+    // Gather all PR candidates across all synced activities
+    const allCandidates: Array<PRCandidate & { date: Date; stravaId: string }> = [];
+    for (const sa of syncedActivities) {
+      const candidates = extractStravaPRCandidates(sa.type, sa.activity);
+      for (const c of candidates) {
+        allCandidates.push({ ...c, date: sa.date, stravaId: sa.stravaId });
+      }
+    }
+    if (allCandidates.length === 0) return newPRNames;
+
+    // Fetch existing PRs for this user
+    const existingSnap = await adminDb.collection('personalRecords')
+      .where('userId', '==', userId)
+      .get();
+    const existingPRs = new Map<string, { value: number; docId: string }>();
+    for (const doc of existingSnap.docs) {
+      const data = doc.data();
+      existingPRs.set(data.name, { value: data.value, docId: doc.id });
+    }
+
+    // Check each candidate
+    for (const candidate of allCandidates) {
+      const existing = existingPRs.get(candidate.name);
+      let isBetter = false;
+
+      if (!existing) {
+        isBetter = true;
+      } else if (candidate.category === 'speed') {
+        isBetter = candidate.value < existing.value; // lower is better for pace
+      } else {
+        isBetter = candidate.value > existing.value; // higher is better for distance/endurance
+      }
+
+      if (isBetter) {
+        const prData: any = {
+          userId,
+          name: candidate.name,
+          category: candidate.category,
+          value: candidate.value,
+          unit: candidate.unit,
+          date: admin.firestore.Timestamp.fromDate(candidate.date),
+          stravaActivityId: candidate.stravaId,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+
+        if (existing) {
+          // Update existing PR
+          await adminDb.collection('personalRecords').doc(existing.docId).update(prData);
+          // Add to history
+          await adminDb.collection('personalRecords').doc(existing.docId)
+            .collection('history').add({
+              value: candidate.value,
+              date: admin.firestore.Timestamp.fromDate(candidate.date),
+              previousValue: existing.value,
+              source: 'strava',
+            });
+        } else {
+          // Create new PR
+          prData.createdAt = admin.firestore.FieldValue.serverTimestamp();
+          const ref = await adminDb.collection('personalRecords').add(prData);
+          existingPRs.set(candidate.name, { value: candidate.value, docId: ref.id });
+        }
+
+        newPRNames.push(candidate.name);
+        // Update our local map so subsequent candidates in same sync compare correctly
+        existingPRs.set(candidate.name, { value: candidate.value, docId: existing?.docId || '' });
+      }
+    }
+  } catch (err) {
+    console.error('⚠️ PR detection during Strava sync failed (non-fatal):', err);
+  }
+
+  return newPRNames;
+}
+
 function mapStravaType(stravaType: string): 'swim' | 'run' | 'walk' | 'bike' | 'strength' {
   const typeMap: Record<string, 'swim' | 'run' | 'walk' | 'bike' | 'strength'> = {
     'Run': 'run',
@@ -779,6 +887,7 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
     let newWorkoutsCount = 0;
     let mergedWorkoutsCount = 0;
     let skippedCount = 0;
+    const syncedForPR: Array<{ type: string; activity: any; stravaId: string; date: Date }> = [];
     const mergeStats = {
       autoPlannedMerged: 0,
       autoImportMerged: 0,
@@ -952,6 +1061,7 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
         plannedMatch.match.data.stravaActivityId = stravaId;
         mergedWorkoutsCount++;
         mergeStats.autoPlannedMerged++;
+        syncedForPR.push({ type: workoutType, activity, stravaId, date: activityDate });
       } else {
         shouldCreate = true;
       }
@@ -991,6 +1101,7 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
             importedMatch.match.data.source = 'strava';
             mergedWorkoutsCount++;
             mergeStats.autoImportMerged++;
+            syncedForPR.push({ type: workoutType, activity, stravaId, date: activityDate });
             shouldCreate = false;
           }
         } catch (e: any) {
@@ -1061,6 +1172,7 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
           console.log(`  ➕ Creating: ${activity.name}`);
           await workoutsCollection.doc(standaloneId).set(newWorkoutData);
           newWorkoutsCount++;
+          syncedForPR.push({ type: workoutType, activity, stravaId, date: activityDate });
         }
       }
 
@@ -1074,6 +1186,19 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
     }
 
     console.log(`✅ Finished: Created ${newWorkoutsCount}, merged ${mergedWorkoutsCount}, skipped ${skippedCount}`);
+
+    // ── Auto-detect PRs from synced activities ──
+    let newPRs: string[] = [];
+    if (syncedForPR.length > 0) {
+      try {
+        newPRs = await checkStravaPRs(userId, syncedForPR);
+        if (newPRs.length > 0) {
+          console.log(`🏆 New PRs detected: ${newPRs.join(', ')}`);
+        }
+      } catch (err) {
+        console.error('⚠️ PR detection failed (non-fatal):', err);
+      }
+    }
 
     // ── Update sync tracking timestamps on user doc ──
     try {
@@ -1137,6 +1262,7 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
       mergeStats,
       totalActivities: activities.length,
       message,
+      newPRs,
       dedup: dedupInfo,
       // Backfill signals: client uses these to decide whether to fetch next page
       ...(syncMode === 'backfill' && {
