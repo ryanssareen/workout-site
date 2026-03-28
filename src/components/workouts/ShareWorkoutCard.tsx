@@ -128,29 +128,38 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
   };
 
   const handleWhatsApp = async () => {
-    // Try native share with image (works on mobile)
-    const dataUrl = await generateImage();
-    if (dataUrl) {
-      try {
-        const blob = await (await fetch(dataUrl)).blob();
-        const file = new File([blob], `${fileName}.jpg`, { type: 'image/jpeg' });
-        if (navigator.canShare?.({ files: [file] })) {
-          await navigator.share({ files: [file], text: shareText });
-          return;
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    // Native share with image only on mobile (desktop triggers generic macOS share sheet)
+    if (isMobile) {
+      const dataUrl = await generateImage();
+      if (dataUrl) {
+        try {
+          const blob = await (await fetch(dataUrl)).blob();
+          const file = new File([blob], `${fileName}.jpg`, { type: 'image/jpeg' });
+          if (navigator.canShare?.({ files: [file] })) {
+            await navigator.share({ files: [file], text: shareText });
+            track('report_shared', { platform: 'whatsapp', source });
+            return;
+          }
+        } catch (err: any) {
+          if (err?.name === 'AbortError') return;
         }
-      } catch (err: any) {
-        if (err?.name === 'AbortError') return;
       }
-      // Fallback: download image + copy caption + open WhatsApp
-      const dl = document.createElement('a');
-      dl.download = `${fileName}.jpg`;
-      dl.href = dataUrl;
-      dl.click();
-      try { await navigator.clipboard.writeText(shareText); } catch { /* ignore */ }
-      toast.success('Image saved! Attach it in WhatsApp');
+    } else {
+      // Desktop: save image + copy caption
+      const dataUrl = await generateImage();
+      if (dataUrl) {
+        const dl = document.createElement('a');
+        dl.download = `${fileName}.jpg`;
+        dl.href = dataUrl;
+        dl.click();
+        try { await navigator.clipboard.writeText(shareText); } catch { /* ignore */ }
+        toast.success('Image saved! Caption copied — paste in WhatsApp');
+      }
     }
     track('report_shared', { platform: 'whatsapp', source });
-    window.location.href = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+    // window.open avoids macOS system share sheet, opens WhatsApp Web directly
+    window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank', 'noopener');
   };
 
   const handleTwitter = async () => {
