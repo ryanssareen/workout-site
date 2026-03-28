@@ -1,13 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { getPersonalRecords, getMilestones } from '@/lib/firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy, Star, ChevronRight, Flame, Medal, Award } from 'lucide-react';
+import { Trophy, Star, ChevronRight, Flame, Medal, Award, X, Share2 } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import type { PersonalRecord } from '@/types';
 import type { Milestone } from '@/types/achievements';
+import { MilestoneCard } from './MilestoneCard';
+import { ShareButtons } from '@/components/workouts/ShareWorkoutCard';
 
 const MILESTONE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   star: Star, medal: Medal, award: Award, trophy: Trophy, flame: Flame,
@@ -32,6 +34,8 @@ export function DashboardAchievements({ username, prefetchedPRs, prefetchedMiles
   const [prs, setPrs] = useState<PersonalRecord[]>(prefetchedPRs?.slice(0, 3) ?? []);
   const [milestones, setMilestones] = useState<Milestone[]>(prefetchedMilestones?.slice(0, 3) ?? []);
   const [loading, setLoading] = useState(!prefetchedPRs && !prefetchedMilestones);
+  const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null);
+  const milestoneCardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Skip fetch if data was provided via props
@@ -142,7 +146,8 @@ export function DashboardAchievements({ username, prefetchedPRs, prefetchedMiles
                 return (
                   <div
                     key={ms.id}
-                    className="flex items-center gap-3 p-2.5 rounded-xl border hover:border-primary/20 transition-all"
+                    onClick={() => setSelectedMilestone(ms)}
+                    className="flex items-center gap-3 p-2.5 rounded-xl border hover:border-primary/20 transition-all cursor-pointer"
                   >
                     <div className={`h-9 w-9 rounded-lg bg-muted flex items-center justify-center shrink-0`}>
                       <IconComp className={`h-4 w-4 ${colorClass}`} />
@@ -158,6 +163,42 @@ export function DashboardAchievements({ username, prefetchedPRs, prefetchedMiles
             </div>
           </CardContent>
         </Card>
+      )}
+      {/* Milestone Detail Modal */}
+      {selectedMilestone && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setSelectedMilestone(null)}>
+          <div className="relative w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={() => setSelectedMilestone(null)}
+              className="absolute -top-3 -right-3 z-10 h-8 w-8 rounded-full bg-background border border-border flex items-center justify-center hover:bg-muted transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <MilestoneCard
+              ref={milestoneCardRef}
+              milestone={{
+                category: selectedMilestone.category,
+                name: selectedMilestone.name,
+                description: selectedMilestone.description,
+                value: selectedMilestone.value,
+                unit: selectedMilestone.unit,
+                icon: selectedMilestone.icon,
+              }}
+              date={selectedMilestone.date?.toDate?.() ?? new Date(selectedMilestone.date as any)}
+              userName={username}
+            />
+            <div className="mt-4 flex justify-center">
+              <ShareButtons
+                title="Milestone"
+                fileName={`milestone-${selectedMilestone.name.toLowerCase().replace(/\s+/g, '-')}`}
+                cardRef={milestoneCardRef}
+                shareText={`${selectedMilestone.name} — ${selectedMilestone.description} 🏆 The Daily Athlete`}
+                shareUrl={typeof window !== 'undefined' ? `${window.location.origin}/profile` : ''}
+                onClose={() => setSelectedMilestone(null)}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
