@@ -3,14 +3,14 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { getWorkout, completeWorkout } from '@/lib/firebase/firestore';
+import { getWorkout, completeWorkout, deleteWorkout } from '@/lib/firebase/firestore';
 import { useWorkoutStore } from '@/lib/stores/workoutStore';
 import { Workout, AchievementResult } from '@/types';
 import { isCoachAssigned } from '@/types/workout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Edit, ArrowLeft, Calendar, Clock, CheckCircle2, Circle, Activity, BookmarkPlus, BookmarkX, BarChart3, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Edit, ArrowLeft, Calendar, Clock, CheckCircle2, Circle, Activity, BookmarkPlus, BookmarkX, BarChart3, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -81,6 +81,8 @@ export default function WorkoutDetailPage() {
   const [showCelebration, setShowCelebration] = useState(false);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [showSplits, setShowSplits] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -275,10 +277,27 @@ export default function WorkoutDetailPage() {
   if (!user || !workout) return null;
 
   const canEdit = user.role === 'coach' && workout.createdBy === user.username;
+  const canDelete = workout.ownerUsername === user.username || canEdit;
   const isPastWorkout = safeToDate(workout) < new Date();
   const isMissed = isPastWorkout && !workout.completed;
   const isAthlete = user.role === 'athlete' || user.role === 'student';
   const hasTemplate = !!(workout as any).templateId;
+
+  const handleDelete = async () => {
+    if (!workout || !user) return;
+    setIsDeleting(true);
+    try {
+      await deleteWorkout(workout.ownerUsername, workout.id);
+      useWorkoutStore.getState().clearCache();
+      toast.success('Workout deleted');
+      router.push('/workouts');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete workout');
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
 
   return (
     <div className="max-w-3xl mx-auto space-y-4 sm:space-y-6">
@@ -290,38 +309,48 @@ export default function WorkoutDetailPage() {
           </Link>
         </Button>
 
-        {canEdit && (
-          <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2">
+          {canEdit && (
             <Button asChild>
               <Link href={`/workouts/${workout.id}/edit`}>
                 <Edit className="mr-2 h-4 w-4" />
                 Edit
               </Link>
             </Button>
-            {hasTemplate ? (
-              <Button 
-                onClick={handleUnsaveTemplate} 
-                variant="outline"
-                disabled={isSavingTemplate}
-              >
-                {isSavingTemplate ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <BookmarkX className="mr-2 h-4 w-4" />
-                )}
-                Unsave Template
-              </Button>
-            ) : (
-              <Button 
-                onClick={openTemplateDialog} 
-                variant="outline"
-              >
-                <BookmarkPlus className="mr-2 h-4 w-4" />
-                Save as Template
-              </Button>
-            )}
-          </div>
-        )}
+          )}
+          {canEdit && (hasTemplate ? (
+            <Button
+              onClick={handleUnsaveTemplate}
+              variant="outline"
+              disabled={isSavingTemplate}
+            >
+              {isSavingTemplate ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <BookmarkX className="mr-2 h-4 w-4" />
+              )}
+              Unsave Template
+            </Button>
+          ) : (
+            <Button
+              onClick={openTemplateDialog}
+              variant="outline"
+            >
+              <BookmarkPlus className="mr-2 h-4 w-4" />
+              Save as Template
+            </Button>
+          ))}
+          {canDelete && (
+            <Button
+              variant="outline"
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card
@@ -818,6 +847,26 @@ export default function WorkoutDetailPage() {
       )}
 
       {/* Save as Template dialog */}
+      {/* Delete Confirmation */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Workout</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete &ldquo;{workout.name}&rdquo;? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)} disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting...</> : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
         <DialogContent>
           <DialogHeader>
