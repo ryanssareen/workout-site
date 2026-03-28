@@ -389,7 +389,12 @@ export default function CalendarPage() {
             onToggleComplete={handleToggleComplete}
           />
         );
-      case 'week':
+      case 'week': {
+        const weekEnd = addDays(weekStart, 6);
+        const weekDays: Date[] = [];
+        for (let d = new Date(weekStart); d <= weekEnd; d = addDays(d, 1)) {
+          weekDays.push(new Date(d));
+        }
         return (
           <>
             <MobileWeekStrip
@@ -399,15 +404,23 @@ export default function CalendarPage() {
               onWeekChange={setWeekStart}
               workoutsByDate={workoutsByDate}
             />
-            <div className="mt-2">
-              <CalendarDayWorkouts
-                date={selectedDate}
-                workouts={selectedDateWorkouts}
-                onToggleComplete={handleToggleComplete}
-              />
+            <div className="mt-3 space-y-3">
+              {weekDays.map(day => {
+                const key = format(day, 'yyyy-MM-dd');
+                const dayWorkouts = workoutsByDate.get(key) || [];
+                return (
+                  <CalendarDayWorkouts
+                    key={key}
+                    date={day}
+                    workouts={dayWorkouts}
+                    onToggleComplete={handleToggleComplete}
+                  />
+                );
+              })}
             </div>
           </>
         );
+      }
       case 'month':
         return (
           <CalendarFullMonthView
