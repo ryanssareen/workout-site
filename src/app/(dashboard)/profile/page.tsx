@@ -132,6 +132,19 @@ export default function ProfilePage() {
       .slice(0, 3);
   }, [personalRecords]);
 
+  // Collect all workout photos (most recent first, max 12)
+  const photoWorkouts = useMemo(() => {
+    return [...workouts]
+      .filter(w => w.photos && w.photos.length > 0)
+      .sort((a, b) => {
+        const ad = a.date?.toDate?.() ?? new Date(a.date as any);
+        const bd = b.date?.toDate?.() ?? new Date(b.date as any);
+        return bd.getTime() - ad.getTime();
+      })
+      .slice(0, 12)
+      .flatMap(w => (w.photos || []).map(url => ({ url, workoutId: w.id, name: w.name, type: w.type })));
+  }, [workouts]);
+
   // Coach stats (loaded only for coaches)
   const [coachStats, setCoachStats] = useState<CoachStats | null>(null);
   useEffect(() => {
@@ -340,6 +353,30 @@ export default function ProfilePage() {
 
       {/* ── Activity Heatmap ── */}
       {hasWorkouts && <ActivityHeatmap workouts={workouts} />}
+
+      {/* ── Photo Gallery ── */}
+      {photoWorkouts.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Workout Photos</h2>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 rounded-xl overflow-hidden">
+            {photoWorkouts.slice(0, 12).map((photo, i) => (
+              <Link key={`${photo.workoutId}-${i}`} href={`/workouts/${photo.workoutId}`} className="relative aspect-square group overflow-hidden rounded-lg">
+                <img
+                  src={photo.url}
+                  alt={photo.name || 'Workout photo'}
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute bottom-1.5 left-1.5 right-1.5">
+                    <p className="text-[10px] text-white font-medium truncate">{TYPE_EMOJI[photo.type] || '⚡'} {photo.name}</p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── Training Breakdown + Recent Workouts ── */}
       {hasWorkouts && (
