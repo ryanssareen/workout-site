@@ -424,6 +424,94 @@ export default function WorkoutDetailPage() {
             </div>
           )}
 
+          {/* HR Zone Breakdown */}
+          {workout.hrZones && workout.hrZones.zones && (
+            <div className="bg-muted/50 rounded-lg p-4 space-y-4">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Activity className="h-4 w-4 text-red-500" />
+                Heart Rate Zones
+                <span className="text-xs font-normal text-muted-foreground ml-auto">Max HR: {workout.hrZones.maxHR} bpm</span>
+              </h3>
+
+              {/* Zone bars */}
+              <div className="space-y-2">
+                {workout.hrZones.zones.map(z => {
+                  const colors = ['bg-gray-400', 'bg-blue-500', 'bg-green-500', 'bg-orange-500', 'bg-red-500'];
+                  const mins = Math.floor(z.seconds / 60);
+                  const secs = z.seconds % 60;
+                  return (
+                    <div key={z.zone} className="flex items-center gap-3">
+                      <div className="w-24 sm:w-28 text-xs text-muted-foreground shrink-0">
+                        <span className="font-semibold text-foreground">Z{z.zone}</span> {z.name}
+                      </div>
+                      <div className="flex-1 h-6 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className={`h-full ${colors[z.zone - 1]} rounded-full transition-all duration-700`}
+                          style={{ width: `${Math.max(z.pct, z.pct > 0 ? 2 : 0)}%` }}
+                        />
+                      </div>
+                      <div className="w-16 text-right text-xs tabular-nums shrink-0">
+                        <span className="font-semibold">{z.pct}%</span>
+                        <span className="text-muted-foreground ml-1">{mins}:{String(secs).padStart(2, '0')}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* HR Timeline */}
+              {workout.hrStream && workout.hrStream.heartrate.length > 0 && (
+                <div className="pt-2">
+                  <p className="text-xs text-muted-foreground mb-2">Heart Rate Over Time</p>
+                  <div className="relative h-32 w-full">
+                    {/* Zone background bands */}
+                    {(() => {
+                      const maxHR = workout.hrZones!.maxHR;
+                      const chartMax = Math.min(Math.max(...workout.hrStream!.heartrate) + 10, maxHR + 20);
+                      const chartMin = Math.max(Math.min(...workout.hrStream!.heartrate) - 10, 40);
+                      const range = chartMax - chartMin;
+                      const bandColors = ['rgba(156,163,175,0.1)', 'rgba(59,130,246,0.1)', 'rgba(34,197,94,0.1)', 'rgba(249,115,22,0.15)', 'rgba(239,68,68,0.15)'];
+                      const zoneBounds = [0, 0.6, 0.7, 0.8, 0.9, 1.0].map(p => p * maxHR);
+
+                      return zoneBounds.slice(0, -1).map((low, i) => {
+                        const high = zoneBounds[i + 1];
+                        const bottom = Math.max(0, ((low - chartMin) / range) * 100);
+                        const top = Math.min(100, ((high - chartMin) / range) * 100);
+                        if (top <= 0 || bottom >= 100) return null;
+                        return (
+                          <div
+                            key={i}
+                            className="absolute left-0 right-0"
+                            style={{ bottom: `${bottom}%`, height: `${top - bottom}%`, backgroundColor: bandColors[i] }}
+                          />
+                        );
+                      });
+                    })()}
+                    {/* SVG line */}
+                    <svg viewBox={`0 0 ${workout.hrStream.heartrate.length} 100`} className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+                      <polyline
+                        fill="none"
+                        stroke="#ef4444"
+                        strokeWidth="1.5"
+                        vectorEffect="non-scaling-stroke"
+                        points={workout.hrStream.heartrate.map((hr, i) => {
+                          const maxHR = workout.hrZones!.maxHR;
+                          const chartMax = Math.min(Math.max(...workout.hrStream!.heartrate) + 10, maxHR + 20);
+                          const chartMin = Math.max(Math.min(...workout.hrStream!.heartrate) - 10, 40);
+                          const y = 100 - ((hr - chartMin) / (chartMax - chartMin)) * 100;
+                          return `${i},${y}`;
+                        }).join(' ')}
+                      />
+                    </svg>
+                    {/* Y-axis labels */}
+                    <div className="absolute left-0 top-0 text-[9px] text-muted-foreground/60">{Math.min(Math.max(...workout.hrStream.heartrate) + 10, (workout.hrZones?.maxHR || 190) + 20)}</div>
+                    <div className="absolute left-0 bottom-0 text-[9px] text-muted-foreground/60">{Math.max(Math.min(...workout.hrStream.heartrate) - 10, 40)}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Splits / Laps */}
           {workout.source === 'strava' && (
             <div className="bg-muted/50 rounded-lg p-4">
@@ -467,6 +555,8 @@ export default function WorkoutDetailPage() {
                           laps: data.laps,
                           splits: data.splits,
                           ...(data.photos?.length > 0 ? { photos: data.photos } : {}),
+                          ...(data.hrZones ? { hrZones: data.hrZones } : {}),
+                          ...(data.hrStream ? { hrStream: data.hrStream } : {}),
                         } : null);
                         setShowSplits(true);
                         toast.success('Loaded detailed activity data');

@@ -212,6 +212,12 @@ export interface Workout {
   splitsMetric?: StravaSplit[];
   splitsStandard?: StravaSplit[];
   stravaExtended?: StravaExtendedData;
+  // Heart rate zone breakdown (computed from Strava HR stream)
+  hrZones?: {
+    zones: Array<{ zone: number; name: string; min: number; max: number; seconds: number; pct: number }>;
+    maxHR: number;
+  };
+  hrStream?: { time: number[]; heartrate: number[] }; // downsampled HR timeline
   // Manual completion fields
   completionNotes?: string;
   completionRating?: 1 | 2 | 3 | 4 | 5;

@@ -27,6 +27,65 @@ function getRateLimitMessage(resp: Response): { message: string; isDaily: boolea
   return { message: 'Strava rate limit reached. Try again in a few minutes.', isDaily: false, isCooldown: false };
 }
 
+// ── HR Zone computation ──
+const ZONE_DEFS = [
+  { zone: 1, name: 'Recovery', minPct: 0, maxPct: 60 },
+  { zone: 2, name: 'Endurance', minPct: 60, maxPct: 70 },
+  { zone: 3, name: 'Tempo', minPct: 70, maxPct: 80 },
+  { zone: 4, name: 'Threshold', minPct: 80, maxPct: 90 },
+  { zone: 5, name: 'VO2 Max', minPct: 90, maxPct: 100 },
+];
+
+function estimateMaxHR(ageRange?: string): number {
+  // Use midpoint of age range with 220-age formula, fallback 190
+  const midpoints: Record<string, number> = {
+    'under-18': 16, '18-24': 21, '25-34': 30, '35-44': 40,
+    '45-54': 50, '55-64': 60, '65+': 70,
+  };
+  const age = ageRange ? midpoints[ageRange] : undefined;
+  return age ? 220 - age : 190;
+}
+
+function computeHRZones(heartrate: number[], time: number[], maxHR: number) {
+  const zones = ZONE_DEFS.map(z => ({
+    zone: z.zone, name: z.name,
+    min: Math.round(maxHR * z.minPct / 100),
+    max: Math.round(maxHR * z.maxPct / 100),
+    seconds: 0, pct: 0,
+  }));
+
+  let totalSeconds = 0;
+  for (let i = 1; i < heartrate.length; i++) {
+    const dt = time[i] - time[i - 1];
+    if (dt <= 0 || dt > 30) continue; // skip gaps
+    const hr = heartrate[i];
+    const pct = (hr / maxHR) * 100;
+    const zone = pct >= 90 ? 4 : pct >= 80 ? 3 : pct >= 70 ? 2 : pct >= 60 ? 1 : 0;
+    zones[zone].seconds += dt;
+    totalSeconds += dt;
+  }
+
+  if (totalSeconds > 0) {
+    for (const z of zones) {
+      z.pct = Math.round((z.seconds / totalSeconds) * 100);
+    }
+  }
+  return zones;
+}
+
+function downsampleStream(time: number[], heartrate: number[], targetPoints = 300): { time: number[]; heartrate: number[] } {
+  if (heartrate.length <= targetPoints) return { time, heartrate };
+  const step = heartrate.length / targetPoints;
+  const outTime: number[] = [];
+  const outHR: number[] = [];
+  for (let i = 0; i < targetPoints; i++) {
+    const idx = Math.min(Math.floor(i * step), heartrate.length - 1);
+    outTime.push(time[idx]);
+    outHR.push(heartrate[idx]);
+  }
+  return { time: outTime, heartrate: outHR };
+}
+
 async function fetchGearDetails(gearId: string | undefined, accessToken: string): Promise<any | null> {
   if (!gearId) return null;
   try {
@@ -87,6 +146,8 @@ export async function GET(request: NextRequest) {
         segmentEfforts: workout.stravaExtended?.segmentEfforts || [],
         stravaExtended: workout.stravaExtended || null,
         photos: workout.photos || [],
+        hrZones: workout.hrZones || null,
+        hrStream: workout.hrStream || null,
       });
     }
 
@@ -282,6 +343,36 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Fetch HR stream if activity has heart rate data
+    let hrZones: any = null;
+    let hrStream: any = null;
+    if (detail.has_heartrate) {
+      try {
+        const streamsResp = await fetch(
+          `https://www.strava.com/api/v3/activities/${workout.stravaActivityId}/streams?keys=heartrate,time&key_by_type=true`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        if (streamsResp.ok) {
+          const streamsData = await streamsResp.json();
+          const hrData = streamsData.heartrate?.data;
+          const timeData = streamsData.time?.data;
+          if (Array.isArray(hrData) && Array.isArray(timeData) && hrData.length > 0) {
+            // Compute max HR: use activity max, or estimate from age
+            const activityMaxHR = detail.max_heartrate || Math.max(...hrData);
+            const estimatedMax = estimateMaxHR(userData.ageRange);
+            const maxHR = Math.max(activityMaxHR, estimatedMax);
+
+            const zones = computeHRZones(hrData, timeData, maxHR);
+            hrZones = { zones, maxHR };
+            hrStream = downsampleStream(timeData, hrData);
+            console.log(`💓 HR zones computed: ${zones.map(z => `Z${z.zone}=${z.pct}%`).join(' ')}`);
+          }
+        }
+      } catch {
+        // Non-fatal — HR stream is optional
+      }
+    }
+
     // Store in Firestore for future use (cache)
     const updateData: any = { stravaDetailsFetched: true };
     if (laps.length > 0) updateData.laps = laps;
@@ -291,6 +382,8 @@ export async function GET(request: NextRequest) {
     if (photos.length > 0) updateData.photos = photos;
     if (photos.length > 0 || detail.total_photo_count > 0 || workout.hasStravaPhotos) updateData.hasStravaPhotos = true;
     if (Object.keys(stravaExtended).length > 0) updateData.stravaExtended = stravaExtended;
+    if (hrZones) updateData.hrZones = hrZones;
+    if (hrStream) updateData.hrStream = hrStream;
 
     await workoutRef.update(updateData);
 
@@ -304,6 +397,8 @@ export async function GET(request: NextRequest) {
       segmentEfforts,
       stravaExtended,
       photos,
+      hrZones,
+      hrStream,
     });
   } catch (error: any) {
     console.error('Activity details error:', error);
