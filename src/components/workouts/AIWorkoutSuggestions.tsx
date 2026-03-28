@@ -69,6 +69,28 @@ interface AIWorkoutSuggestionsProps {
   athleteProfile?: AthleteProfile;
 }
 
+const AI_CACHE_KEY = 'tda_ai_suggestions';
+const AI_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+function getCachedSuggestions(): { suggestions: WorkoutSuggestion[]; analysis: TrainingAnalysis | null; aiEnhanced: boolean } | null {
+  try {
+    const raw = sessionStorage.getItem(AI_CACHE_KEY);
+    if (!raw) return null;
+    const cached = JSON.parse(raw);
+    if (Date.now() - cached.cachedAt > AI_CACHE_TTL_MS) {
+      sessionStorage.removeItem(AI_CACHE_KEY);
+      return null;
+    }
+    return cached;
+  } catch { return null; }
+}
+
+function setCachedSuggestions(suggestions: WorkoutSuggestion[], analysis: TrainingAnalysis | null, aiEnhanced: boolean) {
+  try {
+    sessionStorage.setItem(AI_CACHE_KEY, JSON.stringify({ suggestions, analysis, aiEnhanced, cachedAt: Date.now() }));
+  } catch { /* storage full */ }
+}
+
 export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfile }: AIWorkoutSuggestionsProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -77,6 +99,16 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [analysis, setAnalysis] = useState<TrainingAnalysis | null>(null);
   const [aiEnhanced, setAiEnhanced] = useState(false);
+
+  // Load from cache on mount
+  useState(() => {
+    const cached = getCachedSuggestions();
+    if (cached) {
+      setSuggestions(cached.suggestions);
+      setAnalysis(cached.analysis);
+      setAiEnhanced(cached.aiEnhanced);
+    }
+  });
 
   const loadSuggestions = async () => {
     setLoading(true);
@@ -137,6 +169,7 @@ export function AIWorkoutSuggestions({ userId, recentWorkouts = [], athleteProfi
         };
       });
       setSuggestions(normalized);
+      setCachedSuggestions(normalized, data.analysis || null, data.aiEnhanced ?? false);
       track('ai_suggestion_viewed', { count: normalized.length, aiEnhanced: data.aiEnhanced ?? false });
     } catch (err: any) {
       setError(err.message || 'Failed to load suggestions');
