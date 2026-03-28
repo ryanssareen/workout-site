@@ -36,7 +36,14 @@ import {
   Award,
   Settings,
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
+
+function safeFormat(d: any, fmt: string): string {
+  try {
+    const date = d?.toDate?.() ?? new Date(d);
+    return isValid(date) ? format(date, fmt) : '';
+  } catch { return ''; }
+}
 import Link from 'next/link';
 import type { Workout, PersonalRecord } from '@/types';
 import type { Milestone } from '@/types/achievements';
@@ -362,13 +369,12 @@ export default function ProfilePage() {
               <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Recent Workouts</h2>
               <div className="space-y-1.5">
                 {recentWorkouts.map(w => {
-                  const d = w.date?.toDate?.() ?? new Date(w.date as any);
                   return (
                     <Link key={w.id} href={`/workouts/${w.id}`} className="flex items-center gap-2.5 py-1.5 hover:bg-muted/50 rounded-lg px-1 -mx-1 transition-colors">
                       <span className="text-base">{TYPE_EMOJI[w.type] || '⚡'}</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{w.name}</p>
-                        <p className="text-[11px] text-muted-foreground">{format(d, 'MMM d')}</p>
+                        <p className="text-[11px] text-muted-foreground">{safeFormat(w.date, 'MMM d')}</p>
                       </div>
                       <div className="text-right text-xs text-muted-foreground tabular-nums">
                         {w.actualStats?.distance
@@ -394,7 +400,6 @@ export default function ProfilePage() {
           <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Personal Records</h2>
           <div className="grid gap-2.5 sm:grid-cols-3">
             {topPRs.map(pr => {
-              const d = pr.date?.toDate?.() ?? new Date(pr.date as any);
               return (
                 <div key={pr.id} className="rounded-xl border bg-card p-3.5 space-y-1">
                   <div className="flex items-center gap-2">
@@ -404,7 +409,7 @@ export default function ProfilePage() {
                   <p className="text-xl font-bold tabular-nums">
                     {pr.value} <span className="text-xs font-normal text-muted-foreground">{pr.unit}</span>
                   </p>
-                  <p className="text-[11px] text-muted-foreground">{format(d, 'MMM d, yyyy')}</p>
+                  <p className="text-[11px] text-muted-foreground">{safeFormat(pr.date, 'MMM d, yyyy')}</p>
                 </div>
               );
             })}
@@ -418,7 +423,6 @@ export default function ProfilePage() {
           <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Milestones</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             {milestones.map(ms => {
-              const d = ms.date?.toDate?.() ?? new Date(ms.date as any);
               const IconComp = MILESTONE_ICON_MAP[ms.icon] || Star;
               const gradient = MILESTONE_CATEGORY_COLORS[ms.category] || 'from-amber-400 to-orange-500';
               return (
@@ -430,7 +434,7 @@ export default function ProfilePage() {
                     <p className="text-sm font-semibold leading-tight">{ms.name}</p>
                     <p className="text-[10px] text-muted-foreground mt-0.5">{ms.description}</p>
                   </div>
-                  <p className="text-[10px] text-muted-foreground">{format(d, 'MMM d, yyyy')}</p>
+                  <p className="text-[10px] text-muted-foreground">{safeFormat(ms.date, 'MMM d, yyyy')}</p>
                 </div>
               );
             })}
