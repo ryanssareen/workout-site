@@ -92,17 +92,29 @@ export default function WorkoutDetailPage() {
       if (!params.id || typeof params.id !== 'string') return;
 
       setDataLoading(true);
-      const ownerUsername = searchParams.get('owner') || user!.username;
-      const data = await getWorkout(ownerUsername, params.id);
+      try {
+        const ownerUsername = searchParams.get('owner') || user?.username;
+        if (!ownerUsername) return;
+        const data = await getWorkout(ownerUsername, params.id);
 
-      if (!data) {
-        toast.error('Workout not found');
-        router.push('/workouts');
-        return;
+        if (!data) {
+          toast.error('Workout not found');
+          router.push('/workouts');
+          return;
+        }
+
+        setWorkout(data);
+      } catch (err: any) {
+        const msg = err?.message || '';
+        if (msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED')) {
+          toast.error('Daily quota reached — try again later');
+        } else {
+          toast.error('Failed to load workout');
+        }
+        console.error('Workout load error:', err);
+      } finally {
+        setDataLoading(false);
       }
-
-      setWorkout(data);
-      setDataLoading(false);
     }
 
     if (user) {
@@ -460,55 +472,37 @@ export default function WorkoutDetailPage() {
               </div>
 
               {/* HR Timeline */}
-              {workout.hrStream && workout.hrStream.heartrate.length > 0 && (
-                <div className="pt-2">
-                  <p className="text-xs text-muted-foreground mb-2">Heart Rate Over Time</p>
-                  <div className="relative h-32 w-full">
-                    {/* Zone background bands */}
-                    {(() => {
-                      const maxHR = workout.hrZones!.maxHR;
-                      const chartMax = Math.min(Math.max(...workout.hrStream!.heartrate) + 10, maxHR + 20);
-                      const chartMin = Math.max(Math.min(...workout.hrStream!.heartrate) - 10, 40);
-                      const range = chartMax - chartMin;
-                      const bandColors = ['rgba(156,163,175,0.1)', 'rgba(59,130,246,0.1)', 'rgba(34,197,94,0.1)', 'rgba(249,115,22,0.15)', 'rgba(239,68,68,0.15)'];
-                      const zoneBounds = [0, 0.6, 0.7, 0.8, 0.9, 1.0].map(p => p * maxHR);
-
-                      return zoneBounds.slice(0, -1).map((low, i) => {
-                        const high = zoneBounds[i + 1];
+              {workout.hrStream && workout.hrStream.heartrate.length > 0 && (() => {
+                const hr = workout.hrStream!.heartrate;
+                const maxHR = workout.hrZones!.maxHR;
+                let hrMax = 0, hrMin = 300;
+                for (let i = 0; i < hr.length; i++) { if (hr[i] > hrMax) hrMax = hr[i]; if (hr[i] < hrMin) hrMin = hr[i]; }
+                const chartMax = Math.min(hrMax + 10, maxHR + 20);
+                const chartMin = Math.max(hrMin - 10, 40);
+                const range = chartMax - chartMin || 1;
+                const points = hr.map((v, i) => `${i},${100 - ((v - chartMin) / range) * 100}`).join(' ');
+                const bandColors = ['rgba(156,163,175,0.1)', 'rgba(59,130,246,0.1)', 'rgba(34,197,94,0.1)', 'rgba(249,115,22,0.15)', 'rgba(239,68,68,0.15)'];
+                const zonePcts = [0, 0.6, 0.7, 0.8, 0.9, 1.0];
+                return (
+                  <div className="pt-2">
+                    <p className="text-xs text-muted-foreground mb-2">Heart Rate Over Time</p>
+                    <div className="relative h-32 w-full">
+                      {zonePcts.slice(0, -1).map((p, i) => {
+                        const low = p * maxHR, high = zonePcts[i + 1] * maxHR;
                         const bottom = Math.max(0, ((low - chartMin) / range) * 100);
                         const top = Math.min(100, ((high - chartMin) / range) * 100);
                         if (top <= 0 || bottom >= 100) return null;
-                        return (
-                          <div
-                            key={i}
-                            className="absolute left-0 right-0"
-                            style={{ bottom: `${bottom}%`, height: `${top - bottom}%`, backgroundColor: bandColors[i] }}
-                          />
-                        );
-                      });
-                    })()}
-                    {/* SVG line */}
-                    <svg viewBox={`0 0 ${workout.hrStream.heartrate.length} 100`} className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-                      <polyline
-                        fill="none"
-                        stroke="#ef4444"
-                        strokeWidth="1.5"
-                        vectorEffect="non-scaling-stroke"
-                        points={workout.hrStream.heartrate.map((hr, i) => {
-                          const maxHR = workout.hrZones!.maxHR;
-                          const chartMax = Math.min(Math.max(...workout.hrStream!.heartrate) + 10, maxHR + 20);
-                          const chartMin = Math.max(Math.min(...workout.hrStream!.heartrate) - 10, 40);
-                          const y = 100 - ((hr - chartMin) / (chartMax - chartMin)) * 100;
-                          return `${i},${y}`;
-                        }).join(' ')}
-                      />
-                    </svg>
-                    {/* Y-axis labels */}
-                    <div className="absolute left-0 top-0 text-[9px] text-muted-foreground/60">{Math.min(Math.max(...workout.hrStream.heartrate) + 10, (workout.hrZones?.maxHR || 190) + 20)}</div>
-                    <div className="absolute left-0 bottom-0 text-[9px] text-muted-foreground/60">{Math.max(Math.min(...workout.hrStream.heartrate) - 10, 40)}</div>
+                        return <div key={i} className="absolute left-0 right-0" style={{ bottom: `${bottom}%`, height: `${top - bottom}%`, backgroundColor: bandColors[i] }} />;
+                      })}
+                      <svg viewBox={`0 0 ${hr.length} 100`} className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+                        <polyline fill="none" stroke="#ef4444" strokeWidth="1.5" vectorEffect="non-scaling-stroke" points={points} />
+                      </svg>
+                      <div className="absolute left-0 top-0 text-[9px] text-muted-foreground/60">{chartMax}</div>
+                      <div className="absolute left-0 bottom-0 text-[9px] text-muted-foreground/60">{chartMin}</div>
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           )}
 
