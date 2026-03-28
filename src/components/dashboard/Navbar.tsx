@@ -29,22 +29,22 @@ export function Navbar() {
   return (
     <nav className="sticky top-0 z-50 border-b border-border/60 bg-card/95 backdrop-blur-lg shadow-sm" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          <Link href="/dashboard" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-            <div className="h-9 w-9 rounded-xl bg-foreground flex items-center justify-center shadow-lg shadow-foreground/20">
-              <Dumbbell className="h-4 w-4 text-background drop-shadow" />
+        <div className="flex items-center justify-between h-20">
+          <Link href="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <div className="h-11 w-11 rounded-xl bg-foreground flex items-center justify-center shadow-lg shadow-foreground/20">
+              <Dumbbell className="h-5 w-5 text-background drop-shadow" />
             </div>
-            <span className="font-bold text-lg hidden sm:inline">The Daily Athlete</span>
+            <span className="font-bold text-xl hidden sm:inline">The Daily Athlete</span>
           </Link>
 
-          <div className="hidden lg:flex items-center gap-1 bg-muted/60 rounded-xl p-1 border border-border/60">
+          <div className="hidden lg:flex items-center gap-1.5 bg-muted/60 rounded-xl p-1.5 border border-border/60">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
               return (
                 <Link key={item.href} href={item.href}>
-                  <Button variant="ghost" size="sm" className={cn('gap-2 h-9 rounded-lg transition-all text-sm', isActive ? 'bg-primary/15 text-primary border border-primary/40 shadow-sm' : 'text-foreground hover:bg-muted/80')}>
-                    <Icon className="h-4 w-4" /><span className="text-sm">{item.label}</span>
+                  <Button variant="ghost" size="sm" className={cn('gap-2 h-10 px-4 rounded-lg transition-all text-sm', isActive ? 'bg-primary/15 text-primary border border-primary/40 shadow-sm' : 'text-foreground hover:bg-muted/80')}>
+                    <Icon className="h-4.5 w-4.5" /><span className="text-sm font-medium">{item.label}</span>
                   </Button>
                 </Link>
               );
