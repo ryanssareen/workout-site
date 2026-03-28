@@ -187,12 +187,12 @@ export function CalendarAddDropdown({ date, className, onNoteAdded }: CalendarAd
           }
         }}
         className={cn(
-          'w-9 h-9 rounded-full flex items-center justify-center transition-all',
-          'text-muted-foreground/60 hover:text-primary hover:bg-primary/10 border border-border/40 hover:border-primary/30 shadow-sm',
-          open && 'text-primary bg-primary/10 border-primary/30',
+          'w-12 h-12 rounded-full flex items-center justify-center transition-all',
+          'text-primary/70 hover:text-primary bg-primary/5 hover:bg-primary/15 border-2 border-primary/20 hover:border-primary/40 shadow-md',
+          open && 'text-primary bg-primary/15 border-primary/40',
         )}
       >
-        <Plus className="h-5 w-5" />
+        <Plus className="h-6 w-6 stroke-[2.5]" />
       </button>
 
       {open && pos && createPortal(
