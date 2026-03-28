@@ -102,7 +102,7 @@ export function DashboardAchievements({ username, prefetchedPRs, prefetchedMiles
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{pr.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{format(d, 'MMM d')}</p>
+                      <p className="text-[10px] text-muted-foreground">{format(d, 'MMM d, yyyy')}</p>
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-sm font-bold text-amber-500 tabular-nums">
@@ -156,7 +156,7 @@ export function DashboardAchievements({ username, prefetchedPRs, prefetchedMiles
                       <p className="text-sm font-medium truncate">{ms.name}</p>
                       <p className="text-[10px] text-muted-foreground">{ms.description}</p>
                     </div>
-                    <p className="text-[10px] text-muted-foreground shrink-0">{format(d, 'MMM d')}</p>
+                    <p className="text-[10px] text-muted-foreground shrink-0">{format(d, 'MMM d, yyyy')}</p>
                   </div>
                 );
               })}
