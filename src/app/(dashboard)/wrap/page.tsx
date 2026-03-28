@@ -77,14 +77,16 @@ interface SportStat {
 
 function computeWeeklySportStats(
   thisWeek: Workout[],
-  lastWeek: Workout[],
+  prevWeeks: Workout[],
+  numPrevWeeks: number,
 ): SportStat[] {
   const types = new Set<WorkoutType>();
-  [...thisWeek, ...lastWeek].forEach(w => types.add(w.type));
+  [...thisWeek, ...prevWeeks].forEach(w => types.add(w.type));
+  const divisor = Math.max(numPrevWeeks, 1);
 
   return Array.from(types).map(type => {
     const tw = thisWeek.filter(w => w.type === type);
-    const lw = lastWeek.filter(w => w.type === type);
+    const pw = prevWeeks.filter(w => w.type === type);
 
     const sumDist = (ws: Workout[]) =>
       ws.reduce((s, w) => s + (w.actualStats?.distance || 0), 0) / 1000;
@@ -103,9 +105,9 @@ function computeWeeklySportStats(
       distanceKm: Math.round(sumDist(tw) * 10) / 10,
       durationMin: Math.round(sumDur(tw)),
       calories: Math.round(sumCal(tw)),
-      prevDistanceKm: Math.round(sumDist(lw) * 10) / 10,
-      prevDurationMin: Math.round(sumDur(lw)),
-      prevCount: lw.length,
+      prevDistanceKm: Math.round(sumDist(pw) / divisor * 10) / 10,
+      prevDurationMin: Math.round(sumDur(pw) / divisor),
+      prevCount: Math.round(pw.length / divisor),
     };
   }).sort((a, b) => b.count - a.count);
 }
@@ -186,19 +188,24 @@ export default function WrapPage() {
   const now = new Date();
   const targetWeekEnd = subWeeks(endOfWeek(now, { weekStartsOn: 1 }), weekOffset);
   const targetWeekStart = startOfWeek(targetWeekEnd, { weekStartsOn: 1 });
-  const prevWeekStart = subWeeks(targetWeekStart, 1);
-  const prevWeekEnd = subWeeks(targetWeekEnd, 1);
+  // Compare against average of previous 7 weeks instead of just 1
+  const PREV_WEEKS_COUNT = 7;
+  const prevWindowStart = subWeeks(targetWeekStart, PREV_WEEKS_COUNT);
+  const prevWindowEnd = subWeeks(targetWeekEnd, 1); // end of previous week (exclusive of current)
 
   const thisWeekWorkouts = useMemo(
     () => workouts.filter(w => isWithinInterval(toDate(w), { start: targetWeekStart, end: targetWeekEnd })),
     [workouts, targetWeekStart, targetWeekEnd],
   );
-  const lastWeekWorkouts = useMemo(
-    () => workouts.filter(w => isWithinInterval(toDate(w), { start: prevWeekStart, end: prevWeekEnd })),
-    [workouts, prevWeekStart, prevWeekEnd],
+  const prevWeeksWorkouts = useMemo(
+    () => workouts.filter(w => {
+      const d = toDate(w);
+      return d >= prevWindowStart && d <= prevWindowEnd;
+    }),
+    [workouts, prevWindowStart, prevWindowEnd],
   );
 
-  const sportStats = useMemo(() => computeWeeklySportStats(thisWeekWorkouts, lastWeekWorkouts), [thisWeekWorkouts, lastWeekWorkouts]);
+  const sportStats = useMemo(() => computeWeeklySportStats(thisWeekWorkouts, prevWeeksWorkouts, PREV_WEEKS_COUNT), [thisWeekWorkouts, prevWeeksWorkouts]);
   const activeSports = useMemo(() => sportStats.filter(s => s.count > 0), [sportStats]);
   const rating = useMemo(() => getWeekRating(sportStats), [sportStats]);
 

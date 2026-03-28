@@ -67,12 +67,13 @@ interface SportStat {
   calories: number; prevCount: number; prevDistanceKm: number; prevDurationMin: number;
 }
 
-function computeMonthlySportStats(thisMonth: Workout[], lastMonth: Workout[]): SportStat[] {
+function computeMonthlySportStats(thisMonth: Workout[], prevMonths: Workout[], numPrevMonths: number): SportStat[] {
   const types = new Set<WorkoutType>();
-  [...thisMonth, ...lastMonth].forEach(w => types.add(w.type));
+  [...thisMonth, ...prevMonths].forEach(w => types.add(w.type));
+  const divisor = Math.max(numPrevMonths, 1);
   return Array.from(types).map(type => {
     const tm = thisMonth.filter(w => w.type === type);
-    const lm = lastMonth.filter(w => w.type === type);
+    const pm = prevMonths.filter(w => w.type === type);
     const sumDist = (ws: Workout[]) => ws.reduce((s, w) => s + (w.actualStats?.distance || 0), 0) / 1000;
     const sumDur = (ws: Workout[]) => ws.reduce((s, w) => {
       if (w.actualStats?.duration) return s + w.actualStats.duration / 60;
@@ -82,8 +83,10 @@ function computeMonthlySportStats(thisMonth: Workout[], lastMonth: Workout[]): S
     return {
       type, count: tm.length,
       distanceKm: Math.round(sumDist(tm) * 10) / 10, durationMin: Math.round(sumDur(tm)),
-      calories: Math.round(sumCal(tm)), prevCount: lm.length,
-      prevDistanceKm: Math.round(sumDist(lm) * 10) / 10, prevDurationMin: Math.round(sumDur(lm)),
+      calories: Math.round(sumCal(tm)),
+      prevCount: Math.round(pm.length / divisor),
+      prevDistanceKm: Math.round(sumDist(pm) / divisor * 10) / 10,
+      prevDurationMin: Math.round(sumDur(pm) / divisor),
     };
   }).sort((a, b) => b.count - a.count);
 }
@@ -205,8 +208,10 @@ export default function MonthlyReviewPage() {
   const now = new Date();
   const targetMonthStart = startOfMonth(subMonths(now, monthOffset));
   const targetMonthEnd = endOfMonth(targetMonthStart);
-  const prevMonthStart = startOfMonth(subMonths(targetMonthStart, 1));
-  const prevMonthEnd = endOfMonth(prevMonthStart);
+  // Compare against average of previous 6 months instead of just 1
+  const PREV_MONTHS_COUNT = 6;
+  const prevWindowStart = startOfMonth(subMonths(targetMonthStart, PREV_MONTHS_COUNT));
+  const prevWindowEnd = endOfMonth(subMonths(targetMonthStart, 1));
   const monthLabel = format(targetMonthStart, 'MMMM yyyy');
   const isCurrentMonth = monthOffset === 0;
 
@@ -217,12 +222,15 @@ export default function MonthlyReviewPage() {
     () => workouts.filter(w => isWithinInterval(toDate(w), { start: targetMonthStart, end: targetMonthEnd })),
     [workouts, targetMonthStart, targetMonthEnd],
   );
-  const lastMonthWorkouts = useMemo(
-    () => workouts.filter(w => isWithinInterval(toDate(w), { start: prevMonthStart, end: prevMonthEnd })),
-    [workouts, prevMonthStart, prevMonthEnd],
+  const prevMonthsWorkouts = useMemo(
+    () => workouts.filter(w => {
+      const d = toDate(w);
+      return d >= prevWindowStart && d <= prevWindowEnd;
+    }),
+    [workouts, prevWindowStart, prevWindowEnd],
   );
 
-  const sportStats = useMemo(() => computeMonthlySportStats(thisMonthWorkouts, lastMonthWorkouts), [thisMonthWorkouts, lastMonthWorkouts]);
+  const sportStats = useMemo(() => computeMonthlySportStats(thisMonthWorkouts, prevMonthsWorkouts, PREV_MONTHS_COUNT), [thisMonthWorkouts, prevMonthsWorkouts]);
   const rating = useMemo(() => getMonthRating(sportStats), [sportStats]);
 
   // Calendar data
@@ -276,15 +284,15 @@ export default function MonthlyReviewPage() {
   const totalDistanceKm = Math.round(sportStats.reduce((s, st) => s + st.distanceKm, 0) * 10) / 10;
   const totalDurationMin = sportStats.reduce((s, st) => s + st.durationMin, 0);
   const totalDurationHrs = Math.round(totalDurationMin / 6) / 10;
-  const prevTotalWorkouts = lastMonthWorkouts.length;
+  const prevTotalWorkouts = Math.round(prevMonthsWorkouts.length / PREV_MONTHS_COUNT);
   const activeDays = calendarDays.filter(d => d.count > 0).length;
   const totalDays = calendarDays.length;
   const firstName = user?.displayName?.split(' ')[0] || 'Athlete';
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/review` : '';
   const shareText = `${rating.emoji} My ${format(targetMonthStart, 'MMMM')} in review: ${totalWorkouts} workouts, ${totalDistanceKm}km, ${totalDurationHrs}hrs — The Daily Athlete`;
 
-  const prevDistKm = Math.round(lastMonthWorkouts.reduce((s, w) => s + (w.actualStats?.distance || 0), 0) / 100) / 10;
-  const prevDurMin = Math.round(lastMonthWorkouts.reduce((s, w) => { if (w.actualStats?.duration) return s + w.actualStats.duration / 60; if (w.duration) return s + w.duration; return s; }, 0));
+  const prevDistKm = Math.round(prevMonthsWorkouts.reduce((s, w) => s + (w.actualStats?.distance || 0), 0) / PREV_MONTHS_COUNT / 100) / 10;
+  const prevDurMin = Math.round(prevMonthsWorkouts.reduce((s, w) => { if (w.actualStats?.duration) return s + w.actualStats.duration / 60; if (w.duration) return s + w.duration; return s; }, 0) / PREV_MONTHS_COUNT);
 
   const maxDailyCount = Math.max(...dailyBarData.map(d => d.count), 1);
   const maxWeeklyCount = Math.max(...weeklyVolume.map(w => w.count), 1);
@@ -428,10 +436,10 @@ export default function MonthlyReviewPage() {
           </div>
         )}
 
-        {/* ═══ SLIDE 2 — vs Last Month ═══ */}
+        {/* ═══ SLIDE 2 — vs 6-Month Average ═══ */}
         {slide === 2 && (
           <div className="flex flex-col items-center max-w-4xl mx-auto w-full">
-            <p className="text-muted-foreground text-xs font-semibold tracking-widest uppercase mb-8 text-center">vs {format(prevMonthStart, 'MMMM')}</p>
+            <p className="text-muted-foreground text-xs font-semibold tracking-widest uppercase mb-8 text-center">vs 6-Month Average</p>
             {prevTotalWorkouts > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
                 {[
