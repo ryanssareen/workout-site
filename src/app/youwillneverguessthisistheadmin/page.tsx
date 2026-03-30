@@ -6,7 +6,7 @@ import {
   Trash2, RotateCcw, Download, AlertTriangle, CheckCircle,
   XCircle, Clock, Activity, ChevronDown, ChevronUp, Eye, Lock,
   Zap, TrendingUp, HardDrive, UserCheck, Upload, Terminal,
-  Search, Play, Loader2,
+  Search, Play, Loader2, Ban,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/dashboard/ThemeToggle';
 import { API_REGISTRY, API_CATEGORIES, getEndpointsByCategory, type ApiEndpoint } from '@/lib/api-registry';
@@ -548,15 +548,24 @@ function UsersSection() {
 
   useEffect(() => { load(); }, [load]);
 
+  const [disableTarget, setDisableTarget] = useState<string | null>(null);
+  const [disableReason, setDisableReason] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+
   const filtered = users.filter(u =>
     u.username.includes(search) || u.email.includes(search)
   );
 
-  async function softDelete(username: string) {
-    if (!confirm(`Disable user "${username}"?`)) return;
+  async function softDelete(username: string, reason: string) {
     setActing(username);
     try {
-      await apiFetch(`/api/admin/users/${username}`, { method: 'DELETE' });
+      await apiFetch(`/api/admin/users/${username}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      });
       await load();
     } catch (e: any) {
       setError(e.message);
@@ -569,6 +578,22 @@ function UsersSection() {
     setActing(username);
     try {
       await apiFetch(`/api/admin/users/${username}`, { method: 'PATCH' });
+      await load();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setActing(null);
+    }
+  }
+
+  async function permanentDelete(username: string, reason: string) {
+    setActing(username);
+    try {
+      await apiFetch(`/api/admin/users/${username}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      });
       await load();
     } catch (e: any) {
       setError(e.message);
@@ -654,10 +679,10 @@ function UsersSection() {
                   <td className="px-4 py-3">
                     {u.status === 'active'
                       ? <span className="inline-flex items-center gap-1 text-xs text-green-400"><span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" /> active</span>
-                      : <span className="inline-flex items-center gap-1 text-xs text-red-400"><span className="w-1.5 h-1.5 rounded-full bg-red-400" /> deleted</span>}
+                      : <span className="inline-flex items-center gap-1 text-xs text-amber-400"><span className="w-1.5 h-1.5 rounded-full bg-amber-400" /> disabled</span>}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => exportUserJSON(u.username)}
                         title="Export JSON"
@@ -667,12 +692,12 @@ function UsersSection() {
                       </button>
                       {u.status === 'active' ? (
                         <button
-                          onClick={() => softDelete(u.username)}
+                          onClick={() => { setDisableTarget(u.username); setDisableReason(''); }}
                           disabled={acting === u.username}
                           title="Disable user"
-                          className="w-7 h-7 rounded-lg flex items-center justify-center text-red-400/40 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-50 transition-all"
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-amber-400/40 hover:text-amber-400 hover:bg-amber-500/10 disabled:opacity-50 transition-all"
                         >
-                          <Trash2 size={13} />
+                          <Ban size={13} />
                         </button>
                       ) : (
                         <button
@@ -684,6 +709,14 @@ function UsersSection() {
                           <RotateCcw size={13} />
                         </button>
                       )}
+                      <button
+                        onClick={() => { setDeleteTarget(u.username); setDeleteReason(''); setDeleteConfirmText(''); }}
+                        disabled={acting === u.username}
+                        title="Permanently delete user"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-red-400/40 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-50 transition-all"
+                      >
+                        <Trash2 size={13} />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -692,6 +725,105 @@ function UsersSection() {
           </table>
           <div className="px-4 py-2.5 bg-muted/25 border-t border-border/50 text-muted-foreground/70 text-xs">
             {filtered.length} of {users.length} users
+          </div>
+        </div>
+      )}
+
+      {/* Disable reason modal */}
+      {disableTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md mx-4 rounded-2xl border border-border bg-background p-6 shadow-2xl space-y-4">
+            <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+              <Ban size={16} className="text-amber-400" />
+              Disable <span className="font-mono text-amber-400">{disableTarget}</span>
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              The account will be disabled but can be re-enabled later. The user will be notified via email.
+            </p>
+            <textarea
+              value={disableReason}
+              onChange={e => setDisableReason(e.target.value)}
+              placeholder="e.g. Violation of terms of service"
+              rows={3}
+              className="w-full rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-amber-500/30 resize-none"
+              autoFocus
+            />
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => setDisableTarget(null)}
+                className="px-4 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  const target = disableTarget;
+                  const reason = disableReason.trim() || 'No reason provided';
+                  setDisableTarget(null);
+                  await softDelete(target, reason);
+                }}
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-amber-600 hover:bg-amber-500 text-white transition-all"
+              >
+                Disable Account
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Permanent delete modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md mx-4 rounded-2xl border border-red-500/30 bg-background p-6 shadow-2xl space-y-4">
+            <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+              <Trash2 size={16} className="text-red-400" />
+              Permanently Delete <span className="font-mono text-red-400">{deleteTarget}</span>
+            </h3>
+            <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3">
+              <p className="text-xs text-red-400 font-medium">
+                This will permanently remove the user&apos;s account, all workouts, personal records, and Firebase Auth. This cannot be undone.
+              </p>
+            </div>
+            <textarea
+              value={deleteReason}
+              onChange={e => setDeleteReason(e.target.value)}
+              placeholder="e.g. Spam account, requested by user"
+              rows={3}
+              className="w-full rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-red-500/30 resize-none"
+              autoFocus
+            />
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1.5">
+                Type <span className="font-mono font-semibold text-red-400">{deleteTarget}</span> to confirm
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={e => setDeleteConfirmText(e.target.value)}
+                placeholder={deleteTarget}
+                className="w-full rounded-xl border border-border bg-muted/40 px-4 py-2.5 text-sm font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-red-500/30"
+              />
+            </div>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="px-4 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={deleteConfirmText !== deleteTarget}
+                onClick={async () => {
+                  const target = deleteTarget;
+                  const reason = deleteReason.trim() || 'No reason provided';
+                  setDeleteTarget(null);
+                  await permanentDelete(target, reason);
+                }}
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-500 text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                Delete Permanently
+              </button>
+            </div>
           </div>
         </div>
       )}
