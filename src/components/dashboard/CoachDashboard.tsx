@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Users, CheckCircle2, Clock, Plus, Calendar, Loader2 } from 'lucide-react';
-import { getCoachDashboardStats, CoachStats, getUserWorkouts } from '@/lib/firebase/firestore';
+import { getCoachDashboardStats, CoachStats } from '@/lib/firebase/firestore';
 import { Workout } from '@/types';
 import { isCoachAssigned } from '@/types/workout';
 import { format, isPast, isFuture, startOfDay } from 'date-fns';
@@ -19,12 +19,13 @@ import { AthleteSelector } from './AthleteSelector';
 interface CoachDashboardProps {
   username: string;
   timezone?: string;
+  prefetchedWorkouts?: Workout[];
 }
 
-export function CoachDashboard({ username, timezone }: CoachDashboardProps) {
+export function CoachDashboard({ username, timezone, prefetchedWorkouts }: CoachDashboardProps) {
   const [stats, setStats] = useState<CoachStats | null>(null);
-  const [workouts, setWorkouts] = useState<Workout[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [workouts, setWorkouts] = useState<Workout[]>(prefetchedWorkouts ?? []);
+  const [loading, setLoading] = useState(!prefetchedWorkouts);
   const [error, setError] = useState<string | null>(null);
   const { selectedAthlete, selectAthlete, athletes: coachAthletes } = useCoachFilter(username);
 
@@ -32,10 +33,10 @@ export function CoachDashboard({ username, timezone }: CoachDashboardProps) {
     async function load() {
       setError(null);
       try {
-        const workoutsData = await getUserWorkouts(username, 'coach');
-        const statsData = await getCoachDashboardStats(username, workoutsData);
+        const w = prefetchedWorkouts ?? workouts;
+        const statsData = await getCoachDashboardStats(username, w);
         setStats(statsData);
-        setWorkouts(workoutsData);
+        if (!prefetchedWorkouts) setLoading(false);
       } catch (err) {
         console.error('Failed to load coach dashboard:', err);
         setError('Could not load data. Please try again later.');
@@ -44,7 +45,7 @@ export function CoachDashboard({ username, timezone }: CoachDashboardProps) {
       }
     }
     load();
-  }, [username]);
+  }, [username, prefetchedWorkouts]);
 
   if (loading) {
     return (

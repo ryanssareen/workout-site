@@ -305,9 +305,9 @@ export default function DashboardPage() {
     ...upcomingWorkouts.map(w => ({ workout: w, section: 'planned' as const })),
   ];
 
-  // Coach gets a dedicated dashboard
+  // Coach gets a dedicated dashboard — pass prefetched workouts to avoid double fetch
   if (user?.role === 'coach') {
-    return <CoachDashboard username={user.username} timezone={user.timezone} />;
+    return <CoachDashboard username={user.username} timezone={user.timezone} prefetchedWorkouts={workouts} />;
   }
 
   return (

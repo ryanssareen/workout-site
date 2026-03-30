@@ -27,9 +27,8 @@ function setCooldownFor(ms: number): void {
 }
 
 /**
- * Run achievement checks for recently synced Strava workouts.
- * Fetches the 5 most recent completed workouts (likely just synced)
- * and checks each for PRs/milestones. Non-blocking, fire-and-forget.
+ * Run achievement checks for the most recently synced Strava workout.
+ * Only checks the single most recent to conserve Firestore reads.
  */
 async function runPostSyncAchievements(username: string, user: User) {
   try {
@@ -37,7 +36,7 @@ async function runPostSyncAchievements(username: string, user: User) {
     const { useWorkoutStore } = await import('@/lib/stores/workoutStore');
     const allWorkouts = await useWorkoutStore.getState().getWorkouts(username, user.role);
 
-    // Get the 5 most recently completed Strava workouts
+    // Get the single most recently completed Strava workout
     const recentStrava = allWorkouts
       .filter((w: Workout) => w.completed && (w.source === 'strava' || w.completedBy === 'strava'))
       .sort((a: Workout, b: Workout) => {
@@ -45,7 +44,7 @@ async function runPostSyncAchievements(username: string, user: User) {
         const db = (b.completedAt as any)?.toDate?.() ?? new Date(b.completedAt as any);
         return db.getTime() - da.getTime();
       })
-      .slice(0, 5);
+      .slice(0, 1);
 
     for (const workout of recentStrava) {
       const result = await checkAchievements(username, user.uid, workout, allWorkouts);

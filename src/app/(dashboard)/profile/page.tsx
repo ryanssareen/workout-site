@@ -148,10 +148,10 @@ export default function ProfilePage() {
   // Coach stats (loaded only for coaches)
   const [coachStats, setCoachStats] = useState<CoachStats | null>(null);
   useEffect(() => {
-    if (user?.role === 'coach') {
-      getCoachDashboardStats(user.username).then(setCoachStats).catch(() => {});
+    if (user?.role === 'coach' && workouts.length > 0) {
+      getCoachDashboardStats(user.username, workouts).then(setCoachStats).catch(() => {});
     }
-  }, [user]);
+  }, [user, workouts]);
 
   if (!user) return null;
 
