@@ -2,6 +2,7 @@
 
 import { useMemo, useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -250,7 +251,7 @@ export function AthleteProfileClient({ profile }: { profile: AthleteProfileData 
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-16 h-16 rounded-full bg-gradient-to-br from-red-500/30 to-orange-500/30 flex items-center justify-center border-2 border-white/10 overflow-hidden">
                     {profile.photoURL ? (
-                      <img src={profile.photoURL} alt="" className="w-full h-full object-cover" />
+                      <Image src={profile.photoURL} alt="" className="w-full h-full object-cover" width={64} height={64} unoptimized />
                     ) : (
                       <span className="text-xl font-bold text-white">{getInitials(profile.displayName)}</span>
                     )}

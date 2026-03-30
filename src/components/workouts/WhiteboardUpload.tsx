@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Upload, Loader2 } from 'lucide-react';
@@ -53,7 +54,7 @@ export function WhiteboardUpload({ onWorkoutsExtracted }: WhiteboardUploadProps)
     <Card>
       <CardHeader><CardTitle>Upload Whiteboard Image</CardTitle><CardDescription>Take a photo of your workout planning whiteboard and we'll extract the workout details</CardDescription></CardHeader>
       <CardContent className="space-y-4">
-        {preview && <div className="relative aspect-video w-full overflow-hidden rounded-lg border"><img src={preview} alt="Whiteboard preview" className="h-full w-full object-contain" /></div>}
+        {preview && <div className="relative aspect-video w-full overflow-hidden rounded-lg border"><Image src={preview} alt="Whiteboard preview" className="h-full w-full object-contain" fill unoptimized /></div>}
         <div className="flex items-center justify-center w-full">
           <label htmlFor="whiteboard-upload" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
             <div className="flex flex-col items-center justify-center pt-5 pb-6">
