@@ -740,13 +740,27 @@ function UsersSection() {
             <p className="text-sm text-muted-foreground">
               The account will be disabled but can be re-enabled later. The user will be notified via email.
             </p>
+            <div className="flex flex-wrap gap-2">
+              {['Harassment', 'Inappropriate behavior', 'Inactivity', 'Violation of terms', 'Requested by coach', 'Requested by user'].map(opt => (
+                <button
+                  key={opt}
+                  onClick={() => setDisableReason(opt)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                    disableReason === opt
+                      ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                      : 'bg-muted/40 border-border text-muted-foreground hover:border-amber-500/30 hover:text-foreground'
+                  }`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
             <textarea
               value={disableReason}
               onChange={e => setDisableReason(e.target.value)}
-              placeholder="e.g. Violation of terms of service"
-              rows={3}
+              placeholder="Or type a custom reason..."
+              rows={2}
               className="w-full rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-amber-500/30 resize-none"
-              autoFocus
             />
             <div className="flex items-center justify-end gap-3">
               <button
@@ -784,13 +798,27 @@ function UsersSection() {
                 This will permanently remove the user&apos;s account, all workouts, personal records, and Firebase Auth. This cannot be undone.
               </p>
             </div>
+            <div className="flex flex-wrap gap-2">
+              {['Spam account', 'Harassment', 'Requested by user', 'Duplicate account', 'Violation of terms', 'Requested by coach'].map(opt => (
+                <button
+                  key={opt}
+                  onClick={() => setDeleteReason(opt)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                    deleteReason === opt
+                      ? 'bg-red-500/20 border-red-500/40 text-red-300'
+                      : 'bg-muted/40 border-border text-muted-foreground hover:border-red-500/30 hover:text-foreground'
+                  }`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
             <textarea
               value={deleteReason}
               onChange={e => setDeleteReason(e.target.value)}
-              placeholder="e.g. Spam account, requested by user"
-              rows={3}
+              placeholder="Or type a custom reason..."
+              rows={2}
               className="w-full rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-red-500/30 resize-none"
-              autoFocus
             />
             <div>
               <label className="text-xs text-muted-foreground block mb-1.5">
