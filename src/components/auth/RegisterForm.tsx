@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { track } from '@/lib/posthog';
-import { Dumbbell, Loader2, User, Mail, Lock, ArrowRight, AlertCircle, AlertTriangle, AtSign, Activity, Waves, TrendingUp, Bike } from 'lucide-react';
+import { Dumbbell, Loader2, User, Mail, Lock, ArrowRight, AlertCircle, AlertTriangle, AtSign } from 'lucide-react';
 import Link from 'next/link';
 
 export function RegisterForm() {
@@ -179,7 +179,7 @@ export function RegisterForm() {
   };
 
   return (
-    <div className="w-full max-w-lg relative z-10">
+    <div className="w-full max-w-md relative z-10">
       <div className="text-center mb-8">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-foreground shadow-xl shadow-foreground/10 mb-4">
           <Dumbbell className="w-8 h-8 text-background" />
@@ -289,22 +289,7 @@ export function RegisterForm() {
         </div>
       </div>
 
-      {/* Feature highlights */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-8">
-        {[
-          { icon: Activity, label: 'Strava Sync', color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/15' },
-          { icon: Waves, label: '5+ Sports', color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/15' },
-          { icon: TrendingUp, label: 'Track PRs', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/15' },
-          { icon: Bike, label: 'Free Forever', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/15' },
-        ].map((f, i) => (
-          <div key={i} className={`flex flex-col items-center gap-2 p-3 rounded-xl border ${f.bg}`}>
-            <f.icon className={`h-5 w-5 ${f.color}`} />
-            <span className="text-xs font-medium text-muted-foreground">{f.label}</span>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-5 text-center">
+      <div className="mt-6 text-center">
         <Link href="/" className="text-sm text-muted-foreground/60 hover:text-foreground/60 transition-colors">&larr; Back to home</Link>
       </div>
     </div>

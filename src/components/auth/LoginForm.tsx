@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { Dumbbell, Mail, Lock, ArrowRight, Loader2, Activity, Calendar, TrendingUp, Sparkles } from 'lucide-react';
+import { Dumbbell, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 
 export function LoginForm() {
   const [email, setEmail] = useState('');
@@ -63,7 +63,7 @@ export function LoginForm() {
   };
 
   return (
-    <div className="w-full max-w-lg">
+    <div className="w-full max-w-md">
       {/* Logo */}
       <div className="text-center mb-8">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl shadow-xl bg-foreground shadow-foreground/10 mb-4">
@@ -156,22 +156,7 @@ export function LoginForm() {
         </div>
       </div>
 
-      {/* Feature highlights */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-8">
-        {[
-          { icon: Activity, label: 'Strava Sync', color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/15' },
-          { icon: Calendar, label: 'Smart Calendar', color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/15' },
-          { icon: TrendingUp, label: 'Track PRs', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/15' },
-          { icon: Sparkles, label: 'AI Coach', color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/15' },
-        ].map((f, i) => (
-          <div key={i} className={`flex flex-col items-center gap-2 p-3 rounded-xl border ${f.bg}`}>
-            <f.icon className={`h-5 w-5 ${f.color}`} />
-            <span className="text-xs font-medium text-muted-foreground">{f.label}</span>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-5 text-center">
+      <div className="mt-6 text-center">
         <Link href="/" className="text-sm text-muted-foreground/60 hover:text-muted-foreground transition-colors">&larr; Back to home</Link>
       </div>
     </div>
