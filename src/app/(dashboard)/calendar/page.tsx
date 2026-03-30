@@ -112,9 +112,16 @@ export default function CalendarPage() {
   const userTimezone = user?.timezone;
   const workoutsByDate = useMemo(() => {
     const map = new Map<string, Workout[]>();
+    const now = new Date();
+    const horizon = addDays(now, 1);
+    const isAthlete = !isCoach;
     workouts.forEach((w) => {
       // Apply athlete filter (coaches only)
       if (isCoach && selectedAthlete && w.assignedTo !== selectedAthlete && w.ownerUsername !== selectedAthlete) return;
+
+      // Non-recurring workouts only visible within 24h for athletes
+      const d = w.date.toDate();
+      if (isAthlete && !(w as any).isRecurring && !w.completed && d > horizon) return;
 
       // Use user timezone so workouts land on the correct calendar day
       const key = formatInTimezone(safeToDate(w), 'yyyy-MM-dd', userTimezone);
