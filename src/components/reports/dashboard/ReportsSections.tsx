@@ -18,13 +18,7 @@ import {
 } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
 import { format, subWeeks, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
-
-function safeToDate(w: { date?: any }): Date {
-  try {
-    const d = w.date?.toDate?.() ?? new Date(w.date as any);
-    return isNaN(d.getTime()) ? new Date(0) : d;
-  } catch { return new Date(0); }
-}
+import { safeToDate } from '@/lib/dateUtils';
 
 // ── Responsive chart height hook ──
 function useChartHeight(desktopHeight: number) {

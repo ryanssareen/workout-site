@@ -13,13 +13,7 @@ import { CompletionDialog, UncompletionDialog } from './CompletionDialog';
 import { MiniRoutePreview } from './MiniRoutePreview';
 import { WorkoutPhotos } from './WorkoutPhotos';
 import { cn } from '@/lib/utils';
-
-function safeToDate(w: Workout): Date {
-  try {
-    const d = w.date?.toDate?.() ?? new Date(w.date as any);
-    return isNaN(d.getTime()) ? new Date(0) : d;
-  } catch { return new Date(0); }
-}
+import { safeToDate } from '@/lib/dateUtils';
 
 const TAG_COLORS: Record<WorkoutTag, string> = {
   easy: 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20',

@@ -11,13 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-
-function safeToDate(w: { date?: any }): Date {
-  try {
-    const d = w.date?.toDate?.() ?? new Date(w.date as any);
-    return isNaN(d.getTime()) ? new Date(0) : d;
-  } catch { return new Date(0); }
-}
+import { safeToDate } from '@/lib/dateUtils';
 
 // Ensure type-specific data from Firestore has valid enum values for Zod.
 // Also creates a minimal valid object if the workout type matches but no sub-object exists.

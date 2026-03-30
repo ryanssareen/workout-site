@@ -4,18 +4,10 @@ import { Workout } from '@/types';
 import { TYPE_CONFIG, TYPE_LABELS, getTypeData, formatDur } from './types';
 import { CheckCircle2, Circle, AlertCircle, StickyNote } from 'lucide-react';
 import { isPast, isToday } from 'date-fns';
-import { formatInTimezone } from '@/lib/dateUtils';
+import { formatInTimezone, safeToDate } from '@/lib/dateUtils';
 import { useAuthStore } from '@/lib/stores/authStore';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-
-// ── Safe date extraction ────────────────────────────────────────────────
-function safeToDate(w: { date?: any }): Date {
-  try {
-    const d = w.date?.toDate?.() ?? new Date(w.date as any);
-    return isNaN(d.getTime()) ? new Date(0) : d;
-  } catch { return new Date(0); }
-}
 
 // ── Note detection ──────────────────────────────────────────────────────
 function isNote(workout: Workout): boolean {

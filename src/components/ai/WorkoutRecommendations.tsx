@@ -6,13 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Sparkles, Loader2, Lightbulb } from 'lucide-react';
 import { Workout } from '@/types';
 import { format } from 'date-fns';
-
-function safeToDate(w: { date?: any }): Date {
-  try {
-    const d = w.date?.toDate?.() ?? new Date(w.date as any);
-    return isNaN(d.getTime()) ? new Date(0) : d;
-  } catch { return new Date(0); }
-}
+import { safeToDate } from '@/lib/dateUtils';
 
 interface WorkoutRecommendationsProps {
   workout: Workout;

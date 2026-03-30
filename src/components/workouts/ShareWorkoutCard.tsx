@@ -289,13 +289,7 @@ export { ShareButtons };
 // ══════════════════════════════════════════
 
 import { Workout } from '@/types';
-
-function safeToDate(w: { date?: any }): Date {
-  try {
-    const d = w.date?.toDate?.() ?? new Date(w.date as any);
-    return isNaN(d.getTime()) ? new Date(0) : d;
-  } catch { return new Date(0); }
-}
+import { safeToDate } from '@/lib/dateUtils';
 
 interface ShareWorkoutCardProps {
   workout: Workout;

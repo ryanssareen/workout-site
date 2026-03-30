@@ -25,15 +25,8 @@ import {
   startOfMonth,
   endOfMonth,
 } from 'date-fns';
-import { formatInTimezone } from '@/lib/dateUtils';
+import { formatInTimezone, safeToDate } from '@/lib/dateUtils';
 import { toast } from 'sonner';
-
-function safeToDate(w: { date?: any }): Date {
-  try {
-    const d = w.date?.toDate?.() ?? new Date(w.date as any);
-    return isNaN(d.getTime()) ? new Date(0) : d;
-  } catch { return new Date(0); }
-}
 
 // Calendar components
 import { CalendarHeader } from '@/components/calendar/CalendarHeader';

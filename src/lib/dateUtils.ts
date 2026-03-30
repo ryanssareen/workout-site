@@ -1,5 +1,18 @@
 import { format } from 'date-fns';
 
+export function safeToDate(w: { date?: unknown }): Date {
+  try {
+    const raw = w.date;
+    const d =
+      raw && typeof raw === 'object' && 'toDate' in raw && typeof (raw as { toDate: () => Date }).toDate === 'function'
+        ? (raw as { toDate: () => Date }).toDate()
+        : new Date(raw as string | number);
+    return isNaN(d.getTime()) ? new Date(0) : d;
+  } catch {
+    return new Date(0);
+  }
+}
+
 const DEFAULT_TIMEZONE = 'Asia/Kolkata';
 
 /**

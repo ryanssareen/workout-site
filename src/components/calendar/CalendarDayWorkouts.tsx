@@ -5,13 +5,7 @@ import { CalendarWorkoutCard } from './CalendarWorkoutCard';
 import { format, isPast, isToday } from 'date-fns';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
-
-function safeToDate(w: { date?: any }): Date {
-  try {
-    const d = w.date?.toDate?.() ?? new Date(w.date as any);
-    return isNaN(d.getTime()) ? new Date(0) : d;
-  } catch { return new Date(0); }
-}
+import { safeToDate } from '@/lib/dateUtils';
 
 interface CalendarDayWorkoutsProps {
   date: Date;

@@ -14,7 +14,7 @@ import { Loader2, Edit, ArrowLeft, Calendar, Clock, CheckCircle2, Circle, Activi
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { formatInTimezone, formatTime } from '@/lib/dateUtils';
+import { formatInTimezone, formatTime, safeToDate } from '@/lib/dateUtils';
 import { CommentSection } from '@/components/workouts/comments';
 import { ShareWorkoutCard } from '@/components/workouts/ShareWorkoutCard';
 import { track } from '@/lib/posthog';
@@ -30,13 +30,6 @@ import { WorkoutPhotos } from '@/components/workouts/WorkoutPhotos';
 import { CelebrationModal } from '@/components/achievements/CelebrationModal';
 import { checkAchievements } from '@/lib/achievements';
 import { cn } from '@/lib/utils';
-
-function safeToDate(w: { date?: any }): Date {
-  try {
-    const d = w.date?.toDate?.() ?? new Date(w.date as any);
-    return isNaN(d.getTime()) ? new Date(0) : d;
-  } catch { return new Date(0); }
-}
 import {
   Dialog,
   DialogContent,

@@ -22,18 +22,11 @@ import {
   GitMerge,
 } from 'lucide-react';
 import { isPast, isToday, differenceInCalendarDays } from 'date-fns';
-import { formatInTimezone } from '@/lib/dateUtils';
+import { formatInTimezone, safeToDate } from '@/lib/dateUtils';
 import { useAuthStore } from '@/lib/stores/authStore';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-
-function safeToDate(w: { date?: any }): Date {
-  try {
-    const d = w.date?.toDate?.() ?? new Date(w.date as any);
-    return isNaN(d.getTime()) ? new Date(0) : d;
-  } catch { return new Date(0); }
-}
 
 interface WorkoutDetailPanelProps {
   workout: Workout;
