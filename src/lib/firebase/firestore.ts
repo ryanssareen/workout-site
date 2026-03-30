@@ -5,9 +5,7 @@ import {
 import { getDbInstance } from './config';
 import { Workout, WorkoutFormData, WorkoutComment, WorkoutRating, PersonalRecord, PRCategory, Milestone } from '@/types';
 import { addDays, addWeeks, addMonths, subDays } from 'date-fns';
-
-/** Default date window for coach queries (in days) */
-export const COACH_QUERY_WINDOW_DAYS = 90;
+export { COACH_QUERY_WINDOW_DAYS } from '@/lib/constants';
 
 // Extended form data to include recurring fields
 export interface ExtendedWorkoutFormData extends WorkoutFormData {

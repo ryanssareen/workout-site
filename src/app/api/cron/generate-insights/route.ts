@@ -5,8 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import admin from 'firebase-admin';
 import Groq from 'groq-sdk';
-
-const MAX_USERS_PER_RUN = 50;
+import { MAX_USERS_PER_RUN } from '@/lib/constants';
 
 const SPORT_LABELS: Record<string, string> = {
   run: 'running', bike: 'cycling', swim: 'swimming', walk: 'walking', strength: 'strength', other: 'training',

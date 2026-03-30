@@ -9,6 +9,7 @@ import {
   INTENSITY_LOAD_MULTIPLIER, PHASE_RULES,
   computeSessionLoad, getTrainingPhase, buildConstraints,
 } from './constraints';
+import { MS_PER_DAY } from '@/lib/constants';
 
 /* ── Helpers ──────────────────────────────────────────────────────────── */
 
@@ -41,7 +42,7 @@ export function analyzeHistory(workouts: any[], experienceLevel?: string): Histo
   let recentWeekLoad = 0;
   const dates: Date[] = [];
   const now = Date.now();
-  const sevenDaysAgo = now - 7 * 86400000;
+  const sevenDaysAgo = now - 7 * MS_PER_DAY;
 
   const total = (workouts || []).length;
 
@@ -101,7 +102,7 @@ export function analyzeHistory(workouts: any[], experienceLevel?: string): Histo
 
   const sortedDates = dates.sort((a, b) => b.getTime() - a.getTime());
   const lastWorkoutDate = sortedDates[0] || null;
-  const daysSinceLast = lastWorkoutDate ? Math.round((now - lastWorkoutDate.getTime()) / 86400000) : 14;
+  const daysSinceLast = lastWorkoutDate ? Math.round((now - lastWorkoutDate.getTime()) / MS_PER_DAY) : 14;
   const completionRate = total > 0 ? Math.round((completedCount / total) * 100) : 0;
 
   return {

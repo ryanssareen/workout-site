@@ -5,9 +5,9 @@ import { adminDb } from '@/lib/firebase/admin';
 import admin from 'firebase-admin';
 import * as brevo from '@getbrevo/brevo';
 import { generateSummaryEmail, generateSummarySubject, SummaryData } from '@/lib/email/summaryTemplate';
+import { MAX_USERS_PER_RUN } from '@/lib/constants';
 
 const SUMMARY_INTERVAL_DAYS = 10;
-const MAX_USERS_PER_RUN = 50;
 const INITIAL_WAIT_DAYS = 10; // Wait 10 days from first workout before sending
 
 // Get start of day in IST timezone
