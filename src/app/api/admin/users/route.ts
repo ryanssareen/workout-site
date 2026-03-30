@@ -4,15 +4,29 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase/admin';
 import { verifyAdminSession } from '@/lib/admin-auth';
 
+// In-memory cache to avoid hammering Firestore on every admin page load
+let cachedUsers: unknown[] | null = null;
+let cacheTime = 0;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 // GET — list all users, or ?export=csv for bulk CSV download
 export async function GET(request: NextRequest) {
   const session = await verifyAdminSession(request);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const forceRefresh = request.nextUrl.searchParams.get('refresh') === '1';
+
   try {
+    // Return cached data if fresh (skip for CSV exports)
+    const exportMode = request.nextUrl.searchParams.get('export');
+    if (!forceRefresh && !exportMode && cachedUsers && Date.now() - cacheTime < CACHE_TTL) {
+      return NextResponse.json({ users: cachedUsers, cached: true });
+    }
+
     const db = getAdminDb();
     const snap = await db.collection('users').orderBy('createdAt', 'desc').limit(100).get();
 
+    // Read workoutCount directly from user doc (denormalized) — 0 extra reads
     const users = snap.docs.map(doc => {
       const d = doc.data();
       return {
@@ -23,13 +37,13 @@ export async function GET(request: NextRequest) {
         createdAt: d.createdAt?.toMillis?.() ?? null,
         deletedAt: d.deletedAt?.toMillis?.() ?? null,
         status: d.deletedAt ? 'deleted' : 'active',
+        workoutCount: d.workoutCount ?? 0,
       };
     });
 
     // CSV export
-    const exportMode = request.nextUrl.searchParams.get('export');
     if (exportMode === 'csv') {
-      const header = 'username,email,displayName,role,createdAt,status';
+      const header = 'username,email,displayName,role,createdAt,status,workoutCount';
       const rows = users.map(u =>
         [
           u.username,
@@ -38,6 +52,7 @@ export async function GET(request: NextRequest) {
           u.role,
           u.createdAt ? new Date(u.createdAt).toISOString() : '',
           u.status,
+          u.workoutCount,
         ].join(',')
       );
       const csv = [header, ...rows].join('\n');
@@ -49,24 +64,11 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Count workouts per user — costs 1 read per user (count() query).
-    // Acceptable since admin dashboard is rarely accessed.
-    const workoutCounts: Record<string, number> = {};
-    await Promise.all(
-      snap.docs.map(async doc => {
-        const workoutsSnap = await db
-          .collection('users')
-          .doc(doc.id)
-          .collection('workouts')
-          .count()
-          .get();
-        workoutCounts[doc.id] = workoutsSnap.data().count;
-      })
-    );
+    // Update cache
+    cachedUsers = users;
+    cacheTime = Date.now();
 
-    return NextResponse.json({
-      users: users.map(u => ({ ...u, workoutCount: workoutCounts[u.username] ?? 0 })),
-    });
+    return NextResponse.json({ users });
   } catch (err: any) {
     const msg = err.message ?? String(err);
     const isQuota = msg.includes('RESOURCE_EXHAUSTED') || msg.includes('Quota exceeded') || err.code === 8;

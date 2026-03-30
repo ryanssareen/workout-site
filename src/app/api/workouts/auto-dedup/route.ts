@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
+import admin from 'firebase-admin';
 import { isSameDay, format } from 'date-fns';
 
 interface WorkoutDoc {
@@ -225,6 +226,10 @@ export async function POST(request: NextRequest) {
 
     if (deletedIds.length > 0) {
       await batch.commit();
+      // Decrement denormalized workout count
+      await adminDb.collection('users').doc(userId).update({
+        workoutCount: admin.firestore.FieldValue.increment(-deletedIds.length),
+      });
       console.log(`[auto-dedup] Deleted ${deletedIds.length} duplicates for ${userId}:`);
       groupSummaries.forEach(s => console.log(`  - ${s}`));
     }

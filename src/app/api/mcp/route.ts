@@ -350,6 +350,7 @@ function createMcpServer(): McpServer {
       if (input.tags?.length) data.tags = input.tags;
 
       const ref = await db.collection('users').doc(ownerUsername).collection('workouts').add(data);
+      await db.collection('users').doc(ownerUsername).update({ workoutCount: FieldValue.increment(1) });
       return { content: [{ type: 'text', text: JSON.stringify({ success: true, workoutId: ref.id }) }] };
     }
   );
@@ -414,7 +415,11 @@ function createMcpServer(): McpServer {
       if (!result) {
         return { content: [{ type: 'text', text: JSON.stringify({ error: 'Workout not found' }) }] };
       }
+      const ownerUsername = result.ref.parent.parent?.id;
       await result.ref.delete();
+      if (ownerUsername) {
+        await db.collection('users').doc(ownerUsername).update({ workoutCount: FieldValue.increment(-1) });
+      }
       return { content: [{ type: 'text', text: JSON.stringify({ success: true, deleted: input.workoutId }) }] };
     }
   );

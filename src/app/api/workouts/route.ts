@@ -277,6 +277,10 @@ export async function POST(request: NextRequest) {
     });
 
     const createdRef = await adminDb.collection('users').doc(assignedTo).collection('workouts').add(workoutData);
+    // Increment denormalized workout count
+    await adminDb.collection('users').doc(assignedTo).update({
+      workoutCount: admin.firestore.FieldValue.increment(1),
+    });
     const createdDoc = await createdRef.get();
 
     return NextResponse.json({

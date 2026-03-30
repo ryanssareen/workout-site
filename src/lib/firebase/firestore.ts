@@ -1,6 +1,6 @@
 import {
   collection, addDoc, updateDoc, deleteDoc, doc, getDoc, getDocs,
-  query, where, orderBy, limit as firestoreLimit, serverTimestamp, Timestamp, writeBatch, deleteField,
+  query, where, orderBy, limit as firestoreLimit, serverTimestamp, Timestamp, writeBatch, deleteField, increment,
 } from 'firebase/firestore';
 import { getDbInstance } from './config';
 import { Workout, WorkoutFormData, WorkoutComment, WorkoutRating, PersonalRecord, PRCategory, Milestone } from '@/types';
@@ -98,6 +98,9 @@ export async function createWorkout(data: ExtendedWorkoutFormData, createdByUser
 
       await batch.commit();
       console.log(`Created ${workoutIds.length} recurring workouts`);
+      // Increment denormalized workout count
+      const userRef = doc(getDbInstance(), 'users', ownerUsername);
+      await updateDoc(userRef, { workoutCount: increment(workoutIds.length) });
       return firstWorkoutId;
     } else {
       // Single workout creation
@@ -107,6 +110,9 @@ export async function createWorkout(data: ExtendedWorkoutFormData, createdByUser
       };
       const workoutsRef = collection(getDbInstance(), 'users', ownerUsername, 'workouts');
       const docRef = await addDoc(workoutsRef, workoutData);
+      // Increment denormalized workout count
+      const userRef = doc(getDbInstance(), 'users', ownerUsername);
+      await updateDoc(userRef, { workoutCount: increment(1) });
       return docRef.id;
     }
   } catch (error: any) {
@@ -224,6 +230,9 @@ export async function updateWorkout(ownerUsername: string, id: string, data: Par
 export async function deleteWorkout(ownerUsername: string, id: string): Promise<void> {
   try {
     await deleteDoc(doc(getDbInstance(), 'users', ownerUsername, 'workouts', id));
+    // Decrement denormalized workout count
+    const userRef = doc(getDbInstance(), 'users', ownerUsername);
+    await updateDoc(userRef, { workoutCount: increment(-1) });
   } catch (error: any) {
     throw new Error(error.message || 'Failed to delete workout');
   }

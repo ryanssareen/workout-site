@@ -134,6 +134,11 @@ export async function POST(request: NextRequest) {
       await batch.commit();
     }
 
+    // Increment denormalized workout count
+    await db.collection('users').doc(username).update({
+      workoutCount: admin.firestore.FieldValue.increment(createdIds.length),
+    });
+
     // Clean up session
     await db.collection('importSessions').doc(sessionId).delete();
 

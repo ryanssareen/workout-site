@@ -260,5 +260,9 @@ export async function executeDedupDeletions(result: DedupResult, username: strin
     batch.delete(adminDb.collection('users').doc(username).collection('workouts').doc(d.deleteId));
   }
   await batch.commit();
+  // Decrement denormalized workout count
+  await adminDb.collection('users').doc(username).update({
+    workoutCount: admin.firestore.FieldValue.increment(-result.deletions.length),
+  });
   return result.deletions.length;
 }
