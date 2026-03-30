@@ -303,9 +303,9 @@ export default function WorkoutDetailPage() {
     <div className="max-w-3xl mx-auto space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <Button variant="ghost" asChild>
-          <Link href="/workouts">
+          <Link href={searchParams.get('from') === 'calendar' ? '/calendar' : '/workouts'}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Workouts
+            {searchParams.get('from') === 'calendar' ? 'Back to Calendar' : 'Back to Workouts'}
           </Link>
         </Button>
 

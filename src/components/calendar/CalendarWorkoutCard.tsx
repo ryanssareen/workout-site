@@ -248,7 +248,7 @@ function CompactCard({
 
   return (
     <Link
-      href={`/workouts/${workout.id}`}
+      href={`/workouts/${workout.id}?from=calendar`}
       className={cn(
         'block rounded-2xl border transition-all duration-200',
         'shadow-sm hover:shadow-md hover:shadow-black/5',

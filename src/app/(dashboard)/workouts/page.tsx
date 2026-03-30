@@ -103,7 +103,7 @@ function WorkoutRow({ workout, onDelete }: { workout: Workout; onDelete?: (worko
 
   return (
     <Link
-      href={`/workouts/${workout.id}`}
+      href={`/workouts/${workout.id}?from=workouts`}
       className={cn(
         'group flex items-center gap-3 px-4 py-3 rounded-xl border bg-card transition-all hover:shadow-sm hover:border-primary/20',
         isMissed && 'opacity-50',

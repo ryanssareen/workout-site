@@ -301,7 +301,7 @@ export function WorkoutDetailPanel({
             </button>
           )}
           <Link
-            href={`/workouts/${workout.id}`}
+            href={`/workouts/${workout.id}?from=calendar`}
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold border hover:bg-muted transition-colors"
           >
             <ExternalLink className="h-3.5 w-3.5" />
