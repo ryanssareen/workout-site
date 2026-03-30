@@ -43,36 +43,59 @@ export default function Home() {
           </div>
 
           <div className="container mx-auto px-4 py-20 sm:py-28 md:py-36">
-            <div className="max-w-3xl mx-auto text-center space-y-8">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-600/10 border border-red-600/20 text-red-500 dark:text-red-400 text-sm font-medium">
-                <Flame className="h-4 w-4" />
-                Free during early access
+            <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+              {/* Left — copy */}
+              <div className="space-y-6">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-600/10 border border-red-600/20 text-red-500 dark:text-red-400 text-sm font-medium">
+                  <Flame className="h-4 w-4" />
+                  Free during early access
+                </div>
+
+                <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-[1.08]">
+                  Your training,{' '}
+                  <span className="bg-gradient-to-r from-red-500 via-red-600 to-red-400 dark:from-red-400 dark:via-red-500 dark:to-red-300 bg-clip-text text-transparent">
+                    all in one place
+                  </span>
+                </h1>
+
+                <p className="text-lg md:text-xl text-muted-foreground max-w-lg leading-relaxed">
+                  Track workouts across every sport, sync with Strava, and stay on top of your training — no coach required.
+                </p>
+
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <Button asChild size="lg" className="h-13 px-8 bg-red-600 hover:bg-red-700 text-white shadow-xl shadow-red-600/25 border-0 font-semibold text-base">
+                    <Link href="/register">
+                      Start for free
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" size="lg" className="h-13 px-8 border-border text-foreground hover:bg-muted font-semibold text-base">
+                    <Link href="/login">I have an account</Link>
+                  </Button>
+                </div>
               </div>
 
-              <h1 className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tight leading-[1.08]">
-                Your training,{' '}
-                <span className="bg-gradient-to-r from-red-500 via-red-600 to-red-400 dark:from-red-400 dark:via-red-500 dark:to-red-300 bg-clip-text text-transparent">
-                  all in one place
-                </span>
-              </h1>
-
-              <p className="text-lg md:text-xl text-muted-foreground max-w-xl mx-auto leading-relaxed">
-                Track workouts across every sport, sync with Strava, and stay on top of your training — no coach required.
-              </p>
-
-              <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
-                <Button asChild size="lg" className="h-13 px-8 bg-red-600 hover:bg-red-700 text-white shadow-xl shadow-red-600/25 border-0 font-semibold text-base">
-                  <Link href="/register">
-                    Start for free
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" size="lg" className="h-13 px-8 border-border text-foreground hover:bg-muted font-semibold text-base">
-                  <Link href="/login">I have an account</Link>
-                </Button>
+              {/* Right — sport cards */}
+              <div className="hidden lg:grid grid-cols-2 gap-4">
+                {[
+                  { icon: Activity, name: 'Running', color: 'from-orange-500/20 to-red-500/20', border: 'border-orange-500/20' },
+                  { icon: Waves, name: 'Swimming', color: 'from-blue-500/20 to-cyan-500/20', border: 'border-blue-500/20' },
+                  { icon: Bike, name: 'Cycling', color: 'from-emerald-500/20 to-green-500/20', border: 'border-emerald-500/20' },
+                  { icon: Dumbbell, name: 'Strength', color: 'from-purple-500/20 to-pink-500/20', border: 'border-purple-500/20' },
+                  { icon: Target, name: 'Triathlon', color: 'from-amber-500/20 to-orange-500/20', border: 'border-amber-500/20' },
+                  { icon: Smartphone, name: 'Any Sport', color: 'from-red-500/20 to-rose-500/20', border: 'border-red-500/20' },
+                ].map((sport, i) => (
+                  <div key={i} className={`p-5 rounded-2xl border ${sport.border} bg-gradient-to-br ${sport.color} backdrop-blur-sm flex items-center gap-3`}>
+                    <div className="w-10 h-10 rounded-xl bg-background/60 flex items-center justify-center shrink-0">
+                      <sport.icon className="h-5 w-5 text-foreground/80" />
+                    </div>
+                    <span className="font-semibold text-foreground/90">{sport.name}</span>
+                  </div>
+                ))}
               </div>
 
-              <div className="flex justify-center items-center gap-3 pt-4 flex-wrap">
+              {/* Mobile — sport pills */}
+              <div className="flex lg:hidden justify-start items-center gap-3 -mt-4 flex-wrap">
                 {[
                   { icon: Activity, name: 'Running' },
                   { icon: Waves, name: 'Swimming' },
