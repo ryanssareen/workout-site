@@ -59,8 +59,8 @@ export function Navbar() {
                   <p className="text-sm font-medium leading-none">{user.displayName}</p>
                   <p className="text-xs text-muted-foreground capitalize">{user.role === 'student' ? 'athlete' : user.role || 'Athlete'}</p>
                 </div>
-                <Link href="/profile"><Button variant="ghost" size="icon" className="h-8 w-8"><UserCircle className="h-4 w-4" /></Button></Link>
-                <Link href="/settings"><Button variant="ghost" size="icon" className="h-8 w-8"><Settings className="h-4 w-4" /></Button></Link>
+                <Link href="/profile"><Button variant="ghost" size="icon" aria-label="Profile" className="h-8 w-8"><UserCircle className="h-4 w-4" /></Button></Link>
+                <Link href="/settings"><Button variant="ghost" size="icon" aria-label="Settings" className="h-8 w-8"><Settings className="h-4 w-4" /></Button></Link>
               </div>
             )}
             {/* Strava sync indicator */}
@@ -72,13 +72,13 @@ export function Navbar() {
             )}
             {/* Mobile: compact profile icon */}
             <Link href="/profile" className="md:hidden">
-              <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Button variant="ghost" size="icon" aria-label="Profile" className="h-8 w-8">
                 <UserCircle className="h-4 w-4" />
               </Button>
             </Link>
             <ThemeToggle />
             {/* Logout — icon-only on mobile, icon+text on desktop */}
-            <Button variant="outline" size="icon" onClick={handleLogout} className="h-8 w-8 md:h-9 md:w-auto md:px-3">
+            <Button variant="outline" size="icon" aria-label="Logout" onClick={handleLogout} className="h-8 w-8 md:h-9 md:w-auto md:px-3">
               <LogOut className="h-4 w-4 md:mr-2" />
               <span className="hidden md:inline">Logout</span>
             </Button>

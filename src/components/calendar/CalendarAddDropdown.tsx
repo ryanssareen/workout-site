@@ -186,6 +186,7 @@ export function CalendarAddDropdown({ date, className, onNoteAdded }: CalendarAd
             setEventType('run');
           }
         }}
+        aria-label="Add to calendar"
         className={cn(
           'w-12 h-12 rounded-full flex items-center justify-center transition-all',
           'text-primary/70 hover:text-primary bg-primary/5 hover:bg-primary/15 border-2 border-primary/20 hover:border-primary/40 shadow-md',

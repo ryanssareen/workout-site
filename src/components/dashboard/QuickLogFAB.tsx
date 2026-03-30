@@ -57,6 +57,7 @@ export function QuickLogFAB() {
         {/* Main FAB button */}
         <button
           onClick={() => setOpen(o => !o)}
+          aria-label={open ? 'Close quick log menu' : 'Quick log workout'}
           className={cn(
             'h-14 w-14 rounded-full flex items-center justify-center shadow-xl transition-all duration-300 active:scale-90',
             open

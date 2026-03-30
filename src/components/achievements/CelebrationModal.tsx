@@ -52,7 +52,7 @@ export function CelebrationModal({ achievements, open, onClose, userName }: Cele
             <DialogTitle className="text-lg font-bold">
               {totalItems > 1 ? `Achievement ${currentIndex + 1} of ${totalItems}` : 'Achievement Unlocked!'}
             </DialogTitle>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
+            <Button variant="ghost" size="icon" aria-label="Close" className="h-8 w-8" onClick={onClose}>
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -74,6 +74,7 @@ export function CelebrationModal({ achievements, open, onClose, userName }: Cele
               <Button
                 variant="outline"
                 size="icon"
+                aria-label="Previous achievement"
                 className="h-8 w-8"
                 disabled={currentIndex === 0}
                 onClick={() => setCurrentIndex(i => i - 1)}
@@ -93,6 +94,7 @@ export function CelebrationModal({ achievements, open, onClose, userName }: Cele
               <Button
                 variant="outline"
                 size="icon"
+                aria-label="Next achievement"
                 className="h-8 w-8"
                 disabled={currentIndex === totalItems - 1}
                 onClick={() => setCurrentIndex(i => i + 1)}

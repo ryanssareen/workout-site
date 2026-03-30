@@ -87,12 +87,14 @@ export function CalendarHeader({
           </button>
           <button
             onClick={onPrev}
+            aria-label="Previous"
             className="p-2 rounded-xl border hover:bg-muted transition-colors"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
           <button
             onClick={onNext}
+            aria-label="Next"
             className="p-2 rounded-xl border hover:bg-muted transition-colors"
           >
             <ChevronRight className="h-4 w-4" />
@@ -159,7 +161,7 @@ export function CalendarHeader({
           {/* Mobile overflow menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="md:hidden p-2 rounded-xl border hover:bg-muted transition-colors">
+              <button aria-label="More options" className="md:hidden p-2 rounded-xl border hover:bg-muted transition-colors">
                 <MoreHorizontal className="h-4 w-4" />
               </button>
             </DropdownMenuTrigger>

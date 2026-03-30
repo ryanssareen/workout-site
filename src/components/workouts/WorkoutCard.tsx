@@ -236,8 +236,8 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
                   {workout.completed ? <><Circle className="h-4 w-4 mr-1.5" />Undo</> : <><CheckCircle2 className="h-4 w-4 mr-1.5" />Complete</>}
                 </Button>
               )}
-              {onEdit && <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onEdit(workout.id); }} className="h-9 w-9 p-0"><Edit className="h-4 w-4" /></Button>}
-              {onDelete && <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onDelete(workout.id); }} className="h-9 w-9 p-0 text-red-500 hover:text-red-600 hover:bg-red-500/10"><Trash2 className="h-4 w-4" /></Button>}
+              {onEdit && <Button variant="outline" size="sm" aria-label="Edit workout" onClick={(e) => { e.stopPropagation(); onEdit(workout.id); }} className="h-9 w-9 p-0"><Edit className="h-4 w-4" /></Button>}
+              {onDelete && <Button variant="outline" size="sm" aria-label="Delete workout" onClick={(e) => { e.stopPropagation(); onDelete(workout.id); }} className="h-9 w-9 p-0 text-red-500 hover:text-red-600 hover:bg-red-500/10"><Trash2 className="h-4 w-4" /></Button>}
             </div>
           )}
         </CardContent>
