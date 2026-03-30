@@ -154,7 +154,7 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="edit-displayName" className="text-xs">Display Name</Label>
-                  <Input id="edit-displayName" value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Your name" />
+                  <Input id="edit-displayName" value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Your name" maxLength={50} />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Username</Label>
@@ -171,7 +171,7 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
                     {300 - bio.length} remaining
                   </span>
                 </div>
-                <Textarea id="edit-bio" value={bio} onChange={e => setBio(e.target.value.slice(0, 300))} placeholder="Tell us about yourself..." rows={2} />
+                <Textarea id="edit-bio" value={bio} onChange={e => setBio(e.target.value.slice(0, 300))} placeholder="Tell us about yourself..." rows={2} maxLength={300} />
               </div>
             </div>
           </div>

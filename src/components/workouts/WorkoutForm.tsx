@@ -210,7 +210,7 @@ export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAt
       {/* Workout Name */}
       <div className="space-y-2">
         <Label htmlFor="name">Workout Name *</Label>
-        <Input id="name" placeholder="Morning Run" {...register('name')} />
+        <Input id="name" placeholder="Morning Run" maxLength={100} {...register('name')} />
         {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
       </div>
 
@@ -250,6 +250,7 @@ export function WorkoutForm({ onSubmit, defaultValues, athletes, loading, hideAt
         <Textarea
           id="description"
           placeholder="Add any notes, goals, cues, or context for this workout..."
+          maxLength={2000}
           {...register('description')}
         />
         {errors.description && <p className="text-sm text-red-500">{errors.description.message}</p>}
