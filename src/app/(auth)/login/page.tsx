@@ -36,73 +36,38 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex bg-background">
-      {/* Left — branded panel (hidden on mobile) */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-red-600 via-red-700 to-red-900 items-center justify-center p-12">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-20 -left-20 w-[400px] h-[400px] bg-white/5 rounded-full blur-[80px]" />
-          <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-black/10 rounded-full blur-[100px]" />
-          <div className="absolute top-1/3 right-1/4 w-[300px] h-[300px] bg-orange-500/10 rounded-full blur-[80px]" />
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-background">
+      {/* Ambient background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-red-500/15 dark:bg-red-600/10 rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '8s' }} />
+        <div className="absolute top-1/2 -left-40 w-[500px] h-[500px] bg-orange-400/10 dark:bg-red-900/10 rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '12s' }} />
+        <div className="absolute -bottom-20 right-1/4 w-[400px] h-[400px] bg-red-400/10 dark:bg-red-600/5 rounded-full blur-[80px] animate-pulse" style={{ animationDuration: '10s' }} />
+      </div>
+
+      {/* Floating sport icons — decorative */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none hidden md:block">
+        <div className="absolute top-[15%] left-[10%] w-12 h-12 rounded-2xl bg-orange-500/10 dark:bg-orange-500/5 border border-orange-500/10 flex items-center justify-center rotate-[-12deg]">
+          <Activity className="h-5 w-5 text-orange-400/50" />
         </div>
-
-        <div className="relative z-10 max-w-md space-y-8">
-          <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center">
-            <Dumbbell className="h-7 w-7 text-white" />
-          </div>
-
-          <h2 className="text-4xl font-black text-white leading-tight">
-            Train smarter.<br />
-            Track everything.
-          </h2>
-
-          <p className="text-lg text-white/70 leading-relaxed">
-            Join athletes who plan, track, and improve across every sport — all in one place.
-          </p>
-
-          <div className="grid grid-cols-3 gap-3 pt-4">
-            {[
-              { icon: Activity, label: 'Run' },
-              { icon: Waves, label: 'Swim' },
-              { icon: Bike, label: 'Cycle' },
-              { icon: Dumbbell, label: 'Lift' },
-              { icon: Target, label: 'Tri' },
-              { icon: Activity, label: '& more' },
-            ].map((s, i) => (
-              <div key={i} className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white/10 backdrop-blur-sm border border-white/10">
-                <s.icon className="h-4 w-4 text-white/80" />
-                <span className="text-sm font-medium text-white/80">{s.label}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-3 pt-4">
-            <div className="flex -space-x-2">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="w-8 h-8 rounded-full bg-white/20 border-2 border-red-700 flex items-center justify-center text-xs font-bold text-white/60">
-                  {['R', 'S', 'M', 'A'][i]}
-                </div>
-              ))}
-            </div>
-            <p className="text-sm text-white/60">
-              Athletes already training
-            </p>
-          </div>
+        <div className="absolute top-[25%] right-[8%] w-12 h-12 rounded-2xl bg-blue-500/10 dark:bg-blue-500/5 border border-blue-500/10 flex items-center justify-center rotate-[8deg]">
+          <Waves className="h-5 w-5 text-blue-400/50" />
+        </div>
+        <div className="absolute bottom-[20%] left-[8%] w-12 h-12 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/5 border border-emerald-500/10 flex items-center justify-center rotate-[15deg]">
+          <Bike className="h-5 w-5 text-emerald-400/50" />
+        </div>
+        <div className="absolute bottom-[30%] right-[12%] w-12 h-12 rounded-2xl bg-purple-500/10 dark:bg-purple-500/5 border border-purple-500/10 flex items-center justify-center rotate-[-8deg]">
+          <Dumbbell className="h-5 w-5 text-purple-400/50" />
+        </div>
+        <div className="absolute top-[60%] left-[18%] w-12 h-12 rounded-2xl bg-amber-500/10 dark:bg-amber-500/5 border border-amber-500/10 flex items-center justify-center rotate-[5deg]">
+          <Target className="h-5 w-5 text-amber-400/50" />
         </div>
       </div>
 
-      {/* Right — form */}
-      <div className="flex-1 flex items-center justify-center p-4 relative overflow-hidden">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-red-100/70 dark:bg-red-600/10 rounded-full blur-[120px]" />
-          <div className="absolute top-1/2 -left-40 w-[400px] h-[400px] bg-orange-50 dark:bg-red-900/10 rounded-full blur-[100px]" />
-        </div>
-
-        <div className="absolute top-4 right-4 z-10">
-          <ThemeToggle />
-        </div>
-
-        <LoginForm />
+      <div className="absolute top-4 right-4 z-10">
+        <ThemeToggle />
       </div>
+
+      <LoginForm />
     </div>
   );
 }

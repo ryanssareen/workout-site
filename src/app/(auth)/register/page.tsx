@@ -1,64 +1,46 @@
 import { RegisterForm } from '@/components/auth/RegisterForm';
 import { ThemeToggle } from '@/components/dashboard/ThemeToggle';
-import { Dumbbell, Activity, Waves, Bike, TrendingUp, Calendar, Sparkles } from 'lucide-react';
+import { Dumbbell, Activity, Waves, Bike, Target, Sparkles } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
 export default function RegisterPage() {
   return (
-    <div className="min-h-screen flex bg-background">
-      {/* Left — branded panel (hidden on mobile) */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-red-600 via-red-700 to-red-900 items-center justify-center p-12">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-20 -left-20 w-[400px] h-[400px] bg-white/5 rounded-full blur-[80px]" />
-          <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-black/10 rounded-full blur-[100px]" />
-          <div className="absolute top-1/3 right-1/4 w-[300px] h-[300px] bg-orange-500/10 rounded-full blur-[80px]" />
+    <div className="min-h-screen flex items-center justify-center p-4 bg-background relative overflow-hidden">
+      {/* Ambient background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -left-40 w-[600px] h-[600px] bg-red-500/15 dark:bg-red-600/10 rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '10s' }} />
+        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-orange-400/10 dark:bg-red-900/10 rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '8s' }} />
+        <div className="absolute top-1/3 right-1/4 w-[400px] h-[400px] bg-red-400/10 dark:bg-red-800/8 rounded-full blur-[90px] animate-pulse" style={{ animationDuration: '12s' }} />
+      </div>
+
+      {/* Floating sport icons */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none hidden md:block">
+        <div className="absolute top-[12%] right-[10%] w-12 h-12 rounded-2xl bg-orange-500/10 dark:bg-orange-500/5 border border-orange-500/10 flex items-center justify-center rotate-[10deg]">
+          <Activity className="h-5 w-5 text-orange-400/50" />
         </div>
-
-        <div className="relative z-10 max-w-md space-y-8">
-          <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center">
-            <Dumbbell className="h-7 w-7 text-white" />
-          </div>
-
-          <h2 className="text-4xl font-black text-white leading-tight">
-            Start your<br />
-            training journey.
-          </h2>
-
-          <p className="text-lg text-white/70 leading-relaxed">
-            Free during early access. Track every workout, sync your watch, and see real progress.
-          </p>
-
-          <div className="space-y-3 pt-4">
-            {[
-              { icon: Activity, text: 'Log workouts across 5+ sports' },
-              { icon: Waves, text: 'Auto-sync with Strava & wearables' },
-              { icon: TrendingUp, text: 'Track PRs and weekly trends' },
-              { icon: Calendar, text: 'Visual calendar to plan ahead' },
-              { icon: Sparkles, text: 'AI-powered workout suggestions' },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/10">
-                <item.icon className="h-4.5 w-4.5 text-white/80 shrink-0" />
-                <span className="text-sm font-medium text-white/80">{item.text}</span>
-              </div>
-            ))}
-          </div>
+        <div className="absolute top-[35%] left-[7%] w-12 h-12 rounded-2xl bg-blue-500/10 dark:bg-blue-500/5 border border-blue-500/10 flex items-center justify-center rotate-[-12deg]">
+          <Waves className="h-5 w-5 text-blue-400/50" />
+        </div>
+        <div className="absolute bottom-[15%] right-[9%] w-12 h-12 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/5 border border-emerald-500/10 flex items-center justify-center rotate-[-6deg]">
+          <Bike className="h-5 w-5 text-emerald-400/50" />
+        </div>
+        <div className="absolute bottom-[25%] left-[12%] w-12 h-12 rounded-2xl bg-purple-500/10 dark:bg-purple-500/5 border border-purple-500/10 flex items-center justify-center rotate-[12deg]">
+          <Dumbbell className="h-5 w-5 text-purple-400/50" />
+        </div>
+        <div className="absolute top-[65%] right-[18%] w-12 h-12 rounded-2xl bg-amber-500/10 dark:bg-amber-500/5 border border-amber-500/10 flex items-center justify-center rotate-[-10deg]">
+          <Target className="h-5 w-5 text-amber-400/50" />
+        </div>
+        <div className="absolute top-[18%] left-[15%] w-12 h-12 rounded-2xl bg-rose-500/10 dark:bg-rose-500/5 border border-rose-500/10 flex items-center justify-center rotate-[6deg]">
+          <Sparkles className="h-5 w-5 text-rose-400/50" />
         </div>
       </div>
 
-      {/* Right — form */}
-      <div className="flex-1 flex items-center justify-center p-4 relative overflow-hidden">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -left-40 w-[500px] h-[500px] bg-red-600/10 rounded-full blur-[120px]" />
-          <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-red-900/10 rounded-full blur-[100px]" />
-        </div>
-
-        <div className="absolute top-4 right-4 z-10">
-          <ThemeToggle />
-        </div>
-
-        <RegisterForm />
+      <div className="absolute top-4 right-4 z-10">
+        <ThemeToggle />
       </div>
+
+      <RegisterForm />
     </div>
   );
 }
