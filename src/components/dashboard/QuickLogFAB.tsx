@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const WORKOUT_TYPES = [
@@ -16,11 +16,17 @@ const WORKOUT_TYPES = [
 
 export function QuickLogFAB() {
   const [open, setOpen] = useState(false);
+  const [submitting, setSubmitting] = useState<string | null>(null);
   const router = useRouter();
 
-  const handleSelect = (type: string) => {
-    setOpen(false);
-    router.push(`/workouts/new?type=${type}`);
+  const handleSelect = async (type: string) => {
+    setSubmitting(type);
+    try {
+      setOpen(false);
+      await router.push(`/workouts/new?type=${type}`);
+    } finally {
+      setSubmitting(null);
+    }
   };
 
   return (
@@ -41,14 +47,22 @@ export function QuickLogFAB() {
             <button
               key={wt.type}
               onClick={() => handleSelect(wt.type)}
-              className="flex items-center gap-2.5 pl-3 pr-4 py-2.5 rounded-full bg-card border border-border shadow-xl text-sm font-medium text-foreground hover:bg-muted transition-all"
+              disabled={submitting !== null}
+              className={cn(
+                'flex items-center gap-2.5 pl-3 pr-4 py-2.5 rounded-full bg-card border border-border shadow-xl text-sm font-medium text-foreground hover:bg-muted transition-all',
+                submitting !== null && 'opacity-60 cursor-not-allowed',
+              )}
               style={{
                 transitionDelay: open ? `${i * 40}ms` : '0ms',
                 transform: open ? 'scale(1)' : 'scale(0.8)',
                 opacity: open ? 1 : 0,
               }}
             >
-              <span className="text-lg">{wt.emoji}</span>
+              {submitting === wt.type ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <span className="text-lg">{wt.emoji}</span>
+              )}
               <span>{wt.label}</span>
             </button>
           ))}
