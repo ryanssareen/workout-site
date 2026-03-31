@@ -3,7 +3,6 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
@@ -22,6 +21,7 @@ import {
   Sun,
   Moon,
   Monitor,
+  Settings,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { signOut } from '@/lib/firebase/auth';
@@ -29,6 +29,28 @@ import Link from 'next/link';
 import { EditProfileDialog } from '@/components/profile/EditProfileDialog';
 import { useStravaSyncStore } from '@/lib/stores/stravaSyncStore';
 import Image from 'next/image';
+
+function SettingRow({ label, description, children }: { label: string; description?: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-4">
+      <div className="min-w-0">
+        <p className="font-medium">{label}</p>
+        {description && <p className="text-sm text-muted-foreground mt-0.5">{description}</p>}
+      </div>
+      <div className="shrink-0">{children}</div>
+    </div>
+  );
+}
+
+function SectionHeader({ title }: { title: string }) {
+  return (
+    <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground pt-2 pb-1">{title}</h2>
+  );
+}
+
+function Divider() {
+  return <div className="border-t border-border" />;
+}
 
 function SettingsContent() {
   const router = useRouter();
@@ -146,141 +168,159 @@ function SettingsContent() {
     .slice(0, 2) || '?';
 
   return (
-    <div className="space-y-5 max-w-2xl mx-auto pb-8">
-      {/* Profile */}
-      <div className="flex items-center gap-4">
-        {user?.photoURL ? (
-          <Image src={user.photoURL} alt={user.displayName} width={48} height={48} className="rounded-full object-cover shrink-0" />
-        ) : (
-          <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-            <span className="text-sm font-bold text-primary">{initials}</span>
-          </div>
-        )}
-        <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-bold truncate">{user?.displayName}</h1>
-          <p className="text-sm text-muted-foreground truncate">@{user?.username} · {user?.email}</p>
+    <div className="max-w-3xl mx-auto pb-12">
+      {/* Page header */}
+      <div className="flex items-center gap-3 mb-8">
+        <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary to-primary/80 shadow-lg shadow-primary/20">
+          <Settings className="h-5 w-5 text-primary-foreground" />
         </div>
-        <Button variant="outline" size="sm" onClick={() => setEditProfileOpen(true)}>
-          <Pencil className="h-3.5 w-3.5 mr-1.5" />Edit
-        </Button>
+        <div>
+          <h1 className="text-2xl font-bold">Settings</h1>
+          <p className="text-sm text-muted-foreground">Manage your account and preferences</p>
+        </div>
       </div>
 
-      {/* Theme */}
-      <Card>
-        <CardContent className="pt-5">
-          <div className="grid grid-cols-3 gap-2">
-            {([
-              { value: 'light', label: 'Light', icon: Sun },
-              { value: 'dark', label: 'Dark', icon: Moon },
-              { value: 'system', label: 'System', icon: Monitor },
-            ] as const).map(({ value, label, icon: Icon }) => (
-              <button
-                key={value}
-                onClick={() => setTheme(value)}
-                className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border transition-all ${
-                  theme === value
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border hover:border-primary/30 text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                <span className="text-sm font-medium">{label}</span>
-              </button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Strava */}
-      {(user?.role === 'athlete' || user?.role === 'student') && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <svg className="h-4 w-4 text-[#FC4C02]" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7.008 13.828h4.172" /></svg>
-              Strava
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {user?.stravaId ? (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-[#FC4C02]" />
-                    <span className="text-sm font-medium">Connected</span>
-                    <span className="text-xs text-muted-foreground">
-                      since {user.stravaConnectedAt?.toDate?.()?.toLocaleDateString() || 'unknown'}
-                    </span>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={handleSyncStrava} disabled={syncStatus === 'syncing'}>
-                      {syncStatus === 'syncing' ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Syncing</> : 'Sync Now'}
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={handleDisconnectStrava} disabled={isDisconnectingStrava} className="text-muted-foreground hover:text-red-500">
-                      {isDisconnectingStrava ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Unlink className="h-3.5 w-3.5" />}
-                    </Button>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">Auto-sync is active — new activities appear automatically.</p>
-              </div>
+      {/* Main card */}
+      <div className="rounded-2xl border border-border bg-card shadow-sm">
+        {/* ── Profile ── */}
+        <div className="p-6">
+          <SectionHeader title="Profile" />
+          <div className="flex items-center gap-5 py-4">
+            {user?.photoURL ? (
+              <Image src={user.photoURL} alt={user.displayName} width={64} height={64} className="rounded-xl object-cover shrink-0" />
             ) : (
-              <div className="space-y-2">
-                <Button onClick={handleConnectStrava} disabled={isConnectingStrava} size="sm" className="bg-[#FC4C02] hover:bg-[#E34402] text-white">
-                  {isConnectingStrava ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <svg className="h-3.5 w-3.5 mr-1.5" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7.008 13.828h4.172" /></svg>}
-                  Connect Strava
-                </Button>
-                <a href="https://support.strava.com/hc/en-us/articles/216917697-Connect-Garmin-to-Strava" target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
-                  How to connect Garmin to Strava <ExternalLink className="h-3 w-3" />
-                </a>
+              <div className="h-16 w-16 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <span className="text-xl font-bold text-primary">{initials}</span>
               </div>
             )}
-          </CardContent>
-        </Card>
-      )}
+            <div className="flex-1 min-w-0">
+              <p className="text-lg font-semibold truncate">{user?.displayName}</p>
+              <p className="text-sm text-muted-foreground">@{user?.username}</p>
+              <p className="text-sm text-muted-foreground">{user?.email}</p>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <Button variant="outline" onClick={() => setEditProfileOpen(true)}>
+                <Pencil className="h-4 w-4 mr-2" />Edit Profile
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/profile"><ExternalLink className="h-4 w-4 mr-2" />View</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
 
-      {/* Public Profile */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Globe className="h-4 w-4 text-primary" />Public Profile
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm">Visible at <span className="font-mono text-xs text-muted-foreground">/athlete/{user?.username}</span></span>
+        <Divider />
+
+        {/* ── Appearance ── */}
+        <div className="p-6">
+          <SectionHeader title="Appearance" />
+          <SettingRow label="Theme" description="Choose how the app looks">
+            <div className="flex gap-1.5 bg-muted/50 p-1 rounded-lg">
+              {([
+                { value: 'light', icon: Sun },
+                { value: 'dark', icon: Moon },
+                { value: 'system', icon: Monitor },
+              ] as const).map(({ value, icon: Icon }) => (
+                <button
+                  key={value}
+                  onClick={() => setTheme(value)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                    theme === value
+                      ? 'bg-background shadow-sm text-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="capitalize">{value}</span>
+                </button>
+              ))}
+            </div>
+          </SettingRow>
+        </div>
+
+        {/* ── Strava ── */}
+        {(user?.role === 'athlete' || user?.role === 'student') && (
+          <>
+            <Divider />
+            <div className="p-6">
+              <SectionHeader title="Integrations" />
+              <SettingRow
+                label="Strava"
+                description={user?.stravaId
+                  ? `Connected since ${user.stravaConnectedAt?.toDate?.()?.toLocaleDateString() || 'unknown'} — auto-sync active`
+                  : 'Sync your runs, rides, and swims automatically'
+                }
+              >
+                {user?.stravaId ? (
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-[#FC4C02]" />
+                    <Button variant="outline" onClick={handleSyncStrava} disabled={syncStatus === 'syncing'}>
+                      {syncStatus === 'syncing' ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Syncing</> : 'Sync Now'}
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={handleDisconnectStrava} disabled={isDisconnectingStrava} className="text-muted-foreground hover:text-red-500">
+                      {isDisconnectingStrava ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unlink className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                ) : (
+                  <Button onClick={handleConnectStrava} disabled={isConnectingStrava} className="bg-[#FC4C02] hover:bg-[#E34402] text-white">
+                    {isConnectingStrava ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7.008 13.828h4.172" /></svg>}
+                    Connect Strava
+                  </Button>
+                )}
+              </SettingRow>
+            </div>
+          </>
+        )}
+
+        <Divider />
+
+        {/* ── Public Profile ── */}
+        <div className="p-6">
+          <SectionHeader title="Public Profile" />
+          <SettingRow
+            label="Profile visibility"
+            description={`Share your training stats at /athlete/${user?.username}`}
+          >
             <Switch checked={profilePublic} onCheckedChange={handleTogglePublicProfile} />
-          </div>
-          {user?.profileTagline && (
-            <p className="text-xs text-muted-foreground italic">&ldquo;{user.profileTagline}&rdquo;</p>
-          )}
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleCopyProfileUrl}>
-              {profileCopied ? <Check className="h-3.5 w-3.5 mr-1.5" /> : <Copy className="h-3.5 w-3.5 mr-1.5" />}
-              {profileCopied ? 'Copied' : 'Copy Link'}
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleRegenerateTagline} disabled={regeneratingTagline}>
-              {regeneratingTagline ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
-              New Tagline
-            </Button>
-            <Button variant="outline" size="sm" asChild>
-              <Link href={`/athlete/${user?.username}`} target="_blank"><ExternalLink className="h-3.5 w-3.5 mr-1.5" />View</Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </SettingRow>
 
-      {/* Account */}
-      <Card>
-        <CardContent className="pt-5">
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/reset-password"><Key className="h-3.5 w-3.5 mr-1.5" />Change Password</Link>
+          {user?.profileTagline && (
+            <p className="text-sm text-muted-foreground italic pb-2">&ldquo;{user.profileTagline}&rdquo;</p>
+          )}
+
+          <div className="flex gap-2 pb-2">
+            <Button variant="outline" onClick={handleCopyProfileUrl}>
+              {profileCopied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+              {profileCopied ? 'Copied!' : 'Copy Link'}
             </Button>
-            <Button variant="outline" size="sm" onClick={handleLogout} className="text-red-500 hover:text-red-600 hover:bg-red-500/10">
-              <LogOut className="h-3.5 w-3.5 mr-1.5" />Sign Out
+            <Button variant="outline" onClick={handleRegenerateTagline} disabled={regeneratingTagline}>
+              {regeneratingTagline ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+              {regeneratingTagline ? 'Generating...' : 'New Tagline'}
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href={`/athlete/${user?.username}`} target="_blank"><ExternalLink className="h-4 w-4 mr-2" />View Profile</Link>
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        <Divider />
+
+        {/* ── Account ── */}
+        <div className="p-6">
+          <SectionHeader title="Account" />
+          <SettingRow label="Password" description="Update your login credentials">
+            <Button variant="outline" asChild>
+              <Link href="/reset-password"><Key className="h-4 w-4 mr-2" />Change Password</Link>
+            </Button>
+          </SettingRow>
+          <Divider />
+          <SettingRow label="Sign out" description="Log out of your account on this device">
+            <Button variant="outline" onClick={handleLogout} className="text-red-500 hover:text-red-600 hover:bg-red-500/10">
+              <LogOut className="h-4 w-4 mr-2" />Sign Out
+            </Button>
+          </SettingRow>
+        </div>
+      </div>
 
       <EditProfileDialog open={editProfileOpen} onOpenChange={setEditProfileOpen} />
     </div>
