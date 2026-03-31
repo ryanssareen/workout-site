@@ -108,29 +108,52 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
     }
   }, [cardRef, captureBg, captureW]);
 
-  // Share with image via native share API (the only way to actually send the photo)
-  const shareWithImage = async (platform: string) => {
+  // Copy image to clipboard as PNG so user can paste it in the app
+  const copyImageToClipboard = async (dataUrl: string): Promise<boolean> => {
+    try {
+      // Convert JPEG data URL to PNG for clipboard (Safari requires image/png)
+      const canvas = document.createElement('canvas');
+      const img = new Image();
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = reject;
+        img.src = dataUrl;
+      });
+      canvas.width = img.width;
+      canvas.height = img.height;
+      canvas.getContext('2d')!.drawImage(img, 0, 0);
+      const pngBlob = await new Promise<Blob>((resolve) =>
+        canvas.toBlob((b) => resolve(b!), 'image/png')
+      );
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/png': pngBlob }),
+      ]);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  // App-specific share: copy image to clipboard + open the app directly
+  const shareToApp = async (platform: string, deepLink: string) => {
     const dataUrl = await generateImage();
     if (!dataUrl) return;
-    try {
-      const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], `${fileName}.jpg`, { type: 'image/jpeg' });
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], text: shareText });
-        track('report_shared', { platform, source });
-        return;
-      }
-    } catch (err: any) {
-      if (err?.name === 'AbortError') return;
-    }
-    // Fallback: download image + copy caption
-    const dl = document.createElement('a');
-    dl.download = `${fileName}.jpg`;
-    dl.href = dataUrl;
-    dl.click();
-    try { await navigator.clipboard.writeText(shareText); } catch { /* ignore */ }
-    toast.success('Image saved! Caption copied');
+    const imageCopied = await copyImageToClipboard(dataUrl);
     track('report_shared', { platform, source });
+    if (imageCopied) {
+      toast.success('Image copied! Paste it in your chat', { duration: 4000 });
+    } else {
+      // Fallback: download the image
+      const dl = document.createElement('a');
+      dl.download = `${fileName}.jpg`;
+      dl.href = dataUrl;
+      dl.click();
+      toast.success('Image saved! Attach it from your camera roll', { duration: 4000 });
+    }
+    // Small delay so the toast is visible before the app switch
+    setTimeout(() => {
+      window.location.href = deepLink;
+    }, 300);
   };
 
   const handleDownload = async () => {
@@ -152,6 +175,22 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleCopyImage = async () => {
+    const dataUrl = await generateImage();
+    if (!dataUrl) return;
+    const ok = await copyImageToClipboard(dataUrl);
+    if (ok) {
+      toast.success('Image copied to clipboard!');
+    } else {
+      // Fallback to download
+      const dl = document.createElement('a');
+      dl.download = `${fileName}.jpg`;
+      dl.href = dataUrl;
+      dl.click();
+      toast.success('Image downloaded!');
+    }
+  };
+
   return (
     <div className="rounded-2xl border bg-card shadow-2xl shadow-black/40 overflow-hidden">
       {/* Header */}
@@ -171,50 +210,55 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
       <div className="p-5 space-y-4">
         <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Share to</p>
         <div className="grid grid-cols-4 gap-2">
-          {/* Instagram Story */}
-          <button onClick={() => shareWithImage('instagram_story')} disabled={isGenerating}
-            className="flex flex-col items-center gap-2 p-3 rounded-xl bg-gradient-to-br from-purple-500/10 via-pink-500/10 to-orange-500/10 hover:from-purple-500/20 hover:via-pink-500/20 hover:to-orange-500/20 border border-pink-500/20 transition-all group">
-            <div className="w-11 h-11 rounded-full bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 flex items-center justify-center shadow-lg shadow-pink-500/30 group-hover:scale-110 transition-transform">
-              <InstagramIcon className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-[10px] font-medium">Story</span>
-          </button>
           {/* WhatsApp */}
-          <button onClick={() => shareWithImage('whatsapp')} disabled={isGenerating}
+          <button onClick={() => shareToApp('whatsapp', `whatsapp://send?text=${encodeURIComponent(shareText)}`)} disabled={isGenerating}
             className="flex flex-col items-center gap-2 p-3 rounded-xl bg-[#25D366]/10 hover:bg-[#25D366]/20 border border-[#25D366]/20 transition-all group">
             <div className="w-11 h-11 rounded-full bg-[#25D366] flex items-center justify-center shadow-lg shadow-[#25D366]/30 group-hover:scale-110 transition-transform">
               <WhatsAppIcon className="h-5 w-5 text-white" />
             </div>
             <span className="text-[10px] font-medium">WhatsApp</span>
           </button>
-          {/* X / Twitter */}
-          <button onClick={() => shareWithImage('x')} disabled={isGenerating}
-            className="flex flex-col items-center gap-2 p-3 rounded-xl bg-foreground/5 hover:bg-foreground/10 border border-foreground/10 transition-all group">
-            <div className="w-11 h-11 rounded-full bg-foreground flex items-center justify-center shadow-lg shadow-foreground/20 group-hover:scale-110 transition-transform">
-              <XIcon className="h-4.5 w-4.5 text-background" />
-            </div>
-            <span className="text-[10px] font-medium">X</span>
-          </button>
           {/* iMessage */}
-          <button onClick={() => shareWithImage('imessage')} disabled={isGenerating}
+          <button onClick={() => shareToApp('imessage', `sms:&body=${encodeURIComponent(shareText)}`)} disabled={isGenerating}
             className="flex flex-col items-center gap-2 p-3 rounded-xl bg-[#34C759]/10 hover:bg-[#34C759]/20 border border-[#34C759]/20 transition-all group">
             <div className="w-11 h-11 rounded-full bg-[#34C759] flex items-center justify-center shadow-lg shadow-[#34C759]/30 group-hover:scale-110 transition-transform">
               <IMessageIcon className="h-5 w-5 text-white" />
             </div>
             <span className="text-[10px] font-medium">iMessage</span>
           </button>
+          {/* Instagram Story */}
+          <button onClick={() => shareToApp('instagram_story', 'instagram://story-camera')} disabled={isGenerating}
+            className="flex flex-col items-center gap-2 p-3 rounded-xl bg-gradient-to-br from-purple-500/10 via-pink-500/10 to-orange-500/10 hover:from-purple-500/20 hover:via-pink-500/20 hover:to-orange-500/20 border border-pink-500/20 transition-all group">
+            <div className="w-11 h-11 rounded-full bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 flex items-center justify-center shadow-lg shadow-pink-500/30 group-hover:scale-110 transition-transform">
+              <InstagramIcon className="h-5 w-5 text-white" />
+            </div>
+            <span className="text-[10px] font-medium">Story</span>
+          </button>
+          {/* X / Twitter */}
+          <button onClick={() => shareToApp('x', `twitter://post?text=${encodeURIComponent(shareText)}`)} disabled={isGenerating}
+            className="flex flex-col items-center gap-2 p-3 rounded-xl bg-foreground/5 hover:bg-foreground/10 border border-foreground/10 transition-all group">
+            <div className="w-11 h-11 rounded-full bg-foreground flex items-center justify-center shadow-lg shadow-foreground/20 group-hover:scale-110 transition-transform">
+              <XIcon className="h-4.5 w-4.5 text-background" />
+            </div>
+            <span className="text-[10px] font-medium">X</span>
+          </button>
         </div>
 
         {/* Action buttons row */}
         <div className="flex gap-2 pt-2">
-          <Button size="sm" onClick={handleDownload} disabled={isGenerating}
+          <Button size="sm" onClick={handleCopyImage} disabled={isGenerating}
             className="flex-1 gap-2 bg-zinc-800 hover:bg-zinc-700 text-white border-0">
+            <Copy className="h-4 w-4" />
+            {isGenerating ? 'Generating...' : 'Copy Image'}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleDownload} disabled={isGenerating}
+            className="flex-1 gap-2">
             <Download className="h-4 w-4" />
-            {isGenerating ? 'Generating...' : 'Save Image'}
+            Save
           </Button>
           <Button variant="outline" size="sm" onClick={handleCopyCaption} className="flex-1 gap-2">
             {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-            {copied ? 'Copied!' : 'Copy Caption'}
+            {copied ? 'Copied!' : 'Caption'}
           </Button>
         </div>
       </div>
