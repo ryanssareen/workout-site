@@ -108,6 +108,39 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
     }
   }, [cardRef, captureBg, captureW]);
 
+  // Helper: convert data URL to File
+  const toFile = async (dataUrl: string) => {
+    const blob = await (await fetch(dataUrl)).blob();
+    return new File([blob], `${fileName}.jpg`, { type: 'image/jpeg' });
+  };
+
+  // Helper: try native share with image+text, returns true if handled
+  const tryNativeShare = async (platform: string): Promise<boolean> => {
+    const dataUrl = await generateImage();
+    if (!dataUrl) return false;
+    try {
+      const file = await toFile(dataUrl);
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], text: shareText });
+        track('report_shared', { platform, source });
+        return true;
+      }
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return true; // user cancelled = handled
+    }
+    return false;
+  };
+
+  // Helper: download image + copy caption as fallback
+  const downloadAndCopy = async (dataUrl: string, msg: string) => {
+    const dl = document.createElement('a');
+    dl.download = `${fileName}.jpg`;
+    dl.href = dataUrl;
+    dl.click();
+    try { await navigator.clipboard.writeText(shareText); } catch { /* ignore */ }
+    toast.success(msg);
+  };
+
   const handleDownload = async () => {
     const dataUrl = await generateImage();
     if (!dataUrl) return;
@@ -128,86 +161,35 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
   };
 
   const handleWhatsApp = async () => {
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    // Native share with image only on mobile (desktop triggers generic macOS share sheet)
-    if (isMobile) {
-      const dataUrl = await generateImage();
-      if (dataUrl) {
-        try {
-          const blob = await (await fetch(dataUrl)).blob();
-          const file = new File([blob], `${fileName}.jpg`, { type: 'image/jpeg' });
-          if (navigator.canShare?.({ files: [file] })) {
-            await navigator.share({ files: [file], text: shareText });
-            track('report_shared', { platform: 'whatsapp', source });
-            return;
-          }
-        } catch (err: any) {
-          if (err?.name === 'AbortError') return;
-        }
-      }
-    } else {
-      // Desktop: save image + copy caption
-      const dataUrl = await generateImage();
-      if (dataUrl) {
-        const dl = document.createElement('a');
-        dl.download = `${fileName}.jpg`;
-        dl.href = dataUrl;
-        dl.click();
-        try { await navigator.clipboard.writeText(shareText); } catch { /* ignore */ }
-        toast.success('Image saved! Caption copied — paste in WhatsApp');
-      }
-    }
+    if (await tryNativeShare('whatsapp')) return;
+    // Fallback: download image, open WhatsApp Web
+    const dataUrl = await generateImage();
+    if (dataUrl) await downloadAndCopy(dataUrl, 'Image saved! Caption copied — paste in WhatsApp');
     track('report_shared', { platform: 'whatsapp', source });
-    // window.open avoids macOS system share sheet, opens WhatsApp Web directly
     window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank', 'noopener');
   };
 
   const handleTwitter = async () => {
-    // Download image + copy caption (Twitter intent doesn't support image uploads)
+    if (await tryNativeShare('x')) return;
+    // Fallback: download + open Twitter compose
     const dataUrl = await generateImage();
-    if (dataUrl) {
-      const dl = document.createElement('a');
-      dl.download = `${fileName}.jpg`;
-      dl.href = dataUrl;
-      dl.click();
-      try { await navigator.clipboard.writeText(shareText); } catch { /* ignore */ }
-      toast.success('Image saved! Attach it to your post');
-    }
+    if (dataUrl) await downloadAndCopy(dataUrl, 'Image saved! Attach it to your post');
     track('report_shared', { platform: 'x', source });
     window.open('https://twitter.com/compose/tweet', '_blank');
   };
 
   const handleInstagramStory = async () => {
-    // Save image + copy caption in background
+    if (await tryNativeShare('instagram_story')) return;
+    // Fallback: download + open Instagram
     const dataUrl = await generateImage();
-    if (dataUrl) {
-      const dl = document.createElement('a');
-      dl.download = `${fileName}.jpg`;
-      dl.href = dataUrl;
-      dl.click();
-    }
-    try { await navigator.clipboard.writeText(shareText); } catch { /* ignore */ }
+    if (dataUrl) await downloadAndCopy(dataUrl, 'Image saved! Open Instagram to share');
     track('report_shared', { platform: 'instagram_story', source });
-
-    // Open Instagram — app on mobile, website on desktop
     window.location.href = 'https://www.instagram.com/';
   };
 
   const handleIMessageShare = async () => {
-    // Try sharing the image via native share (works great on iOS for iMessage)
-    const dataUrl = await generateImage();
-    if (!dataUrl) return;
-    try {
-      const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], `${fileName}.jpg`, { type: 'image/jpeg' });
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file] });
-        return;
-      }
-    } catch (err: any) {
-      if (err?.name === 'AbortError') return;
-    }
-    // Fallback to sms: link — use location.href so the OS handles the protocol
+    if (await tryNativeShare('imessage')) return;
+    // Fallback: sms link
     track('report_shared', { platform: 'imessage', source });
     window.location.href = `sms:&body=${encodeURIComponent(shareText)}`;
   };
