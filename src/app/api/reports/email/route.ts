@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = (await request.json()) as RequestBody;
-    const { pdfBase64, filename = 'coachtrack-report.pdf', toEmail, subject } = body;
+    const { pdfBase64, filename = 'daily-athlete-report.pdf', toEmail, subject } = body;
 
     if (!pdfBase64 || !toEmail) {
       return NextResponse.json({ error: 'pdfBase64 and toEmail are required' }, { status: 400 });
@@ -27,10 +27,10 @@ export async function POST(request: NextRequest) {
     apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY || '');
 
     const sendSmtpEmail = new brevo.SendSmtpEmail();
-    sendSmtpEmail.sender = { name: 'CoachTrack', email: 'ryansareen6@gmail.com' }; // verified sender
-    sendSmtpEmail.replyTo = { name: 'CoachTrack', email: 'ryansareen6@gmail.com' };
+    sendSmtpEmail.sender = { name: 'The Daily Athlete', email: 'ryansareen6@gmail.com' }; // verified sender
+    sendSmtpEmail.replyTo = { name: 'The Daily Athlete', email: 'ryansareen6@gmail.com' };
     sendSmtpEmail.to = [{ email: toEmail }];
-    sendSmtpEmail.subject = subject || 'Your CoachTrack Report';
+    sendSmtpEmail.subject = subject || 'Your Daily Athlete Report';
     sendSmtpEmail.htmlContent = `<p>Your report is attached.</p><p>Generated ${new Date().toLocaleString()}</p>`;
     sendSmtpEmail.attachment = [
       {

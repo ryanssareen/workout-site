@@ -77,7 +77,7 @@ export function OnboardingModal() {
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle className="text-2xl">Welcome to CoachTrack!</DialogTitle>
+          <DialogTitle className="text-2xl">Welcome to The Daily Athlete!</DialogTitle>
           <DialogDescription>
             What should we call you? You can always change this later in your profile.
           </DialogDescription>

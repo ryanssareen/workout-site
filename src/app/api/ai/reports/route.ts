@@ -5,7 +5,7 @@ import Groq from 'groq-sdk';
 import { adminDb } from '@/lib/firebase/admin';
 import { adminResolveUsername } from '@/lib/firebase/adminUserMapping';
 
-const SYSTEM_PROMPT = `You are CoachTrack's AI report generator. Analyze workout data and create beautifully structured reports using JSON format.
+const SYSTEM_PROMPT = `You are The Daily Athlete's AI report generator. Analyze workout data and create beautifully structured reports using JSON format.
 
 CRITICAL: You MUST respond with ONLY valid JSON. No markdown, no explanations, just the JSON object.
 

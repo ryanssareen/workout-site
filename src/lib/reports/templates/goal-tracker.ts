@@ -4,7 +4,7 @@ export const goalTrackerTemplate: ReportTemplate = {
   type: 'goal-tracker',
   cacheTTL: 8,
 
-  systemPrompt: `You are CoachTrack's AI report generator creating a Goal Tracker Report. The athlete has an upcoming event/goal — analyze their training readiness, progression, and what to focus on in the remaining weeks.
+  systemPrompt: `You are The Daily Athlete's AI report generator creating a Goal Tracker Report. The athlete has an upcoming event/goal — analyze their training readiness, progression, and what to focus on in the remaining weeks.
 
 CRITICAL: Respond with ONLY valid JSON. No markdown, no explanations.
 

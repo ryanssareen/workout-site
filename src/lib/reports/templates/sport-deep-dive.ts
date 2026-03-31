@@ -8,7 +8,7 @@ export const sportDeepDiveTemplate: ReportTemplate = {
   type: 'sport-deep-dive',
   cacheTTL: 12,
 
-  systemPrompt: `You are CoachTrack's AI report generator creating a Sport Deep Dive report. Analyze the athlete's training data for ONE specific sport and generate a structured JSON report.
+  systemPrompt: `You are The Daily Athlete's AI report generator creating a Sport Deep Dive report. Analyze the athlete's training data for ONE specific sport and generate a structured JSON report.
 
 CRITICAL: Respond with ONLY valid JSON. No markdown, no explanations.
 

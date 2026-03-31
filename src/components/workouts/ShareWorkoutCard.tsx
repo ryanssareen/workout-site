@@ -354,10 +354,10 @@ export function ShareWorkoutCard({ workout }: ShareWorkoutCardProps) {
         <div ref={cardRef} className="p-6 bg-gradient-to-br from-gray-950 via-gray-900 to-red-950" style={{ width: '100%', minHeight: 200 }}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center">
-                <span className="text-white font-bold text-sm">CT</span>
+              <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-background"><path d="M14.4 14.4 9.6 9.6"/><path d="M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829z"/><path d="m21.5 21.5-1.4-1.4"/><path d="M3.9 3.9 2.5 2.5"/><path d="M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"/></svg>
               </div>
-              <span className="text-gray-400 text-sm font-medium">CoachTrack</span>
+              <span className="text-gray-400 text-sm font-medium">The Daily Athlete</span>
             </div>
             <span className="text-gray-500 text-xs">{workoutDate}</span>
           </div>

@@ -94,7 +94,7 @@ async function sendEmail(to: string, name: string, summary: SummaryData, coachEm
   apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY || '');
 
   const sendSmtpEmail = new brevo.SendSmtpEmail();
-  sendSmtpEmail.sender = { name: 'CoachTrack', email: 'ryansareen6@gmail.com' };
+  sendSmtpEmail.sender = { name: 'The Daily Athlete', email: 'ryansareen6@gmail.com' };
   sendSmtpEmail.to = [{ email: to, name }];
   if (coachEmail && coachEmail !== to) {
     sendSmtpEmail.cc = [{ email: coachEmail }];

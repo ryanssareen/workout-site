@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const data = await generateBackupData();
-    const filename = `coachtrack-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    const filename = `daily-athlete-backup-${new Date().toISOString().slice(0, 10)}.json`;
 
     return new NextResponse(JSON.stringify(data, null, 2), {
       headers: {

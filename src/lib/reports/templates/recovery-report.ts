@@ -4,7 +4,7 @@ export const recoveryReportTemplate: ReportTemplate = {
   type: 'recovery-report',
   cacheTTL: 6,
 
-  systemPrompt: `You are CoachTrack's AI report generator creating a Recovery & Balance Report. Analyze the athlete's training load, rest patterns, and sport balance to assess recovery and overtraining risk.
+  systemPrompt: `You are The Daily Athlete's AI report generator creating a Recovery & Balance Report. Analyze the athlete's training load, rest patterns, and sport balance to assess recovery and overtraining risk.
 
 CRITICAL: Respond with ONLY valid JSON. No markdown, no explanations.
 

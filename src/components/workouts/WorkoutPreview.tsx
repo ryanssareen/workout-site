@@ -79,7 +79,7 @@ export function WorkoutPreview({ workout, workoutId }: WorkoutPreviewProps) {
           <Dumbbell className="h-5 w-5 text-primary-foreground" />
         </div>
         <Link href="/" className="font-bold text-lg hover:opacity-80 transition-opacity">
-          CoachTrack
+          The Daily Athlete
         </Link>
       </div>
 

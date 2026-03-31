@@ -49,9 +49,9 @@ export async function POST(request: NextRequest) {
     );
 
     const sendSmtpEmail = new brevo.SendSmtpEmail();
-    sendSmtpEmail.sender = { name: 'CoachTrack', email: 'ryansareen6@gmail.com' };
+    sendSmtpEmail.sender = { name: 'The Daily Athlete', email: 'ryansareen6@gmail.com' };
     sendSmtpEmail.to = [{ email: email }];
-    sendSmtpEmail.subject = 'Reset Your Password — CoachTrack';
+    sendSmtpEmail.subject = 'Reset Your Password — The Daily Athlete';
     sendSmtpEmail.htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
             <!-- Header -->
             <div style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); padding: 40px 30px; text-align: center;">
               <div style="font-size: 32px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; margin: 0;">
-                COACHTRACK
+                THE DAILY ATHLETE
               </div>
               <div style="font-size: 14px; color: rgba(255,255,255,0.7); margin-top: 6px; text-transform: uppercase; letter-spacing: 3px;">
                 Password Reset
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
             <!-- Footer -->
             <div style="border-top: 1px solid rgba(255,255,255,0.08); padding: 25px 30px; text-align: center;">
               <p style="margin: 0; color: rgba(255,255,255,0.25); font-size: 12px;">
-                Sent from CoachTrack — Train Harder. Track Smarter.
+                Sent from The Daily Athlete — Train Harder. Track Smarter.
               </p>
             </div>
           </div>

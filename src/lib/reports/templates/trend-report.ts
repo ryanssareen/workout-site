@@ -4,7 +4,7 @@ export const trendReportTemplate: ReportTemplate = {
   type: 'trend-report',
   cacheTTL: 6,
 
-  systemPrompt: `You are CoachTrack's AI report generator creating a Trend Report — a period-over-period comparison. Analyze the athlete's training data for two consecutive months and generate a structured JSON report.
+  systemPrompt: `You are The Daily Athlete's AI report generator creating a Trend Report — a period-over-period comparison. Analyze the athlete's training data for two consecutive months and generate a structured JSON report.
 
 CRITICAL: Respond with ONLY valid JSON. No markdown, no explanations.
 

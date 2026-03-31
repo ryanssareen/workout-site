@@ -4,7 +4,7 @@ export const prTimelineTemplate: ReportTemplate = {
   type: 'pr-timeline',
   cacheTTL: 24,
 
-  systemPrompt: `You are CoachTrack's AI report generator creating a Personal Records Timeline report. Analyze the athlete's PR history and generate a structured JSON report.
+  systemPrompt: `You are The Daily Athlete's AI report generator creating a Personal Records Timeline report. Analyze the athlete's PR history and generate a structured JSON report.
 
 CRITICAL: Respond with ONLY valid JSON. No markdown, no explanations.
 
