@@ -108,37 +108,17 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
     }
   }, [cardRef, captureBg, captureW]);
 
-  // Helper: convert data URL to File
-  const toFile = async (dataUrl: string) => {
-    const blob = await (await fetch(dataUrl)).blob();
-    return new File([blob], `${fileName}.jpg`, { type: 'image/jpeg' });
-  };
-
-  // Helper: try native share with image+text, returns true if handled
-  const tryNativeShare = async (platform: string): Promise<boolean> => {
+  // Save image to device and copy caption
+  const saveAndCopy = async (toastMsg: string): Promise<string | null> => {
     const dataUrl = await generateImage();
-    if (!dataUrl) return false;
-    try {
-      const file = await toFile(dataUrl);
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], text: shareText });
-        track('report_shared', { platform, source });
-        return true;
-      }
-    } catch (err: any) {
-      if (err?.name === 'AbortError') return true; // user cancelled = handled
-    }
-    return false;
-  };
-
-  // Helper: download image + copy caption as fallback
-  const downloadAndCopy = async (dataUrl: string, msg: string) => {
+    if (!dataUrl) return null;
     const dl = document.createElement('a');
     dl.download = `${fileName}.jpg`;
     dl.href = dataUrl;
     dl.click();
     try { await navigator.clipboard.writeText(shareText); } catch { /* ignore */ }
-    toast.success(msg);
+    toast.success(toastMsg);
+    return dataUrl;
   };
 
   const handleDownload = async () => {
@@ -160,38 +140,48 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // App-specific buttons: save image + deep link to open the app directly
   const handleWhatsApp = async () => {
-    if (await tryNativeShare('whatsapp')) return;
-    // Fallback: download image, open WhatsApp Web
-    const dataUrl = await generateImage();
-    if (dataUrl) await downloadAndCopy(dataUrl, 'Image saved! Caption copied — paste in WhatsApp');
+    await saveAndCopy('Image saved! Paste it in your WhatsApp chat');
     track('report_shared', { platform: 'whatsapp', source });
-    window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank', 'noopener');
+    window.location.href = `whatsapp://send?text=${encodeURIComponent(shareText)}`;
   };
 
   const handleTwitter = async () => {
-    if (await tryNativeShare('x')) return;
-    // Fallback: download + open Twitter compose
-    const dataUrl = await generateImage();
-    if (dataUrl) await downloadAndCopy(dataUrl, 'Image saved! Attach it to your post');
+    await saveAndCopy('Image saved! Attach it to your post');
     track('report_shared', { platform: 'x', source });
-    window.open('https://twitter.com/compose/tweet', '_blank');
+    window.location.href = `twitter://post?text=${encodeURIComponent(shareText)}`;
   };
 
   const handleInstagramStory = async () => {
-    if (await tryNativeShare('instagram_story')) return;
-    // Fallback: download + open Instagram
-    const dataUrl = await generateImage();
-    if (dataUrl) await downloadAndCopy(dataUrl, 'Image saved! Open Instagram to share');
+    await saveAndCopy('Image saved! Select it from your camera roll');
     track('report_shared', { platform: 'instagram_story', source });
-    window.location.href = 'https://www.instagram.com/';
+    window.location.href = 'instagram://story-camera';
   };
 
   const handleIMessageShare = async () => {
-    if (await tryNativeShare('imessage')) return;
-    // Fallback: sms link
+    await saveAndCopy('Image saved! Attach it in your message');
     track('report_shared', { platform: 'imessage', source });
     window.location.href = `sms:&body=${encodeURIComponent(shareText)}`;
+  };
+
+  // Generic "More" — uses native share sheet with image attached
+  const handleNativeShare = async () => {
+    const dataUrl = await generateImage();
+    if (!dataUrl) return;
+    try {
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], `${fileName}.jpg`, { type: 'image/jpeg' });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], text: shareText });
+        track('report_shared', { platform: 'native', source });
+        return;
+      }
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
+    }
+    // Fallback if native share not available
+    await saveAndCopy('Image saved! Caption copied');
   };
 
   return (
@@ -212,7 +202,7 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
       {/* Share targets — big icon buttons */}
       <div className="p-5 space-y-4">
         <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Share to</p>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-5 gap-2">
           {/* Instagram Story */}
           <button onClick={handleInstagramStory} disabled={isGenerating}
             className="flex flex-col items-center gap-2 p-3 rounded-xl bg-gradient-to-br from-purple-500/10 via-pink-500/10 to-orange-500/10 hover:from-purple-500/20 hover:via-pink-500/20 hover:to-orange-500/20 border border-pink-500/20 transition-all group">
@@ -222,7 +212,7 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
             <span className="text-[10px] font-medium">Story</span>
           </button>
           {/* WhatsApp */}
-          <button onClick={handleWhatsApp}
+          <button onClick={handleWhatsApp} disabled={isGenerating}
             className="flex flex-col items-center gap-2 p-3 rounded-xl bg-[#25D366]/10 hover:bg-[#25D366]/20 border border-[#25D366]/20 transition-all group">
             <div className="w-11 h-11 rounded-full bg-[#25D366] flex items-center justify-center shadow-lg shadow-[#25D366]/30 group-hover:scale-110 transition-transform">
               <WhatsAppIcon className="h-5 w-5 text-white" />
@@ -230,7 +220,7 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
             <span className="text-[10px] font-medium">WhatsApp</span>
           </button>
           {/* X / Twitter */}
-          <button onClick={handleTwitter}
+          <button onClick={handleTwitter} disabled={isGenerating}
             className="flex flex-col items-center gap-2 p-3 rounded-xl bg-foreground/5 hover:bg-foreground/10 border border-foreground/10 transition-all group">
             <div className="w-11 h-11 rounded-full bg-foreground flex items-center justify-center shadow-lg shadow-foreground/20 group-hover:scale-110 transition-transform">
               <XIcon className="h-4.5 w-4.5 text-background" />
@@ -238,12 +228,20 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
             <span className="text-[10px] font-medium">X</span>
           </button>
           {/* iMessage */}
-          <button onClick={handleIMessageShare}
+          <button onClick={handleIMessageShare} disabled={isGenerating}
             className="flex flex-col items-center gap-2 p-3 rounded-xl bg-[#34C759]/10 hover:bg-[#34C759]/20 border border-[#34C759]/20 transition-all group">
             <div className="w-11 h-11 rounded-full bg-[#34C759] flex items-center justify-center shadow-lg shadow-[#34C759]/30 group-hover:scale-110 transition-transform">
               <IMessageIcon className="h-5 w-5 text-white" />
             </div>
             <span className="text-[10px] font-medium">iMessage</span>
+          </button>
+          {/* More — native share sheet */}
+          <button onClick={handleNativeShare} disabled={isGenerating}
+            className="flex flex-col items-center gap-2 p-3 rounded-xl bg-muted/50 hover:bg-muted border border-border transition-all group">
+            <div className="w-11 h-11 rounded-full bg-muted flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Share2 className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <span className="text-[10px] font-medium">More</span>
           </button>
         </div>
 
