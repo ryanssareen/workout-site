@@ -59,7 +59,7 @@ interface ShareButtonsProps {
   source?: string;
 }
 
-function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef, onClose, captureBg, captureW, source }: ShareButtonsProps) {
+function ShareButtons({ title, shareText, shareUrl, fileName, cardRef, onClose, captureBg, captureW, source }: ShareButtonsProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -134,26 +134,10 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
     }
   };
 
-  // App-specific share: copy image to clipboard + open the app directly
-  const shareToApp = async (platform: string, deepLink: string) => {
-    const dataUrl = await generateImage();
-    if (!dataUrl) return;
-    const imageCopied = await copyImageToClipboard(dataUrl);
+  // Open app directly with preview link (OG image shows as rich card)
+  const shareToApp = (platform: string, deepLink: string) => {
     track('report_shared', { platform, source });
-    if (imageCopied) {
-      toast.success('Image copied! Paste it in your chat', { duration: 4000 });
-    } else {
-      // Fallback: download the image
-      const dl = document.createElement('a');
-      dl.download = `${fileName}.jpg`;
-      dl.href = dataUrl;
-      dl.click();
-      toast.success('Image saved! Attach it from your camera roll', { duration: 4000 });
-    }
-    // Small delay so the toast is visible before the app switch
-    setTimeout(() => {
-      window.location.href = deepLink;
-    }, 300);
+    window.location.href = deepLink;
   };
 
   const handleDownload = async () => {
@@ -211,7 +195,7 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
         <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Share to</p>
         <div className="grid grid-cols-4 gap-2">
           {/* WhatsApp */}
-          <button onClick={() => shareToApp('whatsapp', `whatsapp://send?text=${encodeURIComponent(shareText)}`)} disabled={isGenerating}
+          <button onClick={() => shareToApp('whatsapp', `whatsapp://send?text=${encodeURIComponent(shareText + '\n' + shareUrl)}`)}
             className="flex flex-col items-center gap-2 p-3 rounded-xl bg-[#25D366]/10 hover:bg-[#25D366]/20 border border-[#25D366]/20 transition-all group">
             <div className="w-11 h-11 rounded-full bg-[#25D366] flex items-center justify-center shadow-lg shadow-[#25D366]/30 group-hover:scale-110 transition-transform">
               <WhatsAppIcon className="h-5 w-5 text-white" />
@@ -219,7 +203,7 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
             <span className="text-[10px] font-medium">WhatsApp</span>
           </button>
           {/* iMessage */}
-          <button onClick={() => shareToApp('imessage', `sms:&body=${encodeURIComponent(shareText)}`)} disabled={isGenerating}
+          <button onClick={() => shareToApp('imessage', `sms:&body=${encodeURIComponent(shareText + '\n' + shareUrl)}`)}
             className="flex flex-col items-center gap-2 p-3 rounded-xl bg-[#34C759]/10 hover:bg-[#34C759]/20 border border-[#34C759]/20 transition-all group">
             <div className="w-11 h-11 rounded-full bg-[#34C759] flex items-center justify-center shadow-lg shadow-[#34C759]/30 group-hover:scale-110 transition-transform">
               <IMessageIcon className="h-5 w-5 text-white" />
@@ -227,7 +211,7 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
             <span className="text-[10px] font-medium">iMessage</span>
           </button>
           {/* Instagram Story */}
-          <button onClick={() => shareToApp('instagram_story', 'instagram://story-camera')} disabled={isGenerating}
+          <button onClick={() => shareToApp('instagram_story', 'instagram://story-camera')}
             className="flex flex-col items-center gap-2 p-3 rounded-xl bg-gradient-to-br from-purple-500/10 via-pink-500/10 to-orange-500/10 hover:from-purple-500/20 hover:via-pink-500/20 hover:to-orange-500/20 border border-pink-500/20 transition-all group">
             <div className="w-11 h-11 rounded-full bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 flex items-center justify-center shadow-lg shadow-pink-500/30 group-hover:scale-110 transition-transform">
               <InstagramIcon className="h-5 w-5 text-white" />
@@ -235,7 +219,7 @@ function ShareButtons({ title, shareText, shareUrl: _shareUrl, fileName, cardRef
             <span className="text-[10px] font-medium">Story</span>
           </button>
           {/* X / Twitter */}
-          <button onClick={() => shareToApp('x', `twitter://post?text=${encodeURIComponent(shareText)}`)} disabled={isGenerating}
+          <button onClick={() => shareToApp('x', `https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`)}
             className="flex flex-col items-center gap-2 p-3 rounded-xl bg-foreground/5 hover:bg-foreground/10 border border-foreground/10 transition-all group">
             <div className="w-11 h-11 rounded-full bg-foreground flex items-center justify-center shadow-lg shadow-foreground/20 group-hover:scale-110 transition-transform">
               <XIcon className="h-4.5 w-4.5 text-background" />
