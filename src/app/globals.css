@@ -269,7 +269,7 @@
   to { opacity: 1; }
 }
 
-/* ── Confetti animation ── */
+/* ── Confetti animations ── */
 @keyframes confetti-pop {
   0% { transform: scale(0) rotate(0deg); opacity: 1; }
   50% { transform: scale(1.2) rotate(180deg); opacity: 1; }
@@ -277,4 +277,29 @@
 }
 .confetti-piece {
   animation: confetti-pop 0.8s ease-out forwards;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-10px) translateX(0);
+    opacity: 1;
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) translateX(var(--drift, 20px));
+    opacity: 0;
+  }
+}
+.animate-confetti-fall {
+  animation: confetti-fall linear forwards;
+}
+
+@keyframes confetti-spin {
+  0% { transform: rotateX(0deg) rotateY(0deg); }
+  100% { transform: rotateX(360deg) rotateY(180deg); }
+}
+.animate-confetti-spin {
+  animation: confetti-spin linear infinite;
 }
