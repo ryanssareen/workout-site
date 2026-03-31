@@ -248,19 +248,14 @@ function WorkoutsContent() {
 
   // Time filter
   const today = startOfDay(new Date());
-  const now = new Date();
-  const recurringHorizon = addDays(today, 7);
-  const nonRecurringHorizon = addDays(now, 1);
-  const isAthlete = user?.role === 'athlete' || user?.role === 'student';
+  const tomorrow = addDays(today, 1);
   const timeFiltered = athleteFiltered.filter(w => {
     if (timeFilter === 'all') return true;
     const d = getDate(w);
     if (timeFilter === 'planned') {
       if (d < today || w.completed) return false;
-      // Recurring workouts only show within the next 7 days
-      if ((w as any).isRecurring && d > recurringHorizon) return false;
-      // Non-recurring workouts only show within 24 hours for athletes
-      if (isAthlete && !(w as any).isRecurring && d > nonRecurringHorizon) return false;
+      // Recurring workouts only show on their planned day
+      if ((w as any).isRecurring && d >= tomorrow) return false;
       return true;
     }
     return d < today || w.completed; // past
@@ -294,8 +289,7 @@ function WorkoutsContent() {
     planned: athleteFiltered.filter(w => {
       const d = getDate(w);
       if (d < today || w.completed) return false;
-      if ((w as any).isRecurring && d > recurringHorizon) return false;
-      if (isAthlete && !(w as any).isRecurring && d > nonRecurringHorizon) return false;
+      if ((w as any).isRecurring && d >= tomorrow) return false;
       return true;
     }).length,
     past: athleteFiltered.filter(w => getDate(w) < today || w.completed).length,
