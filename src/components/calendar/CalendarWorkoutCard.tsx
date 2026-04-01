@@ -238,11 +238,12 @@ function CompactCard({
   const status = getWorkoutStatus(workout);
   const statusStyles = getStatusStyles(status, noteMode);
 
+  const showToggle = onToggleComplete && workout.source !== 'strava' && !status.isMatchedByStrava;
+
   return (
-    <Link
-      href={`/workouts/${workout.id}?from=calendar`}
+    <div
       className={cn(
-        'block rounded-2xl border transition-all duration-200',
+        'rounded-2xl border transition-all duration-200',
         'shadow-sm hover:shadow-md hover:shadow-black/5',
         'hover:scale-[1.01] active:scale-[0.99]',
         statusStyles.border,
@@ -253,7 +254,10 @@ function CompactCard({
       <div className="flex overflow-hidden rounded-2xl">
         {/* Left color accent */}
         <div className={cn('w-1.5 shrink-0', cfg.border.replace('border-l-', 'bg-'))} />
-        <div className="flex items-start gap-3 p-3.5 flex-1 min-w-0">
+        <Link
+          href={`/workouts/${workout.id}?from=calendar`}
+          className="flex items-start gap-3 p-3.5 flex-1 min-w-0"
+        >
         {/* Emoji / Note icon */}
         {noteMode ? (
           <StickyNote className="h-5 w-5 text-blue-500 mt-0.5 shrink-0" />
@@ -324,33 +328,29 @@ function CompactCard({
           </div>
         </div>
 
-        {/* Source badge + completion toggle */}
-        <div className="flex items-center gap-2 shrink-0">
-          {(status.isStravaStandalone || status.isMatchedByStrava) && (
-            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-orange-500/10 text-[#FC4C02] border border-orange-500/20">
-              <StravaIcon className="h-3 w-3" />
-            </span>
-          )}
-          {onToggleComplete && workout.source !== 'strava' && !status.isMatchedByStrava && (
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onToggleComplete(e, workout);
-              }}
-              className="p-2 -m-2 opacity-40 hover:opacity-100 transition-opacity"
-            >
-              {workout.completed ? (
-                <CheckCircle2 className="h-6 w-6 text-green-500" />
-              ) : (
-                <Circle className="h-6 w-6 text-muted-foreground" />
-              )}
-            </button>
-          )}
-        </div>
-        </div>
+        {/* Source badge */}
+        {(status.isStravaStandalone || status.isMatchedByStrava) && (
+          <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-orange-500/10 text-[#FC4C02] border border-orange-500/20 shrink-0">
+            <StravaIcon className="h-3 w-3" />
+          </span>
+        )}
+        </Link>
+
+        {/* Completion toggle — outside Link so taps don't navigate */}
+        {showToggle && (
+          <button
+            onClick={(e) => onToggleComplete(e, workout)}
+            className="flex items-center justify-center px-3 shrink-0 opacity-50 hover:opacity-100 active:opacity-100 transition-opacity"
+          >
+            {workout.completed ? (
+              <CheckCircle2 className="h-6 w-6 text-green-500" />
+            ) : (
+              <Circle className="h-6 w-6 text-muted-foreground" />
+            )}
+          </button>
+        )}
       </div>
-    </Link>
+    </div>
   );
 }
 
