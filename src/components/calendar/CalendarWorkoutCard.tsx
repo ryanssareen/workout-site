@@ -333,13 +333,17 @@ function CompactCard({
           )}
           {onToggleComplete && workout.source !== 'strava' && !status.isMatchedByStrava && (
             <button
-              onClick={(e) => onToggleComplete(e, workout)}
-              className="opacity-40 hover:opacity-100 transition-opacity"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onToggleComplete(e, workout);
+              }}
+              className="p-2 -m-2 opacity-40 hover:opacity-100 transition-opacity"
             >
               {workout.completed ? (
-                <CheckCircle2 className="h-5 w-5 text-green-500" />
+                <CheckCircle2 className="h-6 w-6 text-green-500" />
               ) : (
-                <Circle className="h-5 w-5 text-muted-foreground" />
+                <Circle className="h-6 w-6 text-muted-foreground" />
               )}
             </button>
           )}
