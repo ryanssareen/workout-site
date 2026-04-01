@@ -302,11 +302,12 @@ Each template exports `{ type, cacheTTL, systemPrompt, buildContext(workouts, pa
 ## Next Steps (Optional)
 
 1. **More Chart Types**: Add combo charts, scatter plots
-2. **PDF Generation**: Server-side PDF with better quality
+2. **PDF Generation**: Server-side PDF with better quality — `jspdf` already in dependencies
 3. ~~**Report History**: Save and view past reports~~ → ✅ Done via Firestore caching
 4. **Custom Themes**: Let users choose color schemes
 5. ~~**Share Reports**: Generate shareable links~~ → ✅ Done via ShareButtons
 6. **Export to Excel**: Structured data export
+7. **Achievement Reports**: Auto-generated reports when PRs or milestones are hit (achievements system now built)
 
 ## Testing
 

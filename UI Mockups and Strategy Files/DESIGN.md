@@ -12,13 +12,15 @@
 | Database | Firestore (Firebase) |
 | Auth | Firebase Auth (email/password + Google Sign-In) |
 | Styling | Tailwind CSS 4, shadcn/ui, Radix UI primitives |
-| State | Zustand (`src/lib/stores/authStore.ts`) |
+| State | Zustand (`src/lib/stores/authStore.ts`, `workoutStore.ts`, `stravaSyncStore.ts`) |
 | AI | Groq SDK (LLaMA 3.3 70B + 8B instant fallback) for tagging/comments/import, OpenAI SDK for reports/suggestions |
+| MCP | `@modelcontextprotocol/sdk` — AI agent integration at `/api/mcp` |
 | Email | Brevo SMTP for transactional, Nodemailer (Gmail) for cron |
-| Integrations | Strava API (OAuth 2.0 + webhooks) |
+| Integrations | Strava API (OAuth 2.0 + webhooks), Garmin Connect API (pending approval) |
 | Charts | Recharts |
 | Maps | Leaflet (route visualization) |
 | Analytics | PostHog (product analytics with PostHogProvider) |
+| Storage | Vercel Blob (backups), Firebase Storage (user content) |
 | Deploy | Vercel (env vars stored there, no local .env) |
 
 ---
@@ -33,6 +35,7 @@ src/
 │   ├── (auth)/                  # Public auth pages
 │   │   ├── login/               # Login page
 │   │   ├── register/            # Registration page
+│   │   ├── choose-username/     # Username selection (post-registration)
 │   │   ├── reset-password/      # Password reset
 │   │   └── reset-password/confirm/
 │   ├── (dashboard)/             # Protected pages (requires auth)
@@ -52,27 +55,37 @@ src/
 │   │   ├── progress/            # Progress tracking
 │   │   └── records/             # Personal records
 │   ├── athlete/[username]/      # Public athlete profile page (SSR)
+│   │   └── wrapped/             # Public yearly wrapped with OG image
+│   ├── preview/[username]/[id]/ # Public workout preview with OG image
+│   ├── workout/[id]/            # Public single workout view
+│   ├── connect-strava/          # Strava connection landing page
 │   ├── portfolio/               # Feature tour with real screenshots, light/dark toggle
 │   ├── roadmap/                 # Visual phase timeline with progress tracking
 │   ├── comic/                   # 14-slide origin story carousel
+│   ├── privacy/                 # Privacy Policy page
+│   ├── terms/                   # Terms of Service page
+│   ├── features/                # Marketing features page
+│   ├── contact/                 # Contact page
 │   ├── youwillneverguessthisistheadmin/ # Hidden admin dashboard
 │   │   ├── page.tsx             # Main admin dashboard
 │   │   └── api/page.tsx         # API playground
 
-│   ├── api/                     # ~88+ API routes
-│   │   ├── ai/                  # AI: chat, suggestions, reports, tagging, profanity
-│   │   ├── auth/                # User creation (Admin SDK), Strava OAuth (authorize, callback, disconnect)
-│   │   ├── strava/              # Sync (2-stage), webhook, cleanup, migration, activity-details
+│   ├── api/                     # ~100+ API routes
+│   │   ├── ai/                  # AI: chat, suggestions, reports, tagging, profanity, recommendations, workout-suggestions
+│   │   ├── auth/                # User creation (Admin SDK), username check, Strava OAuth (authorize, callback, disconnect)
+│   │   ├── strava/              # Sync (2-stage), webhook, cleanup, migration, activity-details, webhook-status/subscription
 │   │   ├── webhooks/            # Strava webhook receiver (GET verify + POST events)
-│   │   ├── workouts/            # Workout CRUD + merge + import + fix-timezone
+│   │   ├── workouts/            # Workout CRUD + merge + import + fix-timezone + auto-dedup
 │   │   ├── import/              # Import: analyze, confirm, remap, format-description
 │   │   ├── templates/           # Workout template CRUD
+│   │   ├── mcp/                 # Model Context Protocol server for AI agent access
 │   │   ├── cron/                # send-reminders, send-summaries, send-weekly-wrap, generate-insights, backup
 │   │   ├── push/                # Web Push notification subscribe/unsubscribe
 │   │   ├── reports/             # Report generation + email
-│   │   ├── notifications/       # Comment notifications
+│   │   ├── notifications/       # Comment + coach notifications
 │   │   ├── export/              # Workout export
-│   │   └── admin/               # Admin: verify, backup, users, logs, assign-athletes, restore, migrate
+│   │   ├── health/              # Health check endpoint
+│   │   └── admin/               # Admin: verify, backup, users, logs, broadcast, fix-milestones, backfill-workout-counts, restore, migrate
 │   ├── workout/[id]/            # Public workout preview (no auth)
 │   ├── preview/[id]/            # Shareable workout preview (no auth)
 │   ├── features/                # Marketing features page
@@ -97,10 +110,11 @@ src/
 │   ├── reports/                 # Report sections, charts, tables
 │   │   └── hub/                 # AIInsightCard, AskAnythingBar, YourReportsZone, ExploreCards, DeepDiveCard
 │   ├── onboarding/              # FileUploadStep, ImportPreview
-│   ├── strava/                  # DuplicateDialog, StravaSyncTrigger
-│   ├── providers/               # ClientProviders, PostHogProvider
+│   ├── achievements/            # CelebrationModal, DashboardAchievements, MilestoneCard, PRCard
+│   ├── strava/                  # DuplicateDialog, ManualMergeDialog, StravaSyncTrigger
+│   ├── providers/               # ClientProviders, PostHogProvider, ThemeProvider
 │   ├── ai/                      # WorkoutRecommendations
-│   └── ui/                      # shadcn/ui primitives
+│   └── ui/                      # shadcn/ui primitives (20+ components)
 ├── lib/
 │   ├── firebase/
 │   │   ├── config.ts            # getAuthInstance(), getDbInstance()
@@ -114,25 +128,39 @@ src/
 │   │   ├── authStore.ts         # Zustand auth state
 │   │   ├── stravaSyncStore.ts   # Zustand Strava sync state machine
 │   │   └── workoutStore.ts      # Zustand workout cache
+│   ├── achievements.ts          # Achievement detection logic
 │   ├── analytics.ts             # computeSummary, computeTypeDistribution for workout stats
 │   ├── admin-auth.ts            # HMAC-SHA256 session signing, verifyPasswordSessionToken, checkOrigin, logAdminAction
+│   ├── api-auth.ts              # API authentication helpers
+│   ├── api-client.ts            # API client utilities
+│   ├── api-registry.ts          # Catalog of 100+ API endpoints grouped by 14 categories
 │   ├── backup.ts                # createBackup — Vercel Blob storage, shared between manual trigger + cron
+│   ├── constants.ts             # App-wide constants
+│   ├���─ dateUtils.ts             # Date utility functions
 │   ├── dayKey.ts                # getDayKey, normalizeTimezone, parseLocalDate helpers
+│   ├── firebase-admin.ts        # Firebase Admin SDK helper (getFirebaseAdminDb)
+│   ├── groq-dedup.ts            # Groq-powered deduplication pipeline
+│   ├── groq-format.ts           # Groq formatting utilities
+│   ├── milestones.ts            # Milestone definitions + detection (workout count, distance, streak, first-ever)
+│   ├── polyline.ts              # Polyline encoding/decoding
 │   ├── posthog.ts               # PostHog client initialization
-│   ├── api-registry.ts          # Catalog of 88+ API endpoints grouped by category
+│   ├── pr-detection.ts          # extractPRCandidates() — auto-detect PRs from completed workouts
+│   ├── push.ts                  # Web Push notification sending via web-push SDK
 │   ├── reports/
 │   │   ├── cache.ts             # getCachedReport(), setCachedReport() — Firestore TTL cache
 │   │   └── templates/           # Template registry + sport-deep-dive, trend-report, pr-timeline, recovery-report, goal-tracker
 │   ├── email/                   # Email templates (summary, reminder, wrap)
 │   ├── import/                  # CSV parsing, column mapping, enrichment
-│   ├── training/                # Training logic engines
-│   ├── groq-dedup.ts            # Groq-powered deduplication pipeline
+│   ├── training/                # logicEngine.ts, planEngine.ts, constraints.ts, validator.ts
 │   └── utils.ts                 # cn() utility
 └── types/
     ├── index.ts                 # User, Workout, WorkoutComment, PersonalRecord, etc.
     ├── workout.ts               # SwimData, BikeData, RunData, StrengthData, WorkoutTag (walk uses RunData)
     ├── reports.ts               # Report section types
-    └── ai.ts                    # AI feature types
+    ├── reports-hub.ts           # Reports Hub types
+    ├── achievements.ts          # Milestone, DetectedPR, ConfirmedPR, MilestoneCategory, AchievementResult
+    ├── ai.ts                    # AI feature types
+    └── polyline-encoded.d.ts    # Type declarations for polyline-encoded library
 ```
 
 ---
@@ -726,7 +754,7 @@ Shared components (`PieChart`, `StatCard`, format helpers) live in `src/componen
 - **Hidden URL** — security by obscurity, not linked from any nav, footer, or page. Type directly to access.
 - **Single route** — `src/app/youwillneverguessthisistheadmin/page.tsx`. Auth gate is a modal overlay on the same page. No separate redirect logic needed.
 - **API Playground** — `src/app/youwillneverguessthisistheadmin/api/page.tsx` (also accessible at `/admin/api`). Execute any endpoint with custom params, see response timing.
-- **API Registry** — Catalog of 65+ endpoints grouped by 14 categories (admin, cron, AI, auth, strava, webhooks, workouts, import, templates, email, reports, export, push, other) with search/filter. Defined in `src/lib/api-registry.ts`.
+- **API Registry** — Catalog of 100+ endpoints grouped by 14 categories (admin, cron, AI, auth, strava, webhooks, workouts, import, templates, email, reports, export, push, other) with search/filter. Defined in `src/lib/api-registry.ts`.
 - **Auth gate** — Password-based authentication. After login, server creates HMAC-SHA256 signed session token (`timestamp:hmac` format) using `ADMIN_SECRET`. Token stored as `httpOnly` cookie (4h expiry, `sameSite=strict`). `GET /api/admin/verify` checks the cookie on page load. `DELETE /api/admin/verify` clears it (logout). Also supports Firebase Auth UID allowlist via `ADMIN_UIDS`.
   - Rate limit: 5 failures/IP/15 min (in-memory, best-effort in serverless)
   - All mutating routes check `Origin` header for CSRF protection
@@ -909,7 +937,16 @@ Shared components (`PieChart`, `StatCard`, format helpers) live in `src/componen
 | Route | Method | Purpose |
 |-------|--------|---------|
 | `/api/health` | GET | Health check |
-| `/api/mcp` | GET | MCP endpoint |
+| `/api/mcp` | POST | Model Context Protocol server — exposes workout CRUD, user queries, stats, PRs, comments, data health check as MCP tools for AI agents. Token-based auth with timing-safe comparison. |
+| `/api/admin/broadcast` | POST | Send broadcast email to all users |
+| `/api/admin/fix-milestones` | POST | Fix/repair milestone data |
+| `/api/admin/backfill-workout-counts` | POST | Backfill workout count fields |
+| `/api/coach/add-athlete` | POST | Add athlete to coach roster |
+| `/api/notifications/coach` | POST | Send coach notification |
+| `/api/debug/list-users` | GET | Debug: list all users |
+| `/api/test-brevo` | GET | Test Brevo email connection |
+| `/api/test-strava` | GET | Test Strava API connection |
+| `/api/test/strava-sim` | POST | Simulate Strava webhook events |
 
 ---
 
@@ -1221,6 +1258,57 @@ interface StravaSyncState {
 
 ---
 
+## Achievements & Milestones
+
+### PR Detection (`src/lib/pr-detection.ts`)
+Auto-detects personal records from completed workouts. `extractPRCandidates()` checks each workout type:
+- **Run:** Longest run (km), fastest pace (min/km)
+- **Bike:** Longest ride (km), highest avg power (W)
+- **Swim:** Longest swim (m), fastest pace (min/100m)
+- **Walk:** Longest walk (km)
+- **Strength:** Heaviest lift per exercise, most volume per exercise
+PRs are checked after workout completion and Strava sync. Confirmed PRs trigger celebration modal.
+
+### Milestone System (`src/lib/milestones.ts`)
+Auto-detected milestones across 4 categories:
+| Category | Thresholds |
+|----------|-----------|
+| Workout Count | 10, 25, 50, 100, 250, 500, 1000 |
+| Distance | 100km, 500km, 1000km, 5000km |
+| Streak | 7, 14, 30, 60, 100, 365 days |
+| First-Ever | First swim, first ride, first strength, etc. |
+
+Each milestone has a name, description, and icon (lucide icon name).
+
+### Components
+| Component | Purpose |
+|-----------|---------|
+| `CelebrationModal` | Full-screen confetti + carousel for multiple achievement reveals |
+| `PRCard` | Individual PR celebration card (shareable) |
+| `MilestoneCard` | Individual milestone badge card (shareable) |
+| `DashboardAchievements` | Dashboard section showing recent PRs + milestones |
+
+### Types (`src/types/achievements.ts`)
+- `Milestone` — id, userId, category, name, description, value, unit, icon, date
+- `DetectedPR` — name, category, value, unit, workoutId
+- `ConfirmedPR` — DetectedPR + isNew flag + previous value
+- `MilestoneCategory` — `'workout_count' | 'distance' | 'streak' | 'first_ever'`
+- `AchievementResult` — combined PRs + milestones result from detection
+
+---
+
+## MCP Server
+
+Model Context Protocol server for AI agent access to workout data.
+
+- **Route:** `POST /api/mcp`
+- **SDK:** `@modelcontextprotocol/sdk` with `WebStandardStreamableHTTPServerTransport`
+- **Auth:** Token-based with `timingSafeEqual` comparison
+- **Tools exposed:** Workout CRUD (create, read, update, delete, list), user data queries, personal records, workout comments, site-wide stats, data health check
+- **Use case:** Enables Claude Code and other MCP-compatible AI agents to programmatically read and write workout data
+
+---
+
 ## Infrastructure
 
 ### PostHog Analytics
@@ -1340,3 +1428,15 @@ The app is installable as a Progressive Web App on iOS and Android.
 | Report template crashes | All 5 templates patched against corrupted Firestore dates |
 | Terms consent | Checkbox on registration form gates both email and Google sign-up |
 | Email digest | Anthropic-inspired clean email design with sections and CTA buttons |
+| PR Achievement System | Auto-detected PRs via `extractPRCandidates()` for all sport types |
+| Milestone Badge System | 4 categories: workout count (10-1000), distance (100km-5000km), streak (7-365d), first-ever |
+| CelebrationModal | Full-screen confetti + carousel for PR/milestone reveals with ShareButtons |
+| DashboardAchievements | Dashboard section showing recent PRs + milestones |
+| MCP Server | Model Context Protocol at `/api/mcp` for AI agent access to workout data |
+| Training Plan Engine | `planEngine.ts` for deterministic multi-week plan scheduling |
+| Share preview URL fix | Share buttons send preview URL instead of trying to copy image |
+| Admin broadcast | `/api/admin/broadcast` for sending email to all users |
+| Admin fix-milestones | `/api/admin/fix-milestones` for milestone data repair |
+| Choose username flow | `/choose-username` route for post-registration username selection |
+| Connect Strava page | `/connect-strava` standalone Strava connection landing page |
+| Auto-dedup endpoint | `/api/workouts/auto-dedup` for automatic workout deduplication |

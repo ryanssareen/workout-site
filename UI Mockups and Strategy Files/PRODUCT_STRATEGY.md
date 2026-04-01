@@ -15,7 +15,7 @@
 | **AI Suggestions** | Genuinely advanced | 3-tier pipeline (logic engine → Groq → validator), periodization-aware, fatigue-aware, deload-aware. `max_tokens: 8000` for full workout details. Better than Final Surge, TrainingPeaks. |
 | **Report Engine** | Production-ready | 7 section types (stat, chart, table, text, highlight, pr, divider), Recharts charts, AI-generated reports via Groq, PNG/PDF/email export. Reports Hub with 3-zone layout, daily AI insights cron, template-based deep-dive reports (Sport Deep Dive, Trend Report, PR Timeline, Recovery Report, Goal Tracker) with Firestore caching. |
 | **Reports Hub** | Production-ready | 3-zone layout (AI Insight + Ask Anything + periodic reports + deep-dive cards), 5 AI report templates with Firestore caching, daily insight cron. |
-| **Admin Dashboard** | Production-ready | Full admin console with backup system (Vercel Blob), user management, API playground (88+ endpoints), audit logging, HMAC auth + rate limiting. |
+| **Admin Dashboard** | Production-ready | Full admin console with backup system (Vercel Blob), user management, API playground (100+ endpoints), audit logging, HMAC auth + rate limiting. |
 | **Theme System** | Production-ready | Light mode default, global toggle (Sun/moon), Light/Dark/System in Settings, theme-aware CSS variables across all pages. |
 | **Firestore Optimization** | Production-ready | Zustand workout cache (5-min TTL), batched Strava lookups, auth store fix, auth guards on open routes. |
 | **PostHog Analytics** | Integrated | Product analytics with event tracking (signups, completions, shares, suggestions). |
@@ -27,6 +27,10 @@
 | **Workouts UX** | Clean mobile-first | Compact header, AI suggestions collapsed by default, tight spacing, Garmin-style stat chips, neutral/orange color scheme. Delete planned workouts with AlertDialog confirmation. |
 | **Streak Tracking** | Functional | Streak counter on dashboard stats row, profile page, and public athlete profile. Computed from consecutive completed workout days. |
 | **Calendar Actions** | Production-ready | CalendarAddDropdown per day cell: Add Workout (→ form), Add Event (→ form with race tag), Add Note (inline popup saves as workout). Add Workout button centered in header. |
+| **Achievements System** | Production-ready | Auto-detected PRs (run/bike/swim/walk/strength) + milestones (workout count, distance, streak, first-ever). CelebrationModal with confetti + carousel. Dashboard achievements section. Shareable via ShareButtons. |
+| **MCP Integration** | Production-ready | Model Context Protocol server at `/api/mcp` — exposes workout CRUD, user data, stats, PRs, comments for AI agent access. Token-based auth. |
+| **Training Plan Engine** | Functional | Deterministic multi-week plan scheduling (`planEngine.ts`): picks dates, types, intensity, duration based on periodization principles. AI fills in details on top. |
+| **Workout Import** | Production-ready | AI-powered CSV/XLSX import with programmatic date detection (DD/MM vs MM/DD). 5 import modules (parser, mapper, enricher, transformer, validator). Used in onboarding step 4. |
 
 ### What's Missing or Weak
 
@@ -86,8 +90,8 @@ Athletes love sharing training milestones. Strava's "Year in Sport" gets million
 | Daily AI Insight | ✅ DONE | Cron-generated 1-sentence training insight, shown in Reports Hub |
 | Ask Anything | ✅ DONE | Free-text training questions answered by AI in Reports Hub |
 | Race Recap Card | Not started | High-emotion share moment after race-tagged workouts |
-| PR Achievement Cards | Not started | Auto-detected celebration cards for personal records |
-| Milestone Badges | Not started | Achievement badges (100th workout, 1000km, streaks) |
+| PR Achievement Cards | ✅ DONE | Auto-detected celebration cards with CelebrationModal, confetti, PRCard component. Shareable via ShareButtons. |
+| Milestone Badges | ✅ DONE | Achievement badges across 4 categories (workout count, distance, streak, first-ever). MilestoneCard + CelebrationModal carousel. |
 | Training Block Summary | Not started | Pre-event preparation report with volume progression |
 
 **Shareable reports still to build:**
@@ -125,12 +129,12 @@ The viral report core is built. The next wave focuses on **retention** (keeping 
 |---|---------|----------|--------|--------|----------|
 | ~~1~~ | ~~Product Analytics (PostHog)~~ | ~~Growth infra~~ | ✅ DONE | ~~Low~~ | ~~**P0**~~ |
 | ~~2~~ | ~~PWA Support (Add to Home Screen)~~ | ~~Growth infra~~ | ✅ DONE | ~~Low~~ | ~~**P0**~~ |
-| 3 | PR Achievement Cards (shareable) | Viral / retention | HIGH — celebration moments drive shares + dopamine | Low-Medium | **P0** |
-| 4 | Streak System Enhancement | Retention | HIGH — streak counter done on profiles, still need at-risk nudges + visual enhancements | Low | **P0** |
-| 5 | Milestone Badge System | Viral / retention | HIGH — auto-detected achievements, collectible + shareable | Medium | **P1** |
+| ~~3~~ | ~~PR Achievement Cards (shareable)~~ | ~~Viral / retention~~ | ✅ DONE — CelebrationModal with confetti, PRCard component, auto-detected after workout completion + Strava sync. Shareable via ShareButtons. | ~~Low-Medium~~ | ~~**P0**~~ |
+| 4 | Streak System Enhancement | Retention | ✅ PARTIAL — streak counter + widget done, recovery nudge done. Still need: at-risk email nudges at 6pm | Low | **P0** |
+| ~~5~~ | ~~Milestone Badge System~~ | ~~Viral / retention~~ | ✅ DONE — Auto-detected milestones across 4 categories (workout count, distance, streak, first-ever). MilestoneCard component, CelebrationModal carousel, DashboardAchievements display. | ~~Medium~~ | ~~**P1**~~ |
 | 6 | Race Recap Card | Viral | HIGH — highest-emotion share moment in endurance sports | Medium | **P1** |
 | 7 | AI Race Predictions | Differentiation | HIGH — predict race times based on training data | Medium | **P1** |
-| 8 | Training Plans / Programs | Core product | HIGH — structured multi-week plans, not just daily suggestions | High | **P1** |
+| ~~8~~ | ~~Training Plans / Programs~~ | ~~Core product~~ | ✅ PARTIAL — `planEngine.ts` for deterministic multi-week plan scheduling. AI enhances skeletons. Still need: calendar integration showing full plan, auto-adjustment. | ~~High~~ | ~~**P1**~~ |
 | 9 | Smart Notifications | Retention | ✅ PARTIAL — Web Push infrastructure built, used for Strava sync + wrap. Still need: AI nudges (rest day advice, streak warnings, PR alerts) | Medium | **P2** |
 | 10 | Social Feed / Follow Athletes | Growth | HIGH — activity feed, kudos/reactions, follow system | High | **P2** |
 | 11 | Embeddable Stats Widget | Growth | MEDIUM — for blogs, Linktree, personal sites | Medium | **P2** |
@@ -179,31 +183,18 @@ Each item below is a standalone implementation task. Pick any one and ask Claude
 
 ---
 
-### Implementation 2: PR Achievement Cards
+### Implementation 2: PR Achievement Cards ✅ DONE
 
-**What:** When a personal record is detected (fastest 5K, longest ride, heaviest deadlift, etc.), auto-generate a shareable celebration card.
+**Status:** Fully implemented with auto-detection, celebration modal, and sharing.
 
-**Card content:**
-- "NEW PERSONAL RECORD" header with trophy icon
-- Exercise/activity name
-- New record value (bold, large)
-- Previous record + improvement % ("12% faster than your previous best")
-- Date achieved
-- Mini sparkline showing PR progression over time
-- AI congratulations ("Crushed it! That's your 3rd running PR this month.")
-- The Daily Athlete branding
-
-**Technical approach:**
-- PR detection already exists in `src/lib/analytics.ts` → `computePRTimeline()`
-- New component: `src/components/reports/PRAchievementCard.tsx`
-- Trigger: After Strava sync completes, check for new PRs → show celebration modal with share option
-- Also accessible from `/reports` → Exercise Insights section
-- Reuse `html-to-image` export and `ShareButtons`
-
-**Key files to modify:**
-- `src/app/api/strava/sync/route.ts` — add PR detection after sync
-- `src/lib/analytics.ts` — reuse PR computation functions
-- `src/app/(dashboard)/dashboard/page.tsx` — show PR celebration if detected
+**What was built:**
+- `src/lib/pr-detection.ts` — `extractPRCandidates()` detects PRs across all sport types (longest run, fastest pace, heaviest lift, longest swim, etc.)
+- `src/components/achievements/PRCard.tsx` — shareable PR celebration card
+- `src/components/achievements/CelebrationModal.tsx` — full-screen confetti celebration with carousel for multiple PRs
+- `src/components/achievements/DashboardAchievements.tsx` — dashboard section showing recent PRs
+- `src/types/achievements.ts` — `DetectedPR`, `ConfirmedPR` types
+- Auto-triggered after workout completion and Strava sync
+- Shareable via existing ShareButtons (Instagram, WhatsApp, X, iMessage, save image)
 - New: `src/components/reports/PRAchievementCard.tsx`
 
 ---
@@ -227,39 +218,22 @@ Each item below is a standalone implementation task. Pick any one and ask Claude
 
 ---
 
-### Implementation 4: Milestone Badge System
+### Implementation 4: Milestone Badge System ✅ DONE
 
-**What:** Auto-detect training milestones and award visual badges that athletes can share.
+**Status:** Fully implemented with 4 milestone categories, celebration UI, and dashboard display.
 
-**Milestones (examples):**
-- Workout count: 10, 25, 50, 100, 250, 500, 1000
-- Distance: 100km, 500km, 1000km, 5000km (running or cycling)
-- Streak: 7 days, 14 days, 30 days, 60 days, 100 days, 365 days
-- First-ever: First swim, first brick session, first strength workout
-- Consistency: 4 weeks in a row with 3+ workouts
-- Sport milestones: First century ride (100mi/160km), first marathon distance, first open water swim
-
-**Card content per milestone:**
-- Badge icon (custom per milestone type)
-- Milestone title ("CENTURY CLUB" or "100 WORKOUTS")
-- Achievement description
-- Date earned
-- The Daily Athlete branding
-
-**Technical approach:**
-- New: `src/lib/milestones.ts` — milestone definitions + detection logic
-- New: `src/components/reports/MilestoneBadge.tsx` — shareable badge card
-- Check milestones after each workout completion / Strava sync
-- Store earned milestones in Firestore (`users/{uid}/milestones` subcollection)
-- Dashboard widget: Show recently earned badges
-- Profile page: Display badge collection
-
-**Key files to modify:**
-- `src/app/api/strava/sync/route.ts` — trigger milestone check after sync
-- `src/app/(dashboard)/dashboard/page.tsx` — show milestone celebrations
-- New: `src/lib/milestones.ts`
-- New: `src/components/reports/MilestoneBadge.tsx`
-- New: Firestore subcollection `users/{uid}/milestones`
+**What was built:**
+- `src/lib/milestones.ts` — milestone definitions + detection logic across 4 categories:
+  - **Workout count:** 10, 25, 50, 100, 250, 500, 1000
+  - **Distance:** 100km, 500km, 1000km, 5000km
+  - **Streak:** 7, 14, 30, 60, 100, 365 days
+  - **First-ever:** First swim, first ride, first strength workout, etc.
+- `src/components/achievements/MilestoneCard.tsx` — shareable milestone card with badge icon
+- `src/components/achievements/CelebrationModal.tsx` — confetti + carousel for multiple milestone reveals
+- `src/components/achievements/DashboardAchievements.tsx` — dashboard section showing milestones + PRs
+- `src/types/achievements.ts` — `Milestone`, `MilestoneCategory`, `DetectedMilestone`, `AchievementResult`
+- Auto-triggered after workout completion and Strava sync
+- Admin fix endpoint at `/api/admin/fix-milestones`
 
 ---
 

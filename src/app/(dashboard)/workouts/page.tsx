@@ -249,13 +249,18 @@ function WorkoutsContent() {
   // Time filter
   const today = startOfDay(new Date());
   const tomorrow = addDays(today, 1);
+  // Hide future uncompleted recurring workouts across ALL tabs — they only appear on their scheduled day
+  const isHiddenRecurring = (w: Workout) => {
+    if (!(w as any).isRecurring || w.completed) return false;
+    const d = getDate(w);
+    return d >= tomorrow;
+  };
   const timeFiltered = athleteFiltered.filter(w => {
+    if (isHiddenRecurring(w)) return false;
     if (timeFilter === 'all') return true;
     const d = getDate(w);
     if (timeFilter === 'planned') {
       if (d < today || w.completed) return false;
-      // Recurring workouts only show on their planned day
-      if ((w as any).isRecurring && d >= tomorrow) return false;
       return true;
     }
     return d < today || w.completed; // past
@@ -283,16 +288,15 @@ function WorkoutsContent() {
     }
   }
 
-  // Counts per time filter
+  // Counts per time filter (exclude hidden recurring from all counts)
+  const visibleFiltered = athleteFiltered.filter(w => !isHiddenRecurring(w));
   const timeCounts: Record<TimeFilter, number> = {
-    all: athleteFiltered.length,
-    planned: athleteFiltered.filter(w => {
+    all: visibleFiltered.length,
+    planned: visibleFiltered.filter(w => {
       const d = getDate(w);
-      if (d < today || w.completed) return false;
-      if ((w as any).isRecurring && d >= tomorrow) return false;
-      return true;
+      return d >= today && !w.completed;
     }).length,
-    past: athleteFiltered.filter(w => getDate(w) < today || w.completed).length,
+    past: visibleFiltered.filter(w => getDate(w) < today || w.completed).length,
   };
 
   // Athletes can always manage their own workouts, even if they have a coach

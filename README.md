@@ -11,9 +11,11 @@ A modern multi-sport workout tracking platform for athletes. Built with Next.js 
 - **Strava Integration**: 2-stage sync (quick fill + paginated backfill), rate limit hardening, timezone handling, webhook reconciliation, manual merge dialog
 - **Calendar**: Multi-view (day/week/month/year) with color-coded workout pills, heatmap year view, inline notes, and event creation
 - **Theme System**: Light/Dark/System with global toggle across all pages
+- **MCP Server**: Model Context Protocol integration for AI agent access to workout data
 
 ### AI-Powered
 - **Workout Suggestions**: 3-tier pipeline (Logic Engine periodization, Groq LLaMA 3.3 70B enhancement, Validator)
+- **Training Plan Engine**: Deterministic multi-week plan scheduling with AI-enhanced details
 - **Smart Workout Naming**: Auto-suggests workout names based on type and time of day
 - **AI Coach Chat**: Conversational training assistant with thread history
 - **Reports Hub**: 3-zone layout with daily AI insights, deep-dive reports (Sport Deep Dive, Trend Report, PR Timeline, Recovery Report, Goal Tracker)
@@ -27,6 +29,9 @@ A modern multi-sport workout tracking platform for athletes. Built with Next.js 
 - **Social Sharing**: Instagram Story, WhatsApp (native app), X/Twitter, iMessage (native app), save image
 
 ### Gamification & UX
+- **Achievement System**: Auto-detected PRs and milestones with celebration modal, confetti, and shareable cards
+- **Milestone Badges**: Workout count, distance, streak, and first-ever milestones (10+ categories)
+- **PR Detection**: Automatic personal record detection across all sport types after workout completion
 - **Animated Page Transitions**: Smooth route transitions via `next-view-transitions`
 - **Workout Completion Confetti**: CSS-only confetti burst celebration
 - **Skeleton Loading States**: Shimmer placeholders across dashboard
@@ -45,11 +50,13 @@ A modern multi-sport workout tracking platform for athletes. Built with Next.js 
 
 ### Infrastructure
 - **Push Notifications**: Web Push API with VAPID, multi-device support
-- **Admin Dashboard**: Backup system (Vercel Blob), user management, API playground (88+ endpoints), audit logging
+- **Admin Dashboard**: Backup system (Vercel Blob), user management, API playground (100+ endpoints), audit logging
+- **MCP Server**: Model Context Protocol integration (`/api/mcp`) for AI agent access
 - **Firestore Optimization**: Zustand cache (5-min TTL), localStorage auth cache, batched queries, auth guards
 - **Login Performance**: Sub-second returning user loads with localStorage cache + eager profile fetch
 - **PWA Support**: Installable on iOS/Android with offline fallback
 - **Email System**: Anthropic-inspired clean email digests via Brevo, broadcast capability
+- **Workout Import**: AI-powered CSV/XLSX import with programmatic date detection
 
 ## Tech Stack
 
@@ -59,11 +66,12 @@ A modern multi-sport workout tracking platform for athletes. Built with Next.js 
 - **Database**: Firebase Firestore
 - **Storage**: Firebase Storage (user content) + Vercel Blob (backups)
 - **AI**: Groq SDK (LLaMA 3.3 70B + 8B fallback) + OpenAI SDK
+- **MCP**: `@modelcontextprotocol/sdk` for AI agent integration
 - **Email**: Brevo (transactional + broadcast)
 - **Integrations**: Strava API (OAuth + webhooks), PostHog (analytics)
 - **Charts**: Recharts + custom SVG
 - **State**: Zustand + localStorage caching
-- **Deploy**: Vercel
+- **Deploy**: Vercel (5 cron jobs for backups, insights, weekly wrap)
 
 ## Legal
 

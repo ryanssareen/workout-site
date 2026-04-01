@@ -264,7 +264,7 @@ Use Firestore subcollections instead of Firebase Storage (for Spark plan short-t
 | `src/app/api/cron/backup/route.ts` | ✅ Created — scheduled backup handler |
 | `src/lib/admin-auth.ts` | ✅ Created — HMAC-SHA256 signing, session verification, CSRF, audit logging |
 | `src/lib/backup.ts` | ✅ Created — Vercel Blob backup logic |
-| `src/lib/api-registry.ts` | ✅ Created — 88+ endpoint catalog |
+| `src/lib/api-registry.ts` | ✅ Created — 100+ endpoint catalog |
 | `vercel.json` | ✅ Modified — added 5 cron schedules |
 | `CLAUDE.md` | ✅ Updated |
 | `PRODUCT_STRATEGY.md` | ✅ Updated |
@@ -290,4 +290,4 @@ Use Firestore subcollections instead of Firebase Storage (for Spark plan short-t
 - [x] CSV and JSON exports download correctly
 - [x] Cron backup jobs run on schedule (daily/weekly/monthly via Vercel cron)
 - [x] API Playground can execute endpoints with custom params
-- [x] API Registry shows 88+ endpoints with search/filter
+- [x] API Registry shows 100+ endpoints with search/filter

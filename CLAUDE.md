@@ -10,6 +10,7 @@ The Daily Athlete is a SaaS workout tracking platform for athletes. Built with N
 - **Styling:** Tailwind CSS 4, shadcn/ui, Radix primitives
 - **State:** Zustand stores (`src/lib/stores/`)
 - **AI:** Groq SDK (LLaMA 3.3 70B + 8B instant fallback) + OpenAI SDK for workout suggestions and reports
+- **MCP:** Model Context Protocol server at `/api/mcp` — exposes workout CRUD, user data, stats, PRs, comments, and health check as MCP tools for AI agents
 - **Email:** Nodemailer (Gmail SMTP) + Brevo
 - **Integrations:** Strava API (OAuth + webhooks), Garmin Connect API (OAuth, pending approval), PostHog (product analytics)
 - **Charts:** Recharts
@@ -22,35 +23,60 @@ The Daily Athlete is a SaaS workout tracking platform for athletes. Built with N
 ```
 src/
 ├── app/
-│   ├── (auth)/          # Login, register, reset-password
-│   ├── (dashboard)/     # Protected routes: dashboard, workouts, calendar, reports, settings, ai-coach, progress, records, profile, onboarding, wrap, review, wrapped
-│   ├── athlete/[username]/ # Public athlete profile page (SSR)
+│   ├── (auth)/          # Login, register, reset-password, choose-username
+│   ├── (dashboard)/     # Protected routes: dashboard, workouts, calendar, reports, settings, ai-coach, profile, onboarding, wrap, review, wrapped
+│   ├── athlete/[username]/ # Public athlete profile page (SSR) + /wrapped sub-route
+│   ├── preview/[username]/[id]/ # Public workout preview with OG image
+│   ├── workout/[id]/    # Public single workout view
+│   ├── connect-strava/  # Strava connection landing page
 │   ├── youwillneverguessthisistheadmin/ # Hidden admin dashboard (standalone layout, no dashboard chrome)
-│   ├── api/             # API routes (ai, auth, admin, cron, push, reports, strava, webhooks, workouts, import)
+│   ├── api/             # API routes (ai, auth, admin, cron, push, reports, strava, webhooks, workouts, import, mcp, templates)
 │   └── page.tsx         # Landing page
 ├── components/
-│   ├── achievements/    # DashboardAchievements (PRs + milestones)
-│   ├── auth/            # LoginForm, RegisterForm (Google + email, terms consent checkbox)
-│   ├── calendar/        # Calendar views, workout type config (TYPE_CONFIG, getTypeData)
-│   ├── dashboard/       # Navbar, layout, ProfileCompletionBar, StreakWidget, RecoveryNudge, QuickLogFAB
-│   ├── profile/         # ProfileComponents (shared PieChart, StatCard, helpers), PhotoUpload, ActivityHeatmap
-│   ├── reports/         # ReportContainer, ReportRenderer, section components, ReportsSections (5 chart/stat sections)
-│   ├── wrapped/         # WrappedSlides (6 slide components + YearStats computation for yearly wrapped)
-│   ├── strava/          # DuplicateDialog for Strava sync conflicts, ManualMergeDialog
-│   ├── workouts/        # WorkoutCard (with PR badge), WorkoutForm, AIWorkoutSuggestions, StrengthForm, comments, ShareWorkoutCard, WorkoutRating
-│   └── ui/              # shadcn/ui primitives
+│   ├── achievements/    # CelebrationModal, DashboardAchievements, MilestoneCard, PRCard — auto-detected PR + milestone celebrations
+│   ├── auth/            # LoginForm, RegisterForm (Google + email, terms consent checkbox), AuthRedirect
+│   ├── calendar/        # Calendar views (day/week/month/year), workout type config (TYPE_CONFIG, getTypeData)
+│   ├── dashboard/       # Navbar, MobileBottomNav, ProfileCompletionBar, QuickLogFAB, ThemeToggle, stats/
+│   ├── profile/         # ProfileComponents (shared PieChart, StatCard, helpers), PhotoUpload, ActivityHeatmap, EditProfileDialog
+│   ├── reports/         # ReportContainer, ReportRenderer, sections/, hub/ (AIInsightCard, AskAnythingBar, ExploreCards), dashboard/ (ReportsDashboard, DuplicateRemover)
+│   ├── wrapped/         # WrappedSlides (8 slide components + YearStats computation for yearly wrapped)
+│   ├── strava/          # DuplicateDialog, ManualMergeDialog, StravaSyncTrigger
+│   ├── onboarding/      # FileUploadStep, ImportPreview, MappingOverride, OnboardingModal
+│   ├── workouts/        # WorkoutCard (with PR badge), WorkoutForm, WorkoutList, AIWorkoutSuggestions, sport-specific forms, comments/, ShareWorkoutCard, WhiteboardUpload
+│   ├── ai/              # WorkoutRecommendations
+│   ├── providers/       # ClientProviders, PostHogProvider, ThemeProvider
+│   └── ui/              # shadcn/ui primitives (20+ components)
 ├── hooks/
-│   └── useSwipe.ts      # Touch swipe gesture hook for slide-based pages
+│   ├── useSwipe.ts          # Touch swipe gesture hook for slide-based pages
+│   ├── useStravaAutoSync.ts # Auto-triggers Strava sync on mount
+│   └── useCoachFilter.ts    # Coach athlete filtering
 ├── lib/
-│   ├── analytics.ts     # computeSummary, computeTypeDistribution, computeTimeSeries, computeWeeklyRhythm, computeCalendarData, computeInsights, computePRTimeline
-│   ├── admin-auth.ts    # verifyAdminSession, checkOrigin, logAdminAction helpers for admin API routes
-│   ├── backup.ts        # createBackup — shared backup logic (used by manual trigger + cron)
-│   ├── firebase/        # config.ts, auth.ts, firestore.ts, admin.ts (+ getAdminStorage)
-│   ├── email/           # Email templates (summaryTemplate, wrapTemplate) and sending
-│   ├── schemas/         # Zod validation schemas (profile.ts has SPORT_OPTIONS, TRAINING_FOR_OPTIONS, etc.)
-│   ├── training/        # logicEngine.ts, constraints.ts, validator.ts (AI workout pipeline)
-│   └── stores/          # Zustand state stores (workoutStore with 5-min TTL cache, authStore, stravaSyncStore)
-└── types/               # TypeScript types (index.ts, workout.ts, reports.ts, ai.ts)
+│   ├── analytics.ts         # computeSummary, computeTypeDistribution, computeTimeSeries, computeWeeklyRhythm, computeCalendarData, computeInsights, computePRTimeline
+│   ├── achievements.ts      # Achievement detection logic
+│   ├── milestones.ts        # Milestone definitions + detection (workout count, distance, streak, first-ever)
+│   ├── pr-detection.ts      # extractPRCandidates() — auto-detect PRs from completed workouts
+│   ├── admin-auth.ts        # verifyAdminSession, checkOrigin, logAdminAction helpers for admin API routes
+│   ├── api-auth.ts          # API authentication helpers
+│   ├── api-client.ts        # API client utilities
+│   ├── api-registry.ts      # Catalog of 100+ API endpoints grouped by category
+│   ├── backup.ts            # createBackup — shared backup logic (used by manual trigger + cron)
+│   ├── constants.ts         # App-wide constants
+│   ├── dateUtils.ts         # Date utility functions
+│   ├── dayKey.ts            # getDayKey, normalizeTimezone, parseLocalDate helpers
+│   ├── firebase/            # config.ts, auth.ts, firestore.ts, admin.ts (+ getAdminStorage)
+│   ├── firebase-admin.ts    # Firebase Admin SDK helper (getFirebaseAdminDb)
+│   ├── email/               # Email templates (summaryTemplate, wrapTemplate, announcementTemplate, accountActionTemplate, assignmentTemplate)
+│   ├── groq-dedup.ts        # Groq-powered deduplication pipeline
+│   ├── groq-format.ts       # Groq formatting utilities
+│   ├── import/              # CSV/XLSX import pipeline (parser, mapper, enricher, transformer, validator, types)
+│   ├── polyline.ts          # Polyline encoding/decoding
+│   ├── posthog.ts           # PostHog client initialization
+│   ├── push.ts              # Web Push notification sending via web-push SDK
+│   ├── reports/             # cache.ts + templates/ (5 report templates: sport-deep-dive, trend-report, pr-timeline, recovery-report, goal-tracker)
+│   ├── schemas/             # Zod validation schemas (profile.ts has SPORT_OPTIONS, TRAINING_FOR_OPTIONS, etc.)
+│   ├── training/            # logicEngine.ts, planEngine.ts, constraints.ts, validator.ts (AI workout pipeline + multi-week plan generation)
+│   └── stores/              # Zustand state stores (workoutStore with 5-min TTL cache, authStore, stravaSyncStore)
+└── types/                   # TypeScript types (index.ts, workout.ts, reports.ts, reports-hub.ts, ai.ts, achievements.ts)
 ```
 
 ### Data Model (Firestore Collections)
@@ -116,11 +142,18 @@ npx tsc --noEmit     # Type check without building
 - `/portfolio` — Feature tour page with real screenshots, light/dark toggle.
 - `/roadmap` — Visual phase timeline with progress tracking.
 - `/comic` — 14-slide origin story carousel.
+- `/connect-strava` — Strava connection landing page.
+- `/preview/[username]/[id]` — Public workout preview page (no auth required) with OG image generation for social sharing.
+- `/workout/[id]` — Public single workout view (no auth required).
+- `/features` — Marketing features page.
+- `/contact` — Contact page.
+- `/firebase-test` — Firebase connection test page.
 - `/youwillneverguessthisistheadmin` — **Hidden admin dashboard** (actual route, security by obscurity + auth). Not linked from any nav. Firebase Auth + UID allowlist. Sections: Overview (user/workout counts, last backup), Backups (daily/weekly/monthly via Vercel Blob, download-on-demand, restore from file upload), Users (list, soft-delete, restore via Admin SDK), System Actions (manual backup trigger, log viewer), **API Playground** (execute any endpoint with custom params, response timing), **API Registry** (catalog of 88+ endpoints grouped by category with search/filter). Cron backups run daily/weekly/monthly via Vercel cron jobs.
 
 ## AI Workout Suggestions
 - 3-tier pipeline: Logic Engine (periodization, fatigue, deload) → Groq LLaMA 3.3 70B enhancement → Validator with retry
 - `src/lib/training/logicEngine.ts` — generates base plan from athlete profile + recent history
+- `src/lib/training/planEngine.ts` — deterministic scheduling: picks dates, types, intensity, duration for multi-week training plans
 - `src/lib/training/constraints.ts` — defines `PlannedWorkout`, `EnhancedWorkout`, load constraints
 - `src/lib/training/validator.ts` — validates AI modifications stay within bounds
 - `src/app/api/ai/workout-suggestions/route.ts` — orchestrator API (max_tokens: 8000)
@@ -148,7 +181,8 @@ npx tsc --noEmit     # Type check without building
 ## Authentication
 - **Google Sign-In + Email/Password** via Firebase Auth
 - **Server-side user creation** — `/api/auth/create-user/route.ts` uses Admin SDK to bypass Firestore security rules (client-side transactions fail on retry because `userMappings` rules only allow `create`, not `update`)
-- **Username validation** — regex `/^[a-z0-9_]{3,20}$/`, 29 reserved words (admin, api, dashboard, etc.)
+- **Username selection** — `/choose-username` route for selecting unique username after registration
+- **Username validation** — regex `/^[a-z0-9_]{3,20}$/`, 29 reserved words (admin, api, dashboard, etc.). Checked via `/api/auth/check-username`.
 - **Idempotent** — handles re-registration gracefully (returns existing profile if same UID+username)
 - **Atomic batch** — creates user doc + userMapping in single batch write
 
@@ -217,7 +251,7 @@ npx tsc --noEmit     # Type check without building
 - **Route:** Hidden at `/youwillneverguessthisistheadmin` — security by obscurity + auth. Standalone layout (no dashboard chrome). Auth gate shown as modal overlay.
 - **Security:** Firebase Auth + UID allowlist (`ADMIN_UIDS` env var, comma-separated UIDs). Flow: Google sign-in → ID token → `POST /api/admin/verify` → HMAC-SHA256 signed `httpOnly` cookie (4h). `GET /api/admin/verify` checks session. `DELETE /api/admin/verify` clears it. Rate limit: 5 attempts/IP/15 min with 2s delay on failures. CSRF: all mutating routes check `Origin` header.
 - **API Playground** at `/admin/api` — Execute any endpoint with custom params, see response timing.
-- **API Registry** — Catalog of 88+ endpoints grouped by category with search/filter.
+- **API Registry** — Catalog of 100+ endpoints grouped by 14 categories with search/filter.
 - **Backup storage:** **Vercel Blob** — daily metadata-only backups + weekly full snapshots. Download-on-demand. Restore from file upload. Auto-pruning old backups.
 - **Backup API:** `GET/POST /api/admin/backup` — list/create. `GET/POST /api/admin/backup/[id]` — detail/full-restore (auto pre-restore snapshot first). `POST /api/admin/backup/[id]/restore-user` — per-user restore from snapshot. Backup logic in `src/lib/backup.ts`.
 - **Users API:** `GET /api/admin/users` (list, or `?export=csv`), `DELETE/PATCH/GET /api/admin/users/[uid]` — soft-delete, restore, JSON export
@@ -226,12 +260,27 @@ npx tsc --noEmit     # Type check without building
 - **UI iterations** — Went through glassmorphic → red accent → final polished version
 - **Env vars required:** `ADMIN_UIDS` (comma-separated Firebase UIDs), `ADMIN_SECRET` (32-char random, signs session cookie), `BLOB_READ_WRITE_TOKEN` (Vercel Blob access)
 
+## Achievements & Milestones
+- **PR Detection** — `src/lib/pr-detection.ts` extracts PR candidates (longest run, fastest pace, heaviest lift, etc.) from completed workouts. Checked after workout completion and Strava sync.
+- **Milestone System** — `src/lib/milestones.ts` defines milestones across 4 categories: workout count (10/25/50/100/250/500/1000), distance (100km/500km/1000km/5000km), streak (7/14/30/60/100/365 days), and first-ever (first swim, first ride, etc.).
+- **Celebration Modal** — `src/components/achievements/CelebrationModal.tsx` — full-screen confetti celebration when PRs or milestones are hit. Carousel-style navigation for multiple achievements. Share via ShareButtons.
+- **Dashboard Display** — `src/components/achievements/DashboardAchievements.tsx` shows recent PRs + milestones on dashboard.
+- **Types** — `src/types/achievements.ts` defines `Milestone`, `DetectedPR`, `ConfirmedPR`, `MilestoneCategory`, `AchievementResult`.
+- **Admin fix endpoint** — `/api/admin/fix-milestones` for data repair.
+
+## MCP Server
+- **Route:** `/api/mcp` — Model Context Protocol server using `@modelcontextprotocol/sdk`
+- **Transport:** `WebStandardStreamableHTTPServerTransport` for HTTP-based communication
+- **Tools exposed:** Workout CRUD, user data queries, personal records, workout comments, site stats, data health check
+- **Auth:** Token-based with timing-safe comparison
+- **Use case:** Enables AI agents (Claude Code, etc.) to read and write workout data programmatically
+
 ## Known Issues & Active Work
 - Custom domain (thedailyathlete.in) has DNS/NXDOMAIN issues — likely Squarespace registration problem
 - Groq rate limits (100K tokens/day on 70B model) — mitigated with 8B fallback but can still hit both limits
 - Firebase Spark plan daily quota (50K reads) — mitigated with Zustand caching, but heavy usage days can still exhaust quota
 
-## Recent Changes (March 2026)
+## Recent Changes (March–April 2026)
 
 ### UX Polish & Gamification
 - Animated page transitions via `next-view-transitions` ViewTransitions wrapper
@@ -284,8 +333,24 @@ npx tsc --noEmit     # Type check without building
 - Remember me enabled by default on login
 - Redesigned weekly email digest (Anthropic-inspired clean style)
 
+### Achievements & Milestones
+- Auto-detected PR system with extractPRCandidates() for run/bike/swim/walk/strength types
+- Milestone badge system: workout count, distance, streak, first-ever categories
+- CelebrationModal with confetti + carousel for multiple achievement reveals
+- Dashboard achievements section showing recent PRs + milestones
+
+### MCP Integration
+- Model Context Protocol server at `/api/mcp` for AI agent access
+- Exposes workout CRUD, user queries, stats, PRs, comments as MCP tools
+- Token-based auth with timing-safe comparison
+
+### Training Plans
+- `planEngine.ts` — deterministic multi-week plan scheduling (dates, types, intensity, duration)
+- Periodization-aware skeleton generation that AI enhances with details
+
 ### Bug Fixes
 - WhatsApp/iMessage share now opens native apps instead of browser tabs
+- Share buttons send preview URL instead of trying to copy image
 - Achievements section spans full width when only PRs or milestones exist
 - Activity heatmap month labels properly positioned on profile page
 - React hooks order violation fixed in wrap/review (useCountUp before early returns)
@@ -317,9 +382,13 @@ This project runs on Firebase with a **50k reads/day limit**. Every API route, m
 - **PostHog analytics** — Product analytics integration with `PostHogProvider` wrapping the app
 - **Vercel Blob** — Replaced Firebase Storage for backups (no Blaze plan needed). `BLOB_READ_WRITE_TOKEN` env var.
 - **Firestore indexes** — Added composite indexes for backups collection (type + createdAt)
-- **vercel.json** — Cron jobs for backups (`/api/cron/backup`) and insight generation (`/api/cron/generate-insights`)
-- **API routes:** `/api/import/format-description` for description formatting, `/api/workouts/fix-timezone` for timezone migration
+- **vercel.json** — 5 cron jobs: weekly wrap (Mon 8am UTC), daily insights (6am UTC), daily/weekly/monthly backups. Firebase auth rewrites.
+- **MCP server** — `/api/mcp` route for AI agent integration via `@modelcontextprotocol/sdk`
+- **Workout templates API** — `GET/POST /api/templates`, `GET /api/templates/[id]` for saved workout presets
+- **Import pipeline** — `src/lib/import/` with parser, mapper, enricher, transformer, validator modules
+- **API routes:** `/api/import/format-description` for description formatting, `/api/workouts/fix-timezone` for timezone migration, `/api/workouts/auto-dedup` for automatic deduplication
 - **Timezone fix migration** — One-time endpoint to fix `start_date_local` misinterpretation on existing workouts
+- **Health endpoint** — `/api/health` for uptime monitoring
 
 ## Code Style
 - Prefer functional components with hooks
