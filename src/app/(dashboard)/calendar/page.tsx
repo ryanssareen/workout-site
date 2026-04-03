@@ -166,12 +166,21 @@ export default function CalendarPage() {
   const handleToggleComplete = async (e: React.MouseEvent, workout: Workout) => {
     e.preventDefault();
     e.stopPropagation();
+    const newCompleted = !workout.completed;
+    // Optimistic update — immediately reflect in UI
+    setWorkouts((prev) =>
+      prev.map((w) => w.id === workout.id ? { ...w, completed: newCompleted, completedBy: newCompleted ? 'manual' : undefined } as Workout : w)
+    );
+    toast.success(newCompleted ? 'Marked complete!' : 'Marked incomplete');
     try {
-      await completeWorkout(workout.ownerUsername, workout.id, !workout.completed);
-      const data = await invalidateWorkouts(user!.username, user!.role);
-      setWorkouts(data);
-      toast.success(workout.completed ? 'Marked incomplete' : 'Marked complete!');
+      await completeWorkout(workout.ownerUsername, workout.id, newCompleted);
+      // Refresh cache in background for other pages
+      invalidateWorkouts(user!.username, user!.role);
     } catch (err: any) {
+      // Revert on failure
+      setWorkouts((prev) =>
+        prev.map((w) => w.id === workout.id ? { ...w, completed: !newCompleted, completedBy: !newCompleted ? 'manual' : undefined } as Workout : w)
+      );
       toast.error(err.message || 'Failed to update');
     }
   };
