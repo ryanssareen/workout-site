@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import * as z from 'zod/v4';
-import { getFirebaseAdminDb } from '@/lib/firebase-admin';
+import { getFirebaseAdminDb, getFirebaseAdminAuth } from '@/lib/firebase-admin';
 import { adminResolveUsername } from '@/lib/firebase/adminUserMapping';
 
 const DEFAULT_WORKOUT_LIMIT = 20;
@@ -122,93 +122,116 @@ function toSafeUser(username: string, data: UserDoc): SafeUser {
   };
 }
 
-// ─── Workout lookup helper ────────────────────────────────────────────────────
-
-/**
- * Find a workout document by its ID across all user subcollections.
- * If ownerUsername is provided, uses direct path lookup (fast).
- * Otherwise falls back to collectionGroup scan (admin MCP tool, acceptable perf).
- */
-async function getWorkoutDocById(
-  db: FirebaseFirestore.Firestore,
-  workoutId: string,
-  ownerUsername?: string,
-) {
-  // Fast path: direct lookup if owner is known
-  if (ownerUsername) {
-    const ref = db.collection('users').doc(ownerUsername).collection('workouts').doc(workoutId);
-    const doc = await ref.get();
-    if (doc.exists) return { doc, ref };
-    return null;
-  }
-
-  // Slow path: scan collectionGroup (admin MCP tool, acceptable)
-  const snap = await db.collectionGroup('workouts').get();
-  for (const doc of snap.docs) {
-    if (doc.id === workoutId) {
-      return { doc, ref: doc.ref };
-    }
-  }
-  return null;
-}
-
 // ─── Auth helpers ─────────────────────────────────────────────────────────────
 
-function isAuthorizedApiKey(candidate: string | null, expected: string): boolean {
-  if (!candidate) return false;
-  const nc = candidate.trim();
-  const ne = expected.trim();
-  if (!nc || !ne) return false;
-  const cb = Buffer.from(nc);
-  const eb = Buffer.from(ne);
+type UserRole = 'coach' | 'athlete' | 'student';
+
+interface AuthenticatedUser {
+  uid: string;
+  username: string;
+  role: UserRole;
+}
+
+function isValidApiKey(candidate: string, expected: string): boolean {
+  const cb = Buffer.from(candidate.trim());
+  const eb = Buffer.from(expected.trim());
   if (cb.length !== eb.length) return false;
   return timingSafeEqual(cb, eb);
 }
 
-function getApiKeyFromRequest(request: NextRequest): string | null {
-  const directKey = request.headers.get('x-api-key');
-  if (directKey) return directKey;
+async function authenticateRequest(request: NextRequest): Promise<AuthenticatedUser> {
+  // Method 1: API key via x-api-key header (for Claude Desktop / AI agents)
+  const apiKey = request.headers.get('x-api-key');
+  const mcpSecret = process.env.MCP_SECRET;
+  const mcpUser = process.env.MCP_DEFAULT_USERNAME;
+  if (apiKey && mcpSecret && mcpUser && isValidApiKey(apiKey, mcpSecret)) {
+    const db = getFirebaseAdminDb();
+    const userDoc = await db.collection('users').doc(mcpUser).get();
+    const role = (userDoc.data()?.role as UserRole) || 'athlete';
+    return { uid: 'mcp-api-key', username: mcpUser, role };
+  }
+
+  // Method 2: Firebase ID token via Authorization: Bearer <token>
   const authHeader = request.headers.get('authorization');
-  if (!authHeader) return null;
+  if (!authHeader) throw new Error('Missing authorization');
+
   const [scheme, ...tokenParts] = authHeader.trim().split(/\s+/);
-  if (scheme?.toLowerCase() !== 'bearer' || tokenParts.length === 0) return null;
-  return tokenParts.join(' ') || null;
+  if (scheme?.toLowerCase() !== 'bearer' || tokenParts.length === 0) {
+    throw new Error('Invalid authorization header');
+  }
+
+  const idToken = tokenParts.join(' ');
+  if (!idToken) throw new Error('Empty bearer token');
+
+  const adminAuth = getFirebaseAdminAuth();
+  const decoded = await adminAuth.verifyIdToken(idToken);
+  const username = await adminResolveUsername(decoded.uid);
+
+  const db = getFirebaseAdminDb();
+  const userDoc = await db.collection('users').doc(username).get();
+  const role = (userDoc.data()?.role as UserRole) || 'athlete';
+
+  return { uid: decoded.uid, username, role };
+}
+
+// ─── Coach helpers ───────────────────────────────────────────────────────────
+
+async function verifyCoachAthlete(
+  db: FirebaseFirestore.Firestore,
+  coachUsername: string,
+  athleteUsername: string,
+): Promise<boolean> {
+  const athleteDoc = await db.collection('users').doc(athleteUsername).get();
+  if (!athleteDoc.exists) return false;
+  return athleteDoc.data()?.coachUsername === coachUsername;
+}
+
+interface LinkedAthlete {
+  username: string;
+  displayName: string | null;
+  email: string | null;
+}
+
+async function getLinkedAthletes(
+  db: FirebaseFirestore.Firestore,
+  coachUsername: string,
+): Promise<LinkedAthlete[]> {
+  const snapshot = await db.collection('users')
+    .where('coachUsername', '==', coachUsername)
+    .get();
+  return snapshot.docs.map(d => ({
+    username: d.id,
+    displayName: toOptionalString(d.data().displayName),
+    email: toOptionalString(d.data().email),
+  }));
 }
 
 // ─── MCP server ───────────────────────────────────────────────────────────────
 
-function createMcpServer(): McpServer {
-  const server = new McpServer({ name: 'workout-site-mcp', version: '2.0.0' });
+function createMcpServer(authedUser: AuthenticatedUser): McpServer {
+  const server = new McpServer({ name: 'workout-site-mcp', version: '3.0.0' });
   const db = getFirebaseAdminDb();
+  const { username, uid, role } = authedUser;
 
   // ── 1. get_user_workouts ──────────────────────────────────────────────────
   server.registerTool(
     'get_user_workouts',
     {
-      title: 'Get User Workouts',
-      description: 'Fetches recent workouts. Pass username to filter by user, or omit for all users.',
+      title: 'Get My Workouts',
+      description: 'Fetches your recent workouts.',
       inputSchema: {
-        username: z.string().min(1).max(128).regex(/^[A-Za-z0-9_-]+$/).optional(),
         limit: z.number().int().min(1).max(MAX_WORKOUT_LIMIT).default(DEFAULT_WORKOUT_LIMIT),
       },
     },
-    async (input: { username?: string; limit?: number }) => {
-      const { username, limit = DEFAULT_WORKOUT_LIMIT } = input;
-      let snapshot;
-      if (username) {
-        // Query from user's workout subcollection
-        snapshot = await db.collection('users').doc(username).collection('workouts')
-          .orderBy('date', 'desc').limit(limit).get();
-      } else {
-        // Query across all users via collectionGroup
-        snapshot = await db.collectionGroup('workouts')
-          .orderBy('date', 'desc').limit(limit).get();
-      }
+    async (input: { limit?: number }) => {
+      const { limit = DEFAULT_WORKOUT_LIMIT } = input;
+      const snapshot = await db.collection('users').doc(username).collection('workouts')
+        .orderBy('date', 'desc').limit(limit).get();
       const workouts = snapshot.docs.map((d) => toSafeWorkout(d.id, d.data() as WorkoutDoc));
       return {
         content: [{
           type: 'text',
-          text: JSON.stringify({ scope: username ? 'single_user' : 'all_users', username: username ?? null, count: workouts.length, workouts }, null, 2),
+          text: JSON.stringify({ username, count: workouts.length, workouts }, null, 2),
         }],
       };
     }
@@ -219,65 +242,52 @@ function createMcpServer(): McpServer {
     'get_workout_detail',
     {
       title: 'Get Workout Detail',
-      description: 'Returns full details of a single workout by ID, including all sport-specific fields. Provide ownerUsername for faster lookup.',
+      description: 'Returns full details of one of your workouts by ID, including all sport-specific fields.',
       inputSchema: {
         workoutId: z.string().min(1).max(128),
-        ownerUsername: z.string().min(1).max(128).optional(),
       },
     },
-    async (input: { workoutId: string; ownerUsername?: string }) => {
-      const result = await getWorkoutDocById(db, input.workoutId, input.ownerUsername);
-      if (!result) {
+    async (input: { workoutId: string }) => {
+      const ref = db.collection('users').doc(username).collection('workouts').doc(input.workoutId);
+      const doc = await ref.get();
+      if (!doc.exists) {
         return { content: [{ type: 'text', text: JSON.stringify({ error: 'Workout not found' }) }] };
       }
-      const workout = toSafeWorkout(result.doc.id, result.doc.data() as WorkoutDoc);
+      const workout = toSafeWorkout(doc.id, doc.data() as WorkoutDoc);
       return { content: [{ type: 'text', text: JSON.stringify(workout, null, 2) }] };
     }
   );
 
-  // ── 3. get_users ──────────────────────────────────────────────────────────
+  // ── 3. get_my_profile ──────────────────────────────────────────────────────
   server.registerTool(
-    'get_users',
+    'get_my_profile',
     {
-      title: 'Get Users',
-      description: 'Lists all users. Optionally filter by role (coach / athlete / student). Does NOT return tokens or sensitive credentials.',
-      inputSchema: {
-        role: z.enum(['coach', 'athlete', 'student']).optional(),
-        limit: z.number().int().min(1).max(100).default(50),
-      },
+      title: 'Get My Profile',
+      description: 'Returns your user profile.',
+      inputSchema: {},
     },
-    async (input: { role?: 'coach' | 'athlete' | 'student'; limit?: number }) => {
-      const { role, limit = 50 } = input;
-      const col = db.collection('users');
-      const snapshot = role
-        ? await col.where('role', '==', role).limit(limit).get()
-        : await col.limit(limit).get();
-      const users = snapshot.docs.map((d) => toSafeUser(d.id, d.data() as UserDoc));
+    async () => {
+      const doc = await db.collection('users').doc(username).get();
+      if (!doc.exists) {
+        return { content: [{ type: 'text', text: JSON.stringify({ error: 'Profile not found' }) }] };
+      }
+      const profile = toSafeUser(doc.id, doc.data() as UserDoc);
       return {
-        content: [{ type: 'text', text: JSON.stringify({ count: users.length, users }, null, 2) }],
+        content: [{ type: 'text', text: JSON.stringify(profile, null, 2) }],
       };
     }
   );
 
-  // ── 4. get_site_stats ─────────────────────────────────────────────────────
+  // ── 4. get_my_stats ───────────────────────────────────────────────────────
   server.registerTool(
-    'get_site_stats',
+    'get_my_stats',
     {
-      title: 'Get Site Stats',
-      description: 'Returns aggregate statistics: total users by role, total workouts, completion rate, and breakdown by sport type.',
+      title: 'Get My Stats',
+      description: 'Returns your workout statistics: total workouts, completion rate, and breakdown by sport type.',
       inputSchema: {},
     },
     async () => {
-      const [usersSnap, workoutsSnap] = await Promise.all([
-        db.collection('users').get(),
-        db.collectionGroup('workouts').get(),
-      ]);
-
-      const roleCount: Record<string, number> = {};
-      for (const d of usersSnap.docs) {
-        const role = toOptionalString((d.data() as UserDoc).role) ?? 'unknown';
-        roleCount[role] = (roleCount[role] ?? 0) + 1;
-      }
+      const workoutsSnap = await db.collection('users').doc(username).collection('workouts').get();
 
       const typeCount: Record<string, { total: number; completed: number }> = {};
       let completed = 0;
@@ -294,7 +304,7 @@ function createMcpServer(): McpServer {
         content: [{
           type: 'text',
           text: JSON.stringify({
-            users: { total: usersSnap.size, byRole: roleCount },
+            username,
             workouts: {
               total,
               completed,
@@ -313,35 +323,43 @@ function createMcpServer(): McpServer {
     'create_workout',
     {
       title: 'Create Workout',
-      description: 'Creates a new workout and assigns it to a user. Returns the new workout ID.',
+      description: 'Creates a new workout for you (or assigns to a linked athlete if you are a coach). Returns the new workout ID.',
       inputSchema: {
         name: z.string().min(1).max(200),
         type: z.enum(['swim', 'bike', 'run', 'walk', 'strength', 'other']),
         date: z.string().describe('ISO 8601 date string, e.g. 2026-03-01T18:30:00.000Z'),
-        assignedTo: z.string().min(1).max(128).describe('Username of the athlete to assign to'),
-        createdBy: z.string().min(1).max(128).describe('Username of the coach/creator'),
         description: z.string().max(2000).optional(),
         duration: z.number().int().min(1).optional().describe('Duration in minutes'),
         tags: z.array(z.string()).optional(),
+        assignedTo: z.string().min(1).max(100).optional().describe('Coaches only: username of athlete to assign to'),
       },
     },
     async (input: {
-      name: string; type: string; date: string; assignedTo: string;
-      createdBy: string; description?: string; duration?: number; tags?: string[];
+      name: string; type: string; date: string;
+      description?: string; duration?: number; tags?: string[]; assignedTo?: string;
     }) => {
+      const targetUser = input.assignedTo || username;
+      if (input.assignedTo) {
+        if (role !== 'coach') {
+          return { content: [{ type: 'text', text: JSON.stringify({ error: 'Only coaches can assign workouts to athletes' }) }] };
+        }
+        if (!await verifyCoachAthlete(db, username, input.assignedTo)) {
+          return { content: [{ type: 'text', text: JSON.stringify({ error: 'Not authorized to access this athlete' }) }] };
+        }
+      }
       const date = new Date(input.date);
       if (isNaN(date.getTime())) {
         return { content: [{ type: 'text', text: JSON.stringify({ error: 'Invalid date format' }) }] };
       }
-      const ownerUsername = input.assignedTo;
       const data: Record<string, unknown> = {
         name: input.name,
         type: input.type,
         date: date,
-        ownerUsername,
-        assignedTo: input.assignedTo,
-        createdBy: input.createdBy,
+        ownerUsername: targetUser,
+        assignedTo: targetUser,
+        createdBy: username,
         completed: false,
+        source: 'mcp',
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       };
@@ -349,9 +367,9 @@ function createMcpServer(): McpServer {
       if (input.duration) data.duration = input.duration;
       if (input.tags?.length) data.tags = input.tags;
 
-      const ref = await db.collection('users').doc(ownerUsername).collection('workouts').add(data);
-      await db.collection('users').doc(ownerUsername).update({ workoutCount: FieldValue.increment(1) });
-      return { content: [{ type: 'text', text: JSON.stringify({ success: true, workoutId: ref.id }) }] };
+      const ref = await db.collection('users').doc(targetUser).collection('workouts').add(data);
+      await db.collection('users').doc(targetUser).update({ workoutCount: FieldValue.increment(1) });
+      return { content: [{ type: 'text', text: JSON.stringify({ success: true, workoutId: ref.id, assignedTo: targetUser }) }] };
     }
   );
 
@@ -360,10 +378,9 @@ function createMcpServer(): McpServer {
     'update_workout',
     {
       title: 'Update Workout',
-      description: 'Updates fields on an existing workout. Only the fields you provide will be changed. Provide ownerUsername for faster lookup.',
+      description: 'Updates fields on one of your workouts. Only the fields you provide will be changed.',
       inputSchema: {
         workoutId: z.string().min(1).max(128),
-        ownerUsername: z.string().min(1).max(128).optional(),
         name: z.string().min(1).max(200).optional(),
         description: z.string().max(2000).optional(),
         date: z.string().optional().describe('ISO 8601 date string'),
@@ -373,12 +390,13 @@ function createMcpServer(): McpServer {
       },
     },
     async (input: {
-      workoutId: string; ownerUsername?: string; name?: string; description?: string; date?: string;
+      workoutId: string; name?: string; description?: string; date?: string;
       duration?: number; tags?: string[]; type?: string;
     }) => {
-      const { workoutId, ownerUsername, ...rest } = input;
-      const result = await getWorkoutDocById(db, workoutId, ownerUsername);
-      if (!result) {
+      const { workoutId, ...rest } = input;
+      const ref = db.collection('users').doc(username).collection('workouts').doc(workoutId);
+      const doc = await ref.get();
+      if (!doc.exists) {
         return { content: [{ type: 'text', text: JSON.stringify({ error: 'Workout not found' }) }] };
       }
       const updates: Record<string, unknown> = { updatedAt: FieldValue.serverTimestamp() };
@@ -394,7 +412,7 @@ function createMcpServer(): McpServer {
         }
         updates.date = d;
       }
-      await result.ref.update(updates);
+      await ref.update(updates);
       return { content: [{ type: 'text', text: JSON.stringify({ success: true, workoutId }) }] };
     }
   );
@@ -404,22 +422,19 @@ function createMcpServer(): McpServer {
     'delete_workout',
     {
       title: 'Delete Workout',
-      description: 'Permanently deletes a workout by ID. This cannot be undone. Provide ownerUsername for faster lookup.',
+      description: 'Permanently deletes one of your workouts by ID. This cannot be undone.',
       inputSchema: {
         workoutId: z.string().min(1).max(128),
-        ownerUsername: z.string().min(1).max(128).optional(),
       },
     },
-    async (input: { workoutId: string; ownerUsername?: string }) => {
-      const result = await getWorkoutDocById(db, input.workoutId, input.ownerUsername);
-      if (!result) {
+    async (input: { workoutId: string }) => {
+      const ref = db.collection('users').doc(username).collection('workouts').doc(input.workoutId);
+      const doc = await ref.get();
+      if (!doc.exists) {
         return { content: [{ type: 'text', text: JSON.stringify({ error: 'Workout not found' }) }] };
       }
-      const ownerUsername = result.ref.parent.parent?.id;
-      await result.ref.delete();
-      if (ownerUsername) {
-        await db.collection('users').doc(ownerUsername).update({ workoutCount: FieldValue.increment(-1) });
-      }
+      await ref.delete();
+      await db.collection('users').doc(username).update({ workoutCount: FieldValue.increment(-1) });
       return { content: [{ type: 'text', text: JSON.stringify({ success: true, deleted: input.workoutId }) }] };
     }
   );
@@ -429,17 +444,17 @@ function createMcpServer(): McpServer {
     'complete_workout',
     {
       title: 'Complete / Uncomplete Workout',
-      description: 'Marks a workout as completed or resets it to incomplete. Provide ownerUsername for faster lookup.',
+      description: 'Marks one of your workouts as completed or resets it to incomplete.',
       inputSchema: {
         workoutId: z.string().min(1).max(128),
-        ownerUsername: z.string().min(1).max(128).optional(),
         completed: z.boolean(),
         notes: z.string().max(2000).optional(),
       },
     },
-    async (input: { workoutId: string; ownerUsername?: string; completed: boolean; notes?: string }) => {
-      const result = await getWorkoutDocById(db, input.workoutId, input.ownerUsername);
-      if (!result) {
+    async (input: { workoutId: string; completed: boolean; notes?: string }) => {
+      const ref = db.collection('users').doc(username).collection('workouts').doc(input.workoutId);
+      const doc = await ref.get();
+      if (!doc.exists) {
         return { content: [{ type: 'text', text: JSON.stringify({ error: 'Workout not found' }) }] };
       }
       const updates: Record<string, unknown> = {
@@ -450,7 +465,7 @@ function createMcpServer(): McpServer {
         updates.completedAt = FieldValue.serverTimestamp();
         updates.completedBy = 'mcp';
         if (input.notes) updates.completionNotes = input.notes;
-        const workoutDate = toIsoString((result.doc.data() as WorkoutDoc).date);
+        const workoutDate = toIsoString((doc.data() as WorkoutDoc).date);
         if (workoutDate) {
           updates.completedLate = new Date() > new Date(workoutDate);
         }
@@ -460,7 +475,7 @@ function createMcpServer(): McpServer {
         updates.completionNotes = null;
         updates.completedLate = null;
       }
-      await result.ref.update(updates);
+      await ref.update(updates);
       return { content: [{ type: 'text', text: JSON.stringify({ success: true, workoutId: input.workoutId, completed: input.completed }) }] };
     }
   );
@@ -470,18 +485,29 @@ function createMcpServer(): McpServer {
     'get_workout_comments',
     {
       title: 'Get Workout Comments',
-      description: 'Returns all comments on a workout, ordered by creation time. Provide ownerUsername for faster lookup.',
+      description: 'Returns all comments on a workout. Coaches can pass athleteUsername to view an athlete\'s workout comments.',
       inputSchema: {
         workoutId: z.string().min(1).max(128),
-        ownerUsername: z.string().min(1).max(128).optional(),
+        athleteUsername: z.string().min(1).max(100).optional().describe('Coaches only: username of athlete who owns the workout'),
       },
     },
-    async (input: { workoutId: string; ownerUsername?: string }) => {
-      const result = await getWorkoutDocById(db, input.workoutId, input.ownerUsername);
-      if (!result) {
+    async (input: { workoutId: string; athleteUsername?: string }) => {
+      let ownerUsername = username;
+      if (input.athleteUsername) {
+        if (role !== 'coach') {
+          return { content: [{ type: 'text', text: JSON.stringify({ error: 'Only coaches can view athlete workout comments' }) }] };
+        }
+        if (!await verifyCoachAthlete(db, username, input.athleteUsername)) {
+          return { content: [{ type: 'text', text: JSON.stringify({ error: 'Not authorized to access this athlete' }) }] };
+        }
+        ownerUsername = input.athleteUsername;
+      }
+      const workoutRef = db.collection('users').doc(ownerUsername).collection('workouts').doc(input.workoutId);
+      const workoutDoc = await workoutRef.get();
+      if (!workoutDoc.exists) {
         return { content: [{ type: 'text', text: JSON.stringify({ error: 'Workout not found' }) }] };
       }
-      const snapshot = await result.ref
+      const snapshot = await workoutRef
         .collection('comments')
         .orderBy('createdAt', 'asc')
         .get();
@@ -507,37 +533,40 @@ function createMcpServer(): McpServer {
     'add_workout_comment',
     {
       title: 'Add Workout Comment',
-      description: 'Posts a comment on a workout. Use this for AI coaching feedback. Provide ownerUsername for faster lookup.',
+      description: 'Posts a comment on a workout. Coaches can pass athleteUsername to comment on an athlete\'s workout.',
       inputSchema: {
         workoutId: z.string().min(1).max(128),
-        ownerUsername: z.string().min(1).max(128).optional(),
-        userId: z.string().min(1).max(128),
-        userName: z.string().min(1).max(100),
-        userRole: z.enum(['coach', 'athlete', 'student']),
         text: z.string().min(1).max(2000),
         rating: z.enum(['too_easy', 'just_right', 'too_hard']).optional(),
+        athleteUsername: z.string().min(1).max(100).optional().describe('Coaches only: username of athlete who owns the workout'),
       },
     },
-    async (input: {
-      workoutId: string; ownerUsername?: string; userId: string; userName: string;
-      userRole: string; text: string; rating?: string;
-    }) => {
-      const result = await getWorkoutDocById(db, input.workoutId, input.ownerUsername);
-      if (!result) {
+    async (input: { workoutId: string; text: string; rating?: string; athleteUsername?: string }) => {
+      let ownerUsername = username;
+      if (input.athleteUsername) {
+        if (role !== 'coach') {
+          return { content: [{ type: 'text', text: JSON.stringify({ error: 'Only coaches can comment on athlete workouts' }) }] };
+        }
+        if (!await verifyCoachAthlete(db, username, input.athleteUsername)) {
+          return { content: [{ type: 'text', text: JSON.stringify({ error: 'Not authorized to access this athlete' }) }] };
+        }
+        ownerUsername = input.athleteUsername;
+      }
+      const workoutRef = db.collection('users').doc(ownerUsername).collection('workouts').doc(input.workoutId);
+      const workoutDoc = await workoutRef.get();
+      if (!workoutDoc.exists) {
         return { content: [{ type: 'text', text: JSON.stringify({ error: 'Workout not found' }) }] };
       }
       const data: Record<string, unknown> = {
         workoutId: input.workoutId,
-        userId: input.userId,
-        userName: input.userName,
-        userRole: input.userRole,
+        userId: uid,
+        userName: username,
+        userRole: role === 'coach' ? 'coach' : 'athlete',
         text: input.text,
         createdAt: FieldValue.serverTimestamp(),
       };
       if (input.rating) data.rating = input.rating;
-      const ref = await result.ref
-        .collection('comments')
-        .add(data);
+      const ref = await workoutRef.collection('comments').add(data);
       return { content: [{ type: 'text', text: JSON.stringify({ success: true, commentId: ref.id }) }] };
     }
   );
@@ -546,22 +575,19 @@ function createMcpServer(): McpServer {
   server.registerTool(
     'get_personal_records',
     {
-      title: 'Get Personal Records',
-      description: 'Returns all personal records for a user, or all records across everyone if userId is omitted.',
-      inputSchema: {
-        userId: z.string().min(1).max(128).optional(),
-      },
+      title: 'Get My Personal Records',
+      description: 'Returns all your personal records.',
+      inputSchema: {},
     },
-    async (input: { userId?: string }) => {
-      const col = db.collection('personalRecords');
-      const snapshot = input.userId
-        ? await col.where('userId', '==', input.userId).orderBy('date', 'desc').get()
-        : await col.orderBy('date', 'desc').limit(100).get();
+    async () => {
+      const snapshot = await db.collection('personalRecords')
+        .where('userId', '==', username)
+        .orderBy('date', 'desc')
+        .get();
       const records = snapshot.docs.map((d) => {
         const data = d.data();
         return {
           id: d.id,
-          userId: toOptionalString(data.userId),
           category: toOptionalString(data.category),
           name: toOptionalString(data.name),
           value: toOptionalNumber(data.value),
@@ -580,17 +606,14 @@ function createMcpServer(): McpServer {
   server.registerTool(
     'check_data_health',
     {
-      title: 'Check Data Health',
-      description: 'Scans all workouts for data quality issues: missing fields, orphaned assignments, workouts with no type-specific data, unusually old pending workouts, etc.',
+      title: 'Check My Data Health',
+      description: 'Scans your workouts for data quality issues: missing fields, workouts with no type-specific data, unusually old pending workouts, etc.',
       inputSchema: {},
     },
     async () => {
-      const [workoutsSnap, usersSnap] = await Promise.all([
-        db.collectionGroup('workouts').orderBy('date', 'desc').limit(500).get(),
-        db.collection('users').get(),
-      ]);
+      const workoutsSnap = await db.collection('users').doc(username).collection('workouts')
+        .orderBy('date', 'desc').limit(500).get();
 
-      const usernames = new Set(usersSnap.docs.map((d) => d.id));
       const issues: { workoutId: string; issue: string; severity: 'warning' | 'error' }[] = [];
       const now = new Date();
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -601,16 +624,8 @@ function createMcpServer(): McpServer {
 
         if (!w.name) issues.push({ workoutId: id, issue: 'Missing name', severity: 'error' });
         if (!w.type) issues.push({ workoutId: id, issue: 'Missing type', severity: 'error' });
-        if (!w.assignedTo) issues.push({ workoutId: id, issue: 'Missing assignedTo', severity: 'error' });
-        if (!w.createdBy) issues.push({ workoutId: id, issue: 'Missing createdBy', severity: 'warning' });
         if (!w.date) issues.push({ workoutId: id, issue: 'Missing date', severity: 'error' });
 
-        // Orphaned assignment
-        if (typeof w.assignedTo === 'string' && w.assignedTo && !usernames.has(w.assignedTo)) {
-          issues.push({ workoutId: id, issue: `assignedTo user "${w.assignedTo}" does not exist`, severity: 'warning' });
-        }
-
-        // No type-specific data
         const type = toOptionalString(w.type);
         if (type && !['other', null].includes(type)) {
           if (!w[type]) {
@@ -618,7 +633,6 @@ function createMcpServer(): McpServer {
           }
         }
 
-        // Old pending workouts
         const dateStr = toIsoString(w.date);
         if (dateStr && !w.completed) {
           const workoutDate = new Date(dateStr);
@@ -643,24 +657,229 @@ function createMcpServer(): McpServer {
     }
   );
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Coach-only tools (only registered when authenticated user has role=coach)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  if (role === 'coach') {
+    const COACH_UNAUTHORIZED = { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'Not authorized to access this athlete' }) }] };
+    const MAX_ATHLETES = 25;
+
+    // ── C1. get_my_athletes ───────────────────────────────────────────────
+    server.registerTool(
+      'get_my_athletes',
+      {
+        title: 'Get My Athletes',
+        description: 'Lists all athletes linked to you as their coach.',
+        inputSchema: {
+          includeStats: z.boolean().default(false).describe('Include per-athlete workout stats (uses more Firestore reads)'),
+        },
+      },
+      async (input: { includeStats?: boolean }) => {
+        const athletes = await getLinkedAthletes(db, username);
+        if (!input.includeStats) {
+          return { content: [{ type: 'text', text: JSON.stringify({ count: athletes.length, athletes }, null, 2) }] };
+        }
+
+        const athletesWithStats = await Promise.all(
+          athletes.slice(0, MAX_ATHLETES).map(async (athlete) => {
+            const workoutsSnap = await db.collection('users').doc(athlete.username)
+              .collection('workouts').orderBy('date', 'desc').limit(50).get();
+            const total = workoutsSnap.size;
+            const completed = workoutsSnap.docs.filter(d => (d.data() as WorkoutDoc).completed === true).length;
+            return {
+              ...athlete,
+              workoutCount: total,
+              completedCount: completed,
+              completionRate: total > 0 ? `${Math.round((completed / total) * 100)}%` : '0%',
+            };
+          })
+        );
+
+        return { content: [{ type: 'text', text: JSON.stringify({ count: athletesWithStats.length, athletes: athletesWithStats }, null, 2) }] };
+      }
+    );
+
+    // ── C2. get_athlete_workouts ───────────────────────────────────────────
+    server.registerTool(
+      'get_athlete_workouts',
+      {
+        title: 'Get Athlete Workouts',
+        description: 'Fetches recent workouts for one of your linked athletes.',
+        inputSchema: {
+          athleteUsername: z.string().min(1).max(100),
+          limit: z.number().int().min(1).max(MAX_WORKOUT_LIMIT).default(DEFAULT_WORKOUT_LIMIT),
+        },
+      },
+      async (input: { athleteUsername: string; limit?: number }) => {
+        if (!await verifyCoachAthlete(db, username, input.athleteUsername)) return COACH_UNAUTHORIZED;
+        const { limit = DEFAULT_WORKOUT_LIMIT } = input;
+        const snapshot = await db.collection('users').doc(input.athleteUsername)
+          .collection('workouts').orderBy('date', 'desc').limit(limit).get();
+        const workouts = snapshot.docs.map(d => toSafeWorkout(d.id, d.data() as WorkoutDoc));
+        return { content: [{ type: 'text', text: JSON.stringify({ athleteUsername: input.athleteUsername, count: workouts.length, workouts }, null, 2) }] };
+      }
+    );
+
+    // ── C3. get_athlete_workout_detail ─────────────────────────────────────
+    server.registerTool(
+      'get_athlete_workout_detail',
+      {
+        title: 'Get Athlete Workout Detail',
+        description: 'Returns full details of a specific workout belonging to one of your linked athletes.',
+        inputSchema: {
+          athleteUsername: z.string().min(1).max(100),
+          workoutId: z.string().min(1).max(128),
+        },
+      },
+      async (input: { athleteUsername: string; workoutId: string }) => {
+        if (!await verifyCoachAthlete(db, username, input.athleteUsername)) return COACH_UNAUTHORIZED;
+        const ref = db.collection('users').doc(input.athleteUsername).collection('workouts').doc(input.workoutId);
+        const doc = await ref.get();
+        if (!doc.exists) {
+          return { content: [{ type: 'text', text: JSON.stringify({ error: 'Workout not found' }) }] };
+        }
+        return { content: [{ type: 'text', text: JSON.stringify(toSafeWorkout(doc.id, doc.data() as WorkoutDoc), null, 2) }] };
+      }
+    );
+
+    // ── C4. assign_workout ────────────────────────────────────────────────
+    server.registerTool(
+      'assign_workout',
+      {
+        title: 'Assign Workout to Athlete',
+        description: 'Creates a new workout assigned to one of your linked athletes.',
+        inputSchema: {
+          athleteUsername: z.string().min(1).max(100),
+          name: z.string().min(1).max(200),
+          type: z.enum(['swim', 'bike', 'run', 'walk', 'strength', 'other']),
+          date: z.string().describe('ISO 8601 date string'),
+          description: z.string().max(2000).optional(),
+          duration: z.number().int().min(1).optional().describe('Duration in minutes'),
+          tags: z.array(z.string()).optional(),
+        },
+      },
+      async (input: {
+        athleteUsername: string; name: string; type: string; date: string;
+        description?: string; duration?: number; tags?: string[];
+      }) => {
+        if (!await verifyCoachAthlete(db, username, input.athleteUsername)) return COACH_UNAUTHORIZED;
+        const date = new Date(input.date);
+        if (isNaN(date.getTime())) {
+          return { content: [{ type: 'text', text: JSON.stringify({ error: 'Invalid date format' }) }] };
+        }
+        const data: Record<string, unknown> = {
+          name: input.name,
+          type: input.type,
+          date,
+          ownerUsername: input.athleteUsername,
+          assignedTo: input.athleteUsername,
+          createdBy: username,
+          completed: false,
+          source: 'mcp',
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        };
+        if (input.description) data.description = input.description;
+        if (input.duration) data.duration = input.duration;
+        if (input.tags?.length) data.tags = input.tags;
+
+        const ref = await db.collection('users').doc(input.athleteUsername).collection('workouts').add(data);
+        await db.collection('users').doc(input.athleteUsername).update({ workoutCount: FieldValue.increment(1) });
+        return { content: [{ type: 'text', text: JSON.stringify({ success: true, workoutId: ref.id, assignedTo: input.athleteUsername }) }] };
+      }
+    );
+
+    // ── C5. get_coach_dashboard_stats ──────────────────────────────────────
+    server.registerTool(
+      'get_coach_dashboard_stats',
+      {
+        title: 'Get Coach Dashboard Stats',
+        description: 'Returns aggregate statistics across all your linked athletes: completion rates, active athletes, workout breakdown by type and per-athlete stats.',
+        inputSchema: {},
+      },
+      async () => {
+        const athletes = await getLinkedAthletes(db, username);
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+        const workoutsByType: Record<string, { total: number; completed: number }> = {};
+        let totalWorkouts = 0;
+        let totalCompleted = 0;
+
+        const studentsWithStats = await Promise.all(
+          athletes.slice(0, MAX_ATHLETES).map(async (athlete) => {
+            const snap = await db.collection('users').doc(athlete.username)
+              .collection('workouts').orderBy('date', 'desc').limit(50).get();
+            let studentCompleted = 0;
+            let isActive = false;
+
+            for (const d of snap.docs) {
+              const w = d.data() as WorkoutDoc;
+              const type = toOptionalString(w.type) ?? 'unknown';
+              if (!workoutsByType[type]) workoutsByType[type] = { total: 0, completed: 0 };
+              workoutsByType[type].total++;
+              totalWorkouts++;
+
+              if (w.completed === true) {
+                workoutsByType[type].completed++;
+                totalCompleted++;
+                studentCompleted++;
+                const completedDate = toIsoString(w.completedAt) || toIsoString(w.date);
+                if (completedDate && new Date(completedDate) >= sevenDaysAgo) {
+                  isActive = true;
+                }
+              }
+            }
+
+            return {
+              username: athlete.username,
+              displayName: athlete.displayName,
+              assignedWorkouts: snap.size,
+              completedWorkouts: studentCompleted,
+              completionRate: snap.size > 0 ? `${Math.round((studentCompleted / snap.size) * 100)}%` : '0%',
+              isActive,
+            };
+          })
+        );
+
+        const activeStudents = studentsWithStats.filter(s => s.isActive).length;
+
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              totalStudents: athletes.length,
+              activeStudents,
+              totalWorkouts,
+              completedWorkouts: totalCompleted,
+              pendingWorkouts: totalWorkouts - totalCompleted,
+              overallCompletionRate: totalWorkouts > 0 ? `${Math.round((totalCompleted / totalWorkouts) * 100)}%` : '0%',
+              workoutsByType,
+              studentsWithStats,
+            }, null, 2),
+          }],
+        };
+      }
+    );
+  }
+
   return server;
 }
 
 // ─── Request handler ──────────────────────────────────────────────────────────
 
 async function handleMcpRequest(request: NextRequest): Promise<Response> {
-  // If MCP_SECRET is set, require a valid Bearer token or x-api-key header.
-  // If MCP_SECRET is not set, allow unauthenticated access.
-  const secret = process.env.MCP_SECRET;
-  if (secret) {
-    const apiKey = getApiKeyFromRequest(request);
-    if (!isAuthorizedApiKey(apiKey, secret)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  let user: AuthenticatedUser;
+  try {
+    user = await authenticateRequest(request);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unauthorized';
+    return NextResponse.json({ error: message }, { status: 401 });
   }
 
   try {
-    const server = createMcpServer();
+    const server = createMcpServer(user);
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,
