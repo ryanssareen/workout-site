@@ -602,6 +602,18 @@ function UsersSection() {
     }
   }
 
+  async function backfillWorkoutCounts() {
+    setActing('backfill');
+    try {
+      await apiFetch('/api/admin/backfill-workout-counts', { method: 'POST' });
+      await load();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setActing(null);
+    }
+  }
+
   function exportCSV() {
     window.open('/api/admin/users?export=csv');
   }
@@ -623,12 +635,21 @@ function UsersSection() {
             <p className="text-muted-foreground/70 text-xs">{users.length} registered users</p>
           </div>
         </div>
-        <button
-          onClick={exportCSV}
-          className="group flex items-center gap-2 px-4 py-2.5 rounded-xl bg-muted/50 hover:bg-muted/70 border border-border hover:border-border text-sm text-foreground/70 hover:text-foreground transition-all"
-        >
-          <Download size={14} className="group-hover:-translate-y-0.5 transition-transform" /> Export CSV
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={backfillWorkoutCounts}
+            disabled={acting === 'backfill'}
+            className="group flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 hover:border-purple-500/30 text-sm text-purple-400 hover:text-purple-300 transition-all disabled:opacity-50"
+          >
+            {acting === 'backfill' ? 'Updating...' : '↻ Sync Counts'}
+          </button>
+          <button
+            onClick={exportCSV}
+            className="group flex items-center gap-2 px-4 py-2.5 rounded-xl bg-muted/50 hover:bg-muted/70 border border-border hover:border-border text-sm text-foreground/70 hover:text-foreground transition-all"
+          >
+            <Download size={14} className="group-hover:-translate-y-0.5 transition-transform" /> Export CSV
+          </button>
+        </div>
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">
