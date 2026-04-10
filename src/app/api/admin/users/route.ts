@@ -25,10 +25,24 @@ export async function GET(request: NextRequest) {
 
     const db = getAdminDb();
     const snap = await db.collection('users').orderBy('createdAt', 'desc').limit(100).get();
+    const liveCounts = request.nextUrl.searchParams.get('withCounts') === '1';
 
-    // Read workoutCount directly from user doc (denormalized) — 0 extra reads
-    const users = snap.docs.map(doc => {
+    // Build user list — optionally fetch live workout counts via .count() aggregation
+    const users = await Promise.all(snap.docs.map(async (doc) => {
       const d = doc.data();
+      let workoutCount = d.workoutCount ?? 0;
+
+      if (liveCounts) {
+        // .count().get() = 1 read regardless of collection size
+        const countSnap = await db.collection('users').doc(doc.id)
+          .collection('workouts').count().get();
+        workoutCount = countSnap.data().count;
+        // Also update the denormalized field while we're at it
+        if (workoutCount !== (d.workoutCount ?? 0)) {
+          db.collection('users').doc(doc.id).update({ workoutCount }).catch(() => {});
+        }
+      }
+
       return {
         username: doc.id,
         email: d.email ?? '',
@@ -37,9 +51,9 @@ export async function GET(request: NextRequest) {
         createdAt: d.createdAt?.toMillis?.() ?? null,
         deletedAt: d.deletedAt?.toMillis?.() ?? null,
         status: d.deletedAt ? 'deleted' : 'active',
-        workoutCount: d.workoutCount ?? 0,
+        workoutCount,
       };
-    });
+    }));
 
     // CSV export
     if (exportMode === 'csv') {

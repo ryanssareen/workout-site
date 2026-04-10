@@ -537,7 +537,7 @@ function UsersSection() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiFetch('/api/admin/users');
+      const data = await apiFetch('/api/admin/users?withCounts=1');
       setUsers(data.users);
     } catch (e: any) {
       setError(e.message);
@@ -892,7 +892,7 @@ function SystemActionsSection() {
 
   async function openSyncDialog() {
     try {
-      const data = await apiFetch('/api/admin/users');
+      const data = await apiFetch('/api/admin/users?withCounts=1');
       setSyncStats({ userCount: data.users.filter((u: UserRecord) => u.status === 'active').length });
     } catch {
       setSyncStats({ userCount: 0 });
