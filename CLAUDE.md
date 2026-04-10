@@ -10,7 +10,7 @@ The Daily Athlete is a SaaS workout tracking platform for athletes. Built with N
 - **Styling:** Tailwind CSS 4, shadcn/ui, Radix primitives
 - **State:** Zustand stores (`src/lib/stores/`)
 - **AI:** Groq SDK (LLaMA 3.3 70B + 8B instant fallback) + OpenAI SDK for workout suggestions and reports
-- **MCP:** Model Context Protocol server at `/api/mcp` — exposes workout CRUD, user data, stats, PRs, comments, and health check as MCP tools for AI agents
+- **MCP:** Model Context Protocol server v3.0.0 at `/api/mcp` — 17 tools (workout CRUD, user data, stats, PRs, comments, health check + 5 coach-only tools). Dual auth: API key + Firebase ID token. Role-based access (coach/athlete/student).
 - **Email:** Nodemailer (Gmail SMTP) + Brevo
 - **Integrations:** Strava API (OAuth + webhooks), Garmin Connect API (OAuth, pending approval), PostHog (product analytics)
 - **Charts:** Recharts
@@ -80,13 +80,13 @@ src/
 ```
 
 ### Data Model (Firestore Collections)
-- **users** — uid, email, displayName, username (unique), Strava tokens, photoURL, bio, ageRange, experienceLevel, height/weight, sportPreferences, trainingFor, events (goal + eventName + eventDate), profileTagline, profilePublic, pushSubscriptions (Web Push), theme (`light`|`dark`|`system`)
+- **users** — uid, email, displayName, username (unique), Strava tokens, photoURL, bio, ageRange, experienceLevel, height/weight, sportPreferences, trainingFor, events (goal + eventName + eventDate), profileTagline, profilePublic, pushSubscriptions (Web Push), theme (`light`|`dark`|`system`), role (`coach`|`athlete`|`student`), coachUsername (for linked athletes), workoutCount (denormalized count for admin efficiency)
 - **userMappings** — uid → username mapping (for auth lookups)
 - **workouts** — Multi-sport (swim/run/bike/walk/strength/other), completion tracking, Strava sync, comments subcollection. Type-specific sub-objects: `run`, `bike`, `swim`, `walk`, `strength`.
 - **personalRecords** — User PRs with history
 - **chatThreads** — AI coach conversation threads
 - **backups** — Admin backup metadata: `{ type: 'daily'|'weekly'|'monthly'|'manual'|'pre-restore', createdAt, userCount, workoutCount, storagePath, integrityPassed, triggeredBy }`. Backup files stored in **Vercel Blob** (daily metadata-only + weekly full snapshots).
-- **adminLogs** — Admin action audit trail: `{ action, adminUid, timestamp, targetUid?, backupId?, type?, details? }`. Actions: `backup_triggered`, `restore_triggered`, `user_deleted`, `user_restored`, `user_restore_triggered`, `strava_sync_forced`, `cron_backup`, `cron_backup_failed`.
+- **adminLogs** — Admin action audit trail: `{ action, adminUid, timestamp, targetUid?, backupId?, type?, details? }`. Actions: `backup_triggered`, `restore_triggered`, `user_deleted`, `user_hard_deleted`, `user_disabled`, `user_restored`, `user_restore_triggered`, `strava_sync_forced`, `cron_backup`, `cron_backup_failed`, `backfill_workout_counts`.
 - **system** — System metadata doc `lastCron`: tracks `backup_daily/weekly/monthly` timestamps for health monitoring.
 
 ## Development Commands
@@ -123,9 +123,9 @@ npx tsc --noEmit     # Type check without building
 - Workout types: `swim`, `run`, `bike`, `walk`, `strength`, `other` — walk type added across 33 files (#81)
 
 ## Page Architecture
-- `/` — Landing page: centered hero ("Your training, all in one place"), sport pills, how-it-works steps, 6-card features grid (Strava Sync, Visual Calendar, Progress Tracking, AI Coach, Multi-Sport, Email Reminders), FAQ, CTA. Theme toggle support (light mode by default). Global sun/moon toggle.
+- `/` — Landing page: left-aligned 2-column hero with gradient overlay animations (red accent theme), sport cards showcase (swim/bike/run/strength), social proof badges, feature cards grid, CTA buttons (dark theme with red branding). Theme toggle support. Removed FAQ/how-it-works sections for tighter layout.
 - `/profile` — Read-only public-style profile view (stats, pie chart, recent workouts, PRs). "Edit Profile" opens Edit Profile Dialog (also links to `/settings`)
-- `/settings` — Full profile edit form (name, bio, timezone, age, experience, height/weight, sports, training goals with event name/date), Strava integration, public profile toggle, account management. New **Appearance** section with Light/Dark/System picker. Edit Profile Dialog accessible from here.
+- `/settings` — Redesigned single-card layout with left-right row sections: Profile (name, bio, tagline), Privacy (public toggle with share link), Strava (connect/disconnect), Appearance (Light/Dark/System icon picker), Account (edit profile dialog, danger zone). Edit Profile Dialog opens full form (timezone, age, experience, height/weight, sports, training goals).
 - `/workouts` — Compact header, AI Workout Suggestions collapsed by default behind slim trigger bar (expandable), time filter tabs (Planned/Past/All), horizontal type filter tags (All/Run/Bike/Swim/Walk/Strength/Other), compact single-row workout list with Garmin-style stat chips (HR, elevation, calories, pace, power). Neutral/orange color scheme (no red). Delete button (trash icon) on hover for planned workouts with AlertDialog confirmation. Recurring workouts only shown in Planned tab within next 7 days.
 - `/workouts/new` — Create workout form with type-specific sub-forms, supports AI-generated templates (via sessionStorage) and saved templates. Preview dialog before creation. Reads `date` and `tag` URL params from calendar dropdown navigation.
 - `/athlete/[username]` — Public athlete profile (SSR), shares components with `/profile` via ProfileComponents.tsx
@@ -254,7 +254,8 @@ npx tsc --noEmit     # Type check without building
 - **API Registry** — Catalog of 100+ endpoints grouped by 14 categories with search/filter.
 - **Backup storage:** **Vercel Blob** — daily metadata-only backups + weekly full snapshots. Download-on-demand. Restore from file upload. Auto-pruning old backups.
 - **Backup API:** `GET/POST /api/admin/backup` — list/create. `GET/POST /api/admin/backup/[id]` — detail/full-restore (auto pre-restore snapshot first). `POST /api/admin/backup/[id]/restore-user` — per-user restore from snapshot. Backup logic in `src/lib/backup.ts`.
-- **Users API:** `GET /api/admin/users` (list, or `?export=csv`), `DELETE/PATCH/GET /api/admin/users/[uid]` — soft-delete, restore, JSON export
+- **Users API:** `GET /api/admin/users` (list, or `?export=csv`), `DELETE/PUT/PATCH/GET /api/admin/users/[uid]` — DELETE soft-disables (Firebase Auth disabled, sends account-disabled email with reason), PUT permanently deletes (hard-deletes all data, sends account-deleted email), PATCH restores, GET exports as JSON. Preset reason chips in admin UI modals. `workoutCount` denormalized on user docs (backfill via `/api/admin/backfill-workout-counts`).
+- **Account action emails:** `src/lib/email/accountActionTemplate.ts` — branded HTML templates for disable, delete, and restore notifications
 - **Logs API:** `GET /api/admin/logs?type=actions|cron` — reads `adminLogs` Firestore collection
 - **Cron:** `src/app/api/cron/backup/route.ts` — `?type=daily|weekly|monthly`, snapshot to Vercel Blob, integrity check, prunes old backups, writes to `adminLogs` + `system/lastCron`
 - **UI iterations** — Went through glassmorphic → red accent → final polished version
@@ -268,12 +269,15 @@ npx tsc --noEmit     # Type check without building
 - **Types** — `src/types/achievements.ts` defines `Milestone`, `DetectedPR`, `ConfirmedPR`, `MilestoneCategory`, `AchievementResult`.
 - **Admin fix endpoint** — `/api/admin/fix-milestones` for data repair.
 
-## MCP Server
+## MCP Server (v3.0.0)
 - **Route:** `/api/mcp` — Model Context Protocol server using `@modelcontextprotocol/sdk`
 - **Transport:** `WebStandardStreamableHTTPServerTransport` for HTTP-based communication
-- **Tools exposed:** Workout CRUD, user data queries, personal records, workout comments, site stats, data health check
-- **Auth:** Token-based with timing-safe comparison
-- **Use case:** Enables AI agents (Claude Code, etc.) to read and write workout data programmatically
+- **Auth:** Dual-mode — API key (timing-safe comparison, for Claude Desktop) or Firebase ID token (for web). Validates `role` field (coach/athlete/student) and enforces coach-athlete relationships via `coachUsername` on user docs.
+- **Data isolation:** Each user only accesses their own data. Coaches can access linked athletes' data via coach-only tools.
+- **Core tools (all roles):** `get_user_workouts`, `get_workout_detail`, `get_my_profile`, `get_my_stats`, `create_workout`, `update_workout`, `delete_workout`, `complete_workout`, `get_workout_comments`, `add_workout_comment`, `get_personal_records`, `check_data_health`
+- **Coach-only tools (registered when role=coach):** `get_my_athletes`, `get_athlete_workouts`, `get_athlete_workout_detail`, `assign_workout`, `get_coach_dashboard_stats`
+- **Safe output types:** Strict `SafeWorkout`/`SafeUser` interfaces with null-checking helpers prevent raw Firestore data leakage
+- **Use case:** Enables AI agents (Claude Code, etc.) to read and write workout data programmatically. Coaches can manage athlete training remotely.
 
 ## Known Issues & Active Work
 - Custom domain (thedailyathlete.in) has DNS/NXDOMAIN issues — likely Squarespace registration problem
@@ -339,22 +343,59 @@ npx tsc --noEmit     # Type check without building
 - CelebrationModal with confetti + carousel for multiple achievement reveals
 - Dashboard achievements section showing recent PRs + milestones
 
-### MCP Integration
-- Model Context Protocol server at `/api/mcp` for AI agent access
-- Exposes workout CRUD, user queries, stats, PRs, comments as MCP tools
-- Token-based auth with timing-safe comparison
+### MCP Server v3.0.0
+- Dual auth: API key (Claude Desktop) + Firebase ID token (web)
+- Role-based access: coach/athlete/student with data isolation
+- 5 new coach-only tools: `get_my_athletes`, `get_athlete_workouts`, `get_athlete_workout_detail`, `assign_workout`, `get_coach_dashboard_stats`
+- Strict `SafeWorkout`/`SafeUser` output types with null-checking
 
 ### Training Plans
 - `planEngine.ts` — deterministic multi-week plan scheduling (dates, types, intensity, duration)
 - Periodization-aware skeleton generation that AI enhances with details
 
+### Admin Enhancements
+- Account disable/delete with preset reason chips and email notifications (`accountActionTemplate.ts`)
+- `workoutCount` denormalized on user docs to eliminate N+1 reads in admin user list
+- Backfill endpoint at `/api/admin/backfill-workout-counts`
+
+### UI Redesigns (April 2026)
+- Landing page: left-aligned 2-column hero with gradient overlays, sport cards, red accent branding
+- Auth pages: ambient background gradients, centered forms with social proof indicators
+- Settings page: single-card left-right row layout (Profile, Privacy, Strava, Appearance, Account sections)
+- CelebrationModal: upgraded confetti particle system (randomized colors, spin+fall CSS animations), carousel navigation for multiple achievements
+
+### Error Handling & Performance
+- Error boundaries (`error.tsx`) for dashboard, calendar, workouts, reports with retry buttons
+- Loading skeletons (`loading.tsx`) with animate-pulse matching actual content layouts
+- `Next.js Image` component replacing raw `<img>` tags across the app
+- `maxLength` constraints on form inputs (name, description, bio)
+- `aria-label` on icon-only buttons for accessibility
+- Shared `safeToDate()` extracted to `src/lib/dateUtils.ts` (replaces duplicate implementations)
+- Magic numbers extracted to `src/lib/constants.ts` (time conversions, batch limits, query windows)
+- Reduced Firestore reads: eliminated double-fetch and redundant queries on calendar and workout pages
+
+### Sharing & Social
+- OG image generation at `/preview/[username]/[id]/opengraph-image.tsx` for workout social cards
+- Share buttons refactored: send preview URL for rich link previews instead of trying to copy images
+- Native Share API integration for WhatsApp, X, iMessage, Instagram
+- Image generation via `html-to-image` with CORS handling and configurable dimensions
+
+### Calendar & Workouts
+- Optimistic completion toggle on calendar cards (prevents empty state flash)
+- Completion toggle moved outside Link wrapper to prevent navigation on mobile tap
+- 6-state workout status system on calendar: Strava standalone, Strava-matched, late completion, manual completion, missed, future — with status-driven color coding
+- Context-aware back navigation from workout detail page
+- Non-recurring workouts hidden until 24h before scheduled time (for athletes)
+- Future recurring workouts hidden from all tabs until scheduled day
+- Removed 24h filter from calendar view — shows all workouts for the day
+
 ### Bug Fixes
 - WhatsApp/iMessage share now opens native apps instead of browser tabs
-- Share buttons send preview URL instead of trying to copy image
 - Achievements section spans full width when only PRs or milestones exist
 - Activity heatmap month labels properly positioned on profile page
 - React hooks order violation fixed in wrap/review (useCountUp before early returns)
 - Calendar add button centered in day cell instead of top-right corner
+- Rebrand: replaced all CoachTrack references with The Daily Athlete
 
 ## Firestore Read Budget
 This project runs on Firebase with a **50k reads/day limit**. Every API route, migration, and cron job must be designed with read cost as a primary constraint.
@@ -383,7 +424,7 @@ This project runs on Firebase with a **50k reads/day limit**. Every API route, m
 - **Vercel Blob** — Replaced Firebase Storage for backups (no Blaze plan needed). `BLOB_READ_WRITE_TOKEN` env var.
 - **Firestore indexes** — Added composite indexes for backups collection (type + createdAt)
 - **vercel.json** — 5 cron jobs: weekly wrap (Mon 8am UTC), daily insights (6am UTC), daily/weekly/monthly backups. Firebase auth rewrites.
-- **MCP server** — `/api/mcp` route for AI agent integration via `@modelcontextprotocol/sdk`
+- **MCP server (v3.0.0)** — `/api/mcp` route for AI agent integration via `@modelcontextprotocol/sdk`. Dual auth (API key + Firebase token), role-based access, 17 tools including 5 coach-only tools.
 - **Workout templates API** — `GET/POST /api/templates`, `GET /api/templates/[id]` for saved workout presets
 - **Import pipeline** — `src/lib/import/` with parser, mapper, enricher, transformer, validator modules
 - **API routes:** `/api/import/format-description` for description formatting, `/api/workouts/fix-timezone` for timezone migration, `/api/workouts/auto-dedup` for automatic deduplication
