@@ -1,0 +1,48 @@
+name: daily_athlete
+description: "The Daily Athlete - iOS workout tracking app"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # State management
+  flutter_riverpod: ^2.6.1
+
+  # Networking
+  dio: ^5.7.0
+  json_annotation: ^4.9.0
+
+  # Auth & Security
+  flutter_secure_storage: ^9.2.4
+
+  # Offline cache
+  shared_preferences: ^2.3.4
+
+  # Routing
+  go_router: ^14.8.1
+
+  # Charts
+  fl_chart: ^0.70.2
+
+  # Date handling
+  intl: ^0.19.0
+
+  # URL launching
+  url_launcher: ^6.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  build_runner: ^2.4.14
+  json_serializable: ^6.9.0
+
+flutter:
+  uses-material-design: true
