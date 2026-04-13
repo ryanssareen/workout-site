@@ -94,6 +94,12 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<bool>> {
     return user;
   }
 
+  Future<User> signInWithGoogle() async {
+    final user = await _repo.signInWithGoogle();
+    state = const AsyncValue.data(true);
+    return user;
+  }
+
   Future<User> signUp({
     required String email,
     required String password,

@@ -20,6 +20,8 @@ class ApiConstants {
       '$_firebaseTokenBase?key=$firebaseApiKey';
   static const String resetPasswordUrl =
       '$_firebaseAuthBase:sendOobCode?key=$firebaseApiKey';
+  static const String signInWithIdpUrl =
+      '$_firebaseAuthBase:signInWithIdp?key=$firebaseApiKey';
 
   // App API routes
   static const String checkUsernameUrl = '$baseUrl/api/auth/check-username';

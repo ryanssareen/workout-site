@@ -52,7 +52,10 @@ class UserStats {
   });
 
   factory UserStats.fromJson(Map<String, dynamic> json) {
-    final byTypeRaw = json['byType'] as Map<String, dynamic>? ?? {};
+    // MCP returns stats nested under 'workouts' key
+    final data = json['workouts'] as Map<String, dynamic>? ?? json;
+
+    final byTypeRaw = data['byType'] as Map<String, dynamic>? ?? {};
     final byType = byTypeRaw.map(
       (key, value) => MapEntry(
         key,
@@ -61,13 +64,13 @@ class UserStats {
     );
 
     return UserStats(
-      total: json['total'] as int? ?? 0,
-      completed: json['completed'] as int? ?? 0,
-      pending: json['pending'] as int? ?? 0,
-      completionRate: json['completionRate'] as String? ?? '0%',
-      totalDuration: json['totalDuration'] as int? ?? 0,
-      thisWeek: json['thisWeek'] as int? ?? 0,
-      streak: json['streak'] as int? ?? 0,
+      total: data['total'] as int? ?? 0,
+      completed: data['completed'] as int? ?? 0,
+      pending: data['pending'] as int? ?? 0,
+      completionRate: data['completionRate'] as String? ?? '0%',
+      totalDuration: data['totalDuration'] as int? ?? 0,
+      thisWeek: data['thisWeek'] as int? ?? 0,
+      streak: data['streak'] as int? ?? 0,
       byType: byType,
     );
   }

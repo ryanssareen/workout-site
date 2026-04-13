@@ -1,3 +1,5 @@
+import 'package:google_sign_in/google_sign_in.dart';
+
 import '../../../core/network/api_client.dart';
 import '../../../core/network/mcp_client.dart';
 import '../../../core/storage/secure_storage.dart';
@@ -59,6 +61,46 @@ class AuthRepository {
       email: email,
       displayName: displayName,
     );
+
+    return _fetchProfile();
+  }
+
+  /// Signs in with Google OAuth.
+  ///
+  /// Uses Google Sign-In SDK to get an ID token, then exchanges it for a
+  /// Firebase ID token via signInWithIdp.
+  Future<User> signInWithGoogle() async {
+    final googleSignIn = GoogleSignIn.instance;
+    await googleSignIn.initialize(
+      serverClientId: '1003604918622-68qdqc8p509dl2nijog6bogp8ivpbui3.apps.googleusercontent.com',
+    );
+
+    final account = await googleSignIn.authenticate();
+    final googleIdToken = account.authentication.idToken;
+    if (googleIdToken == null) throw Exception('Failed to get Google ID token');
+
+    final result = await _apiClient.signInWithGoogleToken(googleIdToken);
+
+    final idToken = result['idToken'] as String;
+    final refreshToken = result['refreshToken'] as String;
+    final uid = result['localId'] as String;
+    final email = result['email'] as String? ?? account.email;
+    final displayName = result['displayName'] as String? ?? account.displayName ?? '';
+    final isNewUser = result['isNewUser'] as bool? ?? false;
+
+    await _storage.saveTokens(idToken, refreshToken);
+    await _storage.saveUserInfo(uid: uid, email: email);
+
+    if (isNewUser) {
+      final prefix = email.split('@').first.replaceAll(RegExp(r'[^a-z0-9_]'), '_');
+      final username = prefix.substring(0, prefix.length.clamp(0, 20));
+      await _apiClient.createUser(
+        token: idToken,
+        username: username,
+        email: email,
+        displayName: displayName,
+      );
+    }
 
     return _fetchProfile();
   }

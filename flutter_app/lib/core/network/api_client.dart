@@ -68,6 +68,19 @@ class ApiClient {
     }
   }
 
+  /// Exchanges a Google ID token for a Firebase ID token via signInWithIdp.
+  Future<Map<String, dynamic>> signInWithGoogleToken(String idToken) async {
+    return _firebaseAuthRequest(
+      '${ApiConstants.signInWithIdpUrl}',
+      {
+        'postBody': 'id_token=$idToken&providerId=google.com',
+        'requestUri': ApiConstants.baseUrl,
+        'returnIdpCredential': true,
+        'returnSecureToken': true,
+      },
+    );
+  }
+
   /// Sends a password reset email.
   Future<void> sendPasswordReset(String email) async {
     await _firebaseAuthRequest(

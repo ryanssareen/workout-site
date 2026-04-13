@@ -16,6 +16,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   String? _error;
 
   @override
@@ -46,6 +47,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    setState(() {
+      _isGoogleLoading = true;
+      _error = null;
+    });
+
+    try {
+      await ref.read(authStateProvider.notifier).signInWithGoogle();
+      if (mounted) context.go('/');
+    } catch (e) {
+      if (mounted) {
+        final msg = e.toString();
+        if (!msg.contains('cancelled')) {
+          setState(() => _error = msg);
+        }
+      }
+    } finally {
+      if (mounted) setState(() => _isGoogleLoading = false);
     }
   }
 
@@ -345,6 +367,58 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   ),
                                 ),
                               ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Divider
+                          Row(
+                            children: [
+                              Expanded(child: Container(height: 0.5, color: CupertinoColors.separator.resolveFrom(context))),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                child: Text('or', style: TextStyle(fontSize: 13, color: mutedColor)),
+                              ),
+                              Expanded(child: Container(height: 0.5, color: CupertinoColors.separator.resolveFrom(context))),
+                            ],
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Google Sign-In button
+                          SizedBox(
+                            width: double.infinity,
+                            height: 48,
+                            child: CupertinoButton(
+                              padding: EdgeInsets.zero,
+                              borderRadius: BorderRadius.circular(12),
+                              color: CupertinoColors.systemBackground.resolveFrom(context),
+                              onPressed: (_isLoading || _isGoogleLoading) ? null : _handleGoogleSignIn,
+                              child: _isGoogleLoading
+                                  ? const CupertinoActivityIndicator()
+                                  : Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          'G',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w700,
+                                            color: textColor,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Continue with Google',
+                                          style: TextStyle(
+                                            color: textColor,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                             ),
                           ),
 

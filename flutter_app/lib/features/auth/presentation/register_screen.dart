@@ -14,53 +14,29 @@ class RegisterScreen extends ConsumerStatefulWidget {
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _emailController = TextEditingController();
-  final _usernameController = TextEditingController();
-  final _displayNameController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   String? _error;
 
   @override
   void dispose() {
     _emailController.dispose();
-    _usernameController.dispose();
-    _displayNameController.dispose();
     _passwordController.dispose();
-    _confirmPasswordController.dispose();
     super.dispose();
   }
 
   Future<void> _handleSignUp() async {
     final email = _emailController.text.trim();
-    final username = _usernameController.text.trim().toLowerCase();
-    final displayName = _displayNameController.text.trim();
     final password = _passwordController.text;
-    final confirmPassword = _confirmPasswordController.text;
 
-    // Validation
-    if (email.isEmpty ||
-        username.isEmpty ||
-        displayName.isEmpty ||
-        password.isEmpty) {
+    if (email.isEmpty || password.isEmpty) {
       setState(() => _error = 'Please fill in all fields.');
-      return;
-    }
-
-    if (password != confirmPassword) {
-      setState(() => _error = 'Passwords do not match.');
       return;
     }
 
     if (password.length < 6) {
       setState(() => _error = 'Password must be at least 6 characters.');
-      return;
-    }
-
-    final usernameRegex = RegExp(r'^[a-z0-9_]{3,20}$');
-    if (!usernameRegex.hasMatch(username)) {
-      setState(() =>
-          _error = 'Username must be 3-20 characters: lowercase letters, numbers, underscores.');
       return;
     }
 
@@ -70,16 +46,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     });
 
     try {
-      // Check username availability first
-      final repo = ref.read(authRepositoryProvider);
-      final available = await repo.checkUsername(username);
-      if (!available) {
-        setState(() {
-          _error = 'Username "$username" is already taken.';
-          _isLoading = false;
-        });
-        return;
-      }
+      final prefix = email.split('@').first.replaceAll(RegExp(r'[^a-z0-9_]'), '_');
+      final username = prefix.substring(0, prefix.length.clamp(0, 20));
+      final displayName = email.split('@').first;
 
       await ref.read(authStateProvider.notifier).signUp(
             email: email,
@@ -95,6 +64,27 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
   }
 
+  Future<void> _handleGoogleSignIn() async {
+    setState(() {
+      _isGoogleLoading = true;
+      _error = null;
+    });
+
+    try {
+      await ref.read(authStateProvider.notifier).signInWithGoogle();
+      if (mounted) context.go('/');
+    } catch (e) {
+      if (mounted) {
+        final msg = e.toString();
+        if (!msg.contains('cancelled')) {
+          setState(() => _error = msg);
+        }
+      }
+    } finally {
+      if (mounted) setState(() => _isGoogleLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
@@ -105,7 +95,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Logo / Title
                 const Icon(
                   CupertinoIcons.flame_fill,
                   size: 64,
@@ -131,24 +120,59 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ),
                 const SizedBox(height: 32),
 
-                // Display name
-                _buildField(
-                  controller: _displayNameController,
-                  placeholder: 'Display Name',
-                  icon: CupertinoIcons.person,
-                  textInputAction: TextInputAction.next,
+                // Google Sign-In first — fastest path
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    borderRadius: BorderRadius.circular(12),
+                    color: CupertinoColors.systemBackground.resolveFrom(context),
+                    onPressed: (_isLoading || _isGoogleLoading) ? null : _handleGoogleSignIn,
+                    child: _isGoogleLoading
+                        ? const CupertinoActivityIndicator()
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'G',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                  color: CupertinoTheme.of(context).brightness == Brightness.dark
+                                      ? CupertinoColors.white
+                                      : CupertinoColors.black,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Continue with Google',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                  color: CupertinoTheme.of(context).brightness == Brightness.dark
+                                      ? CupertinoColors.white
+                                      : CupertinoColors.black,
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 20),
 
-                // Username
-                _buildField(
-                  controller: _usernameController,
-                  placeholder: 'Username',
-                  icon: CupertinoIcons.at,
-                  textInputAction: TextInputAction.next,
-                  autocorrect: false,
+                // Divider
+                Row(
+                  children: [
+                    Expanded(child: Container(height: 0.5, color: CupertinoColors.separator.resolveFrom(context))),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text('or sign up with email', style: TextStyle(fontSize: 13, color: CupertinoColors.systemGrey.resolveFrom(context))),
+                    ),
+                    Expanded(child: Container(height: 0.5, color: CupertinoColors.separator.resolveFrom(context))),
+                  ],
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 20),
 
                 // Email
                 _buildField(
@@ -164,18 +188,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 // Password
                 _buildField(
                   controller: _passwordController,
-                  placeholder: 'Password',
+                  placeholder: 'Password (6+ characters)',
                   icon: CupertinoIcons.lock,
-                  obscureText: true,
-                  textInputAction: TextInputAction.next,
-                ),
-                const SizedBox(height: 14),
-
-                // Confirm password
-                _buildField(
-                  controller: _confirmPasswordController,
-                  placeholder: 'Confirm Password',
-                  icon: CupertinoIcons.lock_shield,
                   obscureText: true,
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) => _handleSignUp(),

@@ -139,6 +139,14 @@ function isValidApiKey(candidate: string, expected: string): boolean {
   return timingSafeEqual(cb, eb);
 }
 
+async function resolveFirebaseUser(uid: string): Promise<AuthenticatedUser> {
+  const username = await adminResolveUsername(uid);
+  const db = getFirebaseAdminDb();
+  const userDoc = await db.collection('users').doc(username).get();
+  const role = (userDoc.data()?.role as UserRole) || 'athlete';
+  return { uid, username, role };
+}
+
 async function authenticateRequest(request: NextRequest): Promise<AuthenticatedUser> {
   // Method 1: API key via x-api-key header — grants admin access to all users
   const apiKey = request.headers.get('x-api-key');
@@ -147,7 +155,7 @@ async function authenticateRequest(request: NextRequest): Promise<AuthenticatedU
     return { uid: 'mcp-api-key', username: null, role: 'admin' };
   }
 
-  // Method 2: Firebase ID token via Authorization: Bearer <token>
+  // Method 2 & 3: Bearer token (Firebase ID token or Google OAuth ID token)
   const authHeader = request.headers.get('authorization');
   if (!authHeader) throw new Error('Missing authorization');
 
@@ -156,18 +164,42 @@ async function authenticateRequest(request: NextRequest): Promise<AuthenticatedU
     throw new Error('Invalid authorization header');
   }
 
-  const idToken = tokenParts.join(' ');
-  if (!idToken) throw new Error('Empty bearer token');
+  const token = tokenParts.join(' ');
+  if (!token) throw new Error('Empty bearer token');
 
   const adminAuth = getFirebaseAdminAuth();
-  const decoded = await adminAuth.verifyIdToken(idToken);
-  const username = await adminResolveUsername(decoded.uid);
 
-  const db = getFirebaseAdminDb();
-  const userDoc = await db.collection('users').doc(username).get();
-  const role = (userDoc.data()?.role as UserRole) || 'athlete';
+  // Try Firebase ID token first
+  try {
+    const decoded = await adminAuth.verifyIdToken(token);
+    return resolveFirebaseUser(decoded.uid);
+  } catch {
+    // Not a Firebase token — fall through to Google OAuth
+  }
 
-  return { uid: decoded.uid, username, role };
+  // Method 3: Google OAuth ID token — verify via Google tokeninfo, then map to Firebase user
+  try {
+    const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(token)}`);
+    if (!googleRes.ok) throw new Error('Invalid Google token');
+
+    const googlePayload = await googleRes.json() as { email?: string; email_verified?: string; aud?: string };
+    const email = googlePayload.email;
+    if (!email || googlePayload.email_verified !== 'true') {
+      throw new Error('Google token email not verified');
+    }
+
+    // Verify the token audience matches our Firebase project's OAuth client ID
+    const expectedClientId = process.env.GOOGLE_CLIENT_ID;
+    if (expectedClientId && googlePayload.aud !== expectedClientId) {
+      throw new Error('Google token audience mismatch');
+    }
+
+    // Look up the Firebase user by email
+    const firebaseUser = await adminAuth.getUserByEmail(email);
+    return resolveFirebaseUser(firebaseUser.uid);
+  } catch (err) {
+    throw new Error(`Authentication failed: ${err instanceof Error ? err.message : 'invalid token'}`);
+  }
 }
 
 // ─── Coach helpers ───────────────────────────────────────────────────────────
