@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_constants.dart';
@@ -103,6 +104,7 @@ class ReportsScreen extends ConsumerWidget {
                       color: const Color(0xFF6366F1),
                       title: 'Weekly Wrap',
                       subtitle: 'Your weekly capsule',
+                      reportType: 'wrap',
                     ),
                     const SizedBox(width: 10),
                     _ReportLink(
@@ -114,6 +116,7 @@ class ReportsScreen extends ConsumerWidget {
                                 '${s.thisWeek > 0 ? s.thisWeek : s.completed} workouts',
                           ) ??
                           'This month',
+                      reportType: 'review',
                     ),
                     const SizedBox(width: 10),
                     _ReportLink(
@@ -121,6 +124,7 @@ class ReportsScreen extends ConsumerWidget {
                       color: const Color(0xFFF59E0B),
                       title: 'Year in Review',
                       subtitle: '2025 Wrapped',
+                      reportType: 'wrapped',
                     ),
                   ],
                 ),
@@ -160,6 +164,10 @@ class ReportsScreen extends ConsumerWidget {
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
 // Zone 1: AI Insight Card
@@ -262,20 +270,20 @@ class _ReportLink extends StatelessWidget {
   final Color color;
   final String title;
   final String subtitle;
+  final String reportType;
 
   const _ReportLink({
     required this.icon,
     required this.color,
     required this.title,
     required this.subtitle,
+    required this.reportType,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        // Reports are view-only for now — placeholder tap
-      },
+      onTap: () => context.push('/report/$reportType'),
       child: Container(
         width: 160,
         padding: const EdgeInsets.all(14),
@@ -390,6 +398,7 @@ class _ExploreGrid extends StatelessWidget {
                 emojiColor: const Color(0xFFF59E0B),
                 title: 'Sport Deep Dive',
                 subtitle: sportSubtitle,
+                reportType: 'sport-deep-dive',
               ),
             ),
             const SizedBox(width: 10),
@@ -399,6 +408,7 @@ class _ExploreGrid extends StatelessWidget {
                 emojiColor: const Color(0xFFEC4899),
                 title: 'Trend Report',
                 subtitle: trendSubtitle,
+                reportType: 'trend-report',
               ),
             ),
           ],
@@ -412,6 +422,7 @@ class _ExploreGrid extends StatelessWidget {
                 emojiColor: const Color(0xFFEF4444),
                 title: 'Goal Tracker',
                 subtitle: goalSubtitle,
+                reportType: 'goal-tracker',
               ),
             ),
             const SizedBox(width: 10),
@@ -421,6 +432,7 @@ class _ExploreGrid extends StatelessWidget {
                 emojiColor: const Color(0xFF22C55E),
                 title: 'Recovery Check',
                 subtitle: recoverySubtitle,
+                reportType: 'recovery-report',
               ),
             ),
           ],
@@ -434,6 +446,7 @@ class _ExploreGrid extends StatelessWidget {
                 emojiColor: const Color(0xFFF97316),
                 title: 'Personal Records',
                 subtitle: prSubtitle,
+                reportType: 'pr-timeline',
               ),
             ),
             const SizedBox(width: 10),
@@ -443,6 +456,7 @@ class _ExploreGrid extends StatelessWidget {
                 emojiColor: const Color(0xFF6366F1),
                 title: 'Training Analysis',
                 subtitle: analysisSubtitle,
+                reportType: 'training-analysis',
               ),
             ),
           ],
@@ -457,20 +471,20 @@ class _ExploreCard extends StatelessWidget {
   final Color emojiColor;
   final String title;
   final String subtitle;
+  final String reportType;
 
   const _ExploreCard({
     required this.emoji,
     required this.emojiColor,
     required this.title,
     required this.subtitle,
+    required this.reportType,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        // Deep-dive reports — placeholder for future navigation
-      },
+      onTap: () => context.push('/report/$reportType'),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(

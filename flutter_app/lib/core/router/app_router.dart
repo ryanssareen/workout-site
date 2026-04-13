@@ -10,6 +10,7 @@ import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/settings/presentation/privacy_screen.dart';
 import '../../features/settings/presentation/strava_screen.dart';
 import '../../features/settings/presentation/terms_screen.dart';
+import '../../features/reports/presentation/report_detail_screen.dart';
 import '../../features/workouts/presentation/create_workout_screen.dart';
 import '../../features/workouts/presentation/workout_detail_screen.dart';
 import '../../shared/widgets/main_tab_screen.dart';
@@ -104,6 +105,15 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) => const CupertinoPage(
               child: TermsScreen(),
             ),
+          ),
+          GoRoute(
+            path: 'report/:type',
+            pageBuilder: (context, state) {
+              final type = state.pathParameters['type']!;
+              return CupertinoPage(
+                child: ReportDetailScreen(reportType: type),
+              );
+            },
           ),
         ],
       ),
