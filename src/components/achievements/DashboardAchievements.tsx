@@ -1,16 +1,18 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { getPersonalRecords, getMilestones } from '@/lib/firebase/firestore';
+import { getPersonalRecords, getMilestones, updateMilestoneDate } from '@/lib/firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trophy, Star, ChevronRight, Flame, Medal, Award, X, Share2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { safeToDate } from '@/lib/dateUtils';
+import { Timestamp } from 'firebase/firestore';
 import Link from 'next/link';
 import type { PersonalRecord } from '@/types';
 import type { Milestone } from '@/types/achievements';
 import { MilestoneCard } from './MilestoneCard';
 import { ShareButtons } from '@/components/workouts/ShareWorkoutCard';
+import { useWorkoutStore } from '@/lib/stores/workoutStore';
 
 const MILESTONE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   star: Star, medal: Medal, award: Award, trophy: Trophy, flame: Flame,
@@ -63,6 +65,55 @@ export function DashboardAchievements({ username, prefetchedPRs, prefetchedMiles
     }
     load();
   }, [username, prefetchedPRs, prefetchedMilestones]);
+
+  // Self-heal milestone epoch-zero dates: if any milestone has a date at or before
+  // Unix epoch (Dec 31, 1969 / Jan 1, 1970 bug), look up the actual first workout
+  // of that type and patch the Firestore document.
+  useEffect(() => {
+    if (milestones.length === 0) return;
+
+    const EPOCH_THRESHOLD = 86400000; // 1 day in ms — anything before Jan 2, 1970 is suspect
+    const badMilestones = milestones.filter(ms => {
+      const d = safeToDate({ date: ms.date });
+      return d.getTime() < EPOCH_THRESHOLD;
+    });
+    if (badMilestones.length === 0) return;
+
+    (async () => {
+      try {
+        const allWorkouts = await useWorkoutStore.getState().getWorkouts(username, 'athlete');
+        const completed = allWorkouts.filter(w => w.completed);
+        let changed = false;
+
+        for (const ms of badMilestones) {
+          // For first_ever milestones, find the earliest workout of that type
+          // For other categories, find the earliest completed workout overall
+          const candidates = ms.category === 'first_ever'
+            ? completed.filter(w => w.type === ms.unit)
+            : completed;
+
+          const dates = candidates
+            .map(w => safeToDate(w))
+            .filter(d => d.getTime() > EPOCH_THRESHOLD)
+            .sort((a, b) => a.getTime() - b.getTime());
+
+          if (dates.length > 0) {
+            await updateMilestoneDate(username, ms.id, dates[0]);
+            // Update local state so the UI shows the correct date immediately
+            ms.date = Timestamp.fromDate(dates[0]);
+            changed = true;
+          }
+        }
+
+        if (changed) {
+          setMilestones(prev => [...prev]); // trigger re-render
+          console.log(`[milestones] self-healed ${badMilestones.length} epoch-zero dates`);
+        }
+      } catch (err) {
+        console.error('[milestones] self-heal failed (non-fatal):', err);
+      }
+    })();
+  }, [milestones.length, username]); // only run when milestones first load
 
   if (loading) return null;
 

@@ -741,6 +741,16 @@ export async function getMilestones(username: string): Promise<Milestone[]> {
   }
 }
 
+/** Update the date on a milestone document (used for self-healing epoch-zero dates) */
+export async function updateMilestoneDate(
+  username: string,
+  milestoneId: string,
+  date: Date,
+): Promise<void> {
+  const ref = doc(getDbInstance(), 'users', username, 'milestones', milestoneId);
+  await updateDoc(ref, { date: Timestamp.fromDate(date) });
+}
+
 export async function addMilestone(
   username: string,
   data: {
