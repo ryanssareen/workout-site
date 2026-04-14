@@ -5,6 +5,7 @@ import { getPersonalRecords, getMilestones } from '@/lib/firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trophy, Star, ChevronRight, Flame, Medal, Award, X, Share2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { safeToDate } from '@/lib/dateUtils';
 import Link from 'next/link';
 import type { PersonalRecord } from '@/types';
 import type { Milestone } from '@/types/achievements';
@@ -91,7 +92,7 @@ export function DashboardAchievements({ username, prefetchedPRs, prefetchedMiles
           <CardContent>
             <div className="space-y-2">
               {prs.map((pr) => {
-                const d = pr.date?.toDate?.() ?? new Date(pr.date as any);
+                const d = safeToDate({ date: pr.date });
                 return (
                   <div
                     key={pr.id}
@@ -140,7 +141,7 @@ export function DashboardAchievements({ username, prefetchedPRs, prefetchedMiles
           <CardContent>
             <div className="space-y-2">
               {milestones.map((ms) => {
-                const d = ms.date?.toDate?.() ?? new Date(ms.date as any);
+                const d = safeToDate({ date: ms.date });
                 const IconComp = MILESTONE_ICONS[ms.icon] || Star;
                 const colorClass = CATEGORY_COLORS[ms.category] || 'text-amber-500';
                 return (
@@ -184,7 +185,7 @@ export function DashboardAchievements({ username, prefetchedPRs, prefetchedMiles
                 unit: selectedMilestone.unit,
                 icon: selectedMilestone.icon,
               }}
-              date={selectedMilestone.date?.toDate?.() ?? new Date(selectedMilestone.date as any)}
+              date={safeToDate({ date: selectedMilestone.date })}
               userName={username}
             />
             <div className="mt-4 flex justify-center">
