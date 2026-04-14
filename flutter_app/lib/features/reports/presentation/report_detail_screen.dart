@@ -16,7 +16,7 @@ final _reportRepoProvider = Provider<WorkoutRepository>((ref) {
 });
 
 final _reportWorkoutsProvider = FutureProvider<List<Workout>>((ref) {
-  return ref.watch(_reportRepoProvider).getWorkouts(limit: 200);
+  return ref.watch(_reportRepoProvider).getWorkouts(limit: 50);
 });
 
 final _reportStatsProvider = FutureProvider<UserStats>((ref) {
