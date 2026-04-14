@@ -170,7 +170,7 @@ export default function MonthlyReviewPage() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [monthOffset, setMonthOffset] = useState(0);
+  const [monthOffset, setMonthOffset] = useState(1);
   const [slide, setSlide] = useState(0);
   const [animateIn, setAnimateIn] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);

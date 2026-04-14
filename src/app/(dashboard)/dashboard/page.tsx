@@ -13,9 +13,9 @@ import {
   Target, Zap,
   CheckCircle2, Clock, Flame,
   Activity, Trophy, ChevronRight, Gift, X, CalendarRange,
-  Circle, Plus, BarChart3, Calendar as CalendarIcon, Settings, BookOpen,
+  Circle, Plus, Calendar as CalendarIcon, Settings, BookOpen, ChevronDown,
 } from 'lucide-react';
-import { format, startOfWeek, endOfWeek, startOfMonth, subWeeks, subMonths, isWithinInterval, differenceInDays, isSameDay, subDays, parseISO, isPast, isToday as isTodayFn } from 'date-fns';
+import { format, startOfWeek, endOfWeek, startOfMonth, subWeeks, subMonths, subYears, isWithinInterval, differenceInDays, isSameDay, subDays, parseISO, isPast, isToday as isTodayFn } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useStravaAutoSync } from '@/hooks/useStravaAutoSync';
@@ -125,6 +125,122 @@ function getStatusIcon(status: ReturnType<typeof getWorkoutStatus>) {
   return <Clock className="h-4 w-4 text-blue-400 shrink-0" />;
 }
 
+
+// ── Sport Breakdown with time-range selector ──────────────────────
+const TIME_RANGES = [
+  { label: 'Last Week', value: 'week' },
+  { label: 'Last Month', value: 'month' },
+  { label: 'Last 3 Months', value: '3months' },
+  { label: 'Last Year', value: 'year' },
+  { label: 'All Time', value: 'all' },
+] as const;
+
+type TimeRange = (typeof TIME_RANGES)[number]['value'];
+
+function getTimeRangeCutoff(range: TimeRange): Date | null {
+  const now = new Date();
+  switch (range) {
+    case 'week': return subWeeks(now, 1);
+    case 'month': return subMonths(now, 1);
+    case '3months': return subMonths(now, 3);
+    case 'year': return subYears(now, 1);
+    case 'all': return null;
+  }
+}
+
+function SportBreakdownCard({ workouts }: { workouts: Workout[] }) {
+  const [range, setRange] = useState<TimeRange>('month');
+  const [open, setOpen] = useState(false);
+
+  const filtered = useMemo(() => {
+    const cutoff = getTimeRangeCutoff(range);
+    return workouts.filter(w => {
+      if (!w.completed) return false;
+      if (!cutoff) return true;
+      const d = getWorkoutDate(w);
+      return d >= cutoff;
+    });
+  }, [workouts, range]);
+
+  const breakdown = useMemo(() => {
+    const types: Record<string, number> = {};
+    filtered.forEach(w => { types[w.type] = (types[w.type] || 0) + 1; });
+    return Object.entries(types).sort(([, a], [, b]) => b - a);
+  }, [filtered]);
+
+  const total = filtered.length;
+  const currentLabel = TIME_RANGES.find(r => r.value === range)!.label;
+
+  const TYPE_COLORS: Record<string, string> = {
+    run: 'bg-red-500', bike: 'bg-amber-500', swim: 'bg-cyan-500',
+    walk: 'bg-emerald-500', strength: 'bg-purple-500', other: 'bg-gray-500',
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Zap className="h-4 w-4 text-red-500" />Sport Breakdown
+          </CardTitle>
+          <div className="relative">
+            <button
+              onClick={() => setOpen(o => !o)}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-muted/50"
+            >
+              {currentLabel}
+              <ChevronDown className={cn('h-3 w-3 transition-transform', open && 'rotate-180')} />
+            </button>
+            {open && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+                <div className="absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[140px]">
+                  {TIME_RANGES.map(r => (
+                    <button
+                      key={r.value}
+                      onClick={() => { setRange(r.value); setOpen(false); }}
+                      className={cn(
+                        'w-full text-left px-3 py-1.5 text-xs hover:bg-muted/50 transition-colors',
+                        r.value === range ? 'text-foreground font-medium' : 'text-muted-foreground'
+                      )}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {breakdown.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">No completed workouts in this period</p>
+        ) : (
+          <div className="space-y-2.5">
+            {breakdown.slice(0, 5).map(([type, count]) => {
+              const pct = Math.round((count / total) * 100);
+              return (
+                <div key={type} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-1.5">
+                      <span>{TYPE_EMOJI[type] || '📋'}</span>
+                      <span className="capitalize font-medium">{type}</span>
+                    </span>
+                    <span className="text-muted-foreground">{count} ({pct}%)</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-muted/50 overflow-hidden">
+                    <div className={cn('h-full rounded-full transition-all', TYPE_COLORS[type] || 'bg-gray-500')} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function DashboardPage() {
   const user = useAuthStore((state) => state.user);
@@ -604,100 +720,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── WEEKLY ACTIVITY + SPORT BREAKDOWN ───────────────────── */}
+      {/* ── SPORT BREAKDOWN WITH TIME RANGE ───────────────────── */}
       {workouts.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Last 7 days activity */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <BarChart3 className="h-4 w-4 text-red-500" />Last 7 Days
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {(() => {
-                const days = Array.from({ length: 7 }, (_, i) => {
-                  const d = subDays(now, 6 - i);
-                  const count = workouts.filter(w => {
-                    const wd = getWorkoutDate(w);
-                    return isSameDay(wd, d) && w.completed;
-                  }).length;
-                  return { day: format(d, 'EEE'), count, isToday: isSameDay(d, now) };
-                });
-                const max = Math.max(...days.map(d => d.count), 1);
-                return (
-                  <div className="flex items-end gap-2 h-28">
-                    {days.map((d, i) => (
-                      <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
-                        <div className="w-full relative" style={{ height: '80px' }}>
-                          <div
-                            className={cn(
-                              'absolute bottom-0 w-full rounded-md transition-all',
-                              d.count > 0
-                                ? d.isToday ? 'bg-red-500' : 'bg-red-500/60'
-                                : 'bg-muted/40'
-                            )}
-                            style={{ height: d.count > 0 ? `${Math.max((d.count / max) * 100, 12)}%` : '4px' }}
-                          />
-                        </div>
-                        <span className={cn('text-[10px]', d.isToday ? 'text-red-500 font-bold' : 'text-muted-foreground')}>
-                          {d.day}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-            </CardContent>
-          </Card>
-
-          {/* Sport breakdown */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Zap className="h-4 w-4 text-red-500" />Sport Breakdown
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {(() => {
-                const completed = workouts.filter(w => w.completed);
-                const types: Record<string, number> = {};
-                completed.forEach(w => { types[w.type] = (types[w.type] || 0) + 1; });
-                const sorted = Object.entries(types).sort(([, a], [, b]) => b - a);
-                const total = completed.length;
-                const TYPE_COLORS: Record<string, string> = {
-                  run: 'bg-red-500', bike: 'bg-amber-500', swim: 'bg-cyan-500',
-                  walk: 'bg-emerald-500', strength: 'bg-purple-500', other: 'bg-gray-500',
-                };
-                const TYPE_EMOJI: Record<string, string> = {
-                  run: '🏃', bike: '🚴', swim: '🏊', walk: '🚶', strength: '💪', other: '📋',
-                };
-                if (sorted.length === 0) return <p className="text-sm text-muted-foreground text-center py-4">No completed workouts yet</p>;
-                return (
-                  <div className="space-y-2.5">
-                    {sorted.slice(0, 5).map(([type, count]) => {
-                      const pct = Math.round((count / total) * 100);
-                      return (
-                        <div key={type} className="space-y-1">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="flex items-center gap-1.5">
-                              <span>{TYPE_EMOJI[type] || '📋'}</span>
-                              <span className="capitalize font-medium">{type}</span>
-                            </span>
-                            <span className="text-muted-foreground">{count} ({pct}%)</span>
-                          </div>
-                          <div className="h-1.5 rounded-full bg-muted/50 overflow-hidden">
-                            <div className={cn('h-full rounded-full transition-all', TYPE_COLORS[type] || 'bg-gray-500')} style={{ width: `${pct}%` }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
-            </CardContent>
-          </Card>
-        </div>
+        <SportBreakdownCard workouts={workouts} />
       )}
 
       {/* ── QUICK LINKS ─────────────────────────────────────────── */}

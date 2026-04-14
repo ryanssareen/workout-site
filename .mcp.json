@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "workout-mcp": {
+      "type": "http",
+      "url": "https://ryanssareen-workout-site-k6vl.vercel.app/api/mcp",
+      "headers": {
+        "Authorization": "Bearer Yk9pQ3mV7xT2nL5aR8fH1sJ6wD4cZ0uB9eN3gK2vX7pM5qR1tL8sF6hJ0dW4aC9"
+      }
+    }
+  }
+}
