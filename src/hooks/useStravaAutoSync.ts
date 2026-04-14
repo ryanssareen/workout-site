@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { User, Workout } from '@/types';
 import { toast } from 'sonner';
+import { safeToDate } from '@/lib/dateUtils';
 
 const SYNC_COOLDOWN_KEY = 'coachtrack_last_strava_sync';
 export const SYNC_COOLDOWN_UNTIL_KEY = 'coachtrack_strava_cooldown_until';
@@ -40,8 +41,8 @@ async function runPostSyncAchievements(username: string, user: User) {
     const recentStrava = allWorkouts
       .filter((w: Workout) => w.completed && (w.source === 'strava' || w.completedBy === 'strava'))
       .sort((a: Workout, b: Workout) => {
-        const da = (a.completedAt as any)?.toDate?.() ?? new Date(a.completedAt as any);
-        const db = (b.completedAt as any)?.toDate?.() ?? new Date(b.completedAt as any);
+        const da = safeToDate({ date: a.completedAt });
+        const db = safeToDate({ date: b.completedAt });
         return db.getTime() - da.getTime();
       })
       .slice(0, 1);

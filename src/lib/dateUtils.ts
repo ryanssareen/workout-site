@@ -3,10 +3,20 @@ import { format } from 'date-fns';
 export function safeToDate(w: { date?: unknown }): Date {
   try {
     const raw = w.date;
-    const d =
-      raw && typeof raw === 'object' && 'toDate' in raw && typeof (raw as { toDate: () => Date }).toDate === 'function'
-        ? (raw as { toDate: () => Date }).toDate()
-        : new Date(raw as string | number);
+    if (!raw) return new Date(0);
+
+    // Firestore Timestamp with .toDate() method
+    if (typeof raw === 'object' && 'toDate' in raw && typeof (raw as { toDate: () => Date }).toDate === 'function') {
+      return (raw as { toDate: () => Date }).toDate();
+    }
+
+    // Serialized Firestore Timestamp (lost .toDate() after JSON round-trip via localStorage)
+    if (typeof raw === 'object' && 'seconds' in raw && typeof (raw as { seconds: number }).seconds === 'number') {
+      const ts = raw as { seconds: number; nanoseconds?: number };
+      return new Date(ts.seconds * 1000 + (ts.nanoseconds ?? 0) / 1e6);
+    }
+
+    const d = new Date(raw as string | number);
     return isNaN(d.getTime()) ? new Date(0) : d;
   } catch {
     return new Date(0);

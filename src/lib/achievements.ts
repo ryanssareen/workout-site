@@ -8,7 +8,20 @@ import { isSameDay, subDays } from 'date-fns';
 
 function toDate(w: Workout): Date {
   try {
-    const d = (w.date as any)?.toDate?.() ?? new Date(w.date as any);
+    const raw = w.date as any;
+    if (!raw) return new Date(0);
+
+    // Firestore Timestamp with .toDate() method
+    if (typeof raw === 'object' && typeof raw.toDate === 'function') {
+      return raw.toDate();
+    }
+
+    // Serialized Firestore Timestamp (lost .toDate() after JSON round-trip via localStorage)
+    if (typeof raw === 'object' && typeof raw.seconds === 'number') {
+      return new Date(raw.seconds * 1000 + (raw.nanoseconds ?? 0) / 1e6);
+    }
+
+    const d = new Date(raw);
     return isNaN(d.getTime()) ? new Date(0) : d;
   } catch { return new Date(0); }
 }
@@ -115,6 +128,20 @@ export async function checkAchievements(
     const detected = detectNewMilestones(stats, existingMilestones);
 
     for (const milestone of detected) {
+      // For first_ever milestones, use the date of the earliest completed workout
+      // of that type (not the triggering workout date)
+      let milestoneDate = workoutDate;
+      if (milestone.category === 'first_ever') {
+        const earliest = completedWorkouts
+          .filter(w => w.type === milestone.unit) // unit holds the sport type for first_ever
+          .map(w => toDate(w))
+          .filter(d => d.getTime() > 0) // exclude epoch-zero dates
+          .sort((a, b) => a.getTime() - b.getTime());
+        if (earliest.length > 0) {
+          milestoneDate = earliest[0];
+        }
+      }
+
       const id = await addMilestone(username, {
         userId,
         category: milestone.category,
@@ -123,7 +150,7 @@ export async function checkAchievements(
         value: milestone.value,
         unit: milestone.unit,
         icon: milestone.icon,
-        date: workoutDate,
+        date: milestoneDate,
         workoutId: workout.id,
       });
       if (id) {

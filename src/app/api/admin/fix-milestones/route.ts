@@ -165,19 +165,39 @@ export async function POST(req: NextRequest) {
 
           // Batch write correct milestones
           const now = admin.firestore.Timestamp.now();
-          // Find the date of the user's first workout as milestone date
-          const firstWorkoutDate = completed.length > 0
-            ? completed.reduce((earliest, w) => {
-                const d = w.date?.toDate?.() ?? new Date(w.date?._seconds ? w.date._seconds * 1000 : Date.now());
-                return d < earliest ? d : earliest;
-              }, new Date())
-            : new Date();
+
+          // Helper to parse admin SDK dates
+          const parseDate = (raw: any): Date => {
+            if (!raw) return new Date();
+            if (typeof raw.toDate === 'function') return raw.toDate();
+            if (typeof raw._seconds === 'number') return new Date(raw._seconds * 1000);
+            if (typeof raw.seconds === 'number') return new Date(raw.seconds * 1000);
+            const d = new Date(raw);
+            return isNaN(d.getTime()) ? new Date() : d;
+          };
+
+          // Find earliest workout date (overall and per-type) for milestone dates
+          const earliestByType: Record<string, Date> = {};
+          let earliestOverall = new Date();
+          for (const w of completed) {
+            const d = parseDate(w.date);
+            if (d.getTime() <= 0) continue;
+            if (d < earliestOverall) earliestOverall = d;
+            if (!earliestByType[w.type] || d < earliestByType[w.type]) {
+              earliestByType[w.type] = d;
+            }
+          }
 
           for (const ms of correctMilestones) {
             if (opCount >= 490) {
               batches.push(db.batch());
               opCount = 0;
             }
+            // For first_ever milestones, use the date of the first workout of that type
+            const milestoneDate = ms.category === 'first_ever' && earliestByType[ms.unit]
+              ? earliestByType[ms.unit]
+              : earliestOverall;
+
             const ref = db.collection('users').doc(username).collection('milestones').doc();
             batches[batches.length - 1].set(ref, {
               userId: username,
@@ -187,7 +207,7 @@ export async function POST(req: NextRequest) {
               value: ms.value,
               unit: ms.unit,
               icon: ms.icon,
-              date: admin.firestore.Timestamp.fromDate(firstWorkoutDate),
+              date: admin.firestore.Timestamp.fromDate(milestoneDate),
               createdAt: now,
             });
             opCount++;
