@@ -17,6 +17,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, ArrowRight, ArrowLeft, Sparkles, AlertCircle, MessageSquare, Send } from 'lucide-react';
 import { getAuthInstance } from '@/lib/firebase/config';
+import { useAuthStore } from '@/lib/stores/authStore';
 import type { GoalInputs, PlanSport, PlanTemplate } from '@/types';
 import {
   getMatchingTemplates,
@@ -73,6 +74,8 @@ interface ChatMessage {
 
 export function PlanWizard() {
   const router = useRouter();
+  const setUser = useAuthStore(s => s.setUser);
+  const currentUser = useAuthStore(s => s.user);
   const [step, setStep] = useState<Step>('goal');
   const [state, setState] = useState<WizardState>(INITIAL);
   const [templateId, setTemplateId] = useState<string>('');
@@ -226,8 +229,29 @@ export function PlanWizard() {
         throw new Error(body.error || `Plan creation failed (${res.status})`);
       }
       const body = await res.json();
+
+      // Update the client auth store with the new activePlanId. Without this,
+      // the Zustand cache still holds the pre-creation user object, and /plan
+      // silently falls back to "Create your plan" CTA because it reads
+      // activePlanId from the store. Fetching fresh from Firestore is the
+      // most robust path — picks up any other server-side changes too.
+      if (currentUser && body.planId) {
+        try {
+          const { getUserProfileByUsername } = await import('@/lib/firebase/auth');
+          const fresh = await getUserProfileByUsername(currentUser.username);
+          if (fresh) {
+            setUser(fresh);
+          } else {
+            // Fallback: mutate the known field locally so /plan renders the
+            // active plan even if the re-fetch failed.
+            setUser({ ...currentUser, activePlanId: body.planId });
+          }
+        } catch {
+          setUser({ ...currentUser, activePlanId: body.planId });
+        }
+      }
+
       router.push(`/plan`);
-      // Note: a subsequent /plan load will fetch the new plan via activePlanId.
       return body;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Plan creation failed');
