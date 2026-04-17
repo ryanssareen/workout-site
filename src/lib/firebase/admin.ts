@@ -25,8 +25,33 @@ function parseServiceAccount(raw: string): any {
   throw new Error('Could not parse FIREBASE_SERVICE_ACCOUNT — tried base64, raw JSON, and URL-encoded');
 }
 
+function applyFirestoreSettings() {
+  // Drop `undefined` values silently instead of throwing on write. The
+  // training-plan feature writes optional fields (targetDistance, pace, HR
+  // metrics) that are legitimately undefined for fresh plan workouts and
+  // strength sessions. `.settings()` must be called before the first
+  // Firestore operation on the instance — once any `.collection()` /
+  // `.doc()` has happened, this throws "Firestore has already been started".
+  // In that case we swallow the error and rely on defensive undefined
+  // stripping in callers.
+  try {
+    admin.firestore().settings({ ignoreUndefinedProperties: true });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!msg.includes('already been started') && !msg.includes('already been initialized')) {
+      console.warn('[admin] Firestore settings warning:', msg);
+    }
+    // Swallow — callers strip undefined defensively as a fallback.
+  }
+}
+
 function initializeFirebaseAdmin() {
-  if (initialized || admin.apps.length > 0) {
+  if (initialized) return;
+  if (admin.apps.length > 0) {
+    // App already initialized by another module (or warm lambda). Apply
+    // settings anyway — best effort.
+    applyFirestoreSettings();
+    initialized = true;
     return;
   }
 
@@ -44,6 +69,8 @@ function initializeFirebaseAdmin() {
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
     });
+
+    applyFirestoreSettings();
 
     console.log('✅ Firebase Admin initialized successfully!');
     initialized = true;

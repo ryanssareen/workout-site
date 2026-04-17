@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
   };
 
   try {
-    await planRef.set(planDoc);
+    await planRef.set(stripUndefinedDeep(planDoc));
 
     // Write workouts in chunked batches (Firestore caps batches at 500).
     const flat = content.weeks.flatMap(w => w.sessions);
@@ -141,15 +141,30 @@ export async function POST(request: NextRequest) {
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         };
-        batch.set(
-          workoutRef,
-          { ...workoutData, ...buildCreateSummaryFields(workoutData) },
-        );
+        // Defensive: strip undefined values before write. The Admin SDK is
+        // configured with `ignoreUndefinedProperties: true`, but this is a
+        // belt-and-braces guard in case the setting fails to apply (e.g. when
+        // the SDK is warm-initialized by another module before we run).
+        const finalData = stripUndefinedDeep({
+          ...workoutData,
+          ...buildCreateSummaryFields(workoutData),
+        });
+        batch.set(workoutRef, finalData);
       }
       await batch.commit();
     }
   } catch (err) {
-    console.error('[plans.create] batch write failed, rolling back:', err);
+    // Surface the underlying Firestore error in logs — writing `undefined`
+    // fields, permission errors, quota limits, etc. all funnel through here.
+    const errMsg = err instanceof Error ? err.message : String(err);
+    const errCode = (err as { code?: string })?.code;
+    console.error('[plans.create] batch write failed, rolling back:', {
+      user: user.username,
+      planId,
+      errorMessage: errMsg,
+      errorCode: errCode,
+      writtenSoFar: writtenWorkoutIds.length,
+    });
     // Rollback: hard-delete any workouts we managed to write and mark plan failed.
     await rollbackCreation(user.username, planRef, writtenWorkoutIds).catch(e =>
       console.error('[plans.create] rollback also failed:', e),
@@ -167,8 +182,14 @@ export async function POST(request: NextRequest) {
       },
       { merge: true },
     );
+    // Include a diagnostic tail in non-prod for faster debugging. Don't leak
+    // in prod — the generic message is still sent.
+    const includeDetail = process.env.NODE_ENV !== 'production';
     return NextResponse.json(
-      { error: 'Failed to save your plan. Any partial data has been cleaned up — please try again.' },
+      {
+        error: 'Failed to save your plan. Any partial data has been cleaned up — please try again.',
+        ...(includeDetail ? { diagnostic: errMsg } : {}),
+      },
       { status: 502 },
     );
   }
@@ -257,6 +278,29 @@ function parseIsoDate(iso: string): Date {
   // Treat yyyy-MM-dd as midnight UTC — avoids the "Z-append" bug (#86).
   const [y, m, d] = iso.split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, d));
+}
+
+/**
+ * Recursively drop `undefined` values so the Firestore Admin SDK doesn't
+ * throw when `ignoreUndefinedProperties` isn't active. Preserves arrays,
+ * FieldValue sentinels, and Timestamps. Not called on sentinels themselves.
+ */
+function stripUndefinedDeep<T>(value: T): T {
+  if (value === null || value === undefined) return value;
+  if (Array.isArray(value)) {
+    return value.map(stripUndefinedDeep) as unknown as T;
+  }
+  if (typeof value !== 'object') return value;
+  // Firestore sentinel values and Timestamps have a `_methodName` or are
+  // class instances — leave them untouched.
+  if ((value as unknown as { _methodName?: string })._methodName) return value;
+  if (value instanceof admin.firestore.Timestamp) return value;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    if (v === undefined) continue;
+    out[k] = stripUndefinedDeep(v);
+  }
+  return out as T;
 }
 
 async function readExperience(username: string): Promise<string | undefined> {
