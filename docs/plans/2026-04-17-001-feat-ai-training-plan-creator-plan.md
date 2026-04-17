@@ -527,7 +527,7 @@ UI displays: "3 planned · 2 coach-overridden · 2 completed — 67% adherence"
 
 ### Phase 2 — Admin Infrastructure
 
-- [ ] **Unit 4: Static plan template library (file-based, not Firestore)**
+- [x] **Unit 4: Static plan template library (file-based, not Firestore)**
 
 **Goal:** Ship R20 methodology templates as a small, version-controlled file — not a Firestore collection + admin UI. Admins iterate on templates via PR, not runtime CRUD. Admin-configurable CRUD is deferred to v1.1 once beta validates that methodology differentiation is worth the operational complexity.
 
@@ -560,7 +560,7 @@ UI displays: "3 planned · 2 coach-overridden · 2 completed — 67% adherence"
 
 ---
 
-- [ ] **Unit 5: Beta gate admin toggle + aggregate cap**
+- [x] **Unit 5: Beta gate admin toggle + aggregate cap**
 
 **Goal:** Admin can toggle `planBetaEnabled` on any user. Toggling-on checks aggregate cap first.
 
@@ -600,7 +600,7 @@ UI displays: "3 planned · 2 coach-overridden · 2 completed — 67% adherence"
 
 ### Phase 3 — Plan Creation
 
-- [ ] **Unit 6: Plan creation API (draft-first atomicity, chunked Groq, cache invalidation)**
+- [x] **Unit 6: Plan creation API (draft-first atomicity, chunked Groq, cache invalidation)**
 
 **Goal:** The server endpoint that turns wizard inputs into a persisted plan + workouts. The riskiest single unit in the plan; carries the atomicity model end-to-end.
 
@@ -662,7 +662,7 @@ UI displays: "3 planned · 2 coach-overridden · 2 completed — 67% adherence"
 
 ---
 
-- [ ] **Unit 7: Plan wizard UI**
+- [x] **Unit 7: Plan wizard UI**
 
 **Goal:** 5-step wizard (Goal type → Event details → Availability → Preview → Confirm) including the R20 template selector on the Goal step.
 
@@ -711,7 +711,7 @@ UI displays: "3 planned · 2 coach-overridden · 2 completed — 67% adherence"
 
 ---
 
-- [ ] **Unit 8: Chat refinement on preview (with scope gate)**
+- [x] **Unit 8: Chat refinement on preview (with scope gate)**
 
 **Goal:** On the Preview step, a chat input accepts within-plan refinement requests and updates the preview. Goal re-scoping is politely declined.
 
