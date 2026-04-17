@@ -1,6 +1,6 @@
 # The Daily Athlete - CLAUDE.md
 
-> **Important:** Before exploring the codebase, read the following indexed files: `routes.md`, `pages.md`, `lib.md`, `schema.md`, and `components.md` as the primary source of truth. Only read actual files if necessary.
+> **Important:** Before exploring the codebase, read the following indexed files in `.ai-codex/`: `routes.md`, `pages.md`, `lib.md`, `schema.md`, and `components.md` as the primary source of truth. Only read actual files if necessary.
 
 ## Project Overview
 The Daily Athlete is a SaaS workout tracking platform for athletes. Built with Next.js 16 (App Router), React 19, TypeScript 5.9, Firebase, and deployed on Vercel.
@@ -65,7 +65,7 @@ src/
 │   ├── constants.ts         # App-wide constants
 │   ├── dateUtils.ts         # Date utility functions
 │   ├── dayKey.ts            # getDayKey, normalizeTimezone, parseLocalDate helpers
-│   ├── firebase/            # config.ts, auth.ts, firestore.ts, admin.ts (+ getAdminStorage)
+│   ├── firebase/            # config.ts, auth.ts, firestore.ts, admin.ts, adminUserMapping.ts, userMapping.ts
 │   ├── firebase-admin.ts    # Firebase Admin SDK helper (getFirebaseAdminDb)
 │   ├── email/               # Email templates (summaryTemplate, wrapTemplate, announcementTemplate, accountActionTemplate, assignmentTemplate)
 │   ├── groq-dedup.ts        # Groq-powered deduplication pipeline

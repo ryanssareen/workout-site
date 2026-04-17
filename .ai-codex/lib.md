@@ -1,7 +1,10 @@
-# Library Exports (generated 2026-04-04)
+# Library Exports (updated 2026-04-17)
 # fn=function, class=class. Type-only files omitted.
 
 ## src/lib
+constants.ts
+  MS_PER_DAY  |  MS_PER_HOUR  |  MS_PER_MINUTE  |  SECONDS_PER_DAY
+  COACH_QUERY_WINDOW_DAYS  |  FIRESTORE_BATCH_LIMIT  |  MAX_USERS_PER_RUN
 admin-auth.ts
   fn getAdminUids
   fn createPasswordSessionToken
@@ -13,7 +16,12 @@ analytics.ts
   fn filterByTimeRange
   fn computeSummary
   fn computeTimeSeries
-  +6 more
+  fn computeTypeDistribution
+  fn computeWeeklyRhythm
+  fn computeCalendarData
+  fn computeInsights
+  fn computePRTimeline
+  fn detectDuplicates
 api-auth.ts
   fn verifyApiRequest
   fn isVerifiedUser
@@ -78,6 +86,7 @@ wrapTemplate.ts
 admin.ts
   fn getAdminAuth
   fn getAdminDb
+  adminAuth (proxy)  |  adminDb (proxy)
 adminUserMapping.ts
   fn adminGetUsernameFromUid
   fn adminGetUserByUsername
@@ -99,7 +108,7 @@ firestore.ts
   fn getWorkout
   fn getUserWorkouts
   fn updateWorkout
-  +17 more
+  +18 more
 userMapping.ts
   fn validateUsername
   fn getUsernameFromUid
@@ -121,6 +130,19 @@ cache.ts
 
 ## src/lib/reports/templates
 index.ts  fn getTemplate
+
+## src/lib/schemas
+profile.ts
+  SPORT_OPTIONS  |  TRAINING_FOR_OPTIONS  |  AGE_RANGE_OPTIONS  |  EXPERIENCE_LEVEL_OPTIONS
+  profileSchema  |  type ProfileFormData
+workout.ts
+  RECURRING_FREQUENCIES  |  type RecurringFrequency
+  workoutSchema  |  type WorkoutSchema
+
+## src/lib/stores
+authStore.ts  useAuthStore
+stravaSyncStore.ts  useStravaSyncStore
+workoutStore.ts  useWorkoutStore (5-min TTL cache + request deduplication)
 
 ## src/lib/training
 constraints.ts

@@ -31,6 +31,7 @@
     DataTable
 (c) DeepDiveCard
     Divider
+(c) DashboardOverview
 (c) DuplicateRemover
 (c) EditProfileDialog
 (c) ExploreCards
@@ -53,6 +54,7 @@
     PRBadge
 (c) PRCard
 (c) ProfileCompletionBanner
+(c) ProfileCompletionBar
 (c) ProgressRing
 (c) PushNotificationManager
 (c) QuickLogFAB
@@ -61,11 +63,14 @@
 (c) ReportContainer
 (c) ReportRenderer
 (c) ReportsDashboard
+(c) ReportsSections (DashboardOverview, TrainingAnalysis, ExerciseInsights, CalendarViews, TypeDistribution)
 (c) RouteMap
 (c) RunForm
 (c) ServiceWorkerRegister
+(c) ShareButtons
 (c) ShareWorkoutCard
 (c) StatCard
+(c) SportBreakdownCard
 (c) StravaDuplicateDialog
 (c) StravaSyncTrigger
 (c) StrengthForm
@@ -86,3 +91,4 @@
 (c) WorkoutRecommendations
 (c) YEAR
 (c) YourReportsZone
+(c) WrappedSlides
