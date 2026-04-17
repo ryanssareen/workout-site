@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as admin from 'firebase-admin';
 import { getAdminDb } from '@/lib/firebase/admin';
 import { getDayKey, normalizeTimezone } from '@/lib/dayKey';
+import { mergeSummaryIntoUpdate } from '@/lib/training/summary';
 
 export async function POST(req: NextRequest) {
   try {
@@ -107,7 +108,10 @@ export async function POST(req: NextRequest) {
 
     // Atomic batch: update planned + delete standalone Strava doc
     const batch = db.batch();
-    batch.update(workoutsCol.doc(plannedWorkoutId), mergeData);
+    batch.update(
+      workoutsCol.doc(plannedWorkoutId),
+      mergeSummaryIntoUpdate(planned as Record<string, unknown>, plannedWorkoutId, mergeData),
+    );
     batch.delete(workoutsCol.doc(stravaWorkoutId));
     await batch.commit();
 

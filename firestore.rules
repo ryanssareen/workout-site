@@ -13,7 +13,15 @@ service cloud.firestore {
     match /users/{username} {
       allow read: if request.auth != null;
       allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
-      allow update: if request.auth != null && resource.data.uid == request.auth.uid;
+      // Server-controlled fields — clients cannot self-assign plan beta access or
+      // forge an activePlanId. All mutations to these fields must go through API
+      // routes using Admin SDK. Also guards role + coachUsername for defense in
+      // depth against a compromised client.
+      allow update: if request.auth != null
+        && resource.data.uid == request.auth.uid
+        && !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['planBetaEnabled', 'activePlanId', 'lastFailedPlanId',
+                   'role', 'coachUsername']);
       allow delete: if false;
 
       // Milestones subcollection
@@ -31,6 +39,14 @@ service cloud.firestore {
       // Cached reports (written by API via Admin SDK, read by client)
       match /cachedReports/{reportId} {
         allow read: if request.auth != null;
+      }
+
+      // Weekly plan recaps (written by /api/plans/[id]/weekly-recap via Admin
+      // SDK, read by the owner only).
+      match /planRecaps/{weekStart} {
+        allow read: if request.auth != null
+          && get(/databases/$(database)/documents/users/$(username)).data.uid == request.auth.uid;
+        allow write: if false; // server-only
       }
 
       // Workouts subcollection under each user
@@ -64,6 +80,15 @@ service cloud.firestore {
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow update: if request.auth != null && resource.data.userId == request.auth.uid;
       allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    // Training plans — top-level, userId = username. Owner can read; all
+    // writes go through API routes via Admin SDK (enforces beta gate,
+    // draft-first atomicity, and coach coexistence).
+    match /trainingPlans/{planId} {
+      allow read: if request.auth != null
+        && get(/databases/$(database)/documents/users/$(resource.data.userId)).data.uid == request.auth.uid;
+      allow write: if false; // server-only
     }
   }
 }

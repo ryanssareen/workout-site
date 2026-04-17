@@ -6,6 +6,7 @@ import admin from 'firebase-admin';
 import Groq from 'groq-sdk';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
+import { buildCreateSummaryFields } from '@/lib/training/summary';
 
 const MAX_ROWS = 500;
 const MAX_WORKOUTS = 200;
@@ -640,7 +641,7 @@ ${extractionRules}`;
       }
 
       const docRef = workoutsRef.doc();
-      batch.set(docRef, docData);
+      batch.set(docRef, { ...docData, ...buildCreateSummaryFields(docData) });
       created++;
 
       // Firestore batches max at 500 writes

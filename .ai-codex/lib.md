@@ -1,4 +1,4 @@
-# Library Exports (updated 2026-04-17)
+# Library Exports (updated 2026-04-17, training-plan phase 1-3)
 # fn=function, class=class. Type-only files omitted.
 
 ## src/lib
@@ -25,6 +25,7 @@ analytics.ts
 api-auth.ts
   fn verifyApiRequest
   fn isVerifiedUser
+  fn verifyPlanAccess (training plan gate — beta+athlete check; loads activePlanId/lastFailedPlanId)
 backup.ts
   fn generateBackupData
   fn createBackup
@@ -104,10 +105,11 @@ config.ts
   fn getStorageInstance
   fn getAppInstance
 firestore.ts
-  fn createWorkout
+  fn createWorkout        (emits summaryVersion+summary via applySummaryOnCreate — every new workout carries planStatus='active')
   fn getWorkout
   fn getUserWorkouts
-  fn updateWorkout
+  fn updateWorkout        (re-generates summary inline via applySummaryOnUpdate)
+  completeWorkout / toggleWorkoutCompletion also invoke applySummaryOnUpdate
   +18 more
 userMapping.ts
   fn validateUsername
@@ -154,3 +156,18 @@ logicEngine.ts
   fn generateLogicOutput
 planEngine.ts  fn generatePlanSkeletons
 validator.ts  fn validatePlan
+summary.ts  (training-plan Unit 2 / R19)
+  fn computeWorkoutSummary — pure; emits AdherenceState with 5 values (on-target, slightly-off, exceeded, missed, unplanned)
+  fn isSummaryStale — monotonic summaryVersion comparison (NOT timestamps)
+  fn mergeSummaryIntoUpdate — SDK-agnostic merge helper for every workout write site
+  fn buildCreateSummaryFields — initial summaryVersion+summary+planStatus='active' for new workouts
+multiWeekPlanner.ts  (training-plan Unit 3 / R3, R4)
+  fn generateMultiWeekPlan — deterministic phase map + weekly skeletons; endurance-led with strength/mobility filler
+  fn defaultPlanLengthWeeks — per-goal defaults (5K=8w, 10K=10w, HM=12w, M=16w, OlyTri=16w, IM=24w)
+planTemplates.ts  (training-plan Unit 4 / R20)
+  PLAN_TEMPLATES — 5 seeded methodologies (Balanced Marathon, Daniels VDOT, Polarized, Trisutto, Beginner)
+  fn getMatchingTemplates  |  fn getDefaultTemplate  |  fn getTemplateById
+  fn buildMethodologyPromptSection — wraps addendum in [METHODOLOGY_ADDENDUM]…[END] delimiter
+planCreation.ts  (training-plan Unit 6)
+  fn createPlanContent — per-phase Groq enrichment (70B → 8B fallback) over multiWeekPlanner skeleton with carried-forward context; rules-based fallback when API key missing
+  type EnhancedSession, PlanCreationResult

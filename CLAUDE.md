@@ -76,19 +76,21 @@ src/
 │   ├── push.ts              # Web Push notification sending via web-push SDK
 │   ├── reports/             # cache.ts + templates/ (5 report templates: sport-deep-dive, trend-report, pr-timeline, recovery-report, goal-tracker)
 │   ├── schemas/             # Zod validation schemas (profile.ts has SPORT_OPTIONS, TRAINING_FOR_OPTIONS, etc.)
-│   ├── training/            # logicEngine.ts, planEngine.ts, constraints.ts, validator.ts (AI workout pipeline + multi-week plan generation)
+│   ├── training/            # logicEngine.ts, planEngine.ts, constraints.ts, validator.ts (AI workout pipeline). Training-plan creator: summary.ts, multiWeekPlanner.ts, planTemplates.ts, planCreation.ts.
 │   └── stores/              # Zustand state stores (workoutStore with 5-min TTL cache, authStore, stravaSyncStore)
 └── types/                   # TypeScript types (index.ts, workout.ts, reports.ts, reports-hub.ts, ai.ts, achievements.ts)
 ```
 
 ### Data Model (Firestore Collections)
-- **users** — uid, email, displayName, username (unique), Strava tokens, photoURL, bio, ageRange, experienceLevel, height/weight, sportPreferences, trainingFor, events (goal + eventName + eventDate), profileTagline, profilePublic, pushSubscriptions (Web Push), theme (`light`|`dark`|`system`), role (`coach`|`athlete`|`student`), coachUsername (for linked athletes), workoutCount (denormalized count for admin efficiency)
+- **users** — uid, email, displayName, username (unique), Strava tokens, photoURL, bio, ageRange, experienceLevel, height/weight, sportPreferences, trainingFor, events (goal + eventName + eventDate), profileTagline, profilePublic, pushSubscriptions (Web Push), theme (`light`|`dark`|`system`), role (`coach`|`athlete`|`student`), coachUsername (for linked athletes), workoutCount (denormalized count for admin efficiency), **`planBetaEnabled`** (bool; admin-toggled, 20-user cap), **`activePlanId`** (denormalized pointer to `trainingPlans`), **`lastFailedPlanId`** (`{ id, at, goalInputs }` — retry-CTA state)
 - **userMappings** — uid → username mapping (for auth lookups)
-- **workouts** — Multi-sport (swim/run/bike/walk/strength/other), completion tracking, Strava sync, comments subcollection. Type-specific sub-objects: `run`, `bike`, `swim`, `walk`, `strength`.
+- **workouts** — Multi-sport (swim/run/bike/walk/strength/other), completion tracking, Strava sync, comments subcollection. Type-specific sub-objects: `run`, `bike`, `swim`, `walk`, `strength`. **Training-plan additions (set on every write):** `planStatus` (`'active'|'draft'` — defaults `'active'`), `summaryVersion` (monotonic int), `summary` (compact LLM-friendly view). **Plan-workout-only:** `planId`, `planMeta` (weekNumber/phase/focus/targets/isKeyWorkout), `abandonedByPlan` (soft-delete flag).
 - **personalRecords** — User PRs with history
 - **chatThreads** — AI coach conversation threads
 - **backups** — Admin backup metadata: `{ type: 'daily'|'weekly'|'monthly'|'manual'|'pre-restore', createdAt, userCount, workoutCount, storagePath, integrityPassed, triggeredBy }`. Backup files stored in **Vercel Blob** (daily metadata-only + weekly full snapshots).
-- **adminLogs** — Admin action audit trail: `{ action, adminUid, timestamp, targetUid?, backupId?, type?, details? }`. Actions: `backup_triggered`, `restore_triggered`, `user_deleted`, `user_hard_deleted`, `user_disabled`, `user_restored`, `user_restore_triggered`, `strava_sync_forced`, `cron_backup`, `cron_backup_failed`, `backfill_workout_counts`.
+- **adminLogs** — Admin action audit trail: `{ action, adminUid, timestamp, targetUid?, backupId?, type?, details? }`. Actions: `backup_triggered`, `restore_triggered`, `user_deleted`, `user_hard_deleted`, `user_disabled`, `user_restored`, `user_restore_triggered`, `strava_sync_forced`, `cron_backup`, `cron_backup_failed`, `backfill_workout_counts`, `plan_beta_toggled`.
+- **trainingPlans** (training-plan feature) — Top-level plan entity. `{ userId (= username), goal (GoalInputs), startDate, endDate, phaseMap, sports, templateId, status ('draft'|'active'|'completed'|'abandoned'|'failed-creation'), version (monotonic), timezoneAtCreation, createdAt, updatedAt }`. Client reads gated to owner; all writes server-only via Admin SDK.
+- **users/{username}/planRecaps** (training-plan feature, subcollection) — Weekly LLM recap cache keyed by `{ planId, weekStart, planVersion }`. Server-write only. Not yet populated in shipped phases (Unit 13 territory).
 - **system** — System metadata doc `lastCron`: tracks `backup_daily/weekly/monthly` timestamps for health monitoring.
 
 ## Development Commands
@@ -136,6 +138,7 @@ npx tsc --noEmit     # Type check without building
 - `/wrap` — Weekly Training Wrap ("Your Week's Capsule"). Immersive full-screen layout with week-by-week navigation. **Monday–Sunday week boundaries** (ISO 8601, `weekStartsOn: 1`). Per-sport stats with week-over-week comparison (% change), highlight of the week (longest/furthest workout with photo), rating system (incredible/solid/consistent/recovery/quiet). Share via ShareButtons (Instagram, WhatsApp, X, iMessage, save image).
 - `/review` — Monthly Review page. Month navigation with "not ready" gate for current month. Hero row with key stats (workouts, distance, time, active days). Activity calendar grid, per-sport stats with month-over-month comparison, pie chart breakdown, vs last month comparison (% change per metric), daily activity bar chart, weekly distance + duration area charts. Mobile-first redesign with bold stats, sport labels, stacked bar chart, branding. Share via ShareButtons.
 - `/wrapped` — Yearly Wrapped (2025). 8-slide interactive carousel: guess (interactive workout count guess game) → reveal → stats → breakdown → records → heatmap → summary → final. Public sharing route at `/athlete/[username]/wrapped` with SSR, OG images, privacy gate. Components in `src/components/wrapped/WrappedSlides.tsx`.
+- `/plan` — Training plan home (invite-only beta, see "Training Plan Creator" section). Three states: active-plan view (phase progress + abandon), create-CTA (for beta-enabled athletes with no plan), private-beta card (for everyone else). `CurrentPlanCard` on `/dashboard` mirrors the same states. Athletes only.
 - `/reports` — **3-zone Reports Hub**. Zone 1: AI Insight Card (daily Groq-generated, cached in Firestore) + Ask Anything bar. Zone 2: Links to Weekly Wrap, Monthly Review, Year in Review. Zone 3: Context-aware deep-dive cards (Sport Deep Dive, Trend Report, Goal Tracker, Recovery Report, PR Timeline, Training Analysis). Template-based report generation with 5 templates, Groq AI, Firestore caching (6-24h TTL), 8B model fallback.
 - `/reports/[reportType]` — Dynamic report pages with skeleton loading. Generated from templates via Groq AI.
 - `/dashboard` — Unified workout view. Stats row (streak, this week, all-time, total), weekly activity bar chart, type breakdown, upcoming workouts (correctly excludes past), recently completed, event countdowns, weekly wrap CTA, monthly review CTA, quick links grid.
@@ -161,6 +164,28 @@ npx tsc --noEmit     # Type check without building
 - `src/app/api/ai/workout-suggestions/route.ts` — orchestrator API (max_tokens: 8000)
 - `src/components/workouts/AIWorkoutSuggestions.tsx` — UI component, normalizes `specs` → flat type keys for form compatibility
 - Flow: AI generates → user clicks "Use Workout" → data stored in sessionStorage → navigates to `/workouts/new?aiGenerated=true` → form pre-fills via `key` prop remount
+
+## Training Plan Creator (invite-only beta, Phase 1-3 shipped)
+- **Purpose:** goal-anchored training plans for endurance athletes (run/bike/swim/tri). Differentiator vs static PDFs + one-off AI suggestions is the adaptive loop (proposals on `/wrap`, drift detection — those ship in later phases).
+- **Plan doc:** top-level `trainingPlans/{planId}` collection with `userId` = username (NOT Firebase uid). Workouts stay at `users/{username}/workouts/{id}` with a `planId` back-reference; no subcollection joins.
+- **Atomicity:** **draft-first write pattern.** Stage 1 batches plan + N workouts with `planStatus: 'draft'`. Stage 2 runs a `runTransaction` on the user doc that flips plan → `active`, sets `user.activePlanId`, clears `lastFailedPlanId`. Any workout created outside plan creation is written with `planStatus: 'active'` by default — the Strava webhook's `!= 'draft'` filter works without backfilling legacy data.
+- **Failure handling:** if stage 1 partial-fails, written workouts are hard-deleted and the plan is marked `failed-creation` + `user.lastFailedPlanId` set. The `/plan` page surfaces a retry CTA from `lastFailedPlanId`.
+- **Workout summary layer (R19):** every workout write goes through a shared helper (`mergeSummaryIntoUpdate` / `buildCreateSummaryFields` in `src/lib/training/summary.ts`) that bumps a monotonic `summaryVersion` counter and regenerates `workout.summary` — a ~50-100 token compact view the weekly recap LLM reads instead of raw workout docs. Applied at **10 write sites**: `firestore.ts` (createWorkout, updateWorkout, completeWorkout, toggleWorkoutCompletion), `/api/workouts` POST, `/api/workouts/import`, `/api/workouts/merge`, Strava webhook (5 branches), MCP tools (create_workout, update_workout, complete_workout, assign_workout). Staleness check is `summary.forVersion < workout.summaryVersion` — NOT a timestamp comparison (avoids clock-skew / offline-replay bugs).
+- **Plan generation pipeline (`src/lib/training/`):**
+  - `multiWeekPlanner.ts` — deterministic phase map (base/build/peak/taper) + weekly skeletons. Endurance-led; strength/mobility injected as supporting-modality filler for single-sport runners; scaled down in taper.
+  - `planTemplates.ts` — 5 seeded methodologies (Balanced Marathon, Daniels VDOT, Polarized, Trisutto, Beginner Just-Finish). File-based consts (not Firestore) — admin CRUD deferred to v1.1.
+  - `planCreation.ts` — per-phase Groq enrichment (70B → 8B fallback, 4s timeout) over the skeleton with carried-forward context from the previous phase. **Rules-based fallback always succeeds** even without `GROQ_API_KEY`, so plan creation never fails on AI errors.
+  - Intensity type mismatch (`planEngine.ts` 4-value vs `constraints.ts` 3-value) is reconciled at the generator boundary — `'recovery'` collapses to `'easy'` + a `'recovery'` phase tag.
+- **Beta gate (R18):** `user.planBetaEnabled` toggle, 20-user soft cap. `PATCH /api/admin/plan-beta/[uid]` enforces the cap via `count().get()` (1 Firestore read). Admin UI in `/youwillneverguessthisistheadmin` shows a β badge + toggle per user and a global `N/20 in plan beta` counter.
+- **Shared auth gate:** `verifyPlanAccess` in `src/lib/api-auth.ts` enforces `planBetaEnabled === true && role === 'athlete'` on every plan endpoint. One place to drift from, by design.
+- **Firestore rules:** `trainingPlans` read gated to owner via `userMappings` lookup, all writes server-only via Admin SDK. `/users/{username}/planRecaps/{weekStart}` owner-read, server-write only. **Field-level denies** on user doc for `planBetaEnabled`, `activePlanId`, `lastFailedPlanId`, `role`, `coachUsername` — clients cannot self-assign beta access or forge an activePlanId.
+- **Pages + surfaces:**
+  - `/plan` — 3 states: active-plan view (phase progress + abandon) / create-CTA (for beta-enabled users) / private-beta card (for everyone else). Wizard mounts inline when user clicks "Create your plan."
+  - `CurrentPlanCard` — dashboard widget with role gate (athletes only); shows active-plan link OR create-CTA OR hidden for non-beta.
+- **Wizard (`src/components/plan/wizard/PlanWizard.tsx`):** 5 steps (Goal → Event → Availability → Preview → Confirm) as a single component (not split into per-step files for v1). Template picker surfaces matching methodologies. Preview step hosts optional chat refinement behind a toggle.
+- **Chat refinement (U8 / R2):** `POST /api/plans/refine-chat` operates on an in-memory preview (no plan id). Scope gate is a regex list that rejects goal-rescope requests (`/change\s+(?:my\s+)?(?:goal|target|distance|event)/i` etc.) before hitting Groq. 5-turn cap enforced server-side. Falls back gracefully if `GROQ_API_KEY` absent or Groq errors.
+- **Deferred to later phases (not yet shipped):**
+  - Phase 4-7: calendar PlanBadge, AI Suggestions suppression on `/workouts` when plan is active, daily ribbon (R9), weekly `/wrap` plan slide + adherence + proposed-changes (R10/R11), re-assess, drift detection + Rebuild (R14 — deferred to v1.1), plan-end cron, edit goal, positioning shift.
 
 ## Reports Hub
 - **3-zone layout** replacing old 6-tab dashboard
@@ -351,9 +376,10 @@ npx tsc --noEmit     # Type check without building
 - 5 new coach-only tools: `get_my_athletes`, `get_athlete_workouts`, `get_athlete_workout_detail`, `assign_workout`, `get_coach_dashboard_stats`
 - Strict `SafeWorkout`/`SafeUser` output types with null-checking
 
-### Training Plans
-- `planEngine.ts` — deterministic multi-week plan scheduling (dates, types, intensity, duration)
-- Periodization-aware skeleton generation that AI enhances with details
+### Training Plans (Phase 1-3 shipped April 2026 — invite-only beta)
+- **See the full "Training Plan Creator" section above** for the shipped feature (types, orchestrator, wizard, `/plan` route, admin beta gate, chat refinement). 15-unit plan tracked in `docs/plans/2026-04-17-001-feat-ai-training-plan-creator-plan.md`.
+- Pre-existing: `planEngine.ts` deterministic single-week scheduling + `logicEngine.ts` fatigue/deload detection remain intact and feed the new `multiWeekPlanner.ts`.
+- Phases 4-7 (calendar PlanBadge, AIWorkoutSuggestions suppression, daily ribbon, weekly `/wrap` plan slide + adherence + proposed-changes, drift detection, plan-end cron, positioning) are not yet implemented.
 
 ### Admin Enhancements
 - Account disable/delete with preset reason chips and email notifications (`accountActionTemplate.ts`)

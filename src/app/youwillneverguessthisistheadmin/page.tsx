@@ -33,6 +33,8 @@ interface UserRecord {
   createdAt: number | null;
   status: 'active' | 'deleted';
   workoutCount: number;
+  planBetaEnabled?: boolean;
+  activePlanId?: string | null;
 }
 
 interface LogRecord {
@@ -614,6 +616,26 @@ function UsersSection() {
     }
   }
 
+  async function togglePlanBeta(username: string, nextEnabled: boolean) {
+    setActing(username);
+    try {
+      await apiFetch(`/api/admin/plan-beta/${encodeURIComponent(username)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: nextEnabled }),
+      });
+      // Force a cache bypass so the new planBetaEnabled value shows up.
+      const data = await apiFetch('/api/admin/users?withCounts=1&refresh=1');
+      setUsers(data.users);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setActing(null);
+    }
+  }
+
+  const betaCount = users.filter(u => u.planBetaEnabled).length;
+
   function exportCSV() {
     window.open('/api/admin/users?export=csv');
   }
@@ -632,7 +654,9 @@ function UsersSection() {
           </div>
           <div>
             <h2 className="text-foreground font-bold text-sm">User Management</h2>
-            <p className="text-muted-foreground/70 text-xs">{users.length} registered users</p>
+            <p className="text-muted-foreground/70 text-xs">
+              {users.length} registered users · {betaCount}/20 in plan beta
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -710,6 +734,27 @@ function UsersSection() {
                         className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground/70 hover:text-foreground/60 hover:bg-muted/60 transition-all"
                       >
                         <Download size={13} />
+                      </button>
+                      <button
+                        onClick={() => togglePlanBeta(u.username, !u.planBetaEnabled)}
+                        disabled={
+                          acting === u.username ||
+                          (!u.planBetaEnabled && betaCount >= 20)
+                        }
+                        title={
+                          u.planBetaEnabled
+                            ? 'Remove from plan beta'
+                            : betaCount >= 20
+                              ? 'Plan beta cap reached (20/20)'
+                              : 'Enable plan beta'
+                        }
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all disabled:opacity-50 ${
+                          u.planBetaEnabled
+                            ? 'text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/15'
+                            : 'text-muted-foreground/40 hover:text-emerald-400 hover:bg-emerald-500/10'
+                        }`}
+                      >
+                        {u.planBetaEnabled ? '✓β' : 'β'}
                       </button>
                       {u.status === 'active' ? (
                         <button

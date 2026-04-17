@@ -67,3 +67,46 @@ export async function verifyApiRequest(
 export function isVerifiedUser(result: VerifiedUser | NextResponse): result is VerifiedUser {
   return 'uid' in result && 'username' in result;
 }
+
+export interface VerifiedPlanUser extends VerifiedUser {
+  planBetaEnabled: boolean;
+  activePlanId: string | null;
+  lastFailedPlanId: string | null;
+}
+
+/**
+ * Verify the request AND confirm the user is a beta-enabled athlete eligible
+ * to interact with the training plan feature. Returns a rich user object
+ * (with activePlanId + lastFailedPlanId) or a 401/403 response.
+ *
+ * Every `/api/plans/*` route MUST go through this helper — enforcing the
+ * beta gate in one place prevents drift between endpoints.
+ */
+export async function verifyPlanAccess(
+  request: NextRequest,
+): Promise<VerifiedPlanUser | NextResponse> {
+  const result = await verifyApiRequest(request);
+  if (!isVerifiedUser(result)) return result;
+  if (result.role !== 'athlete') {
+    return NextResponse.json(
+      { error: 'Training plans are only available to athletes.' },
+      { status: 403 },
+    );
+  }
+  // Fetch the user doc a second time to read plan-specific fields. Small
+  // cost; happens once per plan API call.
+  const userDoc = await getAdminDb().collection('users').doc(result.username).get();
+  const data = userDoc.data() ?? {};
+  if (data.planBetaEnabled !== true) {
+    return NextResponse.json(
+      { error: 'Training plans are in private beta. Ask an admin for access.' },
+      { status: 403 },
+    );
+  }
+  return {
+    ...result,
+    planBetaEnabled: true,
+    activePlanId: data.activePlanId ?? null,
+    lastFailedPlanId: data.lastFailedPlanId?.id ?? null,
+  };
+}

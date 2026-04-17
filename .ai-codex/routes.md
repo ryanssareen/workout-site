@@ -1,4 +1,4 @@
-# API Routes (updated 2026-04-17)
+# API Routes (updated 2026-04-17, training-plan phase 1-3)
 # All routes under src/app/api/. Methods listed where non-obvious.
 
 ## Auth
@@ -43,9 +43,16 @@ GET    /api/ai/test                      AI connectivity test
 POST   /api/reports/send                 Send report via email
 POST   /api/reports/email                Email report to user
 
-## Templates
+## Templates (workouts)
 GET/POST   /api/templates                List / create workout templates
 GET        /api/templates/[id]           Get workout template
+
+## Training Plans (beta-gated — athlete role only; enforced via verifyPlanAccess)
+POST   /api/plans/create                 Create a new plan (draft-first atomicity; chunked Groq per phase; writes plan + N workouts)
+GET    /api/plans/[id]                   Plan detail (owner only)
+PATCH  /api/plans/[id]                   Edit goal (501 placeholder; U15 territory)
+POST   /api/plans/[id]/abandon           Abandon plan (txn clears activePlanId; soft-deletes future plan workouts via abandonedByPlan flag)
+POST   /api/plans/refine-chat            Wizard chat (5-turn cap; regex-gated against goal rescope requests; 70B → 8B fallback)
 
 ## Strava
 GET    /api/strava/sync                  Sync Strava activities for current user
@@ -86,6 +93,7 @@ POST       /api/admin/broadcast          Send announcement email to all users
 POST       /api/admin/fix-milestones     Data repair: backfill milestone records
 POST       /api/admin/backfill-workout-counts  Backfill workoutCount on user docs
 POST       /api/admin/assign-coach       Assign coach to athlete
+PATCH      /api/admin/plan-beta/[uid]    Toggle user.planBetaEnabled (20-user cap enforced via count().get())
 POST       /api/admin/assign-athletes    Assign multiple athletes to coach
 POST       /api/admin/migrate-merged-workouts  One-time: backfill missing fields on merged workouts
 POST       /api/admin/restore            General restore endpoint

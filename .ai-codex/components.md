@@ -1,4 +1,4 @@
-# Components (generated 2026-04-04)
+# Components (updated 2026-04-17, training-plan phase 1-3)
 # (c)=client component. UI primitives (shadcn/radix) omitted.
 
 ## src
@@ -26,12 +26,12 @@
 (c) CommentItem
 (c) CommentSection
 (c) CompletionDialog
+(c) CurrentPlanCard (training plan — dashboard widget; role-gated to athlete; shows active-plan link OR create-CTA OR hidden for non-beta)
 (c) DashboardAchievements
 (c) DashboardOverview
     DataTable
 (c) DeepDiveCard
     Divider
-(c) DashboardOverview
 (c) DuplicateRemover
 (c) EditProfileDialog
 (c) ExploreCards
@@ -50,6 +50,7 @@
 (c) OnboardingModal
 (c) OtherForm
 (c) PhotoUpload
+(c) PlanWizard (training plan — 5-step create flow: Goal → Event → Availability → Preview → Confirm; chat refinement on Preview via /api/plans/refine-chat)
 (c) PostHogProvider
     PRBadge
 (c) PRCard

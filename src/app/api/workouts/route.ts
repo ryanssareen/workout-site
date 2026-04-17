@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 import { adminDb } from '@/lib/firebase/admin';
 import { verifyApiRequest, isVerifiedUser } from '@/lib/api-auth';
+import { buildCreateSummaryFields } from '@/lib/training/summary';
 
 type UserRole = 'coach' | 'athlete' | 'student';
 type WorkoutType = 'swim' | 'run' | 'walk' | 'bike' | 'strength' | 'other';
@@ -276,7 +277,10 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    const createdRef = await adminDb.collection('users').doc(assignedTo).collection('workouts').add(workoutData);
+    const createdRef = await adminDb.collection('users').doc(assignedTo).collection('workouts').add({
+      ...workoutData,
+      ...buildCreateSummaryFields(workoutData),
+    });
     // Increment denormalized workout count
     await adminDb.collection('users').doc(assignedTo).update({
       workoutCount: admin.firestore.FieldValue.increment(1),

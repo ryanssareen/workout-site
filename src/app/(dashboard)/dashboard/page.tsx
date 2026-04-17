@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { useStravaAutoSync } from '@/hooks/useStravaAutoSync';
 import { CoachDashboard } from '@/components/dashboard/CoachDashboard';
 import { ProfileCompletionBar } from '@/components/dashboard/ProfileCompletionBar';
+import { CurrentPlanCard } from '@/components/dashboard/CurrentPlanCard';
 import { DashboardAchievements } from '@/components/achievements/DashboardAchievements';
 import { SportBreakdownCard } from '@/components/dashboard/SportBreakdownCard';
 
@@ -316,6 +317,9 @@ export default function DashboardPage() {
 
       {/* ── PROFILE COMPLETION BAR ──────────────────────────────── */}
       {user && <ProfileCompletionBar user={user} />}
+
+      {/* ── CURRENT PLAN CARD (training plan beta) ──────────────── */}
+      <CurrentPlanCard />
 
       {/* ── WEEKLY WRAP BANNER ────────────────────────────────── */}
       {showWrapBanner && (

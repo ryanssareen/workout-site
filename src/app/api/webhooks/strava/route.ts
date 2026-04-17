@@ -6,6 +6,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import admin from 'firebase-admin';
 import crypto from 'crypto';
 import { sendPushNotification } from '@/lib/push';
+import { mergeSummaryIntoUpdate, buildCreateSummaryFields } from '@/lib/training/summary';
 
 // Map Strava activity types to our workout types
 function mapStravaType(stravaType: string): 'swim' | 'run' | 'walk' | 'bike' | 'strength' {
@@ -517,7 +518,7 @@ async function processActivity(
       if (photos.length > 0) mergeData.photos = photos;
 
       const batch = adminDb.batch();
-      batch.update(matchedDoc.ref, mergeData);
+      batch.update(matchedDoc.ref, mergeSummaryIntoUpdate(matchedDoc.data(), matchedDoc.id, mergeData));
 
       for (const existingDoc of existingByStravaIdDocs) {
         if (existingDoc.id !== matchedDoc.id) {
@@ -570,7 +571,7 @@ async function processActivity(
           applyDetailedFields(mergeUpdate, built, activity);
           if (photos.length > 0) mergeUpdate.photos = photos;
           const batch = adminDb.batch();
-          batch.update(iDoc.ref, mergeUpdate);
+          batch.update(iDoc.ref, mergeSummaryIntoUpdate(iDoc.data(), iDoc.id, mergeUpdate));
           for (const existingDoc of existingByStravaIdDocs) {
             if (existingDoc.id !== iDoc.id) {
               batch.delete(existingDoc.ref);
@@ -627,7 +628,13 @@ async function processActivity(
 
       const batch = adminDb.batch();
       if (canonicalDoc.id === standaloneId) {
-        batch.set(canonicalDoc.ref, newWorkoutData, { merge: true });
+        // Merge — treat as a full create-or-overwrite. Use buildCreateSummaryFields
+        // if this is a first write (no existing summaryVersion), else mergeSummaryIntoUpdate.
+        const existingData = canonicalDoc.data();
+        const payload = existingData?.summaryVersion
+          ? mergeSummaryIntoUpdate(existingData, canonicalDoc.id, newWorkoutData)
+          : { ...newWorkoutData, ...buildCreateSummaryFields(newWorkoutData) };
+        batch.set(canonicalDoc.ref, payload, { merge: true });
       } else {
         const updateData: any = {
           completed: true,
@@ -643,7 +650,7 @@ async function processActivity(
         if (Object.keys(routeData).length > 0) updateData.routeData = routeData;
         applyDetailedFields(updateData, built, activity);
         if (photos.length > 0) updateData.photos = photos;
-        batch.update(canonicalDoc.ref, updateData);
+        batch.update(canonicalDoc.ref, mergeSummaryIntoUpdate(canonicalDoc.data(), canonicalDoc.id, updateData));
       }
 
       for (const existingDoc of existingByStravaIdDocs) {
@@ -662,7 +669,7 @@ async function processActivity(
     // Truly new: create deterministic standalone Strava workout
     const workoutId = standaloneId;
     const newWorkoutRef = workoutsCollection.doc(workoutId);
-    await newWorkoutRef.set(newWorkoutData);
+    await newWorkoutRef.set({ ...newWorkoutData, ...buildCreateSummaryFields(newWorkoutData) });
     console.log(`✅ Created new workout ${workoutId} from Strava activity (no planned match)`);
 
     return {
@@ -753,7 +760,7 @@ async function processActivityDelete(
         unlinkData.source = 'manual';
       }
 
-      await workoutDoc.ref.update(unlinkData);
+      await workoutDoc.ref.update(mergeSummaryIntoUpdate(workoutDoc.data(), workoutDoc.id, unlinkData));
       unlinkedCount++;
     }
 

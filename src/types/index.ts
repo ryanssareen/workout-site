@@ -8,7 +8,25 @@ import { WORKOUT_TAGS, WorkoutTag } from './workout';
 export { WORKOUT_TAGS };
 export type { WorkoutTag };
 
-export interface User {
+// Import plan-feature type additions
+import type { PlanUserFields, PlanWorkoutFields } from './plan';
+export type {
+  PlanGoalType,
+  PlanSport,
+  TrainingPhase,
+  GoalInputs,
+  PhaseMapEntry,
+  PlanStatus,
+  TrainingPlan,
+  PlanTemplate,
+  PlanWorkoutMeta,
+  AdherenceState,
+  WorkoutSummary,
+  PlanUserFields,
+  PlanWorkoutFields,
+} from './plan';
+
+export interface User extends PlanUserFields {
   uid: string;
   username: string; // Document key in users/{username}
   email: string;
@@ -165,7 +183,7 @@ export interface StravaExtendedData {
 
 export type WorkoutRating = 'too_easy' | 'just_right' | 'too_hard';
 
-export interface Workout {
+export interface Workout extends PlanWorkoutFields {
   id: string;
   name: string;
   type: WorkoutType;

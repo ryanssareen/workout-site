@@ -52,6 +52,8 @@ export async function GET(request: NextRequest) {
         deletedAt: d.deletedAt?.toMillis?.() ?? null,
         status: d.deletedAt ? 'deleted' : 'active',
         workoutCount,
+        planBetaEnabled: d.planBetaEnabled === true,
+        activePlanId: d.activePlanId ?? null,
       };
     }));
 
