@@ -1,4 +1,4 @@
-# Pages (updated 2026-04-17)
+# Pages (updated 2026-04-17, training-plan phase 1-3)
 # Format: route — file — description
 
 ## Public / Marketing
@@ -36,6 +36,7 @@
 /profile             src/app/(dashboard)/profile/page.tsx                  Read-only profile view (stats, PRs, heatmap)
 /settings            src/app/(dashboard)/settings/page.tsx                 Settings (profile, privacy, Strava, appearance, account)
 /ai-coach            src/app/(dashboard)/ai-coach/page.tsx                 AI coach chat interface
+/plan                src/app/(dashboard)/plan/page.tsx                     Training plan home — create/view/abandon; 3 states: active plan, create-CTA, private-beta card. Beta-gated (planBetaEnabled). Hosts PlanWizard inline. Role-gated to athlete
 /onboarding          src/app/(dashboard)/onboarding/page.tsx               5-step onboarding (intro → name → age → import → strava)
 /onboarding/profile  src/app/(dashboard)/onboarding/profile/page.tsx       Profile completion step (sports, experience, training goals)
 
