@@ -5,7 +5,71 @@ import {
 import { getDbInstance } from './config';
 import { Workout, WorkoutFormData, WorkoutComment, WorkoutRating, PersonalRecord, PRCategory, Milestone } from '@/types';
 import { addDays, addWeeks, addMonths, subDays } from 'date-fns';
+import { computeWorkoutSummary } from '@/lib/training/summary';
 export { COACH_QUERY_WINDOW_DAYS } from '@/lib/constants';
+
+/**
+ * Attach `summaryVersion` + `summary` (+ default `planStatus: 'active'`) to a
+ * create payload. Every new workout — plan or non-plan — ships with
+ * `planStatus: 'active'` so the Strava webhook's `!= 'draft'` filter works
+ * without backfilling legacy data. Plan creation explicitly overrides to
+ * `'draft'` during stage 1.
+ *
+ * Pure, no I/O. See docs/plans/2026-04-17-001-feat-ai-training-plan-creator-plan.md (Unit 2).
+ */
+function applySummaryOnCreate(workoutData: Record<string, any>): Record<string, any> {
+  const hydrated = {
+    ...workoutData,
+    summaryVersion: 1,
+    planStatus: workoutData.planStatus ?? 'active',
+  };
+  const summary = computeWorkoutSummary(hydrated as unknown as Workout, workoutData.planMeta);
+  return { ...hydrated, summary };
+}
+
+/**
+ * Merge an existing workout snapshot with update fields, bump the monotonic
+ * `summaryVersion`, recompute the summary, and return the full update payload
+ * ready for `updateDoc`. Caller is responsible for persisting the result.
+ *
+ * `existingSnap` is a Firestore DocumentSnapshot for the workout being mutated;
+ * the caller should pass whatever snapshot they already have to avoid a
+ * double-fetch. If no snapshot is available, pass `null` and this helper
+ * reads the doc once.
+ */
+async function applySummaryOnUpdate(
+  ownerUsername: string,
+  id: string,
+  updateFields: Record<string, any>,
+  existingSnap?: { exists: () => boolean; data: () => any } | null,
+): Promise<Record<string, any>> {
+  let data: any;
+  if (existingSnap && existingSnap.exists()) {
+    data = existingSnap.data();
+  } else {
+    const docRef = doc(getDbInstance(), 'users', ownerUsername, 'workouts', id);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) return updateFields; // let the caller fail naturally
+    data = snap.data();
+  }
+  const existing = { id, ...data } as Workout;
+  const nextVersion = (existing.summaryVersion ?? 0) + 1;
+  // Merge the update on top of existing for the summary computation. Skip
+  // serverTimestamp sentinels and deleteField markers; the summary doesn't
+  // care about those.
+  const postWrite: Workout = { ...existing };
+  for (const [key, value] of Object.entries(updateFields)) {
+    if (value && typeof value === 'object' && '_methodName' in value) continue;
+    (postWrite as any)[key] = value;
+  }
+  postWrite.summaryVersion = nextVersion;
+  const summary = computeWorkoutSummary(postWrite, existing.planMeta);
+  return {
+    ...updateFields,
+    summaryVersion: nextVersion,
+    summary,
+  };
+}
 
 // Extended form data to include recurring fields
 export interface ExtendedWorkoutFormData extends WorkoutFormData {
@@ -73,14 +137,14 @@ export async function createWorkout(data: ExtendedWorkoutFormData, createdByUser
       // Create workouts from start date until end date
       while (currentDate <= endDate) {
         const workoutRef = doc(collection(db, 'users', ownerUsername, 'workouts'));
-        const workoutData = {
+        const workoutData = applySummaryOnCreate({
           ...baseWorkoutData,
           date: Timestamp.fromDate(currentDate),
           isRecurring: true,
           recurringFrequency: data.recurringFrequency,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-        };
+        });
 
         batch.set(workoutRef, workoutData);
         workoutIds.push(workoutRef.id);
@@ -102,10 +166,10 @@ export async function createWorkout(data: ExtendedWorkoutFormData, createdByUser
       return firstWorkoutId;
     } else {
       // Single workout creation
-      const workoutData = {
+      const workoutData = applySummaryOnCreate({
         ...baseWorkoutData,
         date: Timestamp.fromDate(data.date),
-      };
+      });
       const workoutsRef = collection(getDbInstance(), 'users', ownerUsername, 'workouts');
       const docRef = await addDoc(workoutsRef, workoutData);
       // Increment denormalized workout count
@@ -219,7 +283,8 @@ export async function updateWorkout(ownerUsername: string, id: string, data: Par
       }
     }
 
-    await updateDoc(docRef, updateData);
+    const withSummary = await applySummaryOnUpdate(ownerUsername, id, updateData);
+    await updateDoc(docRef, withSummary);
   } catch (error: any) {
     throw new Error(error.message || 'Failed to update workout');
   }
@@ -239,7 +304,11 @@ export async function deleteWorkout(ownerUsername: string, id: string): Promise<
 export async function toggleWorkoutCompletion(ownerUsername: string, id: string, completed: boolean): Promise<void> {
   try {
     const docRef = doc(getDbInstance(), 'users', ownerUsername, 'workouts', id);
-    await updateDoc(docRef, { completed, updatedAt: serverTimestamp() });
+    const withSummary = await applySummaryOnUpdate(ownerUsername, id, {
+      completed,
+      updatedAt: serverTimestamp(),
+    });
+    await updateDoc(docRef, withSummary);
   } catch (error: any) {
     throw new Error(error.message || 'Failed to update workout status');
   }
@@ -303,7 +372,9 @@ export async function completeWorkout(
       updateData.completionRating = null;
     }
 
-    await updateDoc(docRef, updateData);
+    // Reuse the snapshot we already fetched — no extra read.
+    const withSummary = await applySummaryOnUpdate(ownerUsername, id, updateData, workoutSnap);
+    await updateDoc(docRef, withSummary);
   } catch (error: any) {
     throw new Error(error.message || 'Failed to update workout status');
   }

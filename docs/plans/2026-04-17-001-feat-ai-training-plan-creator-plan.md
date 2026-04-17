@@ -401,7 +401,7 @@ UI displays: "3 planned · 2 coach-overridden · 2 completed — 67% adherence"
 
 ### Phase 1 — Foundation
 
-- [ ] **Unit 1: Plan data model + type additions**
+- [x] **Unit 1: Plan data model + type additions**
 
 **Goal:** Establish the TypeScript types and Firestore collection shapes that every downstream unit depends on. No behavior yet.
 
@@ -434,7 +434,7 @@ UI displays: "3 planned · 2 coach-overridden · 2 completed — 67% adherence"
 
 ---
 
-- [ ] **Unit 2: Workout summary generator + inline invalidation at write sites**
+- [x] **Unit 2: Workout summary generator + inline invalidation at write sites**
 
 **Goal:** Pure, deterministic summary generator invoked at every workout write site. Same module later powers the R9 ribbon.
 
@@ -481,7 +481,7 @@ UI displays: "3 planned · 2 coach-overridden · 2 completed — 67% adherence"
 
 ---
 
-- [ ] **Unit 3: Multi-week plan generator**
+- [x] **Unit 3: Multi-week plan generator**
 
 **Goal:** Extend the existing training pipeline to generate a full multi-week plan with phase transitions and supporting modalities, producing `PlanWorkoutMeta[]` ready for AI enhancement.
 

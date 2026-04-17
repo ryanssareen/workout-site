@@ -9,6 +9,7 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import * as z from 'zod/v4';
 import { getFirebaseAdminDb, getFirebaseAdminAuth } from '@/lib/firebase-admin';
 import { adminResolveUsername } from '@/lib/firebase/adminUserMapping';
+import { buildCreateSummaryFields, mergeSummaryIntoUpdate } from '@/lib/training/summary';
 
 const DEFAULT_WORKOUT_LIMIT = 20;
 const MAX_WORKOUT_LIMIT = 50;
@@ -430,7 +431,7 @@ function createMcpServer(authedUser: AuthenticatedUser): McpServer {
       if (input.duration) data.duration = input.duration;
       if (input.tags?.length) data.tags = input.tags;
 
-      const ref = await db.collection('users').doc(resolved.target).collection('workouts').add(data);
+      const ref = await db.collection('users').doc(resolved.target).collection('workouts').add({ ...data, ...buildCreateSummaryFields(data) });
       await db.collection('users').doc(resolved.target).update({ workoutCount: FieldValue.increment(1) });
       return { content: [{ type: 'text', text: JSON.stringify({ success: true, workoutId: ref.id, username: resolved.target }) }] };
     }
@@ -474,7 +475,7 @@ function createMcpServer(authedUser: AuthenticatedUser): McpServer {
         if (isNaN(d.getTime())) return errResponse('Invalid date format');
         updates.date = d;
       }
-      await ref.update(updates);
+      await ref.update(mergeSummaryIntoUpdate(doc.data() as Record<string, unknown>, workoutId, updates));
       return { content: [{ type: 'text', text: JSON.stringify({ success: true, workoutId }) }] };
     }
   );
@@ -539,7 +540,7 @@ function createMcpServer(authedUser: AuthenticatedUser): McpServer {
         updates.completionNotes = null;
         updates.completedLate = null;
       }
-      await ref.update(updates);
+      await ref.update(mergeSummaryIntoUpdate(doc.data() as Record<string, unknown>, input.workoutId, updates));
       return { content: [{ type: 'text', text: JSON.stringify({ success: true, workoutId: input.workoutId, completed: input.completed }) }] };
     }
   );
@@ -845,7 +846,7 @@ function createMcpServer(authedUser: AuthenticatedUser): McpServer {
         if (input.duration) data.duration = input.duration;
         if (input.tags?.length) data.tags = input.tags;
 
-        const ref = await db.collection('users').doc(input.athleteUsername).collection('workouts').add(data);
+        const ref = await db.collection('users').doc(input.athleteUsername).collection('workouts').add({ ...data, ...buildCreateSummaryFields(data) });
         await db.collection('users').doc(input.athleteUsername).update({ workoutCount: FieldValue.increment(1) });
         return { content: [{ type: 'text', text: JSON.stringify({ success: true, workoutId: ref.id, assignedTo: input.athleteUsername }) }] };
       }
