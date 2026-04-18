@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Timestamp } from 'firebase/firestore';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useSearchParams } from 'next/navigation';
-import { completeWorkout, deleteWorkout } from '@/lib/firebase/firestore';
+import { completeWorkout, deleteWorkout, rescheduleWorkout } from '@/lib/firebase/firestore';
 import { useCoachFilter } from '@/hooks/useCoachFilter';
 import { AthleteSelector } from '@/components/dashboard/AthleteSelector';
 import { useWorkoutStore } from '@/lib/stores/workoutStore';
-import { Workout } from '@/types';
+import { Workout, PlanWorkoutMeta } from '@/types';
 import { CalendarViewMode } from '@/components/calendar/types';
 import { useStravaAutoSync, SYNC_COOLDOWN_UNTIL_KEY } from '@/hooks/useStravaAutoSync';
 import { Loader2 } from 'lucide-react';
@@ -26,7 +27,13 @@ import {
   endOfMonth,
 } from 'date-fns';
 import { formatInTimezone, safeToDate } from '@/lib/dateUtils';
+import { parseLocalDate, getDayKey } from '@/lib/dayKey';
+import { computePlanWeekNumber } from '@/lib/training/weekNumber';
+import { getAuthInstance } from '@/lib/firebase/config';
+import { track } from '@/lib/posthog';
 import { toast } from 'sonner';
+import type { DragEndEvent } from '@dnd-kit/core';
+import { CalendarDndContext } from '@/components/calendar/CalendarDndContext';
 
 // Calendar components
 import { CalendarHeader } from '@/components/calendar/CalendarHeader';
@@ -100,6 +107,41 @@ export default function CalendarPage() {
       setLoading(false);
     });
   }, [user, isCoach]);
+
+  // ── Active training plan (for drag-reschedule weekNumber recompute) ──
+  const [activePlan, setActivePlan] = useState<{
+    id: string;
+    startDate: string;
+    timezoneAtCreation: string;
+  } | null>(null);
+  useEffect(() => {
+    if (!user?.activePlanId) {
+      setActivePlan(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const auth = getAuthInstance();
+        const idToken = await auth.currentUser?.getIdToken();
+        if (!idToken) return;
+        const res = await fetch(`/api/plans/${user.activePlanId}`, {
+          headers: { Authorization: `Bearer ${idToken}` },
+        });
+        if (!res.ok) return;
+        const body = await res.json();
+        if (cancelled) return;
+        setActivePlan({
+          id: body.plan.id,
+          startDate: body.plan.startDate,
+          timezoneAtCreation: body.plan.timezoneAtCreation,
+        });
+      } catch {
+        // Silent — plan context is optional for drag reschedule.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.activePlanId]);
 
   // ── Pre-computed workout lookup ──────────────────────────────────────
   const userTimezone = user?.timezone;
@@ -184,6 +226,128 @@ export default function CalendarPage() {
       toast.error(err.message || 'Failed to update');
     }
   };
+
+  // ── Drag-to-reschedule (desktop, md+) ────────────────────────────────
+  const draggingIdRef = useRef<string | null>(null);
+
+  const performReschedule = useCallback(
+    async (
+      workout: Workout,
+      newDate: Date,
+      planMetaPatch: PlanWorkoutMeta | undefined,
+      prevDate: Timestamp,
+      prevPlanMeta: PlanWorkoutMeta | undefined,
+    ) => {
+      try {
+        await rescheduleWorkout(workout.ownerUsername, workout.id, newDate, planMetaPatch);
+        // Only invalidate if this drag is still the active one (rapid-drag guard).
+        if (draggingIdRef.current !== workout.id) {
+          invalidateWorkouts(user!.username, user!.role);
+        } else {
+          invalidateWorkouts(user!.username, user!.role);
+        }
+      } catch (err: any) {
+        // Rollback local state.
+        setWorkouts((prev) =>
+          prev.map((w) =>
+            w.id === workout.id ? { ...w, date: prevDate, planMeta: prevPlanMeta } : w,
+          ),
+        );
+        toast.error(err?.message || "Couldn't move workout — try again.");
+      }
+    },
+    [user, invalidateWorkouts],
+  );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      draggingIdRef.current = null;
+      if (!over || !user) return;
+
+      const sourceDateKey = active.data.current?.dateKey as string | undefined;
+      const newDateKey = String(over.id);
+      if (!sourceDateKey || sourceDateKey === newDateKey) return;
+
+      const workout = active.data.current?.workout as Workout | undefined;
+      if (!workout) return;
+
+      // Rebuild newDate preserving the original wall-clock time-of-day in the
+      // user's timezone (mirrors the #86 fix for Strava's start_date_local).
+      const originalDate = safeToDate(workout);
+      const tz = userTimezone || 'UTC';
+      const timeOfDay = formatInTimezone(originalDate, 'HH:mm:ss', tz);
+      const newDate = parseLocalDate(`${newDateKey}T${timeOfDay}`, tz);
+
+      // Recompute planMeta.weekNumber when this workout belongs to the active plan.
+      // Phase is preserved (R21). Requires the cached active plan's startDate + TZ.
+      let planMetaPatch: PlanWorkoutMeta | undefined;
+      if (workout.planMeta && workout.planId && activePlan && workout.planId === activePlan.id) {
+        const newWeek = computePlanWeekNumber(
+          newDate,
+          activePlan.startDate,
+          activePlan.timezoneAtCreation,
+        );
+        planMetaPatch = { ...workout.planMeta, weekNumber: newWeek };
+      }
+
+      const prevDate = workout.date;
+      const prevPlanMeta = workout.planMeta;
+      const newTimestamp = Timestamp.fromDate(newDate);
+
+      // Optimistic update.
+      setWorkouts((prev) =>
+        prev.map((w) =>
+          w.id === workout.id
+            ? { ...w, date: newTimestamp, planMeta: planMetaPatch ?? w.planMeta }
+            : w,
+        ),
+      );
+
+      // Toast with Undo (5 s TTL). Plan-aware description.
+      const movedLabel = formatInTimezone(newDate, 'MMM d', tz);
+      toast.success(`Moved to ${movedLabel}`, {
+        duration: 5000,
+        description: planMetaPatch
+          ? `Part of your training plan, week ${planMetaPatch.weekNumber}.`
+          : undefined,
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            // Optimistic revert, then write.
+            setWorkouts((prev) =>
+              prev.map((w) =>
+                w.id === workout.id ? { ...w, date: prevDate, planMeta: prevPlanMeta } : w,
+              ),
+            );
+            rescheduleWorkout(
+              workout.ownerUsername,
+              workout.id,
+              prevDate.toDate(),
+              prevPlanMeta,
+            ).catch((err) => {
+              toast.error(err?.message || "Undo failed — try dragging back.");
+            });
+          },
+        },
+      });
+
+      track('reschedule_drag_desktop', {
+        workoutId: workout.id,
+        oldDate: getDayKey(prevDate.toDate(), tz),
+        newDate: newDateKey,
+        type: workout.type,
+        hadPlanMeta: !!planMetaPatch,
+      });
+
+      performReschedule(workout, newDate, planMetaPatch, prevDate, prevPlanMeta);
+    },
+    [user, userTimezone, activePlan, performReschedule],
+  );
+
+  const handleDragStart = useCallback((event: { active: { id: string | number } }) => {
+    draggingIdRef.current = String(event.active.id);
+  }, []);
 
   const handleDeleteWorkout = async (workout: Workout) => {
     if (!user) return;
@@ -474,7 +638,9 @@ export default function CalendarPage() {
         {/* View + detail panel side by side */}
         <div className="flex gap-0 mt-3">
           <div className="flex-1 min-w-0">
-            {renderDesktopView()}
+            <CalendarDndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+              {renderDesktopView()}
+            </CalendarDndContext>
           </div>
 
           {/* Detail panel (not shown in year view) */}
