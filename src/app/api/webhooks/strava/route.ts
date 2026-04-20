@@ -36,6 +36,28 @@ function mapStravaType(stravaType: string): 'swim' | 'run' | 'walk' | 'bike' | '
   return typeMap[stravaType] || 'strength';
 }
 
+const SPORT_EMOJI: Record<string, string> = {
+  run: '🏃', bike: '🚴', swim: '🏊', walk: '🚶', strength: '💪', other: '⚡',
+};
+
+function formatWorkoutBody(
+  name?: string,
+  type?: string,
+  distanceMeters?: number,
+  durationSeconds?: number,
+): string {
+  const parts: string[] = [];
+  if (name) parts.push(`${SPORT_EMOJI[type ?? ''] ?? '🏅'} ${name}`);
+  if (distanceMeters && distanceMeters > 0)
+    parts.push(`${(distanceMeters / 1000).toFixed(1)} km`);
+  if (durationSeconds && durationSeconds > 0) {
+    const h = Math.floor(durationSeconds / 3600);
+    const m = Math.floor((durationSeconds % 3600) / 60);
+    parts.push(h > 0 ? `${h}h ${m}min` : `${m} min`);
+  }
+  return parts.join(' • ') || 'A new workout was synced from Strava';
+}
+
 // Verify Strava webhook signature
 function verifyWebhookSignature(body: string, signature: string): boolean {
   const verifyToken = process.env.STRAVA_WEBHOOK_VERIFY_TOKEN;
@@ -363,11 +385,22 @@ function applyDetailedFields(target: Record<string, any>, built: WorkoutFields, 
   if (activity.total_photo_count > 0) target.hasStravaPhotos = true;
 }
 
+type ActivityResult = {
+  success: boolean;
+  message: string;
+  workoutName?: string;
+  workoutType?: string;
+  distanceMeters?: number;
+  durationSeconds?: number;
+  coachUsername?: string;
+  athleteDisplayName?: string;
+};
+
 // Process a new Strava activity - CLEAN VERSION
 async function processActivity(
   stravaAthleteId: string,
   stravaActivityId: string
-): Promise<{ success: boolean; message: string }> {
+): Promise<ActivityResult> {
   try {
     console.log(`\n🏃 Processing Strava activity ${stravaActivityId} for athlete ${stravaAthleteId}`);
 
@@ -531,7 +564,13 @@ async function processActivity(
 
       return {
         success: true,
-        message: `Matched "${activity.name}" with planned workout "${matchedDoc.data().name}"`
+        message: `Matched "${activity.name}" with planned workout "${matchedDoc.data().name}"`,
+        workoutName: activity.name,
+        workoutType,
+        distanceMeters: activity.distance,
+        durationSeconds: activity.moving_time,
+        coachUsername: userData.coachUsername ?? undefined,
+        athleteDisplayName: userData.displayName ?? username,
       };
     }
 
@@ -580,7 +619,13 @@ async function processActivity(
           await batch.commit();
           return {
             success: true,
-            message: `Merged "${activity.name}" with imported workout "${iData.name}"`
+            message: `Merged "${activity.name}" with imported workout "${iData.name}"`,
+            workoutName: activity.name,
+            workoutType,
+            distanceMeters: activity.distance,
+            durationSeconds: activity.moving_time,
+            coachUsername: userData.coachUsername ?? undefined,
+            athleteDisplayName: userData.displayName ?? username,
           };
         }
       }
@@ -662,7 +707,13 @@ async function processActivity(
 
       return {
         success: true,
-        message: `Reconciled Strava activity into workout "${canonicalDoc.data().name || activity.name}"`
+        message: `Reconciled Strava activity into workout "${canonicalDoc.data().name || activity.name}"`,
+        workoutName: activity.name,
+        workoutType,
+        distanceMeters: activity.distance,
+        durationSeconds: activity.moving_time,
+        coachUsername: userData.coachUsername ?? undefined,
+        athleteDisplayName: userData.displayName ?? username,
       };
     }
 
@@ -674,7 +725,13 @@ async function processActivity(
 
     return {
       success: true,
-      message: `Created workout "${activity.name}" from Strava`
+      message: `Created workout "${activity.name}" from Strava`,
+      workoutName: activity.name,
+      workoutType,
+      distanceMeters: activity.distance,
+      durationSeconds: activity.moving_time,
+      coachUsername: userData.coachUsername ?? undefined,
+      athleteDisplayName: userData.displayName ?? username,
     };
   } catch (error: any) {
     console.error('❌ Error processing activity:', error);
@@ -685,7 +742,7 @@ async function processActivity(
 async function processActivityUpdate(
   stravaAthleteId: string,
   stravaActivityId: string
-): Promise<{ success: boolean; message: string }> {
+): Promise<ActivityResult> {
   console.log(`\n🔄 Processing Strava activity update ${stravaActivityId} for athlete ${stravaAthleteId}`);
   // Reuse the create-path reconciliation logic:
   // it updates existing docs, promotes planned when available, and removes redundant standalone copies.
@@ -695,7 +752,7 @@ async function processActivityUpdate(
 async function processActivityDelete(
   stravaAthleteId: string,
   stravaActivityId: string
-): Promise<{ success: boolean; message: string }> {
+): Promise<ActivityResult> {
   try {
     console.log(`\n🗑️ Processing Strava activity delete ${stravaActivityId} for athlete ${stravaAthleteId}`);
 
@@ -711,6 +768,7 @@ async function processActivityDelete(
 
     const userDoc = usersSnapshot.docs[0];
     const username = userDoc.id;
+    const userData = userDoc.data();
 
     const matches = await adminDb
       .collection('users').doc(username).collection('workouts')
@@ -764,9 +822,13 @@ async function processActivityDelete(
       unlinkedCount++;
     }
 
+    const deletedWorkoutName = matches.docs[0]?.data()?.name as string | undefined;
     return {
       success: true,
-      message: `Strava delete processed: removed ${deletedCount}, unlinked ${unlinkedCount}`
+      message: `Strava delete processed: removed ${deletedCount}, unlinked ${unlinkedCount}`,
+      workoutName: deletedWorkoutName,
+      coachUsername: userData.coachUsername ?? undefined,
+      athleteDisplayName: userData.displayName ?? username,
     };
   } catch (error: any) {
     console.error('❌ Error processing activity delete:', error);
@@ -851,11 +913,29 @@ export async function POST(request: NextRequest) {
                 delete: '🗑️ Strava Workout Removed',
               };
 
+              const body = aspect_type === 'delete'
+                ? (result.workoutName ? `${result.workoutName} was removed` : 'A workout was removed from Strava')
+                : formatWorkoutBody(result.workoutName, result.workoutType, result.distanceMeters, result.durationSeconds);
+
+              // Notify the athlete
               await sendPushNotification(username, {
                 title: titleByAspect[aspect_type] || '🔄 Strava Sync',
-                body: result.message || 'A new workout was synced from Strava',
+                body,
                 url: '/workouts',
-              }).catch(() => {}); // non-fatal
+              }).catch(() => {});
+
+              // Fan-out to coach if linked
+              if (result.coachUsername) {
+                const athleteName = result.athleteDisplayName || username;
+                const coachBody = aspect_type === 'delete'
+                  ? `${athleteName}: ${result.workoutName ?? 'a workout'} was removed`
+                  : `${athleteName}: ${body}`;
+                await sendPushNotification(result.coachUsername, {
+                  title: titleByAspect[aspect_type] || '🔄 Athlete Strava Sync',
+                  body: coachBody,
+                  url: '/workouts',
+                }).catch(() => {});
+              }
             }
           }
         })
