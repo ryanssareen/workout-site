@@ -290,6 +290,39 @@ export async function updateWorkout(ownerUsername: string, id: string, data: Par
   }
 }
 
+/**
+ * Move a workout to a new date, preserving everything else.
+ *
+ * Used by desktop drag-to-reschedule. Writes `date` + `updatedAt` in a single
+ * `updateDoc`, optionally patching `planMeta` atomically so the summary
+ * regenerates with a coherent `weekNumber`/`phaseTag` in one round-trip.
+ *
+ * Callers are responsible for rebuilding `newDate` with timezone-preserving
+ * helpers (see `parseLocalDate`). Do not pass a raw `new Date(...)` that
+ * lost the user's wall-clock hour.
+ */
+export async function rescheduleWorkout(
+  ownerUsername: string,
+  id: string,
+  newDate: Date,
+  planMetaPatch?: import('@/types').PlanWorkoutMeta,
+): Promise<void> {
+  try {
+    const docRef = doc(getDbInstance(), 'users', ownerUsername, 'workouts', id);
+    const updateData: Record<string, any> = {
+      date: Timestamp.fromDate(newDate),
+      updatedAt: serverTimestamp(),
+    };
+    if (planMetaPatch) {
+      updateData.planMeta = planMetaPatch;
+    }
+    const withSummary = await applySummaryOnUpdate(ownerUsername, id, updateData);
+    await updateDoc(docRef, withSummary);
+  } catch (error: any) {
+    throw new Error(error.message || 'Failed to reschedule workout');
+  }
+}
+
 export async function deleteWorkout(ownerUsername: string, id: string): Promise<void> {
   try {
     await deleteDoc(doc(getDbInstance(), 'users', ownerUsername, 'workouts', id));

@@ -14,6 +14,8 @@ import {
 } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { CalendarAddDropdown } from './CalendarAddDropdown';
+import { DraggableWorkoutCard } from './DraggableWorkoutCard';
+import { DroppableDayCell } from './DroppableDayCell';
 
 const DAY_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -98,9 +100,9 @@ export function CalendarWeekView({
               const overflow = dayWorkouts.length - maxPills;
 
               return (
-                <div
+                <DroppableDayCell
                   key={dateKey}
-                  onClick={() => onSelectDate(day)}
+                  dateKey={dateKey}
                   className={cn(
                     'group/cell border-r last:border-r-0 px-2 py-2 cursor-pointer transition-colors overflow-hidden flex flex-col',
                     selected && 'bg-primary/5 ring-1 ring-inset ring-primary/30',
@@ -108,6 +110,7 @@ export function CalendarWeekView({
                     'hover:bg-muted/30',
                   )}
                 >
+                <div onClick={() => onSelectDate(day)} className="contents">
                   {/* Date number + month */}
                   <div className="flex items-center gap-1.5 mb-1.5">
                     <span
@@ -128,12 +131,17 @@ export function CalendarWeekView({
                   <div className="flex-1 relative min-h-0 overflow-y-auto">
                     <div className="space-y-1">
                       {visibleWorkouts.map((workout) => (
-                        <CalendarWorkoutCard
+                        <DraggableWorkoutCard
                           key={workout.id}
                           workout={workout}
-                          compact={false}
-                          onSelect={onSelectWorkout}
-                        />
+                          dateKey={dateKey}
+                        >
+                          <CalendarWorkoutCard
+                            workout={workout}
+                            compact={false}
+                            onSelect={onSelectWorkout}
+                          />
+                        </DraggableWorkoutCard>
                       ))}
                       {overflow > 0 && (
                         <div className="text-[10px] text-muted-foreground font-medium pl-1">
@@ -154,6 +162,7 @@ export function CalendarWeekView({
                     )}
                   </div>
                 </div>
+                </DroppableDayCell>
               );
             })}
           </div>
