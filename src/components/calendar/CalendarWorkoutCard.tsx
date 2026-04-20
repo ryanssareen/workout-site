@@ -40,12 +40,11 @@ function getWorkoutStatus(workout: Workout) {
   // 6 states (evaluated in priority order)
   const isStravaStandalone = workout.source === 'strava';
   const isMatchedByStrava = !isStravaStandalone && workout.completed && workout.completedBy === 'strava';
-  const isLate = workout.completedLate === true;
-  const isCompletedManual = workout.completed && !isStravaStandalone && !isMatchedByStrava && !isLate;
+  const isCompletedManual = workout.completed && !isStravaStandalone && !isMatchedByStrava;
   const isMissed = past && !workout.completed && !isStravaStandalone && !isNote(workout);
   const isFuture = !workout.completed && !past && !isStravaStandalone;
 
-  return { isStravaStandalone, isMatchedByStrava, isLate, isCompletedManual, isMissed, isFuture, past, today };
+  return { isStravaStandalone, isMatchedByStrava, isCompletedManual, isMissed, isFuture, past, today };
 }
 
 // ── Status-driven border + fill styles ──────────────────────────────────
@@ -68,13 +67,6 @@ function getStatusStyles(status: ReturnType<typeof getWorkoutStatus>, noteMode: 
     return {
       border: 'border-orange-400 dark:border-orange-500/70',
       bg: 'bg-orange-100/80 dark:bg-orange-500/15',
-      opacity: '',
-    };
-  }
-  if (status.isLate) {
-    return {
-      border: 'border-amber-400 dark:border-amber-500/70',
-      bg: 'bg-amber-100/80 dark:bg-amber-500/15',
       opacity: '',
     };
   }
@@ -132,11 +124,9 @@ function MiniPill({ workout, onSelect }: { workout: Workout; onSelect?: (id: str
       ? 'Matched'
       : status.isStravaStandalone
         ? 'Strava'
-        : status.isLate
-          ? 'Late'
-          : status.isMissed
-            ? 'Missed'
-            : null;
+        : status.isMissed
+          ? 'Missed'
+          : null;
 
   const statusLabelColor = status.isCompletedManual
     ? 'text-green-600 dark:text-green-400'
@@ -144,11 +134,9 @@ function MiniPill({ workout, onSelect }: { workout: Workout; onSelect?: (id: str
       ? 'text-green-600 dark:text-green-400'
       : status.isStravaStandalone
         ? 'text-orange-600 dark:text-orange-400'
-        : status.isLate
-          ? 'text-amber-600 dark:text-amber-400'
-          : status.isMissed
-            ? 'text-red-600 dark:text-red-400'
-            : '';
+        : status.isMissed
+          ? 'text-red-600 dark:text-red-400'
+          : '';
 
   return (
     <button
@@ -183,7 +171,7 @@ function MiniPill({ workout, onSelect }: { workout: Workout; onSelect?: (id: str
         </span>
 
         {/* Status icons */}
-        {!noteMode && (status.isCompletedManual || status.isLate || status.isMatchedByStrava) && (
+        {!noteMode && (status.isCompletedManual || status.isMatchedByStrava) && (
           <CheckCircle2 className="h-3 w-3 text-green-500 shrink-0" />
         )}
         {(status.isStravaStandalone || status.isMatchedByStrava) && (
@@ -283,11 +271,6 @@ function CompactCard({
             {status.isCompletedManual && (
               <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20">
                 Done
-              </span>
-            )}
-            {status.isLate && (
-              <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                Late
               </span>
             )}
             {status.isMissed && (

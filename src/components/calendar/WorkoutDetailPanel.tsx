@@ -189,14 +189,9 @@ export function WorkoutDetailPanel({
 
         {/* Status */}
         <div className="flex items-center gap-2 text-sm">
-          {workout.completed && !workout.completedLate && (
+          {workout.completed && (
             <span className="flex items-center gap-1.5 text-green-600 font-semibold">
               <CheckCircle2 className="h-4 w-4" /> Completed
-            </span>
-          )}
-          {workout.completedLate && (
-            <span className="flex items-center gap-1.5 text-amber-600 font-semibold">
-              <CheckCircle2 className="h-4 w-4" /> Completed Late
             </span>
           )}
           {isMissed && (

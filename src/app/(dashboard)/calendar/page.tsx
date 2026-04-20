@@ -25,7 +25,11 @@ import {
   subYears,
   startOfMonth,
   endOfMonth,
+  isToday,
+  isPast,
 } from 'date-fns';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { formatInTimezone, safeToDate } from '@/lib/dateUtils';
 import { parseLocalDate, getDayKey } from '@/lib/dayKey';
 import { computePlanWeekNumber } from '@/lib/training/weekNumber';
@@ -70,6 +74,9 @@ export default function CalendarPage() {
 
   // Report
   const [sendingReport, setSendingReport] = useState(false);
+
+  // Late completion prompt — shown when completing a past workout
+  const [latePromptWorkout, setLatePromptWorkout] = useState<Workout | null>(null);
 
   // ── Strava sync ──────────────────────────────────────────────────────
   const fromStrava = searchParams.get('strava') === 'connected';
@@ -209,22 +216,54 @@ export default function CalendarPage() {
     e.preventDefault();
     e.stopPropagation();
     const newCompleted = !workout.completed;
-    // Optimistic update — immediately reflect in UI
+
+    // When marking a past workout as complete, prompt the athlete first
+    if (newCompleted) {
+      const workoutDate = safeToDate(workout);
+      if (!isToday(workoutDate) && isPast(workoutDate)) {
+        setLatePromptWorkout(workout);
+        return;
+      }
+    }
+
+    await doCompleteWorkout(workout, newCompleted);
+  };
+
+  const doCompleteWorkout = async (workout: Workout, newCompleted: boolean, overrideDate?: Date) => {
     setWorkouts((prev) =>
-      prev.map((w) => w.id === workout.id ? { ...w, completed: newCompleted, completedBy: newCompleted ? 'manual' : undefined } as Workout : w)
+      prev.map((w) => {
+        if (w.id !== workout.id) return w;
+        const update: Partial<Workout> = { completed: newCompleted, completedBy: newCompleted ? 'manual' : undefined };
+        if (overrideDate) update.date = Timestamp.fromDate(overrideDate) as any;
+        return { ...w, ...update } as Workout;
+      })
     );
     toast.success(newCompleted ? 'Marked complete!' : 'Marked incomplete');
     try {
-      await completeWorkout(workout.ownerUsername, workout.id, newCompleted);
-      // Refresh cache in background for other pages
+      await completeWorkout(workout.ownerUsername, workout.id, newCompleted, undefined, undefined, overrideDate);
       invalidateWorkouts(user!.username, user!.role);
     } catch (err: any) {
-      // Revert on failure
       setWorkouts((prev) =>
         prev.map((w) => w.id === workout.id ? { ...w, completed: !newCompleted, completedBy: !newCompleted ? 'manual' : undefined } as Workout : w)
       );
       toast.error(err.message || 'Failed to update');
     }
+  };
+
+  const handleLatePromptKeep = async () => {
+    if (!latePromptWorkout) return;
+    const workout = latePromptWorkout;
+    setLatePromptWorkout(null);
+    track('late_completion_prompt_choice', { choice: 'keep', workout_id: workout.id });
+    await doCompleteWorkout(workout, true);
+  };
+
+  const handleLatePromptMoveToday = async () => {
+    if (!latePromptWorkout) return;
+    const workout = latePromptWorkout;
+    setLatePromptWorkout(null);
+    track('late_completion_prompt_choice', { choice: 'move_to_today', workout_id: workout.id });
+    await doCompleteWorkout(workout, true, new Date());
   };
 
   // ── Drag-to-reschedule (desktop, md+) ────────────────────────────────
@@ -660,6 +699,31 @@ export default function CalendarPage() {
           )}
         </div>
       </div>
+
+      {/* Late completion prompt */}
+      <Dialog open={!!latePromptWorkout} onOpenChange={(open) => { if (!open) setLatePromptWorkout(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Complete this workout?</DialogTitle>
+            <DialogDescription>
+              {latePromptWorkout && (
+                <>
+                  <strong>{latePromptWorkout.name}</strong> was scheduled for{' '}
+                  <strong>{format(safeToDate(latePromptWorkout), 'MMM d')}</strong>. How would you like to log it?
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2 pt-2">
+            <Button onClick={handleLatePromptKeep} variant="outline" className="w-full justify-start">
+              ✓ Keep on {latePromptWorkout ? format(safeToDate(latePromptWorkout), 'MMM d') : '…'}
+            </Button>
+            <Button onClick={handleLatePromptMoveToday} className="w-full justify-start">
+              📅 Move to today
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

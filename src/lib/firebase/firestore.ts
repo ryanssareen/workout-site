@@ -347,18 +347,20 @@ export async function toggleWorkoutCompletion(ownerUsername: string, id: string,
   }
 }
 
-// Enhanced completion with notes and rating
+// Enhanced completion with notes, rating, and optional date override.
+// When overrideDate is provided, the workout is atomically moved to that date
+// (used by the "Move to today" late-completion prompt — no Late stigma stored).
 export async function completeWorkout(
   ownerUsername: string,
   id: string,
   completed: boolean,
   notes?: string,
-  rating?: 1 | 2 | 3 | 4 | 5
+  rating?: 1 | 2 | 3 | 4 | 5,
+  overrideDate?: Date,
 ): Promise<void> {
   try {
     const docRef = doc(getDbInstance(), 'users', ownerUsername, 'workouts', id);
 
-    // Get workout to check if completion is late
     const workoutSnap = await getDoc(docRef);
     if (!workoutSnap.exists()) {
       throw new Error('Workout not found');
@@ -372,23 +374,18 @@ export async function completeWorkout(
     if (completed) {
       const now = new Date();
       const workoutDate = workoutSnap.data().date.toDate();
-
-      // Set workout date to end of day for fair comparison
       workoutDate.setHours(23, 59, 59, 999);
-
-      // Check if completing after due date
-      const isLate = now > workoutDate;
-
-      console.log('Late completion check:', {
-        now: now.toISOString(),
-        workoutDate: workoutDate.toISOString(),
-        isLate,
-        workoutName: workoutSnap.data().name
-      });
 
       updateData.completedAt = serverTimestamp();
       updateData.completedBy = 'manual';
-      updateData.completedLate = isLate;
+
+      if (overrideDate) {
+        // User chose "Move to today" — update date atomically, no lateness recorded
+        updateData.date = Timestamp.fromDate(overrideDate);
+        updateData.completedLate = false;
+      } else {
+        updateData.completedLate = now > workoutDate;
+      }
 
       if (notes) {
         updateData.completionNotes = notes;

@@ -71,12 +71,11 @@ function getWorkoutStatus(workout: Workout) {
 
   const isStravaStandalone = workout.source === 'strava';
   const isMatchedByStrava = !isStravaStandalone && workout.completed && workout.completedBy === 'strava';
-  const isLate = workout.completedLate === true;
-  const isCompletedManual = workout.completed && !isStravaStandalone && !isMatchedByStrava && !isLate;
+  const isCompletedManual = workout.completed && !isStravaStandalone && !isMatchedByStrava;
   const isMissed = past && !workout.completed && !isStravaStandalone;
   const isFuture = !workout.completed && !past && !isStravaStandalone;
 
-  return { isStravaStandalone, isMatchedByStrava, isLate, isCompletedManual, isMissed, isFuture };
+  return { isStravaStandalone, isMatchedByStrava, isCompletedManual, isMissed, isFuture };
 }
 
 function getStatusStyles(status: ReturnType<typeof getWorkoutStatus>) {
@@ -90,12 +89,6 @@ function getStatusStyles(status: ReturnType<typeof getWorkoutStatus>) {
     return {
       border: 'border-orange-400 dark:border-orange-500/70',
       bg: 'bg-orange-100/80 dark:bg-orange-500/15',
-    };
-  }
-  if (status.isLate) {
-    return {
-      border: 'border-amber-400 dark:border-amber-500/70',
-      bg: 'bg-amber-100/80 dark:bg-amber-500/15',
     };
   }
   if (status.isMissed) {
@@ -114,7 +107,7 @@ function getStatusStyles(status: ReturnType<typeof getWorkoutStatus>) {
 }
 
 function getStatusIcon(status: ReturnType<typeof getWorkoutStatus>) {
-  if (status.isCompletedManual || status.isMatchedByStrava || status.isLate) {
+  if (status.isCompletedManual || status.isMatchedByStrava) {
     return <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />;
   }
   if (status.isStravaStandalone) {
