@@ -38,6 +38,14 @@ final _prsProvider = FutureProvider<List<PersonalRecord>>((ref) {
 class ReportsScreen extends ConsumerWidget {
   const ReportsScreen({super.key});
 
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    if (hour < 22) return 'Good evening';
+    return 'Good night';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final statsAsync = ref.watch(_statsProvider);
@@ -48,9 +56,7 @@ class ReportsScreen extends ConsumerWidget {
     final firstName = userName.split(' ').first;
 
     return CupertinoPageScaffold(
-      navigationBar: const CupertinoNavigationBar(
-        middle: Text('Your Reports'),
-      ),
+      // No navigationBar — custom inline header like DashboardScreen
       child: SafeArea(
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(
@@ -65,10 +71,48 @@ class ReportsScreen extends ConsumerWidget {
               },
             ),
 
-            // Zone 1: AI Insight Card
+            // ── Header ──
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          CupertinoIcons.sparkles,
+                          color: Color(0xFFF97316), // orange-500
+                          size: 28,
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Your Reports',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${_greeting()}, $firstName',
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: CupertinoColors.systemGrey.resolveFrom(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // ── Zone 1: AI Insight Card ──
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
                 child: _AIInsightCard(
                   firstName: firstName,
                   statsAsync: statsAsync,
@@ -77,10 +121,10 @@ class ReportsScreen extends ConsumerWidget {
               ),
             ),
 
-            // Zone 2: Your Reports row
+            // ── Zone 2: Your Reports ──
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
                 child: Text(
                   'YOUR REPORTS',
                   style: TextStyle(
@@ -94,14 +138,18 @@ class ReportsScreen extends ConsumerWidget {
             ),
             SliverToBoxAdapter(
               child: SizedBox(
-                height: 100,
+                height: 84,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   children: [
                     _ReportLink(
                       icon: CupertinoIcons.calendar,
-                      color: const Color(0xFF6366F1),
+                      gradientStart: const Color(0xFF3B82F6).withValues(alpha: 0.10),
+                      gradientEnd: const Color(0xFF6366F1).withValues(alpha: 0.10),
+                      borderColor: const Color(0xFF3B82F6).withValues(alpha: 0.20),
+                      iconBg: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                      iconColor: const Color(0xFF3B82F6),
                       title: 'Weekly Wrap',
                       subtitle: 'Your weekly capsule',
                       reportType: 'wrap',
@@ -109,7 +157,11 @@ class ReportsScreen extends ConsumerWidget {
                     const SizedBox(width: 10),
                     _ReportLink(
                       icon: CupertinoIcons.chart_bar_alt_fill,
-                      color: const Color(0xFF10B981),
+                      gradientStart: const Color(0xFF10B981).withValues(alpha: 0.10),
+                      gradientEnd: const Color(0xFF14B8A6).withValues(alpha: 0.10),
+                      borderColor: const Color(0xFF10B981).withValues(alpha: 0.20),
+                      iconBg: const Color(0xFF10B981).withValues(alpha: 0.15),
+                      iconColor: const Color(0xFF10B981),
                       title: 'Monthly Review',
                       subtitle: statsAsync.whenOrNull(
                             data: (s) =>
@@ -121,7 +173,11 @@ class ReportsScreen extends ConsumerWidget {
                     const SizedBox(width: 10),
                     _ReportLink(
                       icon: CupertinoIcons.star_fill,
-                      color: const Color(0xFFF59E0B),
+                      gradientStart: const Color(0xFFA855F7).withValues(alpha: 0.10),
+                      gradientEnd: const Color(0xFFEC4899).withValues(alpha: 0.10),
+                      borderColor: const Color(0xFFA855F7).withValues(alpha: 0.20),
+                      iconBg: const Color(0xFFA855F7).withValues(alpha: 0.15),
+                      iconColor: const Color(0xFFA855F7),
                       title: 'Year in Review',
                       subtitle: '2025 Wrapped',
                       reportType: 'wrapped',
@@ -131,10 +187,10 @@ class ReportsScreen extends ConsumerWidget {
               ),
             ),
 
-            // Zone 3: Explore Your Data
+            // ── Zone 3: Explore Your Data ──
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
                 child: Text(
                   'EXPLORE YOUR DATA',
                   style: TextStyle(
@@ -149,7 +205,7 @@ class ReportsScreen extends ConsumerWidget {
 
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: _ExploreGrid(
                   statsAsync: statsAsync,
                   workoutsAsync: workoutsAsync,
@@ -166,11 +222,7 @@ class ReportsScreen extends ConsumerWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// Zone 1: AI Insight Card
+// Zone 1: AI Insight Card — orange gradient (matches web AIInsightCard.tsx)
 // ---------------------------------------------------------------------------
 
 class _AIInsightCard extends StatelessWidget {
@@ -212,35 +264,53 @@ class _AIInsightCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: CupertinoColors.systemGrey6.resolveFrom(context),
-        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFFF97316).withValues(alpha: 0.10), // orange-500/10
+            const Color(0xFFF59E0B).withValues(alpha: 0.10), // amber-500/10
+            const Color(0xFFEAB308).withValues(alpha: 0.06), // yellow-500/6
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFFF97316).withValues(alpha: 0.20), // orange-500/20
+          width: 1,
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Icon box
           Container(
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppTheme.primaryRed.withValues(alpha: 0.1),
+              color: const Color(0xFFF97316).withValues(alpha: 0.20),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Center(
-              child: Text('\u{1F3CB}', style: TextStyle(fontSize: 22)),
+              child: Icon(
+                CupertinoIcons.sparkles,
+                color: Color(0xFFF97316),
+                size: 20,
+              ),
             ),
           ),
           const SizedBox(width: 12),
+          // Content
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Hey $firstName',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
+                const Text(
+                  "Today's Insight",
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -249,7 +319,7 @@ class _AIInsightCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     color: CupertinoColors.systemGrey.resolveFrom(context),
-                    height: 1.4,
+                    height: 1.5,
                   ),
                 ),
               ],
@@ -262,19 +332,27 @@ class _AIInsightCard extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Zone 2: Report Link Cards
+// Zone 2: Report Link Cards — gradient + border per type
 // ---------------------------------------------------------------------------
 
 class _ReportLink extends StatelessWidget {
   final IconData icon;
-  final Color color;
+  final Color gradientStart;
+  final Color gradientEnd;
+  final Color borderColor;
+  final Color iconBg;
+  final Color iconColor;
   final String title;
   final String subtitle;
   final String reportType;
 
   const _ReportLink({
     required this.icon,
-    required this.color,
+    required this.gradientStart,
+    required this.gradientEnd,
+    required this.borderColor,
+    required this.iconBg,
+    required this.iconColor,
     required this.title,
     required this.subtitle,
     required this.reportType,
@@ -285,35 +363,57 @@ class _ReportLink extends StatelessWidget {
     return GestureDetector(
       onTap: () => context.push('/report/$reportType'),
       child: Container(
-        width: 160,
+        width: 180,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: color,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [gradientStart, gradientEnd],
+          ),
           borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: borderColor, width: 1),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(icon, color: CupertinoColors.white, size: 24),
-            const Spacer(),
-            Text(
-              title,
-              style: const TextStyle(
-                color: CupertinoColors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
+            // Icon box (36x36 = web's h-9 w-9)
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: iconBg,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Center(
+                child: Icon(icon, color: iconColor, size: 18),
               ),
             ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: TextStyle(
-                color: CupertinoColors.white.withValues(alpha: 0.8),
-                fontSize: 12,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: CupertinoColors.systemGrey.resolveFrom(context),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -323,7 +423,7 @@ class _ReportLink extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Zone 3: Explore Grid
+// Zone 3: Explore Grid — single-column horizontal row cards
 // ---------------------------------------------------------------------------
 
 class _ExploreGrid extends StatelessWidget {
@@ -343,13 +443,12 @@ class _ExploreGrid extends StatelessWidget {
     // Compute dynamic subtitles from real data
     String sportSubtitle = 'Dive into your top sport';
     String trendSubtitle = 'Compare your training volume';
-    String goalSubtitle = 'Track your readiness and buildup...';
-    String recoverySubtitle = 'Check your training load...';
-    String prSubtitle = 'Track and visualize your PRs...';
-    String analysisSubtitle = 'Charts, breakdowns, and more...';
+    String goalSubtitle = 'Track your readiness and buildup';
+    String recoverySubtitle = 'Check your training load';
+    String prSubtitle = 'Track and visualize your PRs';
+    String analysisSubtitle = 'Charts, breakdowns, and more';
 
     if (workouts != null && workouts.isNotEmpty) {
-      // Sport deep dive — find dominant sport in last 30 days
       final recent30 = workouts
           .where((w) => w.date
               .isAfter(DateTime.now().subtract(const Duration(days: 30))))
@@ -361,21 +460,17 @@ class _ExploreGrid extends StatelessWidget {
       if (sportCounts.isNotEmpty) {
         final topSport = sportCounts.entries
             .reduce((a, b) => a.value >= b.value ? a : b);
-        sportSubtitle =
-            '${topSport.value} sessions in the last 30 days';
+        sportSubtitle = '${topSport.value} sessions in the last 30 days';
       }
 
-      // Recovery — count recent days
       final recent14 = workouts
           .where((w) => w.date
               .isAfter(DateTime.now().subtract(const Duration(days: 14))))
           .length;
       if (recent14 > 0) {
-        recoverySubtitle =
-            '$recent14 workouts in 14 days — check load...';
+        recoverySubtitle = '$recent14 workouts in 14 days';
       }
 
-      // Trend
       final now = DateTime.now();
       final thisMonthName = DateFormat('MMMM').format(now);
       final lastMonthName =
@@ -384,82 +479,51 @@ class _ExploreGrid extends StatelessWidget {
     }
 
     if (stats != null && stats.total > 0) {
-      analysisSubtitle =
-          '${stats.total} workouts tracked — charts, breakdowns...';
+      analysisSubtitle = '${stats.total} workouts tracked';
     }
 
     return Column(
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: _ExploreCard(
-                emoji: '\u{1F4AA}',
-                emojiColor: const Color(0xFFF59E0B),
-                title: 'Sport Deep Dive',
-                subtitle: sportSubtitle,
-                reportType: 'sport-deep-dive',
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _ExploreCard(
-                emoji: '\u{1F4CA}',
-                emojiColor: const Color(0xFFEC4899),
-                title: 'Trend Report',
-                subtitle: trendSubtitle,
-                reportType: 'trend-report',
-              ),
-            ),
-          ],
+        _ExploreCard(
+          emoji: '\u{1F4AA}',
+          title: 'Sport Deep Dive',
+          subtitle: sportSubtitle,
+          reportType: 'sport-deep-dive',
         ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: _ExploreCard(
-                emoji: '\u{1F3AF}',
-                emojiColor: const Color(0xFFEF4444),
-                title: 'Goal Tracker',
-                subtitle: goalSubtitle,
-                reportType: 'goal-tracker',
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _ExploreCard(
-                emoji: '\u{2705}',
-                emojiColor: const Color(0xFF22C55E),
-                title: 'Recovery Check',
-                subtitle: recoverySubtitle,
-                reportType: 'recovery-report',
-              ),
-            ),
-          ],
+        const SizedBox(height: 8),
+        _ExploreCard(
+          emoji: '\u{1F4CA}',
+          title: 'Trend Report',
+          subtitle: trendSubtitle,
+          reportType: 'trend-report',
         ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: _ExploreCard(
-                emoji: '\u{1F3C6}',
-                emojiColor: const Color(0xFFF97316),
-                title: 'Personal Records',
-                subtitle: prSubtitle,
-                reportType: 'pr-timeline',
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _ExploreCard(
-                emoji: '\u{1F4C8}',
-                emojiColor: const Color(0xFF6366F1),
-                title: 'Training Analysis',
-                subtitle: analysisSubtitle,
-                reportType: 'training-analysis',
-              ),
-            ),
-          ],
+        const SizedBox(height: 8),
+        _ExploreCard(
+          emoji: '\u{1F3AF}',
+          title: 'Goal Tracker',
+          subtitle: goalSubtitle,
+          reportType: 'goal-tracker',
+        ),
+        const SizedBox(height: 8),
+        _ExploreCard(
+          emoji: '\u{2705}',
+          title: 'Recovery Check',
+          subtitle: recoverySubtitle,
+          reportType: 'recovery-report',
+        ),
+        const SizedBox(height: 8),
+        _ExploreCard(
+          emoji: '\u{1F3C6}',
+          title: 'Personal Records',
+          subtitle: prSubtitle,
+          reportType: 'pr-timeline',
+        ),
+        const SizedBox(height: 8),
+        _ExploreCard(
+          emoji: '\u{1F4C8}',
+          title: 'Training Analysis',
+          subtitle: analysisSubtitle,
+          reportType: 'training-analysis',
         ),
       ],
     );
@@ -468,14 +532,12 @@ class _ExploreGrid extends StatelessWidget {
 
 class _ExploreCard extends StatelessWidget {
   final String emoji;
-  final Color emojiColor;
   final String title;
   final String subtitle;
   final String reportType;
 
   const _ExploreCard({
     required this.emoji,
-    required this.emojiColor,
     required this.title,
     required this.subtitle,
     required this.reportType,
@@ -486,7 +548,7 @@ class _ExploreCard extends StatelessWidget {
     return GestureDetector(
       onTap: () => context.push('/report/$reportType'),
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: CupertinoColors.systemBackground.resolveFrom(context),
           borderRadius: BorderRadius.circular(14),
@@ -495,38 +557,43 @@ class _ExploreCard extends StatelessWidget {
             width: 0.5,
           ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Row(
-              children: [
-                Text(emoji, style: const TextStyle(fontSize: 20)),
-                const Spacer(),
-                Icon(
-                  CupertinoIcons.chevron_right,
-                  size: 14,
-                  color: CupertinoColors.systemGrey3.resolveFrom(context),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
+            // Emoji
+            Text(emoji, style: const TextStyle(fontSize: 24)),
+            const SizedBox(width: 12),
+            // Title + subtitle
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: CupertinoColors.systemGrey.resolveFrom(context),
+                      height: 1.4,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: TextStyle(
-                fontSize: 12,
-                color: CupertinoColors.systemGrey.resolveFrom(context),
-                height: 1.3,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+            const SizedBox(width: 8),
+            // Arrow
+            Icon(
+              CupertinoIcons.chevron_right,
+              size: 14,
+              color: CupertinoColors.systemGrey3.resolveFrom(context),
             ),
           ],
         ),

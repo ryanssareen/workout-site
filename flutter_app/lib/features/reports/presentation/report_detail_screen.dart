@@ -10,9 +10,16 @@ import '../../../features/workouts/data/workout_repository.dart';
 import '../../../models/stats.dart';
 import '../../../models/workout.dart';
 import '../../../models/personal_record.dart';
+import '../data/report_models.dart';
+import '../data/report_repository.dart';
+import 'widgets/report_sections.dart';
 
 final _reportRepoProvider = Provider<WorkoutRepository>((ref) {
   return WorkoutRepository(ref.watch(mcpClientProvider));
+});
+
+final _aiReportRepoProvider = Provider<ReportRepository>((ref) {
+  return ReportRepository(ref.watch(authenticatedDioProvider));
 });
 
 final _reportWorkoutsProvider = FutureProvider<List<Workout>>((ref) {
@@ -119,24 +126,41 @@ class ReportDetailScreen extends ConsumerWidget {
         middle: Text(_title),
       ),
       child: SafeArea(
-        child: workoutsAsync.when(
-          loading: () => const Center(child: CupertinoActivityIndicator()),
-          error: (e, _) => Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text('Error: $e', textAlign: TextAlign.center),
-            ),
-          ),
-          data: (workouts) => _buildReport(
-            context,
-            workouts,
-            statsAsync.valueOrNull,
-            prsAsync.valueOrNull ?? [],
-          ),
-        ),
+        child: _isAIReport
+            ? _AIReportView(
+                reportType: reportType,
+                title: _title,
+                aiRepo: ref.watch(_aiReportRepoProvider),
+                workouts: workoutsAsync.valueOrNull,
+              )
+            : workoutsAsync.when(
+                loading: () =>
+                    const Center(child: CupertinoActivityIndicator()),
+                error: (e, _) => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text('Error: $e', textAlign: TextAlign.center),
+                  ),
+                ),
+                data: (workouts) => _buildReport(
+                  context,
+                  workouts,
+                  statsAsync.valueOrNull,
+                  prsAsync.valueOrNull ?? [],
+                ),
+              ),
       ),
     );
   }
+
+  bool get _isAIReport => const {
+        'sport-deep-dive',
+        'trend-report',
+        'goal-tracker',
+        'recovery-report',
+        'pr-timeline',
+        'training-analysis',
+      }.contains(reportType);
 
   Widget _buildReport(
     BuildContext context,
@@ -148,14 +172,257 @@ class ReportDetailScreen extends ConsumerWidget {
       'wrap' => _WeeklyWrap(workouts: workouts, stats: stats),
       'review' => _MonthlyReview(workouts: workouts, stats: stats),
       'wrapped' => _YearInReview(workouts: workouts, stats: stats),
-      'pr-timeline' => _PRTimeline(prs: prs),
-      'recovery-report' => _RecoveryCheck(workouts: workouts, stats: stats),
-      'sport-deep-dive' => _SportDeepDive(workouts: workouts),
-      'trend-report' => _TrendReport(workouts: workouts, stats: stats),
-      'goal-tracker' => _GoalTracker(workouts: workouts, stats: stats),
-      'training-analysis' => _TrainingAnalysis(workouts: workouts, stats: stats),
-      _ => _TrainingAnalysis(workouts: workouts, stats: stats),
+      _ => const SizedBox.shrink(),
     };
+  }
+}
+
+// ===========================================================================
+// AI Report View — fetches from /api/ai/reports/generate and renders sections
+// ===========================================================================
+
+class _AIReportView extends StatefulWidget {
+  final String reportType;
+  final String title;
+  final ReportRepository aiRepo;
+  final List<Workout>? workouts;
+
+  const _AIReportView({
+    required this.reportType,
+    required this.title,
+    required this.aiRepo,
+    this.workouts,
+  });
+
+  @override
+  State<_AIReportView> createState() => _AIReportViewState();
+}
+
+class _AIReportViewState extends State<_AIReportView> {
+  StructuredReport? _report;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchReport();
+  }
+
+  Future<void> _fetchReport({bool refresh = false}) async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final report = await widget.aiRepo.generateReport(
+        widget.reportType,
+        clientWorkouts: widget.workouts,
+        refresh: refresh,
+      );
+      if (mounted) setState(() => _report = report);
+    } on InsufficientDataException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) return _buildSkeleton(context);
+    if (_error != null) return _buildError(context);
+    if (_report == null) return _buildError(context);
+
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
+      slivers: [
+        CupertinoSliverRefreshControl(
+          onRefresh: () => _fetchReport(refresh: true),
+        ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _report!.title,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                if (_report!.subtitle != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    _report!.subtitle!,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: CupertinoColors.systemGrey.resolveFrom(context),
+                    ),
+                  ),
+                ],
+                if (_report!.dateRange != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    _report!.dateRange!,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: CupertinoColors.systemGrey2.resolveFrom(context),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+            child: ReportSectionRenderer(sections: _report!.sections),
+          ),
+        ),
+        if (_report!.summary != null)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: Text(
+                _report!.summary!,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontStyle: FontStyle.italic,
+                  color: CupertinoColors.systemGrey.resolveFrom(context),
+                  height: 1.5,
+                ),
+              ),
+            ),
+          ),
+        const SliverToBoxAdapter(child: SizedBox(height: 40)),
+      ],
+    );
+  }
+
+  Widget _buildSkeleton(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Title skeleton
+          Container(
+            width: 200,
+            height: 24,
+            decoration: BoxDecoration(
+              color: CupertinoColors.systemGrey5.resolveFrom(context),
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: 140,
+            height: 14,
+            decoration: BoxDecoration(
+              color: CupertinoColors.systemGrey5.resolveFrom(context),
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Stat cards skeleton
+          Row(
+            children: [
+              for (int i = 0; i < 3; i++) ...[
+                if (i > 0) const SizedBox(width: 10),
+                Expanded(
+                  child: Container(
+                    height: 100,
+                    decoration: BoxDecoration(
+                      color:
+                          CupertinoColors.systemGrey5.resolveFrom(context),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Chart skeleton
+          Container(
+            height: 200,
+            decoration: BoxDecoration(
+              color: CupertinoColors.systemGrey5.resolveFrom(context),
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Text skeleton
+          for (int i = 0; i < 3; i++) ...[
+            Container(
+              width: double.infinity,
+              height: 14,
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: CupertinoColors.systemGrey5.resolveFrom(context),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ],
+          const SizedBox(height: 24),
+          Center(
+            child: Column(
+              children: [
+                const CupertinoActivityIndicator(),
+                const SizedBox(height: 12),
+                Text(
+                  'Generating your ${widget.title}...',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: CupertinoColors.systemGrey.resolveFrom(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildError(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('\u{1F614}', style: TextStyle(fontSize: 48)),
+            const SizedBox(height: 16),
+            Text(
+              _error ?? 'Something went wrong',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 15,
+                color: CupertinoColors.systemGrey.resolveFrom(context),
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 20),
+            CupertinoButton(
+              color: AppTheme.primaryRed,
+              borderRadius: BorderRadius.circular(12),
+              onPressed: () => _fetchReport(refresh: true),
+              child: const Text('Try Again'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -840,16 +1107,90 @@ class _MonthlyReview extends StatelessWidget {
 // YEAR IN REVIEW — 5 slides: Hero, Stats, Breakdown, Records, Heatmap
 // ===========================================================================
 
-class _YearInReview extends StatelessWidget {
+class _YearInReview extends StatefulWidget {
   final List<Workout> workouts;
   final UserStats? stats;
 
   const _YearInReview({required this.workouts, this.stats});
 
   @override
+  State<_YearInReview> createState() => _YearInReviewState();
+}
+
+class _YearInReviewState extends State<_YearInReview>
+    with SingleTickerProviderStateMixin {
+  final _guessController = TextEditingController();
+  bool _guessLocked = false;
+  int _guessValue = 0;
+  String _guessResponse = '';
+  String _guessEmoji = '';
+  int _actualCount = 0;
+
+  // Count-up animation
+  late AnimationController _countUpController;
+  late Animation<double> _countUpAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _countUpController = AnimationController(
+      duration: const Duration(milliseconds: 1800),
+      vsync: this,
+    );
+  }
+
+  @override
+  void dispose() {
+    _guessController.dispose();
+    _countUpController.dispose();
+    super.dispose();
+  }
+
+  void _submitGuess(int actual) {
+    final guess = int.tryParse(_guessController.text) ?? 0;
+    final diff = (guess - actual).abs();
+    final pctDiff = actual > 0 ? (diff / actual * 100) : 0.0;
+
+    String response;
+    String emoji;
+    if (diff == 0) {
+      response = "NO WAY! You guessed it exactly right!";
+      emoji = '\u{1F92F}'; // 🤯
+    } else if (pctDiff <= 10) {
+      response = "So close! You actually did $actual.";
+      emoji = '\u{1F525}'; // 🔥
+    } else if (pctDiff <= 25) {
+      response = "Not bad! But you actually did $actual workouts.";
+      emoji = '\u{1F4AA}'; // 💪
+    } else if (guess > actual) {
+      response = "Not even close. You did $actual. Still, that's $actual more than zero!";
+      emoji = '\u{1F605}'; // 😅
+    } else {
+      response = "Way off! You actually crushed $actual workouts!";
+      emoji = '\u{1F680}'; // 🚀
+    }
+
+    setState(() {
+      _guessLocked = true;
+      _guessValue = guess;
+      _guessResponse = response;
+      _guessEmoji = emoji;
+      _actualCount = actual;
+    });
+
+    // Start count-up animation
+    _countUpAnimation = Tween<double>(begin: 0, end: actual.toDouble())
+        .animate(CurvedAnimation(
+      parent: _countUpController,
+      curve: Curves.easeOutCubic,
+    ));
+    _countUpController.forward();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final year = DateTime.now().year;
-    final yearWorkouts = workouts.where((w) =>
+    final yearWorkouts = widget.workouts.where((w) =>
         w.date.year == year && w.completed).toList();
 
     final totalDistance = yearWorkouts.fold<double>(0, (s, w) => s + _getDistance(w));
@@ -869,7 +1210,6 @@ class _YearInReview extends StatelessWidget {
       byMonth[w.date.month] = (byMonth[w.date.month] ?? 0) + 1;
     }
 
-    // Records
     final records = <String, Workout>{};
     for (final w in yearWorkouts) {
       final d = _getDistance(w);
@@ -881,7 +1221,6 @@ class _YearInReview extends StatelessWidget {
       }
     }
 
-    // Longest by duration
     final longestByType = <String, Workout>{};
     for (final w in yearWorkouts) {
       if ((w.duration ?? 0) > 30) {
@@ -893,12 +1232,174 @@ class _YearInReview extends StatelessWidget {
     }
 
     return _SlideScaffold(
-      slideCount: 5,
+      slideCount: 7, // 2 new + 5 original
       activeColor: const Color(0xFFEF4444),
       slideBuilder: (context, index) {
         return switch (index) {
-          // Slide 0: Hero reveal
+          // ── Slide 0: GUESS ──
           0 => _CenteredSlide(
+              gradient: const [Color(0xFF1E1B4B), Color(0xFF312E81)],
+              children: [
+                Text(
+                  '$year',
+                  style: TextStyle(
+                    color: CupertinoColors.white.withValues(alpha: 0.5),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 4,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'How many workouts\ndid you complete?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: CupertinoColors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                if (!_guessLocked) ...[
+                  SizedBox(
+                    width: 160,
+                    child: CupertinoTextField(
+                      controller: _guessController,
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      placeholder: '???',
+                      style: const TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.w900,
+                        color: CupertinoColors.white,
+                      ),
+                      placeholderStyle: TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.w900,
+                        color: CupertinoColors.white.withValues(alpha: 0.3),
+                      ),
+                      decoration: BoxDecoration(
+                        color: CupertinoColors.white.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: CupertinoColors.white.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 16, horizontal: 20),
+                      onChanged: (_) => setState(() {}),
+                      onSubmitted: (_) {
+                        if (_guessController.text.isNotEmpty) {
+                          _submitGuess(yearWorkouts.length);
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  CupertinoButton(
+                    color: _guessController.text.isNotEmpty
+                        ? AppTheme.primaryRed
+                        : CupertinoColors.systemGrey4,
+                    borderRadius: BorderRadius.circular(14),
+                    onPressed: _guessController.text.isNotEmpty
+                        ? () => _submitGuess(yearWorkouts.length)
+                        : null,
+                    child: const Text(
+                      'Lock it in',
+                      style: TextStyle(
+                        color: CupertinoColors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 17,
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  Text(
+                    'You guessed $_guessValue',
+                    style: TextStyle(
+                      color: CupertinoColors.white.withValues(alpha: 0.7),
+                      fontSize: 18,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Swipe to reveal \u{2192}',
+                    style: TextStyle(
+                      color: CupertinoColors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+
+          // ── Slide 1: REVEAL ──
+          1 => _CenteredSlide(
+              gradient: const [Color(0xFFF59E0B), Color(0xFFEF4444)],
+              children: [
+                if (_guessLocked) ...[
+                  Text(_guessEmoji, style: const TextStyle(fontSize: 56)),
+                  const SizedBox(height: 16),
+                  AnimatedBuilder(
+                    animation: _countUpController,
+                    builder: (context, _) {
+                      final val = _countUpAnimation.value.round();
+                      return Text(
+                        '$val',
+                        style: const TextStyle(
+                          color: CupertinoColors.white,
+                          fontSize: 80,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      );
+                    },
+                  ),
+                  const Text(
+                    'workouts completed',
+                    style: TextStyle(
+                      color: CupertinoColors.white,
+                      fontSize: 18,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Text(
+                      _guessResponse,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: CupertinoColors.white.withValues(alpha: 0.9),
+                        fontSize: 16,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  const Text(
+                    'Submit your guess first!',
+                    style: TextStyle(
+                      color: CupertinoColors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '\u{2190} Go back',
+                    style: TextStyle(
+                      color: CupertinoColors.white,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+
+          // ── Slide 2: Hero (original slide 0) ──
+          2 => _CenteredSlide(
               gradient: const [Color(0xFFF59E0B), Color(0xFFEF4444)],
               children: [
                 Text(
@@ -930,8 +1431,8 @@ class _YearInReview extends StatelessWidget {
               ],
             ),
 
-          // Slide 1: Stats
-          1 => SingleChildScrollView(
+          // ── Slide 3: Stats (original slide 1) ──
+          3 => SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: Column(
                 children: [
@@ -982,8 +1483,8 @@ class _YearInReview extends StatelessWidget {
               ),
             ),
 
-          // Slide 2: Breakdown
-          2 => SingleChildScrollView(
+          // Slide 4: Breakdown (original slide 2)
+          4 => SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

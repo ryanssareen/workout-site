@@ -19,10 +19,7 @@ dependencies:
   dio: ^5.7.0
   json_annotation: ^4.9.0
 
-  # Auth & Security
-  flutter_secure_storage: ^9.2.4
-
-  # Offline cache
+  # Auth & Storage
   shared_preferences: ^2.3.4
 
   # Routing
