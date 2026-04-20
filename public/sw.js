@@ -81,7 +81,7 @@ self.addEventListener('push', (event) => {
   const { title, body, url, icon } = data;
 
   event.waitUntil(
-    self.registration.showNotification(title || 'The Daily Athlete', {
+    self.registration.showNotification(title || 'New Activity', {
       body: body || '',
       icon: icon || '/icons/icon-192.png',
       badge: '/icons/icon-192.png',

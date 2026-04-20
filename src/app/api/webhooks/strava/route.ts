@@ -901,9 +901,9 @@ export async function POST(request: NextRequest) {
               const username = userSnap.docs[0].id;
 
               const titleByAspect: Record<string, string> = {
-                create: '🏃 New Strava Workout',
-                update: '🔄 Strava Workout Updated',
-                delete: '🗑️ Strava Workout Removed',
+                create: 'New Strava Workout',
+                update: 'Strava Workout Updated',
+                delete: 'Strava Workout Removed',
               };
 
               const body = aspect_type === 'delete'
@@ -912,7 +912,7 @@ export async function POST(request: NextRequest) {
 
               // Notify the athlete
               await sendPushNotification(username, {
-                title: titleByAspect[aspect_type] || '🔄 Strava Sync',
+                title: titleByAspect[aspect_type] || 'Strava Sync',
                 body,
                 url: '/workouts',
               }).catch(() => {});
@@ -924,7 +924,7 @@ export async function POST(request: NextRequest) {
                   ? `${athleteName}: ${result.workoutName ?? 'a workout'} was removed`
                   : `${athleteName}: ${body}`;
                 await sendPushNotification(result.coachUsername, {
-                  title: titleByAspect[aspect_type] || '🔄 Athlete Strava Sync',
+                  title: titleByAspect[aspect_type] || 'Strava Sync',
                   body: coachBody,
                   url: '/workouts',
                 }).catch(() => {});

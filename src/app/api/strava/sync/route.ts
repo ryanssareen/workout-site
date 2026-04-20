@@ -1238,7 +1238,7 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
     // Send push notification if new workouts were synced
     if (newWorkoutsCount > 0 || mergedWorkoutsCount > 0) {
       sendPushNotification(userId, {
-        title: '🏃 Strava Sync Complete',
+        title: 'Strava Sync Complete',
         body: message,
         url: '/workouts',
       }).catch(() => {});
@@ -1249,7 +1249,7 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
         const athleteName = (userDoc.data()?.displayName as string | undefined) || userId;
         if (coachUsername) {
           sendPushNotification(coachUsername, {
-            title: '🏃 Athlete Strava Sync Complete',
+            title: 'Strava Sync Complete',
             body: `${athleteName}: ${message}`,
             url: '/workouts',
           }).catch(() => {});
