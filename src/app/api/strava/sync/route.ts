@@ -1241,7 +1241,20 @@ async function handleSync(request: NextRequest, opts: SyncOptions) {
         title: '🏃 Strava Sync Complete',
         body: message,
         url: '/workouts',
-      }).catch(() => {}); // non-fatal, fire and forget
+      }).catch(() => {});
+
+      // Fan-out to coach if athlete is linked to one (1 Firestore read)
+      adminDb.collection('users').doc(userId).get().then((userDoc) => {
+        const coachUsername = userDoc.data()?.coachUsername as string | undefined;
+        const athleteName = (userDoc.data()?.displayName as string | undefined) || userId;
+        if (coachUsername) {
+          sendPushNotification(coachUsername, {
+            title: '🏃 Athlete Strava Sync Complete',
+            body: `${athleteName}: ${message}`,
+            url: '/workouts',
+          }).catch(() => {});
+        }
+      }).catch(() => {});
     }
 
     // Redirect back to settings or return JSON based on request type
