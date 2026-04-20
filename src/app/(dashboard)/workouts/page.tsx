@@ -97,7 +97,6 @@ function WorkoutRow({ workout, onDelete }: { workout: Workout; onDelete?: (worko
   const past = isPast(workoutDate) && !isToday(workoutDate);
   const isNote = workout.type === 'other' && workout.name === 'Note';
   const isMissed = past && !workout.completed && workout.source !== 'strava' && !isNote;
-  const isLate = workout.completedLate === true;
   const extraStats = getExtraStats(workout);
   const isPlanned = !workout.completed && (isFuture(workoutDate) || isToday(workoutDate));
 
@@ -119,11 +118,6 @@ function WorkoutRow({ workout, onDelete }: { workout: Workout; onDelete?: (worko
             'text-[13px] font-semibold truncate',
             isMissed && 'line-through text-muted-foreground',
           )}>{workout.name}</span>
-          {isLate && (
-            <Badge variant="secondary" className="text-[9px] shrink-0 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0">
-              Late
-            </Badge>
-          )}
         </div>
         <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5">
           <span>{dateStr}</span>
@@ -175,7 +169,7 @@ function WorkoutRow({ workout, onDelete }: { workout: Workout; onDelete?: (worko
       {/* Completion status */}
       <div className="shrink-0">
         {workout.completed ? (
-          <CheckCircle2 className={cn('h-4.5 w-4.5', isLate ? 'text-amber-500' : 'text-green-500')} />
+          <CheckCircle2 className="h-4.5 w-4.5 text-green-500" />
         ) : isMissed ? (
           <AlertCircle className="h-4.5 w-4.5 text-red-500" />
         ) : (

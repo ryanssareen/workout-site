@@ -236,7 +236,7 @@ export function CoachDashboard({ username, timezone, prefetchedWorkouts }: Coach
                     className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <CheckCircle2 className={cn('h-4 w-4 shrink-0', w.completedLate ? 'text-orange-500' : 'text-green-500')} />
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500" />
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">{w.name}</p>
                         <p className="text-xs text-muted-foreground">

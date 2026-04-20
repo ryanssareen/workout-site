@@ -51,7 +51,6 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
   const isPastWorkout = safeToDate(workout) < new Date();
   const isUpcoming = !isPastWorkout && !workout.completed;
   const isMissed = isPastWorkout && !workout.completed;
-  const isCompletedLate = workout.completed && workout.completedLate;
   const tags = (workout as any).tags as WorkoutTag[] | undefined;
   const plannedSummary = getWorkoutSummary(workout);
   const hasRoute = !!(workout.routeData?.polyline);
@@ -114,8 +113,7 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
   })();
 
   const getCardStyle = () => {
-    if (workout.completed && !isCompletedLate) return 'border-l-4 border-l-green-500 bg-green-500/5';
-    if (isCompletedLate) return 'border-l-4 border-l-orange-500 bg-orange-500/5';
+    if (workout.completed) return 'border-l-4 border-l-green-500 bg-green-500/5';
     if (isUpcoming) return 'border-l-4 border-l-blue-500 bg-blue-500/5';
     if (isMissed) return 'border-l-4 border-l-red-500 bg-red-500/5';
     return '';
@@ -142,7 +140,7 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
       >
         {workout.completed && (
           <div className="absolute top-4 right-4">
-            <CheckCircle2 className={cn('h-5 w-5', isCompletedLate ? 'text-orange-500' : 'text-green-500')} />
+            <CheckCircle2 className="h-5 w-5 text-green-500" />
           </div>
         )}
 
@@ -188,8 +186,7 @@ export function WorkoutCard({ workout, onEdit, onDelete, onToggleComplete, onVie
           )}
 
           <div className="flex flex-wrap gap-1.5 mb-3">
-            {workout.completed && !isCompletedLate && <Badge className="bg-green-500 hover:bg-green-600 text-xs"><CheckCircle2 className="h-3 w-3 mr-1" />Done</Badge>}
-            {isCompletedLate && <Badge className="bg-orange-500 hover:bg-orange-600 text-xs"><CheckCircle2 className="h-3 w-3 mr-1" />Late</Badge>}
+            {workout.completed && <Badge className="bg-green-500 hover:bg-green-600 text-xs"><CheckCircle2 className="h-3 w-3 mr-1" />Done</Badge>}
             {isUpcoming && <Badge variant="outline" className="border-blue-500/50 text-blue-600 dark:text-blue-400 text-xs"><Clock className="h-3 w-3 mr-1" />Upcoming</Badge>}
             {isMissed && <Badge variant="destructive" className="text-xs">Missed</Badge>}
             {workout.completedBy === 'strava' && <Badge variant="outline" className="border-orange-500/50 text-orange-600 dark:text-orange-400 text-xs"><Activity className="h-3 w-3 mr-1" />Strava</Badge>}
