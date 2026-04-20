@@ -51,6 +51,7 @@ export const API_REGISTRY: ApiEndpoint[] = [
   { method: 'GET', path: '/api/admin/logs', category: 'admin', description: 'View admin/cron logs', testable: true, auth: 'admin', params: '?type=actions|cron' },
   { method: 'POST', path: '/api/admin/assign-athletes', category: 'admin', description: 'Assign athletes to coach (legacy)', testable: false, auth: 'admin' },
   { method: 'POST', path: '/api/admin/migrate-merged-workouts', category: 'admin', description: 'Run merge migration', testable: false, auth: 'admin', dangerous: true },
+  { method: 'POST', path: '/api/admin/clear-late-completions', category: 'admin', description: 'Remove completedLate field from all workouts (?username=X, ?dryRun=true)', testable: true, auth: 'admin', dangerous: true },
   { method: 'POST', path: '/api/admin/restore', category: 'admin', description: 'Full restore from file (legacy)', testable: false, auth: 'admin', dangerous: true },
   { method: 'GET', path: '/api/admin/broadcast', category: 'admin', description: 'Preview broadcast recipient list', testable: true, auth: 'admin' },
   { method: 'POST', path: '/api/admin/broadcast', category: 'admin', description: 'Send feature announcement email to all users', testable: false, auth: 'admin', dangerous: true },
