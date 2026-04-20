@@ -66,7 +66,7 @@ export function computeWorkoutSummary(
     ? classifyAdherence(workout, metrics, planMeta)
     : 'unplanned';
 
-  return {
+  return stripUndefined({
     generatedAt: Date.now(),
     forVersion: workout.summaryVersion ?? 1,
     sport: workout.type,
@@ -83,7 +83,7 @@ export function computeWorkoutSummary(
     hasGps: signal.hasGps,
     hasHr: signal.hasHr,
     hasPower: signal.hasPower,
-  };
+  });
 }
 
 /**
@@ -361,4 +361,11 @@ function toMeters(distance: number, unit?: string): number {
 function toIsoDate(workout: Workout): string {
   const d = safeToDate(workout);
   return d.toISOString().slice(0, 10);
+}
+
+/** Remove undefined values so Firestore never sees them in nested summary objects. */
+function stripUndefined<T extends object>(obj: T): T {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== undefined),
+  ) as T;
 }
