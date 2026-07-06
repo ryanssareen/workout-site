@@ -8,7 +8,10 @@
       "mcp__claude_ai_Vercel__list_projects",
       "mcp__claude_ai_Vercel__list_deployments",
       "mcp__claude_ai_Vercel__get_deployment_build_logs",
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "Bash(npx --version)",
+      "Bash(xcrun simctl:*)",
+      "Bash(open -a Simulator)"
     ]
   },
   "enableAllProjectMcpServers": true,
