@@ -24,21 +24,24 @@ service cloud.firestore {
                    'role', 'coachUsername']);
       allow delete: if false;
 
-      // Milestones subcollection
+      // Milestones subcollection — owner (by UID, via the parent user doc) only.
       match /milestones/{milestoneId} {
-        allow read: if request.auth != null;
-        allow create: if request.auth != null;
-        allow update, delete: if request.auth != null;
+        allow read: if request.auth != null
+          && get(/databases/$(database)/documents/users/$(username)).data.uid == request.auth.uid;
+        allow create, update, delete: if request.auth != null
+          && get(/databases/$(database)/documents/users/$(username)).data.uid == request.auth.uid;
       }
 
-      // AI daily insights (written by cron via Admin SDK, read by client)
+      // AI daily insights (written by cron via Admin SDK, read by the owner only)
       match /insights/{insightId} {
-        allow read: if request.auth != null;
+        allow read: if request.auth != null
+          && get(/databases/$(database)/documents/users/$(username)).data.uid == request.auth.uid;
       }
 
-      // Cached reports (written by API via Admin SDK, read by client)
+      // Cached reports (written by API via Admin SDK, read by the owner only)
       match /cachedReports/{reportId} {
-        allow read: if request.auth != null;
+        allow read: if request.auth != null
+          && get(/databases/$(database)/documents/users/$(username)).data.uid == request.auth.uid;
       }
 
       // Weekly plan recaps (written by /api/plans/[id]/weekly-recap via Admin
@@ -49,29 +52,39 @@ service cloud.firestore {
         allow write: if false; // server-only
       }
 
-      // Workouts subcollection under each user
+      // Workouts subcollection under each user — owner (by UID) only, for both
+      // read and write. Coach writes and any public-facing reads go through
+      // Admin SDK (API routes / SSR), which bypasses these rules.
       match /workouts/{workoutId} {
-        allow read: if request.auth != null;
-        // Only the owner (by UID) can write their own workouts.
-        // Coach writes go through Admin SDK (API routes) which bypasses these rules.
+        allow read: if request.auth != null
+          && get(/databases/$(database)/documents/users/$(username)).data.uid == request.auth.uid;
         allow create, update, delete:
           if request.auth != null
           && get(/databases/$(database)/documents/users/$(username)).data.uid == request.auth.uid;
 
-        // Comments on workouts
+        // Comments on workouts. Coaches and athletes can comment on each
+        // other's workouts, so create is not owner-gated — but the comment
+        // must be attributed to whoever is actually signed in, and only the
+        // author can delete their own comment.
         match /comments/{commentId} {
           allow read: if request.auth != null;
-          allow create: if request.auth != null;
-          allow delete: if request.auth != null;
+          allow create: if request.auth != null
+            && get(/databases/$(database)/documents/users/$(request.resource.data.userId)).data.uid == request.auth.uid;
+          allow delete: if request.auth != null
+            && get(/databases/$(database)/documents/users/$(resource.data.userId)).data.uid == request.auth.uid;
         }
       }
     }
 
-    // Personal Records (flat collection, userId field for ownership)
+    // Personal Records (flat collection; userId field holds the owner's
+    // username — resolve through the users doc to check UID ownership).
     match /personalRecords/{recordId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null;
+      allow read: if request.auth != null
+        && get(/databases/$(database)/documents/users/$(resource.data.userId)).data.uid == request.auth.uid;
+      allow create: if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.resource.data.userId)).data.uid == request.auth.uid;
+      allow update, delete: if request.auth != null
+        && get(/databases/$(database)/documents/users/$(resource.data.userId)).data.uid == request.auth.uid;
     }
 
     // AI Chat Threads (userId field = auth UID)
